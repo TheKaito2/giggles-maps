@@ -3,7 +3,8 @@
 Tell it where you're going and how much extra time you're OK with. It fills that time with local stops in Sakon Nakhon, partner shops first, and you check in with a selfie to collect stamps. Shops pay only for verified visits.
 
 - Live: https://giggles-maps.pages.dev (landing) · `/app/` (web app) · `/shop/` (shop dashboard)
-- Docs: [architecture](docs/ARCHITECTURE.md) · [API contract](docs/API.md) · [iOS vs Android](docs/PLATFORMS.md)
+- Docs: [architecture](docs/ARCHITECTURE.md) · [API contract](docs/API.md) · [iOS vs Android](docs/PLATFORMS.md) · [Android roadmap](docs/ANDROID-ROADMAP.md) · [monetization plan](docs/MONETIZATION.md)
+- Agents: start at [AGENTS.md](AGENTS.md); Android: [android/AGENTS.md](android/AGENTS.md)
 
 ## Run the web app
 
