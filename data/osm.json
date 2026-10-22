@@ -1,0 +1,1478 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-22T15:37:06Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 2130416364,
+  "lat": 17.1569482,
+  "lon": 104.1471607,
+  "tags": {
+    "name": "โรงแรม เอ็ม.เจ. เดอะมาเจ็สติค สกลนคร (MJ the Majestic)",
+    "name:en": "M.J. The Majestic Hotel Sakon Nakhon",
+    "name:th": "โรงแรม เอ็ม.เจ. เดอะมาเจ็สติค สกลนคร",
+    "source": "GPS,sight",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 2584358676,
+  "lat": 17.1798019,
+  "lon": 104.1131648,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 3006509550,
+  "lat": 17.1614712,
+  "lon": 104.1487927,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 3812120485,
+  "lat": 17.1791637,
+  "lon": 104.0947981,
+  "tags": {
+    "amenity": "cafe",
+    "brand": "Café Amazon",
+    "cuisine": "coffee_shop",
+    "name": "Café Amazon",
+    "name:en": "Café Amazon",
+    "name:th": "คาเฟ่ อเมซอน",
+    "operator": "PTT",
+    "shop": "coffee",
+    "smoking": "no",
+    "source": "GPS"
+  }
+},
+{
+  "type": "node",
+  "id": 4084721101,
+  "lat": 17.1624473,
+  "lon": 104.1433021,
+  "tags": {
+    "amenity": "restaurant"
+  }
+},
+{
+  "type": "node",
+  "id": 4277796689,
+  "lat": 17.1418406,
+  "lon": 104.1446207,
+  "tags": {
+    "amenity": "restaurant",
+    "internet_access": "wlan",
+    "name": "Apple's Restaurant",
+    "opening_hours": "Tu-Su 10:00-22:00"
+  }
+},
+{
+  "type": "node",
+  "id": 4364175104,
+  "lat": 17.1661446,
+  "lon": 104.1465039,
+  "tags": {
+    "name": "L P Mansion",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 4364176166,
+  "lat": 17.1627208,
+  "lon": 104.1450984,
+  "tags": {
+    "name": "Dusit Hotel",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 4364177636,
+  "lat": 17.1652671,
+  "lon": 104.1386641,
+  "tags": {
+    "name": "Hop Inn Sakon Nakhon",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 4364179025,
+  "lat": 17.1631295,
+  "lon": 104.1364741,
+  "tags": {
+    "name": "PC Grand Palace",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 4364180833,
+  "lat": 17.1568275,
+  "lon": 104.1410448,
+  "tags": {
+    "name": "MT Place",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 4364184368,
+  "lat": 17.1587126,
+  "lon": 104.1357536,
+  "tags": {
+    "name": "UII Boutique Place",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 4364186207,
+  "lat": 17.1813973,
+  "lon": 104.1115923,
+  "tags": {
+    "name": "Hong Hub @ Sakon",
+    "tourism": "hotel",
+    "website": "http://honghubsakon.com/"
+  }
+},
+{
+  "type": "node",
+  "id": 4364186815,
+  "lat": 17.1810898,
+  "lon": 104.0902312,
+  "tags": {
+    "addr:city": "That Choeng Chum, Sakon Nakhon",
+    "addr:housenumber": "646",
+    "addr:postcode": "47000",
+    "addr:street": "route Nweng-Nakham",
+    "name": "The Color Ville Resort",
+    "phone": "+66 42 972 558",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 4364187350,
+  "lat": 17.1912269,
+  "lon": 104.0854997,
+  "tags": {
+    "name": "Baan Esan Country House",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 4364189288,
+  "lat": 17.1571954,
+  "lon": 104.1522116,
+  "tags": {
+    "name": "@SAKON Hotel",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 4364190227,
+  "lat": 17.1505230,
+  "lon": 104.1574550,
+  "tags": {
+    "name": "Sakon Grand Palace",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 4364194190,
+  "lat": 17.1415408,
+  "lon": 104.1060026,
+  "tags": {
+    "name": "Bangchak Phuphan Resort",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 4364196238,
+  "lat": 17.1766492,
+  "lon": 104.1222804,
+  "tags": {
+    "name": "บ้าน เศรษฐ์ธนัน Apartment Daily and Month",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 4364197108,
+  "lat": 17.1585486,
+  "lon": 104.1201539,
+  "tags": {
+    "name": "หอพักวาสิตา",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 4364197858,
+  "lat": 17.1621775,
+  "lon": 104.1274602,
+  "tags": {
+    "name": "สกายอพาร์ทเม้นท์",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 4550221990,
+  "lat": 17.1436962,
+  "lon": 104.1071698,
+  "tags": {
+    "tourism": "motel"
+  }
+},
+{
+  "type": "node",
+  "id": 4867521204,
+  "lat": 17.1593209,
+  "lon": 104.1477745,
+  "tags": {
+    "internet_access": "yes",
+    "internet_access:fee": "yes",
+    "name": "Imperial Sakon Hotel",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 4873907841,
+  "lat": 17.1156035,
+  "lon": 104.1437614,
+  "tags": {
+    "amenity": "cafe",
+    "brand": "Café Amazon",
+    "brand:wikidata": "Q43247503",
+    "brand:wikipedia": "en:Café Amazon",
+    "cuisine": "coffee_shop",
+    "name": "Café Amazon",
+    "name:en": "Amazon Cafe",
+    "takeaway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 4873908022,
+  "lat": 17.1346104,
+  "lon": 104.0908571,
+  "tags": {
+    "amenity": "cafe",
+    "name": "Café Amazon",
+    "name:en": "Café Amazon"
+  }
+},
+{
+  "type": "node",
+  "id": 5268734607,
+  "lat": 17.1689731,
+  "lon": 104.1478010,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 5271447121,
+  "lat": 17.1613205,
+  "lon": 104.1466723,
+  "tags": {
+    "amenity": "restaurant",
+    "cuisine": "thai",
+    "internet_access": "wlan",
+    "name:en": "OCha Milk"
+  }
+},
+{
+  "type": "node",
+  "id": 5275449464,
+  "lat": 17.2189198,
+  "lon": 104.0912384,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 5370534697,
+  "lat": 17.1513102,
+  "lon": 104.1388337,
+  "tags": {
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "addr:subdistrict": "Dong Mafai",
+    "amenity": "place_of_worship",
+    "name": "วัดป่าสุทธาวาส",
+    "name:en": "Pa Sutthawas Temple",
+    "religion": "buddhist",
+    "wikidata": "Q13020737"
+  }
+},
+{
+  "type": "node",
+  "id": 5370564073,
+  "lat": 17.1663474,
+  "lon": 104.1615321,
+  "tags": {
+    "alt_name:en": "Suan Mae–Suan Luk",
+    "leisure": "park",
+    "name": "สวนสมเด็จเจ้าฟ้ากัลยาณิวัฒนา (สวนแม่ สวนลูก)",
+    "name:en": "Somdet Chaofa Galyani Vadhana Park"
+  }
+},
+{
+  "type": "node",
+  "id": 5372034651,
+  "lat": 17.1658585,
+  "lon": 104.1471393,
+  "tags": {
+    "amenity": "place_of_worship",
+    "name": "Nua Temple",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 5372034652,
+  "lat": 17.1671751,
+  "lon": 104.1454551,
+  "tags": {
+    "amenity": "place_of_worship",
+    "name": "Saphan Kham Temple",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 5372034663,
+  "lat": 17.1678111,
+  "lon": 104.1512135,
+  "tags": {
+    "amenity": "place_of_worship",
+    "name": "Pho Chai Temple",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 5372034716,
+  "lat": 17.1660414,
+  "lon": 104.1444309,
+  "tags": {
+    "amenity": "place_of_worship",
+    "name": "Si Phon Muang Temple",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 5568245021,
+  "lat": 17.1331204,
+  "lon": 104.1436185,
+  "tags": {
+    "addr:street": "สกลทวาปี",
+    "amenity": "restaurant",
+    "cuisine": "hot_dog;lao;diner;seafood;thai;local",
+    "diet:vegan": "yes",
+    "email": "inthiban2508@gmail.com",
+    "internet_access": "wlan",
+    "name": "ปูปลาจุ่ม",
+    "name:en": "Pupajoom",
+    "name:th": "ปูปลาจุ่ม thai food",
+    "opening_hours": "Th-Tu 11:00-22:00",
+    "operator": "ใจภักดิ์",
+    "phone": "+66 42 971 069"
+  }
+},
+{
+  "type": "node",
+  "id": 5744746389,
+  "lat": 17.1695210,
+  "lon": 104.1430891,
+  "tags": {
+    "addr:city": "สกลนคร",
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "addr:street": "รัฐพัฒนา",
+    "amenity": "place_of_worship",
+    "name": "ประตูเมืองสกลนคร",
+    "name:en": "Gateway of Sakon Nakhon",
+    "tourism": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5744758228,
+  "lat": 17.1686445,
+  "lon": 104.1436161,
+  "tags": {
+    "amenity": "place_of_worship",
+    "name": "สำนักงานเทศกิจเทศบาลเมืองสกลนคร"
+  }
+},
+{
+  "type": "node",
+  "id": 7059242885,
+  "lat": 17.1673984,
+  "lon": 104.1521947,
+  "tags": {
+    "amenity": "cafe",
+    "name:en": "Piccolo Cafe"
+  }
+},
+{
+  "type": "node",
+  "id": 7889241446,
+  "lat": 17.1546671,
+  "lon": 104.1380229,
+  "tags": {
+    "artwork_type": "statue",
+    "tourism": "artwork"
+  }
+},
+{
+  "type": "node",
+  "id": 7889248255,
+  "lat": 17.1460600,
+  "lon": 104.1220004,
+  "tags": {
+    "artwork_type": "statue",
+    "tourism": "artwork"
+  }
+},
+{
+  "type": "node",
+  "id": 9798791704,
+  "lat": 17.1011974,
+  "lon": 104.1543570,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 9798822752,
+  "lat": 17.1299685,
+  "lon": 104.1391735,
+  "tags": {
+    "artwork_type": "statue",
+    "tourism": "artwork"
+  }
+},
+{
+  "type": "node",
+  "id": 9798827409,
+  "lat": 17.1112188,
+  "lon": 104.1446346,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 9798855569,
+  "lat": 17.1304045,
+  "lon": 104.1392004,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 9799036536,
+  "lat": 17.1093215,
+  "lon": 104.1682860,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 9802669709,
+  "lat": 17.1615277,
+  "lon": 104.1532845,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 9802682753,
+  "lat": 17.1866060,
+  "lon": 104.0959644,
+  "tags": {
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "addr:subdistrict": "That Na Weng",
+    "amenity": "place_of_worship",
+    "name": "วัดพระธาตุนารายณ์เจงเวง",
+    "name:en": "Wat Phra That Narai Cheng Weng",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 9802691465,
+  "lat": 17.1629455,
+  "lon": 104.1470182,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 10180156973,
+  "lat": 17.2137831,
+  "lon": 104.0967941,
+  "tags": {
+    "addr:city": "ฮางโฮง",
+    "addr:housenumber": "70",
+    "addr:postcode": "47000",
+    "addr:street": "นิตโย",
+    "amenity": "restaurant",
+    "cuisine": "thai",
+    "name": "ร้านก๋วยเตี๋ยวเนื้อหมูตุ๋นแม่บัน",
+    "opening_hours": "Mo-Su 09:00-21:00",
+    "phone": "0981592590"
+  }
+},
+{
+  "type": "node",
+  "id": 11268455122,
+  "lat": 17.1635522,
+  "lon": 104.1241395,
+  "tags": {
+    "addr:city": "ธาตุเชิงชุม",
+    "addr:housenumber": "565/4",
+    "addr:postcode": "47000",
+    "addr:street": "ถนนรัฐบำรุง",
+    "amenity": "cafe",
+    "cuisine": "coffee_shop",
+    "name": "falling in the cop"
+  }
+},
+{
+  "type": "node",
+  "id": 11568473526,
+  "lat": 17.1155890,
+  "lon": 104.1434206,
+  "tags": {
+    "addr:city": "Mueng Sakon Nakhon",
+    "addr:housenumber": "203",
+    "addr:postcode": "47000",
+    "addr:street": "Sakon-Nakae road",
+    "amenity": "marketplace",
+    "name": "2Bhaesaj Drug Store",
+    "operator": "drug store",
+    "survey:date": "2024-01-30"
+  }
+},
+{
+  "type": "node",
+  "id": 12023227431,
+  "lat": 17.1354044,
+  "lon": 104.0827978,
+  "tags": {
+    "tourism": "motel"
+  }
+},
+{
+  "type": "node",
+  "id": 12023645945,
+  "lat": 17.1537960,
+  "lon": 104.1450374,
+  "tags": {
+    "name": "The Room Boutique Hotel",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 12025193823,
+  "lat": 17.1355606,
+  "lon": 104.0965889,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 12178255329,
+  "lat": 17.1776183,
+  "lon": 104.1227466,
+  "tags": {
+    "amenity": "cafe",
+    "cuisine": "coffee_shop",
+    "name": "Fika Cafe"
+  }
+},
+{
+  "type": "node",
+  "id": 12178255603,
+  "lat": 17.1764575,
+  "lon": 104.1308681,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "christian"
+  }
+},
+{
+  "type": "node",
+  "id": 12178262396,
+  "lat": 17.1543705,
+  "lon": 104.1461354,
+  "tags": {
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 12178765140,
+  "lat": 17.1211107,
+  "lon": 104.1717763,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 12328657632,
+  "lat": 17.1756768,
+  "lon": 104.1015501,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 12328690982,
+  "lat": 17.1734062,
+  "lon": 104.1059944,
+  "tags": {
+    "amenity": "cafe",
+    "brand": "คาเฟ่ อเมซอน",
+    "brand:en": "Café Amazon",
+    "brand:th": "คาเฟ่ อเมซอน",
+    "brand:wikidata": "Q43247503",
+    "cuisine": "coffee_shop",
+    "name": "คาเฟ่ อเมซอน",
+    "name:en": "Café Amazon",
+    "name:th": "คาเฟ่ อเมซอน",
+    "takeaway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12328707717,
+  "lat": 17.1825677,
+  "lon": 104.1146063,
+  "tags": {
+    "amenity": "cafe",
+    "brand": "คาเฟ่ อเมซอน",
+    "brand:en": "Café Amazon",
+    "brand:th": "คาเฟ่ อเมซอน",
+    "brand:wikidata": "Q43247503",
+    "cuisine": "coffee_shop",
+    "name": "คาเฟ่ อเมซอน",
+    "name:en": "Café Amazon",
+    "name:th": "คาเฟ่ อเมซอน",
+    "takeaway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12328726629,
+  "lat": 17.1942103,
+  "lon": 104.0893515,
+  "tags": {
+    "amenity": "cafe",
+    "brand": "คาเฟ่ อเมซอน",
+    "brand:en": "Café Amazon",
+    "brand:th": "คาเฟ่ อเมซอน",
+    "brand:wikidata": "Q43247503",
+    "cuisine": "coffee_shop",
+    "name": "คาเฟ่ อเมซอน",
+    "name:en": "Café Amazon",
+    "name:th": "คาเฟ่ อเมซอน",
+    "takeaway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12331309053,
+  "lat": 17.1251035,
+  "lon": 104.1685778,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 12331346343,
+  "lat": 17.1169024,
+  "lon": 104.1606023,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 12334339445,
+  "lat": 17.1300437,
+  "lon": 104.1902505,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 12346159762,
+  "lat": 17.1408795,
+  "lon": 104.1891298,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 12389158681,
+  "lat": 17.1088988,
+  "lon": 104.1481392,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 12389187969,
+  "lat": 17.1279575,
+  "lon": 104.1191680,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 12389199116,
+  "lat": 17.1082291,
+  "lon": 104.1422051,
+  "tags": {
+    "amenity": "place_of_worship"
+  }
+},
+{
+  "type": "node",
+  "id": 12389213540,
+  "lat": 17.1276532,
+  "lon": 104.1159554,
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "node",
+  "id": 12856937001,
+  "lat": 17.1652502,
+  "lon": 104.1501078,
+  "tags": {
+    "amenity": "restaurant",
+    "internet_access": "wlan",
+    "name": "บิ้กอ้วน แหนมเนือง",
+    "name:en": "Big Auon Nem Nuong",
+    "name:th": "บิ้กอ้วน แหนมเนือง",
+    "outdoor_seating": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12857240901,
+  "lat": 17.1404525,
+  "lon": 104.1438981,
+  "tags": {
+    "internet_access": "wlan",
+    "name": "ลินลดา บูทีคโฮเทล",
+    "name:en": "Linlada Boutique Hotel",
+    "name:th": "ลินลดา บูทิคโฮเทล",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 12871004501,
+  "lat": 17.1574388,
+  "lon": 104.1404610,
+  "tags": {
+    "internet_access": "wlan",
+    "name": "สุนทรีอพาร์ทเมนท์",
+    "name:en": "Suntree Apartment",
+    "name:th": "สุนทรีอพาร์ทเมนท์",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 12888835502,
+  "lat": 17.1626862,
+  "lon": 104.1497985,
+  "tags": {
+    "amenity": "restaurant",
+    "internet_access": "wlan",
+    "name": "สถานีโรตี@สกลนคร",
+    "name:en": "Roti Station @ Sakon Nakhon",
+    "name:th": "สถานีโรตี@สกลนคร",
+    "self_service": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12891820701,
+  "lat": 17.1648746,
+  "lon": 104.1580702,
+  "tags": {
+    "amenity": "cafe",
+    "internet_access": "wlan",
+    "name": "คาเฟ่ อเมซอน",
+    "name:en": "Café Amazon",
+    "name:th": "คาเฟ่ อเมซอน",
+    "outdoor_seating": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12896189601,
+  "lat": 17.1635183,
+  "lon": 104.1499678,
+  "tags": {
+    "amenity": "restaurant",
+    "cuisine": "vietnamese",
+    "name": "ดีอัน อาหารเวียตนาม",
+    "name:en": "Đi ăn Vietnamese Restaurant",
+    "name:th": "ดีอัน อาหารเวียตนาม",
+    "name:vi": "Đi ăn",
+    "opening_hours": "Mo-Su 08:00-14:00"
+  }
+},
+{
+  "type": "node",
+  "id": 13249604571,
+  "lat": 17.1573162,
+  "lon": 104.1458487,
+  "tags": {
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "amenity": "marketplace",
+    "building": "roof",
+    "name": "ตลาดโต้รุ่งต. เจริญศรี",
+    "name:en": "To Charoen Si Night Market",
+    "opening_hours": "Mo-Su 15:00-23:00"
+  }
+},
+{
+  "type": "node",
+  "id": 13249604588,
+  "lat": 17.1507395,
+  "lon": 104.1385916,
+  "tags": {
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "addr:subdistrict": "Dong Mafai",
+    "name": "พิพิธภัณฑ์หลวงปู่หลุย จันทสาโร",
+    "name:en": "Luang Pu Lui Chanthasaro Museum",
+    "tourism": "museum"
+  }
+},
+{
+  "type": "node",
+  "id": 13313555881,
+  "lat": 17.1680654,
+  "lon": 104.1571606,
+  "tags": {
+    "artwork_type": "statue",
+    "tourism": "artwork"
+  }
+},
+{
+  "type": "node",
+  "id": 13313596796,
+  "lat": 17.1610389,
+  "lon": 104.1552729,
+  "tags": {
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "addr:subdistrict": "That Choeng Chum",
+    "alt_name:en": "City Pillar Shrine Sakon Nakhon",
+    "amenity": "place_of_worship",
+    "name": "ศาลเจ้าพ่อมเหสักข์",
+    "name:en": "Chao Pho Mahesak Shrine"
+  }
+},
+{
+  "type": "node",
+  "id": 13313596797,
+  "lat": 17.1697910,
+  "lon": 104.1429688,
+  "tags": {
+    "artwork_type": "statue",
+    "tourism": "artwork"
+  }
+},
+{
+  "type": "node",
+  "id": 13316456146,
+  "lat": 17.1440926,
+  "lon": 104.1654654,
+  "tags": {
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "addr:street": "ถนน ไอ ที ยู",
+    "addr:subdistrict": "Ngio Don",
+    "amenity": "place_of_worship",
+    "name": "วัดพระธาตุดุม",
+    "name:en": "Wat Phra That Dum",
+    "religion": "buddhist",
+    "website": "https://www.facebook.com/watthatdom"
+  }
+},
+{
+  "type": "node",
+  "id": 13342379301,
+  "lat": 17.1573809,
+  "lon": 104.1506441,
+  "tags": {
+    "amenity": "cafe",
+    "name": "Phuntai Coffee"
+  }
+},
+{
+  "type": "node",
+  "id": 13342495450,
+  "lat": 17.1639162,
+  "lon": 104.1484476,
+  "tags": {
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "addr:street": "Suk Kasem Rd",
+    "addr:subdistrict": "That Choeng Chum",
+    "description:en": "silk, garments, cotton cloth",
+    "name": "ร้านศรีคราม ผ้าทอมือย้อมครามธรรมชาติ",
+    "opening_hours": "Mo-Su 08:30-18:00",
+    "shop": "clothes"
+  }
+},
+{
+  "type": "node",
+  "id": 13342495451,
+  "lat": 17.1638020,
+  "lon": 104.1524112,
+  "tags": {
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "addr:subdistrict": "That Choeng Chum",
+    "name": "ร้าน สดศรีไหมไทย",
+    "name:en": "Sot Si Mai Thai",
+    "shop": "clothes"
+  }
+},
+{
+  "type": "node",
+  "id": 13342517101,
+  "lat": 17.1531556,
+  "lon": 104.1474896,
+  "tags": {
+    "addr:housenumber": "444",
+    "contact:facebook": "malihouse.snk",
+    "internet_access": "wlan",
+    "name": "Mali House Sakon Nakhon",
+    "opening_hours": "24/7",
+    "phone": "+66 61 492 9262",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 13343760101,
+  "lat": 17.1740467,
+  "lon": 104.1586577,
+  "tags": {
+    "name": "คูสูดละเบ๋อ เทศบาลนครสกลนคร",
+    "tourism": "viewpoint"
+  }
+},
+{
+  "type": "node",
+  "id": 13354611904,
+  "lat": 17.1565718,
+  "lon": 104.1551782,
+  "tags": {
+    "amenity": "cafe",
+    "brand": "คาเฟ่ อเมซอน",
+    "brand:en": "Café Amazon",
+    "brand:th": "คาเฟ่ อเมซอน",
+    "brand:wikidata": "Q43247503",
+    "cuisine": "coffee_shop",
+    "name": "คาเฟ่ อเมซอน",
+    "name:en": "Café Amazon",
+    "name:th": "คาเฟ่ อเมซอน",
+    "takeaway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 13363854882,
+  "lat": 17.1734271,
+  "lon": 104.1587744,
+  "tags": {
+    "artwork_type": "sculpture",
+    "material": "concrete",
+    "name": "White Squirrel",
+    "tourism": "artwork"
+  }
+},
+{
+  "type": "node",
+  "id": 13773192001,
+  "lat": 17.1598678,
+  "lon": 104.1500315,
+  "tags": {
+    "amenity": "restaurant",
+    "check_date": "2026-04-29",
+    "cuisine": "asian",
+    "name": "Bonus Suki"
+  }
+},
+{
+  "type": "node",
+  "id": 13788471501,
+  "lat": 17.1787159,
+  "lon": 104.1273751,
+  "tags": {
+    "name": "โรงแรมสกลวีไอพี",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 13788471502,
+  "lat": 17.1867501,
+  "lon": 104.1404917,
+  "tags": {
+    "leisure": "park",
+    "name": "ดอนลังกา"
+  }
+},
+{
+  "type": "node",
+  "id": 13813449901,
+  "lat": 17.1875423,
+  "lon": 104.1324282,
+  "tags": {
+    "leisure": "park",
+    "name": "ดอนลังกา"
+  }
+},
+{
+  "type": "way",
+  "id": 201869693,
+  "center": {
+    "lat": 17.2142327,
+    "lon": 104.0973894
+  },
+  "tags": {
+    "internet_access": "wlan",
+    "internet_access:fee": "no",
+    "tourism": "guest_house"
+  }
+},
+{
+  "type": "way",
+  "id": 201869695,
+  "center": {
+    "lat": 17.2200584,
+    "lon": 104.1027517
+  },
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "way",
+  "id": 494975545,
+  "center": {
+    "lat": 17.1644548,
+    "lon": 104.1534525
+  },
+  "tags": {
+    "addr:city": "สกลนคร",
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:housenumber": "1255",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "addr:street": "Rueang Sawat Rd",
+    "addr:subdistrict": "That Choeng Chum",
+    "amenity": "place_of_worship",
+    "name": "วัดพระธาตุเชิงชุมวรวิหาร",
+    "name:en": "Wat Phra Thad Chaeng Chum Worawihan Temple",
+    "name:th-Latn": "Wat Phrathat Choeng Chum Worawihan",
+    "religion": "buddhist",
+    "website": "https://www.facebook.com/suriyaxxx",
+    "wikidata": "Q2484362"
+  }
+},
+{
+  "type": "way",
+  "id": 506151009,
+  "center": {
+    "lat": 17.1511012,
+    "lon": 104.1386528
+  },
+  "tags": {
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "amenity": "place_of_worship",
+    "name": "วัดป่าสุทธาวาส",
+    "name:en": "Wat Pa Suthawat",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "way",
+  "id": 528639708,
+  "center": {
+    "lat": 17.1860029,
+    "lon": 104.0949890
+  },
+  "tags": {
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "addr:subdistrict": "That Na Weng",
+    "amenity": "place_of_worship",
+    "name": "วัดป่าภูธรพิทักษ์",
+    "name:en": "Wat Pa Phuthon Phithak",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "way",
+  "id": 556776025,
+  "center": {
+    "lat": 17.1663707,
+    "lon": 104.1611949
+  },
+  "tags": {
+    "leisure": "park",
+    "name": "สวนสมเด็จเจ้าฟ้ากัลยาณิวัฒนา (สวนแม่ สวนลูก)",
+    "name:ru": "Парк принцессы Гальяни Вадхана (Сад матери, Сад ребенка)"
+  }
+},
+{
+  "type": "way",
+  "id": 556777688,
+  "center": {
+    "lat": 17.1672930,
+    "lon": 104.1549973
+  },
+  "tags": {
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "leisure": "park",
+    "name": "สวนสมเด็จพระศรีนครินทร์",
+    "name:en": "Somdet Phra Srinagarindra Park",
+    "name:ru": "Парк Сомдей Пхра Шринагариндра"
+  }
+},
+{
+  "type": "way",
+  "id": 556780895,
+  "center": {
+    "lat": 17.1545243,
+    "lon": 104.1384423
+  },
+  "tags": {
+    "leisure": "park",
+    "name": "ลานอนุสาวรีย์รัชกาลที่ ๕ (King Rama V Monument Public Ground)",
+    "name:ru": "Общественная площадка памятника королю Раме V"
+  }
+},
+{
+  "type": "way",
+  "id": 556787252,
+  "center": {
+    "lat": 17.1732886,
+    "lon": 104.1467114
+  },
+  "tags": {
+    "leisure": "park",
+    "name": "สวนสาธารณะเฉลิมพระเกียรติ ๘๐ พรรษา",
+    "name:ru": "Общественный парк 80-летия Чалоем Фракиат"
+  }
+},
+{
+  "type": "way",
+  "id": 556951478,
+  "center": {
+    "lat": 17.1674515,
+    "lon": 104.1511622
+  },
+  "tags": {
+    "amenity": "place_of_worship",
+    "building": "yes",
+    "name": "Pho Chai Temple",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "way",
+  "id": 605770730,
+  "center": {
+    "lat": 17.1704435,
+    "lon": 104.1411597
+  },
+  "tags": {
+    "addr:city": "สกลนคร",
+    "addr:postcode": "47000",
+    "addr:street": "ใสสว่าง",
+    "amenity": "restaurant",
+    "building": "yes",
+    "capacity": "100",
+    "cuisine": "seafood",
+    "name": "อาป๋าราชาซีฟู้ด",
+    "outdoor_seating": "yes",
+    "smoking": "yes",
+    "takeaway": "no"
+  }
+},
+{
+  "type": "way",
+  "id": 605774226,
+  "center": {
+    "lat": 17.1708291,
+    "lon": 104.1437252
+  },
+  "tags": {
+    "leisure": "park"
+  }
+},
+{
+  "type": "way",
+  "id": 1329311448,
+  "center": {
+    "lat": 17.1610052,
+    "lon": 104.1552950
+  },
+  "tags": {
+    "leisure": "park",
+    "name": "Mahesak Shrine park",
+    "opening_hours": "sunrise-sunset"
+  }
+},
+{
+  "type": "way",
+  "id": 1329320756,
+  "center": {
+    "lat": 17.1594871,
+    "lon": 104.1576528
+  },
+  "tags": {
+    "building": "yes",
+    "name": "Nong Han Elegant Hotel",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "way",
+  "id": 1329320757,
+  "center": {
+    "lat": 17.1611867,
+    "lon": 104.1485329
+  },
+  "tags": {
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "addr:subdistrict": "That Choeng Chum",
+    "amenity": "place_of_worship",
+    "name": "วัดแจ้งแสงอรุณ",
+    "name:en": "Wat Chaeng Saeng Arun",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "way",
+  "id": 1329320762,
+  "center": {
+    "lat": 17.1606112,
+    "lon": 104.1556920
+  },
+  "tags": {
+    "amenity": "restaurant",
+    "building": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1329398631,
+  "center": {
+    "lat": 17.1691063,
+    "lon": 104.1504906
+  },
+  "tags": {
+    "garden:type": "community",
+    "leisure": "park",
+    "name": "สนามมิ่งเมือง",
+    "name:en": "Ming Muang Park",
+    "name:th": "สนามมิ่งเมือง"
+  }
+},
+{
+  "type": "way",
+  "id": 1329398632,
+  "center": {
+    "lat": 17.1676716,
+    "lon": 104.1513223
+  },
+  "tags": {
+    "amenity": "place_of_worship",
+    "religion": "buddhist"
+  }
+},
+{
+  "type": "way",
+  "id": 1443908526,
+  "center": {
+    "lat": 17.1660881,
+    "lon": 104.1523678
+  },
+  "tags": {
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "addr:subdistrict": "That Choeng Chum",
+    "amenity": "marketplace",
+    "name": "ถนนคนเดินสกลนคร",
+    "name:en": "Sakon Nakhon Walking Street, Saturday & Sunday Nights",
+    "opening_hours": "Sa-So 15:00-20:00"
+  }
+},
+{
+  "type": "way",
+  "id": 1443908527,
+  "center": {
+    "lat": 17.1705490,
+    "lon": 104.1524184
+  },
+  "tags": {
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "addr:subdistrict": "That Choeng Chum",
+    "building": "yes",
+    "name": "สถานแสดงพันธุ์ปลาน้ำจืดภาคอีสาน",
+    "name:en": "Freshwater Fish Aquarium",
+    "opening_hours": "Mo-Fr 08:30-16:00",
+    "phone": "+66 42 716 220",
+    "tourism": "aquarium"
+  }
+},
+{
+  "type": "way",
+  "id": 1443908528,
+  "center": {
+    "lat": 17.1512956,
+    "lon": 104.1379223
+  },
+  "tags": {
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "addr:subdistrict": "Dong Mafai",
+    "building": "yes",
+    "name": "พิพิธภัณฑ์อาจารย์มั่น ภูริทัตโต",
+    "name:en": "Achan Man Phurithatto Museum",
+    "tourism": "museum"
+  }
+},
+{
+  "type": "way",
+  "id": 1443908529,
+  "center": {
+    "lat": 17.1731288,
+    "lon": 104.1448837
+  },
+  "tags": {
+    "addr:district": "Mueang Sakon Nakhon",
+    "addr:postcode": "47000",
+    "addr:province": "Sakon Nakhon",
+    "building": "yes",
+    "name": "พิพิธภัณฑ์ภูพาน",
+    "name:en": "Phu Phan Museum",
+    "tourism": "museum",
+    "website": "https://www.facebook.com/PhiphithphanthPhuPhanCanghwadSklnkhr/"
+  }
+},
+{
+  "type": "way",
+  "id": 1450972267,
+  "center": {
+    "lat": 17.1441807,
+    "lon": 104.1646000
+  },
+  "tags": {
+    "historic": "archaeological_site",
+    "leisure": "park",
+    "name": "Phra That Dum"
+  }
+}
+
+  ]
+}

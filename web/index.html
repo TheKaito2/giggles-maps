@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Giggles Maps</title>
+    <meta name="description" content="Tell Giggles Maps how much extra time you have and it fills it with Sakon Nakhon's best local stops. Shops pay only for verified visits." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Mali:wght@600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" />
+    <link rel="stylesheet" href="/src/styles/landing.css" />
+  </head>
+  <body>
+    <header class="nav wrap">
+      <a class="brand" href="/">Giggles <span>Maps</span></a>
+      <nav>
+        <a href="#shops">For shops</a>
+        <a class="btn small" href="/app/">Try it</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero wrap">
+        <div class="hero-copy">
+          <p class="eyebrow">Sakon Nakhon · สกลนคร</p>
+          <h1>Got 30 spare minutes? Spend them somewhere local.</h1>
+          <p class="lede">Tell us where you're going and how much extra time you're happy to add. Giggles Maps fills it with indigo cloth shops, cafés and temples worth the detour, and never goes over your limit.</p>
+          <div class="cta">
+            <a class="btn gold big" href="/app/">Plan a detour</a>
+            <a class="btn ghost big" href="/shop/">I run a shop</a>
+          </div>
+        </div>
+
+        <figure class="ticket" aria-label="Example route">
+          <div class="ticket-head">
+            <span class="num">+32 / +45 min</span>
+            <span class="chip">Walk</span>
+          </div>
+          <ol class="ticket-stops">
+            <li><span class="dot a">A</span><div><b>Phu Phan Museum</b><small>Start · 10:00</small></div></li>
+            <li><span class="dot gold">1</span><div><b>Sri Khram indigo cloth</b><small class="num">10:17 · 20 min</small></div><span class="chip partner">Partner</span></li>
+            <li><span class="dot b">B</span><div><b>Wat Phra That Choeng Chum</b><small>Arrive · 11:12</small></div></li>
+          </ol>
+          <div class="ticket-stamp" aria-hidden="true">STAMPED<span>Indigo &amp; Silk</span></div>
+          <figcaption class="fine">Example route from the live app (real places, example partner).</figcaption>
+        </figure>
+      </section>
+
+      <section class="steps wrap" aria-labelledby="how">
+        <h2 id="how">How it works</h2>
+        <ol class="step-list">
+          <li><span class="step-n">1</span><h3>Set your extra time</h3><p>Start, destination, and the minutes you'll allow on top. 0 to 120.</p></li>
+          <li><span class="step-n">2</span><h3>Get a route that fits</h3><p>Real walking or driving times. Stops are open when you arrive. Your limit is a hard limit.</p></li>
+          <li><span class="step-n">3</span><h3>Check in, collect stamps</h3><p>A selfie at the door plus GPS stamps your passport. Finish a trail to earn the badge.</p></li>
+        </ol>
+      </section>
+
+      <section class="trails wrap" aria-labelledby="trails">
+        <h2 id="trails">Trails to collect</h2>
+        <div class="trail-grid">
+          <article><h3>Temple Trail</h3><p>3 temples in the city.</p></article>
+          <article><h3>Café Hopper</h3><p>3 local cafés.</p></article>
+          <article><h3>Indigo &amp; Silk</h3><p>2 craft shops or night markets.</p></article>
+          <article><h3>City Explorer</h3><p>3 parks, museums or viewpoints.</p></article>
+        </div>
+      </section>
+
+      <section id="shops" class="shops wrap" aria-labelledby="shops-h">
+        <div>
+          <p class="eyebrow">For shops</p>
+          <h2 id="shops-h">Pay only when a traveller is at your door.</h2>
+          <p class="lede">You set a bid per verified visit. We place you on routes that pass nearby, highest value first, and charge your credit only after a GPS + selfie check-in within 60 m.</p>
+        </div>
+        <div class="price-grid">
+          <div class="price"><span class="fine">Bid per verified visit</span><b class="num">from ฿5</b><span class="fine">You choose. Higher bids rank first.</span></div>
+          <div class="price"><span class="fine">Prepaid credit</span><b class="num">฿500 · ฿1,000 · ฿3,000</b><span class="fine">Card or PromptPay. No monthly fee.</span></div>
+          <div class="price"><span class="fine">Fake visits</span><b class="num">฿0</b><span class="fine">Too far, no face, spoofed GPS or repeat visits are never charged.</span></div>
+        </div>
+        <p class="fine">Pilot pricing. We're testing it with Sakon Nakhon shops now.</p>
+        <a class="btn" href="/shop/">See the shop dashboard</a>
+      </section>
+
+      <section class="why wrap" aria-labelledby="why">
+        <h2 id="why">Why Sakon Nakhon</h2>
+        <div class="facts">
+          <div><b class="num">1,975,801</b><span>visitors in 2025</span></div>
+          <div><b class="num">฿3.4B</b><span>visitor spending in 2025</span></div>
+          <div><b class="num">75</b><span>official attractions</span></div>
+        </div>
+        <p class="fine">Source: Ministry of Tourism and Sports via the Sakon Nakhon provincial open-data catalog.</p>
+      </section>
+    </main>
+
+    <footer class="foot wrap fine">
+      <span>Giggles Maps · built for the All for One University hackathon.</span>
+      <span>Selfies are private and deleted after 30 days. Places © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.</span>
+    </footer>
+  </body>
+</html>

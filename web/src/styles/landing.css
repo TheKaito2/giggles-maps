@@ -1,0 +1,64 @@
+@import "./tokens.css";
+
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+.nav { display: flex; justify-content: space-between; align-items: center; padding-block: 18px; }
+.nav nav { display: flex; gap: 18px; align-items: center; }
+.nav nav a:not(.btn) { color: var(--ink); font-weight: 600; text-decoration: none; }
+.brand { font-family: var(--font-display); font-weight: 700; font-size: 24px; color: var(--indigo); text-decoration: none; }
+.brand span { color: var(--marigold); }
+.btn.small { padding: 8px 16px; font-size: 15px; }
+.btn.big { padding: 15px 26px; font-size: 17px; }
+.eyebrow { font: 600 13px var(--font-data); letter-spacing: .08em; text-transform: uppercase; color: var(--indigo); }
+.lede { font-size: 18px; color: var(--ink-2); max-width: 56ch; }
+.fine { font-size: 13px; color: var(--ink-2); }
+main { display: grid; gap: 88px; padding-bottom: 64px; }
+h2 { font-size: clamp(26px, 4vw, 38px); }
+
+.hero { display: grid; grid-template-columns: 1.15fr 1fr; gap: 48px; align-items: center; padding-top: 32px; }
+.hero h1 { font-size: clamp(36px, 6vw, 64px); margin: 10px 0 18px; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+@media (max-width: 860px) { .hero { grid-template-columns: 1fr; } }
+
+/* hero visual: a boarding-pass style route card */
+.ticket { position: relative; margin: 0; background: var(--card); border-radius: 22px; padding: 22px; box-shadow: var(--shadow);
+  border: 1px solid var(--line); display: grid; gap: 16px; max-width: 460px; justify-self: center; width: 100%; }
+.ticket::before, .ticket::after { content: ""; position: absolute; top: 58px; width: 22px; height: 22px; border-radius: 50%; background: var(--paper); }
+.ticket::before { left: -11px; } .ticket::after { right: -11px; }
+.ticket-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 2px dashed var(--line); }
+.ticket-head .num { font-size: 26px; font-weight: 600; color: var(--indigo); }
+.ticket-stops { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.ticket-stops li { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
+.ticket-stops small { display: block; color: var(--ink-2); font-size: 13px; }
+.dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 700 13px var(--font-data); color: #fff; background: var(--indigo); }
+.dot.a { background: var(--good); } .dot.b { background: var(--stamp); } .dot.gold { background: var(--marigold); color: #241a00; }
+.ticket-stamp { position: absolute; right: -10px; top: -34px; background: var(--card); font: 700 20px var(--font-display); color: var(--stamp); border: 3px double var(--stamp);
+  border-radius: 10px; padding: 4px 12px; transform: rotate(-9deg); display: grid; text-align: center; opacity: .9; }
+.ticket-stamp span { font: 600 11px var(--font-body); }
+
+.step-list { list-style: none; padding: 0; margin: 28px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+.step-list li { display: grid; gap: 8px; align-content: start; }
+.step-n { font: 600 14px var(--font-data); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--indigo); color: var(--on-indigo); }
+.step-list h3 { font-size: 21px; }
+.step-list p { color: var(--ink-2); }
+
+.trail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-top: 24px; }
+.trail-grid article { border: 2px dashed var(--indigo); border-radius: 16px; padding: 18px; display: grid; gap: 6px; background: var(--card); }
+.trail-grid h3 { color: var(--indigo); font-size: 20px; }
+.trail-grid p { color: var(--ink-2); }
+
+.shops { background: var(--indigo); color: #fff; border-radius: 28px; padding-block: 44px; display: grid; gap: 24px; }
+.shops .eyebrow { color: var(--marigold); }
+.shops .lede, .shops .fine { color: rgb(255 255 255 / .82); }
+.shops .btn { background: #fff; color: #27348b; justify-self: start; }
+.price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.price { background: rgb(255 255 255 / .08); border: 1px solid rgb(255 255 255 / .2); border-radius: 16px; padding: 18px; display: grid; gap: 6px; }
+.price b { font-size: 22px; color: #ffd36b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .shops { background: #1d2550; } }
+:root[data-theme="dark"] .shops { background: #1d2550; }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 24px 0 10px; }
+.facts div { border-top: 3px solid var(--marigold); padding-top: 12px; display: grid; }
+.facts b { font-size: 34px; color: var(--indigo); }
+.facts span { color: var(--ink-2); }
+
+.foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; padding-block: 28px; border-top: 1px solid var(--line); }

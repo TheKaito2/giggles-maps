@@ -1,0 +1,37 @@
+import { admin, json } from "../_shared/http.ts";
+
+// Stripe calls this; no user JWT (deploy with --no-verify-jwt). Trust comes from the signature.
+async function verify(payload: string, header: string, secret: string): Promise<boolean> {
+  const parts = Object.fromEntries(header.split(",").map((p) => p.split("=") as [string, string]));
+  const t = Number(parts.t);
+  if (!parts.t || !parts.v1 || Math.abs(Date.now() / 1000 - t) > 300) return false;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${parts.t}.${payload}`));
+  const hex = [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  // constant-time compare
+  if (hex.length !== parts.v1.length) return false;
+  let diff = 0;
+  for (let i = 0; i < hex.length; i++) diff |= hex.charCodeAt(i) ^ parts.v1.charCodeAt(i);
+  return diff === 0;
+}
+
+Deno.serve(async (req) => {
+  const secret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+  if (!secret) return json({ error: "payments_not_configured" }, 503);
+  const payload = await req.text();
+  if (!(await verify(payload, req.headers.get("stripe-signature") ?? "", secret))) {
+    return json({ error: "bad_signature" }, 400);
+  }
+  const event = JSON.parse(payload);
+  // cards complete immediately; PromptPay may complete asynchronously
+  const paid = (event.type === "checkout.session.completed" && event.data.object.payment_status === "paid")
+    || event.type === "checkout.session.async_payment_succeeded";
+  if (!paid) return json({ received: true });
+
+  const s = event.data.object;
+  const { error } = await admin().rpc("credit_wallet", {
+    p_shop: s.metadata.shop_id, p_amount: s.amount_total / 100, p_session: s.id,
+  });
+  if (error) { console.error(error); return json({ error: "credit_failed" }, 500); } // Stripe retries
+  return json({ received: true });
+});

@@ -1,0 +1,277 @@
+[
+{
+"osm": "node/3812120485",
+"name": "Café Amazon",
+"cat": "cafe"
+},
+{
+"osm": "node/4277796689",
+"name": "Apple's Restaurant",
+"cat": "food"
+},
+{
+"osm": "node/4873907841",
+"name": "Amazon Cafe",
+"cat": "cafe"
+},
+{
+"osm": "node/4873908022",
+"name": "Café Amazon",
+"cat": "cafe"
+},
+{
+"osm": "node/5370534697",
+"name": "Pa Sutthawas Temple",
+"cat": "temple"
+},
+{
+"osm": "node/5370564073",
+"name": "Somdet Chaofa Galyani Vadhana Park",
+"cat": "park"
+},
+{
+"osm": "node/5372034651",
+"name": "Nua Temple",
+"cat": "temple"
+},
+{
+"osm": "node/5372034652",
+"name": "Saphan Kham Temple",
+"cat": "temple"
+},
+{
+"osm": "node/5372034663",
+"name": "Pho Chai Temple",
+"cat": "temple"
+},
+{
+"osm": "node/5372034716",
+"name": "Si Phon Muang Temple",
+"cat": "temple"
+},
+{
+"osm": "node/5568245021",
+"name": "Pupajoom",
+"cat": "food"
+},
+{
+"osm": "node/5744746389",
+"name": "Gateway of Sakon Nakhon",
+"cat": "temple"
+},
+{
+"osm": "node/5744758228",
+"name": "สำนักงานเทศกิจเทศบาลเมืองสกลนคร",
+"cat": "temple"
+},
+{
+"osm": "node/9802682753",
+"name": "Wat Phra That Narai Cheng Weng",
+"cat": "temple"
+},
+{
+"osm": "node/10180156973",
+"name": "ร้านก๋วยเตี๋ยวเนื้อหมูตุ๋นแม่บัน",
+"cat": "food"
+},
+{
+"osm": "node/11268455122",
+"name": "falling in the cop",
+"cat": "cafe"
+},
+{
+"osm": "node/11568473526",
+"name": "2Bhaesaj Drug Store",
+"cat": "market"
+},
+{
+"osm": "node/12178255329",
+"name": "Fika Cafe",
+"cat": "cafe"
+},
+{
+"osm": "node/12328690982",
+"name": "Café Amazon",
+"cat": "cafe"
+},
+{
+"osm": "node/12328707717",
+"name": "Café Amazon",
+"cat": "cafe"
+},
+{
+"osm": "node/12328726629",
+"name": "Café Amazon",
+"cat": "cafe"
+},
+{
+"osm": "node/12856937001",
+"name": "Big Auon Nem Nuong",
+"cat": "food"
+},
+{
+"osm": "node/12888835502",
+"name": "Roti Station @ Sakon Nakhon",
+"cat": "food"
+},
+{
+"osm": "node/12891820701",
+"name": "Café Amazon",
+"cat": "cafe"
+},
+{
+"osm": "node/12896189601",
+"name": "Đi ăn Vietnamese Restaurant",
+"cat": "food"
+},
+{
+"osm": "node/13249604571",
+"name": "To Charoen Si Night Market",
+"cat": "market"
+},
+{
+"osm": "node/13249604588",
+"name": "Luang Pu Lui Chanthasaro Museum",
+"cat": "museum"
+},
+{
+"osm": "node/13313596796",
+"name": "Chao Pho Mahesak Shrine",
+"cat": "temple"
+},
+{
+"osm": "node/13316456146",
+"name": "Wat Phra That Dum",
+"cat": "temple"
+},
+{
+"osm": "node/13342379301",
+"name": "Phuntai Coffee",
+"cat": "cafe"
+},
+{
+"osm": "node/13342495450",
+"name": "ร้านศรีคราม ผ้าทอมือย้อมครามธรรมชาติ",
+"cat": "craft"
+},
+{
+"osm": "node/13342495451",
+"name": "Sot Si Mai Thai",
+"cat": "craft"
+},
+{
+"osm": "node/13343760101",
+"name": "คูสูดละเบ๋อ เทศบาลนครสกลนคร",
+"cat": "viewpoint"
+},
+{
+"osm": "node/13354611904",
+"name": "Café Amazon",
+"cat": "cafe"
+},
+{
+"osm": "node/13363854882",
+"name": "White Squirrel",
+"cat": "art"
+},
+{
+"osm": "node/13773192001",
+"name": "Bonus Suki",
+"cat": "food"
+},
+{
+"osm": "node/13788471502",
+"name": "ดอนลังกา",
+"cat": "park"
+},
+{
+"osm": "node/13813449901",
+"name": "ดอนลังกา",
+"cat": "park"
+},
+{
+"osm": "way/494975545",
+"name": "Wat Phra Thad Chaeng Chum Worawihan Temple",
+"cat": "temple"
+},
+{
+"osm": "way/506151009",
+"name": "Wat Pa Suthawat",
+"cat": "temple"
+},
+{
+"osm": "way/528639708",
+"name": "Wat Pa Phuthon Phithak",
+"cat": "temple"
+},
+{
+"osm": "way/556776025",
+"name": "สวนสมเด็จเจ้าฟ้ากัลยาณิวัฒนา (สวนแม่ สวนลูก)",
+"cat": "park"
+},
+{
+"osm": "way/556777688",
+"name": "Somdet Phra Srinagarindra Park",
+"cat": "park"
+},
+{
+"osm": "way/556780895",
+"name": "ลานอนุสาวรีย์รัชกาลที่ ๕ (King Rama V Monument Public Ground)",
+"cat": "park"
+},
+{
+"osm": "way/556787252",
+"name": "สวนสาธารณะเฉลิมพระเกียรติ ๘๐ พรรษา",
+"cat": "park"
+},
+{
+"osm": "way/556951478",
+"name": "Pho Chai Temple",
+"cat": "temple"
+},
+{
+"osm": "way/605770730",
+"name": "อาป๋าราชาซีฟู้ด",
+"cat": "food"
+},
+{
+"osm": "way/1329311448",
+"name": "Mahesak Shrine park",
+"cat": "park"
+},
+{
+"osm": "way/1329320757",
+"name": "Wat Chaeng Saeng Arun",
+"cat": "temple"
+},
+{
+"osm": "way/1329398631",
+"name": "Ming Muang Park",
+"cat": "park"
+},
+{
+"osm": "way/1443908526",
+"name": "Sakon Nakhon Walking Street, Saturday & Sunday Nights",
+"cat": "market"
+},
+{
+"osm": "way/1443908527",
+"name": "Freshwater Fish Aquarium",
+"cat": "museum"
+},
+{
+"osm": "way/1443908528",
+"name": "Achan Man Phurithatto Museum",
+"cat": "museum"
+},
+{
+"osm": "way/1443908529",
+"name": "Phu Phan Museum",
+"cat": "museum"
+},
+{
+"osm": "way/1450972267",
+"name": "Phra That Dum",
+"cat": "park"
+}
+]

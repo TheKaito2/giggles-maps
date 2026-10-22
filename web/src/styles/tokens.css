@@ -1,0 +1,64 @@
+/* Giggles Maps tokens. Direction: travel passport meets Sakon Nakhon indigo (kram) cloth.
+   Indigo ink for structure, marigold for money/partner, stamp red for badges. */
+:root {
+  --paper: #f3f4f9;
+  --card: #ffffff;
+  --ink: #161b3d;
+  --ink-2: #4a5078;
+  --line: #d9dcea;
+  --indigo: #27348b;
+  --indigo-soft: #e3e7f8;
+  --on-indigo: #ffffff;
+  --marigold: #e9a400;
+  --marigold-soft: #fff3d1;
+  --stamp: #d1452f;
+  --good: #1b7f52;
+  --bad: #b3261e;
+  --shadow: 0 1px 2px rgb(22 27 61 / 0.06), 0 6px 20px rgb(22 27 61 / 0.08);
+
+  --font-display: "Mali", "Anuphan", system-ui, sans-serif;
+  --font-body: "Anuphan", "Noto Sans Thai", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1226; --card: #181c38; --ink: #eceefa; --ink-2: #a9aed0; --line: #2c3158;
+    --indigo: #9eacff; --indigo-soft: #232a55; --on-indigo: #0f1226; --marigold: #ffc53d; --marigold-soft: #3a2f10;
+    --stamp: #ff7a63; --good: #5fd39b; --bad: #ff8a80;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1226; --card: #181c38; --ink: #eceefa; --ink-2: #a9aed0; --line: #2c3158;
+  --indigo: #9eacff; --indigo-soft: #232a55; --on-indigo: #0f1226; --marigold: #ffc53d; --marigold-soft: #3a2f10;
+  --stamp: #ff7a63; --good: #5fd39b; --bad: #ff8a80;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; text-wrap: balance; margin: 0; }
+p { margin: 0; }
+a { color: var(--indigo); text-underline-offset: 3px; }
+button { font: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--marigold); outline-offset: 2px; border-radius: 6px; }
+.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 999px;
+  padding: 12px 20px; font-weight: 600; background: var(--indigo); color: var(--on-indigo); text-decoration: none;
+  transition: transform .12s ease, filter .12s ease; }
+.btn:hover { filter: brightness(1.08); }
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.ghost { background: transparent; color: var(--indigo); box-shadow: inset 0 0 0 2px var(--indigo); }
+.btn.gold { background: var(--marigold); color: #241a00; }
+
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 2px 9px;
+  border-radius: 999px; background: var(--indigo-soft); color: var(--indigo); white-space: nowrap; }
+.chip.partner { background: var(--marigold-soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--marigold); }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
