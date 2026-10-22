@@ -15,6 +15,16 @@ npm install
 npm run dev
 ```
 
+## Run the iOS app
+
+```bash
+cd ios
+xcodegen generate                      # creates GigglesMaps.xcodeproj (not committed)
+open GigglesMaps.xcodeproj             # or: xcodebuild test -scheme GigglesMaps -destination 'platform=iOS Simulator,name=iPhone 17'
+```
+
+In the Simulator use the check-in sheet's demo toggle: simulator GPS is flagged as simulated, and Vision falls back to Core Image there.
+
 ## Backend
 
 ```bash

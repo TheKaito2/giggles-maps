@@ -1,0 +1,68 @@
+name: GigglesMaps
+options:
+  bundleIdPrefix: com.kristpaul
+  developmentLanguage: en
+  deploymentTarget:
+    iOS: "26.0"
+packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    exactVersion: 2.55.4
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    DEVELOPMENT_TEAM: 97BS2K8UQ2
+    CODE_SIGN_STYLE: Automatic
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+targets:
+  GigglesMaps:
+    type: application
+    platform: iOS
+    sources:
+      - path: GigglesMaps
+        excludes:
+          - "*.xcconfig"
+    configFiles:
+      Debug: GigglesMaps/Config.xcconfig
+      Release: GigglesMaps/Config.xcconfig
+    dependencies:
+      - package: Supabase
+        product: Supabase
+    info:
+      path: GigglesMaps/Info.plist
+      properties:
+        CFBundleDisplayName: Giggles Maps
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, th]
+        CFBundleShortVersionString: "0.1"
+        CFBundleVersion: "1"
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen: {}
+        NSCameraUsageDescription: Giggles Maps takes one selfie when you check in at a stop. We only check that a face is in the photo.
+        NSPhotoLibraryUsageDescription: Pick a selfie from your photos when the camera isn't available.
+        NSLocationWhenInUseUsageDescription: Your location sets the start of your route and confirms you're at a stop when you check in.
+        SupabaseHost: $(SUPABASE_HOST)
+        SupabaseKey: $(SUPABASE_KEY)
+        UISupportedInterfaceOrientations~iphone:
+          - UIInterfaceOrientationPortrait
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kristpaul.gigglesmaps
+  GigglesMapsTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [GigglesMapsTests]
+    dependencies:
+      - target: GigglesMaps
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  GigglesMaps:
+    build:
+      targets:
+        GigglesMaps: all
+        GigglesMapsTests: [test]
+    test:
+      targets: [GigglesMapsTests]

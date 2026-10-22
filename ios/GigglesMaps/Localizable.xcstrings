@@ -1,0 +1,1106 @@
+{
+  "sourceLanguage": "en",
+  "version": "1.0",
+  "strings": {
+    "%@ · %lld m away": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · ห่างไป %2$lld ม."
+          }
+        }
+      }
+    },
+    "%lld min": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld นาที"
+          }
+        }
+      }
+    },
+    "%lld minutes": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld นาที"
+          }
+        }
+      }
+    },
+    "%lld of %lld": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld จาก %2$lld"
+          }
+        }
+      }
+    },
+    "%lld stops · trip %lld min instead of %lld": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld จุดแวะ · ใช้เวลา %2$lld นาที แทน %3$lld นาที"
+          }
+        }
+      }
+    },
+    "+%lld": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%lld"
+          }
+        }
+      }
+    },
+    "+%lld min": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%lld นาที"
+          }
+        }
+      }
+    },
+    "Account deleted. A fresh guest passport starts next time you plan a route.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลบบัญชีแล้ว พาสปอร์ตใหม่จะเริ่มเมื่อคุณวางแผนเส้นทางครั้งถัดไป"
+          }
+        }
+      }
+    },
+    "Already stamped here today. Come back tomorrow.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วันนี้ได้ตราประทับที่นี่แล้ว พรุ่งนี้มาใหม่นะ"
+          }
+        }
+      }
+    },
+    "Art": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ศิลปะ"
+          }
+        }
+      }
+    },
+    "Ask the counter or scan the sticker with your camera.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ถามที่เคาน์เตอร์ หรือสแกนสติกเกอร์ด้วยกล้อง"
+          }
+        }
+      }
+    },
+    "Business view: %@%@.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มุมมองธุรกิจ: %1$@%2$@"
+          }
+        }
+      }
+    },
+    "Business view: partners on this route pay about ฿%.2f in expected visit fees.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มุมมองธุรกิจ: พาร์ทเนอร์บนเส้นทางนี้จ่ายค่าเยี่ยมชมโดยประมาณ ฿%.2f"
+          }
+        }
+      }
+    },
+    "Café": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คาเฟ่"
+          }
+        }
+      }
+    },
+    "Camera isn't available here. Pick a selfie from Photos instead.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใช้กล้องไม่ได้ เลือกเซลฟี่จากรูปภาพแทน"
+          }
+        }
+      }
+    },
+    "Chance: %lld%%. Spins are free and can't be bought.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "โอกาส %lld%% หมุนฟรี ซื้อไม่ได้"
+          }
+        }
+      }
+    },
+    "Check in": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เช็คอิน"
+          }
+        }
+      }
+    },
+    "Check-in not accepted.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เช็คอินไม่ผ่าน"
+          }
+        }
+      }
+    },
+    "Checked in!": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เช็คอินสำเร็จ!"
+          }
+        }
+      }
+    },
+    "Checked in, no new stamp.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เช็คอินแล้ว แต่ไม่ได้ตราประทับใหม่"
+          }
+        }
+      }
+    },
+    "Checking…": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังตรวจสอบ…"
+          }
+        }
+      }
+    },
+    "Choose from Photos": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกจากรูปภาพ"
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิด"
+          }
+        }
+      }
+    },
+    "Couldn't delete the account. Try again.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลบบัญชีไม่สำเร็จ ลองอีกครั้ง"
+          }
+        }
+      }
+    },
+    "Couldn't get a GPS fix. Move somewhere with open sky and try again.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จับสัญญาณ GPS ไม่ได้ ไปที่โล่งแล้วลองอีกครั้ง"
+          }
+        }
+      }
+    },
+    "Couldn't load your passport. Check your connection.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "โหลดพาสปอร์ตไม่ได้ ตรวจสอบอินเทอร์เน็ต"
+          }
+        }
+      }
+    },
+    "Couldn't plan the route. Try again in a moment.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วางแผนเส้นทางไม่สำเร็จ ลองใหม่อีกครั้ง"
+          }
+        }
+      }
+    },
+    "Counter code (under the QR sticker)": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รหัสที่เคาน์เตอร์ (ใต้สติกเกอร์ QR)"
+          }
+        }
+      }
+    },
+    "Craft shop": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ร้านงานฝีมือ"
+          }
+        }
+      }
+    },
+    "Delete everything": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลบทั้งหมด"
+          }
+        }
+      }
+    },
+    "Delete my account": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลบบัญชีของฉัน"
+          }
+        }
+      }
+    },
+    "Destination": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปลายทาง"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เสร็จ"
+          }
+        }
+      }
+    },
+    "Drive": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ขับรถ"
+          }
+        }
+      }
+    },
+    "EARNED": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ได้รับแล้ว"
+          }
+        }
+      }
+    },
+    "Example partner": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ร้านตัวอย่าง"
+          }
+        }
+      }
+    },
+    "Example shops use the code DEMO.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ร้านตัวอย่างใช้รหัส DEMO"
+          }
+        }
+      }
+    },
+    "Extra time I'm OK with": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เวลาเพิ่มที่รับได้"
+          }
+        }
+      }
+    },
+    "Extra time I'm OK with:": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เวลาเพิ่มที่รับได้:"
+          }
+        }
+      }
+    },
+    "Find my detours": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หาทางแวะให้ฉัน"
+          }
+        }
+      }
+    },
+    "Finding detours…": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังหาทางแวะ…"
+          }
+        }
+      }
+    },
+    "Food": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อาหาร"
+          }
+        }
+      }
+    },
+    "Free spin: no coupon this time.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หมุนฟรี: รอบนี้ไม่ได้คูปอง"
+          }
+        }
+      }
+    },
+    "Free spin: you won %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หมุนฟรี: คุณได้ %@"
+          }
+        }
+      }
+    },
+    "GPS was too rough (over 50 m). A person will review it.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPS คลาดเคลื่อนเกิน 50 ม. เจ้าหน้าที่จะตรวจสอบ"
+          }
+        }
+      }
+    },
+    "Getting there by": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เดินทางโดย"
+          }
+        }
+      }
+    },
+    "Getting your location…": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังหาตำแหน่งของคุณ…"
+          }
+        }
+      }
+    },
+    "Giggles Plus: no partner stops on your routes.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giggles Plus: ไม่มีจุดแวะพาร์ทเนอร์ในเส้นทางของคุณ"
+          }
+        }
+      }
+    },
+    "I agree, continue": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยอมรับและดำเนินการต่อ"
+          }
+        }
+      }
+    },
+    "I'm not in Sakon Nakhon: simulate being here (example places only)": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่ได้อยู่สกลนคร: จำลองว่าอยู่ที่นี่ (เฉพาะร้านตัวอย่าง)"
+          }
+        }
+      }
+    },
+    "Keep my account": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เก็บบัญชีไว้"
+          }
+        }
+      }
+    },
+    "Leaving at": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ออกเดินทาง"
+          }
+        }
+      }
+    },
+    "Location is blocked. Tap the map to set your start instead.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตำแหน่งถูกปิด แตะแผนที่เพื่อตั้งจุดเริ่มแทน"
+          }
+        }
+      }
+    },
+    "Looking for a face…": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังหาใบหน้า…"
+          }
+        }
+      }
+    },
+    "Market": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตลาด"
+          }
+        }
+      }
+    },
+    "Museum": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "พิพิธภัณฑ์"
+          }
+        }
+      }
+    },
+    "Near this spot: %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใกล้จุดนี้: %@"
+          }
+        }
+      }
+    },
+    "New badge: %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เหรียญใหม่: %@"
+          }
+        }
+      }
+    },
+    "No check-ins yet. Plan a route and check in at a stop to get your first stamp.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยังไม่มีการเช็คอิน วางแผนเส้นทางแล้วเช็คอินที่จุดแวะเพื่อรับตราประทับแรก"
+          }
+        }
+      }
+    },
+    "Nothing fits in +%lld min. Give yourself a bit more time.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่มีจุดแวะที่พอดีกับ +%lld นาที ลองเพิ่มเวลาอีกนิด"
+          }
+        }
+      }
+    },
+    "Park": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สวนสาธารณะ"
+          }
+        }
+      }
+    },
+    "Partner": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "พาร์ทเนอร์"
+          }
+        }
+      }
+    },
+    "Passport": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "พาสปอร์ต"
+          }
+        }
+      }
+    },
+    "Pick a start and destination inside Thailand.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกจุดเริ่มและปลายทางในประเทศไทย"
+          }
+        }
+      }
+    },
+    "Place": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สถานที่"
+          }
+        }
+      }
+    },
+    "Plan": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วางแผน"
+          }
+        }
+      }
+    },
+    "Recent check-ins": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เช็คอินล่าสุด"
+          }
+        }
+      }
+    },
+    "STAMPED": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ประทับแล้ว"
+          }
+        }
+      }
+    },
+    "Sent for review.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ส่งให้ตรวจสอบแล้ว"
+          }
+        }
+      }
+    },
+    "Set on map": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตั้งบนแผนที่"
+          }
+        }
+      }
+    },
+    "Simulated location only works at example partner places.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การจำลองตำแหน่งใช้ได้เฉพาะร้านตัวอย่าง"
+          }
+        }
+      }
+    },
+    "Something went wrong. Try again in a moment.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มีบางอย่างผิดพลาด ลองใหม่อีกครั้ง"
+          }
+        }
+      }
+    },
+    "Stamped: %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ประทับแล้ว: %@"
+          }
+        }
+      }
+    },
+    "Start": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จุดเริ่ม"
+          }
+        }
+      }
+    },
+    "Take selfie": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ถ่ายเซลฟี่"
+          }
+        }
+      }
+    },
+    "Tap the map to set your destination.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แตะแผนที่เพื่อตั้งปลายทาง"
+          }
+        }
+      }
+    },
+    "Tap the map to set your start.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แตะแผนที่เพื่อตั้งจุดเริ่ม"
+          }
+        }
+      }
+    },
+    "Temple": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วัด"
+          }
+        }
+      }
+    },
+    "The selfie didn't upload.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อัปโหลดเซลฟี่ไม่สำเร็จ"
+          }
+        }
+      }
+    },
+    "This deletes your account, check-ins, badges and selfies. It can't be undone.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จะลบบัญชี การเช็คอิน เหรียญ และเซลฟี่ทั้งหมด ย้อนกลับไม่ได้"
+          }
+        }
+      }
+    },
+    "Times are estimates (routing service busy).": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เวลาเป็นค่าประมาณ (ระบบเส้นทางไม่ว่าง)"
+          }
+        }
+      }
+    },
+    "To stamp your passport we take one selfie and your location at this place.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เพื่อประทับพาสปอร์ต เราจะถ่ายเซลฟี่หนึ่งรูปและใช้ตำแหน่งของคุณที่นี่"
+          }
+        }
+      }
+    },
+    "Trails": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เส้นทางสะสม"
+          }
+        }
+      }
+    },
+    "Try again": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลองอีกครั้ง"
+          }
+        }
+      }
+    },
+    "Uploading selfie…": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังอัปโหลดเซลฟี่…"
+          }
+        }
+      }
+    },
+    "Use my location": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใช้ตำแหน่งของฉัน"
+          }
+        }
+      }
+    },
+    "Viewpoint": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จุดชมวิว"
+          }
+        }
+      }
+    },
+    "Walk": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เดิน"
+          }
+        }
+      }
+    },
+    "We couldn't see a face in the selfie.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่พบใบหน้าในเซลฟี่"
+          }
+        }
+      }
+    },
+    "We need your location to check in. Allow location access in Settings and try again.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ต้องใช้ตำแหน่งเพื่อเช็คอิน เปิดสิทธิ์ตำแหน่งในการตั้งค่าแล้วลองอีกครั้ง"
+          }
+        }
+      }
+    },
+    "We only check that a face is in the photo. No face recognition.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เราตรวจแค่ว่ามีใบหน้าในรูป ไม่มีการจดจำใบหน้า"
+          }
+        }
+      }
+    },
+    "You can delete your account and all check-ins any time in Passport.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คุณลบบัญชีและการเช็คอินทั้งหมดได้ทุกเมื่อในพาสปอร์ต"
+          }
+        }
+      }
+    },
+    "You moved faster than a car since your last check-in.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คุณเคลื่อนที่เร็วกว่ารถยนต์นับจากเช็คอินครั้งก่อน"
+          }
+        }
+      }
+    },
+    "You're more than 60 m from this place.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คุณอยู่ห่างจากที่นี่เกิน 60 ม."
+          }
+        }
+      }
+    },
+    "Your location looks simulated.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตำแหน่งของคุณดูเหมือนถูกจำลอง"
+          }
+        }
+      }
+    },
+    "Your passport": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "พาสปอร์ตของคุณ"
+          }
+        }
+      }
+    },
+    "Your selfie is private and deleted automatically after 30 days.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เซลฟี่เป็นส่วนตัวและถูกลบอัตโนมัติหลัง 30 วัน"
+          }
+        }
+      }
+    },
+    "Your session ended. Close and reopen the app.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เซสชันหมดอายุ ปิดแล้วเปิดแอปใหม่"
+          }
+        }
+      }
+    },
+    "at %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ที่ %@"
+          }
+        }
+      }
+    },
+    "covered by the shop's Starter plan": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รวมอยู่ในแพ็กเกจ Starter ของร้าน"
+          }
+        }
+      }
+    },
+    "not billed": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่เก็บเงิน"
+          }
+        }
+      }
+    },
+    "not billed: counter code missing": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่เก็บเงิน: ไม่มีรหัสเคาน์เตอร์"
+          }
+        }
+      }
+    },
+    "not billed: repeat visit within 30 days": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่เก็บเงิน: มาซ้ำภายใน 30 วัน"
+          }
+        }
+      }
+    },
+    "not billed: shop credit empty": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่เก็บเงิน: เครดิตร้านหมด"
+          }
+        }
+      }
+    },
+    "not billed: stop wasn't on your route in the last 3 hours": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่เก็บเงิน: ร้านไม่ได้อยู่ในเส้นทางของคุณใน 3 ชั่วโมงที่ผ่านมา"
+          }
+        }
+      }
+    },
+    "of +%lld min used": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จาก +%lld นาที"
+          }
+        }
+      }
+    },
+    "shop charged its bid": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ร้านจ่ายค่าเยี่ยมชมแล้ว"
+          }
+        }
+      }
+    },
+    "approved": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ผ่าน"
+          }
+        }
+      }
+    },
+    "rejected": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่ผ่าน"
+          }
+        }
+      }
+    },
+    "review": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รอตรวจ"
+          }
+        }
+      }
+    }
+  }
+}

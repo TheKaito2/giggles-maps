@@ -1,0 +1,46 @@
+{
+  "sourceLanguage": "en",
+  "version": "1.0",
+  "strings": {
+    "CFBundleDisplayName": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giggles Maps"
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giggles Maps ถ่ายเซลฟี่หนึ่งรูปเมื่อคุณเช็คอิน เราตรวจแค่ว่ามีใบหน้าในรูป"
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryUsageDescription": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกเซลฟี่จากรูปภาพเมื่อใช้กล้องไม่ได้"
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตำแหน่งใช้ตั้งจุดเริ่มของเส้นทาง และยืนยันว่าคุณอยู่ที่จุดแวะเมื่อเช็คอิน"
+          }
+        }
+      }
+    }
+  }
+}
