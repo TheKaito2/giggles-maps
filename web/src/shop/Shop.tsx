@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { ApiError, ensureSession, supabase } from "../lib/supabase";
 import { startCheckout } from "../lib/api";
-import { isGuest, useUser } from "../lib/auth";
+import { isGuest, resumeSignIn, useUser } from "../lib/auth";
 import SignIn from "../app/SignIn";
 
 interface ShopRow { id: string; name: string; is_demo: boolean; owner_id: string | null }
@@ -49,6 +49,8 @@ export default function Shop() {
     const q = new URLSearchParams(location.search).get("paid");
     return q === "success" ? "Payment received. It shows up once the bank confirms (PromptPay can take a minute)." : q === "cancelled" ? "Payment cancelled." : "";
   });
+
+  useEffect(() => { resumeSignIn().then((m) => m && setMsg(m)); }, []);
 
   useEffect(() => {
     (async () => {

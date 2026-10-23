@@ -4,6 +4,7 @@ import { type CheckinTarget, getPlusUntil, type LatLng, planRoute, readScanParam
 import MapView from "./MapView";
 import CheckIn from "./CheckIn";
 import Passport from "./Passport";
+import { resumeSignIn } from "../lib/auth";
 
 // Real places from the seed: Phu Phan Museum -> Wat Phra That Choeng Chum
 const DEFAULT_ORIGIN: LatLng = { lat: 17.17313, lng: 104.14488 };
@@ -34,6 +35,8 @@ export default function App() {
   const maxBudget = plusUntil ? PLUS_MAX : FREE_MAX;
 
   useEffect(() => { getPlusUntil().then(setPlusUntil).catch(() => setPlusUntil(null)); }, [refreshKey]);
+  // back from Google/Apple: finish sign-in if linking to the guest account wasn't possible
+  useEffect(() => { resumeSignIn().then((m) => { if (m) { setError(m); setTab("passport"); } }); }, []);
 
   // QR sticker at a shop counter opens /app/?scan=<place>-<code> straight into check-in
   useEffect(() => {
