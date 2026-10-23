@@ -361,6 +361,18 @@ export const getSpotlight = (at: LatLng) => rpc<Spotlight | null>("local_spotlig
 export interface LocalStat { province: string; local_visits_30d: number; new_shops_30d: number; nominations_30d: number; local_stop_share_pct: number | null }
 export const getLocalStats = () => rpc<LocalStat[]>("local_stats");
 
+// ---------- turn-by-turn navigation and live ETA ----------
+export interface Maneuver { type: number; instruction: string; verbal: string | null; street: string | null; lengthM: number; timeS: number; begin: number; leg: number }
+export interface NavRoute { shape: [number, number][]; maneuvers: Maneuver[]; distanceM: number; timeS: number; legEnds: number[] }
+export interface Avoid { tolls?: boolean; highways?: boolean; ferries?: boolean }
+export const getNavRoute = (points: LatLng[], mode: TravelMode, avoid: Avoid) => callFn<NavRoute>("navigate", { points, mode, avoid });
+// refresh = keep an open share's ETA fresh (never reopens a stopped share)
+export const shareEta = (dest: LatLng & { name: string }, etaMin: number, refresh = false) =>
+  rpc<string | null>("share_eta", { p_dest_lat: dest.lat, p_dest_lng: dest.lng, p_dest_name: dest.name, p_eta_min: Math.max(0, Math.min(1440, etaMin)), p_refresh: refresh });
+export const stopEta = () => rpc<void>("stop_eta");
+export interface EtaView { who: Who; dest: { lat: number; lng: number; name: string | null }; eta_at: string | null; at: { lat: number; lng: number; seen_at: string } | null }
+export const viewEta = (token: string) => rpc<EtaView | null>("view_eta", { p_token: token });
+
 export const SITE = "https://giggles-maps.pages.dev";
 // "?friend=CODE" (friend QR) and "?trip=CODE" (ride-along QR)
 export const readCodeParam = (name: "friend" | "trip") => {

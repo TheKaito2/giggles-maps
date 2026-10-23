@@ -146,7 +146,8 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
     }
 
     const pts: [number, number][] = geometry.length ? geometry : [origin, dest].filter(Boolean).map((p) => [p!.lng, p!.lat]);
-    if (pts.length > 1) {
+    // fitBounds throws (NaN camera) when the map is shorter or narrower than its padding, e.g. a landscape phone
+    if (pts.length > 1 && m.getContainer().clientHeight > 140 && m.getContainer().clientWidth > 100) {
       const b = pts.reduce((acc, p) => acc.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
       m.fitBounds(b, { padding: { top: 60, bottom: 60, left: 40, right: 40 }, maxZoom: 16, duration: 600 });
     }

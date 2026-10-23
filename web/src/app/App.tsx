@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Bell, Camera, Car, Coins, LocateFixed, Map as MapIcon, MapPin, Plus, Swords, Trophy, UserRound, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bell, Camera, Car, Coins, LocateFixed, Map as MapIcon, MapPin, Navigation, Plus, Swords, Trophy, UserRound, X } from "lucide-react";
 import { ApiError, ensureSession, supabase } from "../lib/supabase";
 import { addFriend, type CheckinTarget, choosePlan, getProfile, type LatLng, planRoute, type Profile, readCodeParam, readScanParam, type RoutePlan } from "../lib/api";
 import MapView from "./MapView";
@@ -20,6 +20,8 @@ import AvatarBuilder from "./avatar/AvatarBuilder";
 import { levelFor, levelProgress } from "../lib/api";
 import PlaceSheet from "./PlaceSheet";
 import AddPlace from "./AddPlace";
+import Navigate, { type Waypoint } from "./nav/Navigate";
+import EtaView from "./nav/EtaView";
 import ExploreChips, { CHIPS } from "./ExploreChips";
 
 
@@ -44,6 +46,12 @@ export default function App() {
   const [origin, setOrigin] = useState<Place | null>(DEFAULT_ORIGIN);
   const [dest, setDest] = useState<Place | null>(DEFAULT_DEST);
   const [chip, setChip] = useState<string | null>(null);
+  const [nav, setNav] = useState<Waypoint[] | null>(null);   // turn-by-turn running
+  const [etaToken, setEtaToken] = useState(() => {
+    const t = /^[0-9a-f]{32}$/.exec(new URLSearchParams(location.search).get("eta") ?? "")?.[0] ?? null;
+    if (t) history.replaceState(null, "", location.pathname);   // keep the link out of history and referrers
+    return t;
+  });
   // the place page open on the map: a tapped pin, a saved place, or a shared /app/?place=ID link
   const [place, setPlace] = useState<number | null>(() => Number(new URLSearchParams(location.search).get("place")) || null);
   const [picking, setPicking] = useState<"origin" | "dest" | null>(null);
@@ -205,7 +213,11 @@ export default function App() {
             {showResults ? (
               <>
                 <div className="panel-head">
-                  <button type="button" className="link" onClick={() => setView("plan")}><ArrowLeft size={16} aria-hidden /> Edit trip</button>
+                  <div className="row between">
+                    <button type="button" className="link" onClick={() => setView("plan")}><ArrowLeft size={16} aria-hidden /> Edit trip</button>
+                    <button type="button" className="btn small" onClick={() => setNav([...plan.stops.map((st) => ({ lat: st.lat, lng: st.lng, name: st.name })),
+                      { ...dest!.point, name: dest!.name }])}><Navigation size={15} aria-hidden /> Start</button>
+                  </div>
                   <p className="trip-title"><span><b>{origin?.name}</b> → <b>{dest?.name}</b></span><span className="fine">{tripLine}</span></p>
                 </div>
                 <div className="panel-body">
@@ -252,6 +264,8 @@ export default function App() {
         </div>
       )}
       {overlay === "add" && <AddPlace onClose={() => setOverlay(null)} />}
+      {nav && <Navigate waypoints={nav} mode={prefs.mode} onClose={() => setNav(null)} />}
+      {etaToken && <EtaView token={etaToken} onClose={() => setEtaToken(null)} />}
       {overlay === "avatar" && profile && <AvatarBuilder profile={profile} onClose={() => setOverlay(null)} onSaved={() => { setOverlay(null); refresh(); }} />}
       {overlay === "ride" && (
         <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="Ride along" onClick={(e) => { if (e.target === e.currentTarget) setOverlay(null); }}>
