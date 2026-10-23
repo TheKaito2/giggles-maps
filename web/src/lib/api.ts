@@ -18,6 +18,15 @@ export interface RouteStop {
   is_demo: boolean; rating: number; dwell_min: number; eta_min: number;
   nearby_partner: NearbyPartner | null;
   min_level?: number; exclusive_kind?: ExclusiveKind | null; perk_text?: string | null;
+  meal?: Meal | null; // engine v2: this stop covers a meal
+}
+
+export type Meal = "breakfast" | "lunch" | "dinner";
+
+// engine v2: one plan per theme (top_picks | nature | food | culture | shopping); the user picks one
+export interface ThemedPlan {
+  id: string; name: string; stops: RouteStop[]; geometry: [number, number][];
+  extra_min: number; total_min: number; meals: Meal[]; missed_meals: Meal[];
 }
 
 export interface RoutePlan {
@@ -27,8 +36,14 @@ export interface RoutePlan {
   stops: RouteStop[]; geometry: [number, number][];
   base_geometry?: [number, number][];
   warnings?: string[];
-  meals?: string[]; missed_meals?: string[];
-  plans?: { id: string; name: string; stops: RouteStop[]; geometry: [number, number][]; extra_min: number; total_min: number; meals: string[]; missed_meals: string[] }[];
+  meals?: Meal[]; missed_meals?: Meal[];
+  plans?: ThemedPlan[]; // top-level fields = Top picks
+}
+
+/** The trip with the picked themed plan swapped in (first plan when none is picked). */
+export function choosePlan(plan: RoutePlan, id: string | null): RoutePlan {
+  const p = plan.plans?.find((x) => x.id === id) ?? plan.plans?.[0];
+  return p ? { ...plan, stops: p.stops, geometry: p.geometry, extra_min: p.extra_min, total_min: p.total_min } : plan;
 }
 
 export type Billing = "charged" | "no_qr" | "not_shown_on_route" | "repeat_visit_30d"

@@ -38,9 +38,10 @@ struct RouteStop: Decodable, Identifiable, Equatable, Sendable {
     let minLevel: Int?           // v4: > 0 = exclusive place, only on routes once a member reaches this level
     let exclusiveKind: String?   // gem | perk | event
     let perkText: String?
+    let meal: String?            // engine v2: breakfast | lunch | dinner when this stop covers a meal
     var coordinate: CLLocationCoordinate2D { .init(latitude: lat, longitude: lng) }
     enum CodingKeys: String, CodingKey {
-        case id, name, category, lat, lng, rating
+        case id, name, category, lat, lng, rating, meal
         case nameTh = "name_th", isPartner = "is_partner", isDemo = "is_demo"
         case dwellMin = "dwell_min", etaMin = "eta_min", nearbyPartner = "nearby_partner"
         case minLevel = "min_level", exclusiveKind = "exclusive_kind", perkText = "perk_text"
@@ -99,21 +100,43 @@ struct RoutePlan: Decodable, Sendable {
     let routeId: String
     let routing: String
     let baseMin: Int
-    let totalMin: Int
-    let extraMin: Int
+    var totalMin: Int
+    var extraMin: Int
     let budgetMin: Int
     let expectedThb: Double?
     let plus: Bool?              // Giggles Plus (cosmetic only since v4)
     let member: Bool?            // one-time membership: levels + exclusive places
     let level: Int?              // the level that unlocks places (0 for non-members)
     let maxBudgetMin: Int?       // 240 for everyone
-    let stops: [RouteStop]
-    let geometry: [[Double]]   // [lng, lat] pairs
+    var stops: [RouteStop]
+    var geometry: [[Double]]   // [lng, lat] pairs
+    let plans: [ThemedPlan]?     // engine v2: one plan per theme; top-level fields = Top picks
     var line: [CLLocationCoordinate2D] { geometry.compactMap { $0.count == 2 ? .init(latitude: $0[1], longitude: $0[0]) : nil } }
+
+    /// The same trip with a themed plan's stops, line and times swapped in.
+    func choosing(_ id: String?) -> RoutePlan {
+        guard let p = plans?.first(where: { $0.id == id }) else { return self }
+        var copy = self
+        (copy.stops, copy.geometry, copy.extraMin, copy.totalMin) = (p.stops, p.geometry, p.extraMin, p.totalMin)
+        return copy
+    }
     enum CodingKeys: String, CodingKey {
-        case routing, stops, geometry
+        case routing, stops, geometry, plans
         case routeId = "route_id", baseMin = "base_min", totalMin = "total_min", extraMin = "extra_min"
         case budgetMin = "budget_min", expectedThb = "expected_thb", plus, member, level, maxBudgetMin = "max_budget_min"
+    }
+}
+
+struct ThemedPlan: Decodable, Identifiable, Sendable {
+    let id: String               // top_picks | nature | food | culture | shopping
+    let name: String
+    let stops: [RouteStop]
+    let geometry: [[Double]]
+    let extraMin: Int
+    let totalMin: Int
+    let missedMeals: [String]
+    enum CodingKeys: String, CodingKey {
+        case id, name, stops, geometry, extraMin = "extra_min", totalMin = "total_min", missedMeals = "missed_meals"
     }
 }
 
@@ -231,6 +254,25 @@ enum Copy {
         }
     }
 
+    static func meal(_ code: String) -> String {
+        switch code {
+        case "breakfast": String(localized: "Breakfast")
+        case "lunch": String(localized: "Lunch")
+        case "dinner": String(localized: "Dinner")
+        default: code
+        }
+    }
+    /// themed plan names; the server's English name is the fallback for themes added later
+    static func plan(_ id: String, fallback: String) -> String {
+        switch id {
+        case "top_picks": String(localized: "Top picks")
+        case "nature": String(localized: "Nature lover")
+        case "food": String(localized: "Food lover")
+        case "culture": String(localized: "Culture & temples")
+        case "shopping": String(localized: "Shopping & crafts")
+        default: fallback
+        }
+    }
     static func category(_ code: String) -> String {
         switch code {
         case "cafe": String(localized: "Café")

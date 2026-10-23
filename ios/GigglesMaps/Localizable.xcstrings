@@ -1941,6 +1941,116 @@
           }
         }
       }
+    },
+    "%lld stops · +%lld min": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld จุด · +%2$lld นาที"
+          }
+        }
+      }
+    },
+    "Breakfast": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มื้อเช้า"
+          }
+        }
+      }
+    },
+    "Culture & temples": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วัฒนธรรมและวัด"
+          }
+        }
+      }
+    },
+    "Dinner": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มื้อเย็น"
+          }
+        }
+      }
+    },
+    "Food lover": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สายกิน"
+          }
+        }
+      }
+    },
+    "Lunch": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มื้อกลางวัน"
+          }
+        }
+      }
+    },
+    "Nature lover": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สายธรรมชาติ"
+          }
+        }
+      }
+    },
+    "No food stop fits %@ on this plan.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แผนนี้ไม่มีร้านอาหารที่ทันสำหรับ%@"
+          }
+        }
+      }
+    },
+    "Pick a plan": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกแผน"
+          }
+        }
+      }
+    },
+    "Shopping & crafts": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ช้อปปิ้งและงานคราฟต์"
+          }
+        }
+      }
+    },
+    "Top picks": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แนะนำที่สุด"
+          }
+        }
+      }
     }
   }
 }

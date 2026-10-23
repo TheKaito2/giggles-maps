@@ -15,7 +15,10 @@ final class PlanModel {
     var budget: Double = 45 { didSet { plan = nil } }
     var mode: TravelMode = .pedestrian { didSet { plan = nil } }
 
-    var plan: RoutePlan?
+    var plan: RoutePlan? { didSet { choice = plan?.plans?.first?.id } }
+    var choice: String?          // the themed plan the user picked
+    /// the route on screen: the picked themed plan, or the plain response from an older server
+    var shown: RoutePlan? { plan?.choosing(choice) }
     var busy = false
     var error: String?
 

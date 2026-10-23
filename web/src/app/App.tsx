@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, ensureSession, supabase } from "../lib/supabase";
-import { type CheckinTarget, getProfile, KIND_NAME, type LatLng, planRoute, type Profile, readScanParam, type RoutePlan } from "../lib/api";
+import { type CheckinTarget, choosePlan, getProfile, KIND_NAME, type LatLng, type Meal, planRoute, type Profile, readScanParam, type RoutePlan } from "../lib/api";
 import MapView from "./MapView";
 import CheckIn from "./CheckIn";
 import Passport from "./Passport";
@@ -14,6 +14,7 @@ const MAX_BUDGET = 240; // v4: the same for everyone
 
 const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(Math.round(m) % 60).padStart(2, "0")}`;
+const MEAL_NAME: Record<Meal, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
 const CATEGORY: Record<string, string> = { cafe: "Café", food: "Food", craft: "Craft shop", temple: "Temple", park: "Park", museum: "Museum", market: "Market", viewpoint: "Viewpoint", art: "Art" };
 const PARTNER_TIP = "This shop pays Giggles Maps when you visit. It's ranked like every other place; paying never moves it up.";
 
@@ -25,7 +26,9 @@ export default function App() {
   const [start, setStart] = useState(hhmm(Math.max(nowMin(), 9 * 60)));
   const [budget, setBudget] = useState(45);
   const [mode, setMode] = useState<"pedestrian" | "auto">("pedestrian");
-  const [plan, setPlan] = useState<RoutePlan | null>(null);
+  const [response, setPlan] = useState<RoutePlan | null>(null);
+  const [choice, setChoice] = useState<string | null>(null);
+  const plan = response && choosePlan(response, choice);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [checkin, setCheckin] = useState<{ target: CheckinTarget; code?: string } | null>(null);
@@ -72,7 +75,7 @@ export default function App() {
     const [h, m] = start.split(":").map(Number);
     try {
       const result = await planRoute({ origin, dest, start_min: h * 60 + m, budget_min: Math.min(budget, MAX_BUDGET), mode });
-      if (requestId === routeRequest.current) setPlan(result);
+      if (requestId === routeRequest.current) { setChoice(null); setPlan(result); }
     } catch (e) {
       if (requestId !== routeRequest.current) return;
       const code = e instanceof ApiError ? e.code : "";
@@ -149,6 +152,26 @@ export default function App() {
 
               {plan && (
                 <div className="stack">
+                  {response!.plans && response!.plans.length > 1 && (
+                    <div>
+                      <div className="field" id="plan-label">Pick a plan</div>
+                      <div className="plan-picker" role="radiogroup" aria-labelledby="plan-label">
+                        {response!.plans.map((p) => {
+                          const on = p.id === (choice ?? response!.plans![0].id);
+                          return (
+                            <button key={p.id} role="radio" aria-checked={on} className={on ? "on" : ""} onClick={() => setChoice(p.id)}>
+                              <span className="plan-name">{p.name}</span>
+                              <span className="num fine">{p.stops.length} stops · +{p.extra_min} min</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {(() => {
+                        const missed = (response!.plans.find((p) => p.id === choice) ?? response!.plans[0]).missed_meals;
+                        return missed.length > 0 && <p className="fine">No food stop fits {missed.join(", ")} on this plan.</p>;
+                      })()}
+                    </div>
+                  )}
                   <div className="summary">
                     <div><span className="num big-num">+{plan.extra_min}</span><span className="fine"> of +{plan.budget_min} min used</span></div>
                     <div className="fine">{plan.stops.length} stop{plan.stops.length === 1 ? "" : "s"} · trip {plan.total_min} min instead of {plan.base_min}</div>
@@ -169,6 +192,7 @@ export default function App() {
                               <span className="num">{hhmm(s.eta_min)}</span>
                               <span>{CATEGORY[s.category] ?? s.category}</span>
                               <span>{s.dwell_min} min</span>
+                              {s.meal && <span className="chip meal">{MEAL_NAME[s.meal]}</span>}
                               {s.is_partner && <span className="chip partner" title={PARTNER_TIP}>{s.is_demo ? "Example partner" : "Partner"}</span>}
                               {!!s.min_level && s.exclusive_kind && <span className="chip exclusive">{KIND_NAME[s.exclusive_kind]} · Level {s.min_level}</span>}
                             </div>

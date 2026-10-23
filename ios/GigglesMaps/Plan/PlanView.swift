@@ -44,7 +44,7 @@ struct PlanView: View {
             Map(position: $camera) {
                 if let o = model.origin { Annotation("Start", coordinate: o.coordinate) { Pin(text: "A", color: Theme.good) } }
                 if let d = model.dest { Annotation("Destination", coordinate: d.coordinate) { Pin(text: "B", color: Theme.stamp) } }
-                if let plan = model.plan {
+                if let plan = model.shown {
                     MapPolyline(coordinates: plan.line).stroke(Theme.indigo, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
                     ForEach(Array(plan.stops.enumerated()), id: \.element.id) { i, stop in
                         Annotation(stop.name, coordinate: stop.coordinate) {
@@ -68,6 +68,7 @@ struct PlanView: View {
             }
         }
         .onChange(of: model.plan?.routeId) { fitRoute() }
+        .onChange(of: model.choice) { fitRoute() }
     }
 
     private var panel: some View {
@@ -121,7 +122,36 @@ struct PlanView: View {
                 Text(error).foregroundStyle(Theme.bad).font(.subheadline.weight(.semibold))
             }
 
-            if let plan = model.plan { results(plan) }
+            if let plans = model.plan?.plans, plans.count > 1 { planPicker(plans) }
+            if let plan = model.shown { results(plan) }
+        }
+    }
+
+    private func planPicker(_ plans: [ThemedPlan]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Pick a plan").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ink2)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(plans) { p in
+                        let on = model.choice == p.id
+                        Button { model.choice = p.id } label: {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(Copy.plan(p.id, fallback: p.name)).font(.subheadline.weight(.semibold))
+                                Text("\(p.stops.count) stops · +\(p.extraMin) min").font(.caption.monospaced())
+                            }
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(on ? Theme.indigo : Theme.indigoSoft, in: RoundedRectangle(cornerRadius: 12))
+                            .foregroundStyle(on ? Theme.onIndigo : Theme.indigo)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(on ? .isSelected : [])
+                    }
+                }
+            }
+            if let missed = plans.first(where: { $0.id == model.choice })?.missedMeals, !missed.isEmpty {
+                Text("No food stop fits \(missed.map { Copy.meal($0) }.joined(separator: ", ")) on this plan.")
+                    .font(.footnote).foregroundStyle(Theme.ink2)
+            }
         }
     }
 
@@ -165,6 +195,7 @@ struct PlanView: View {
                         Text("\(stop.dwellMin) min")
                     }
                     .font(.footnote).foregroundStyle(Theme.ink2).lineLimit(1)
+                    if let meal = stop.meal { Chip(text: Copy.meal(meal)).fixedSize() }
                     if stop.isPartner { Chip(text: stop.isDemo ? String(localized: "Example partner") : String(localized: "Partner"), partner: true).fixedSize() }
                     if let lvl = stop.minLevel, lvl > 0 {
                         HStack(spacing: 6) {
@@ -226,7 +257,7 @@ struct PlanView: View {
     }
 
     private func fitRoute() {
-        guard let plan = model.plan else { return }
+        guard let plan = model.shown else { return }
         let points = plan.line.isEmpty ? [model.origin, model.dest].compactMap { $0?.coordinate } : plan.line
         guard let first = points.first else { return }
         var rect = MKMapRect(origin: MKMapPoint(first), size: .init(width: 0, height: 0))
