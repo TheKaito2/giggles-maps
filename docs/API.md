@@ -197,6 +197,9 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
 - Demo mode (migration 052, anyone, Profile → Demo mode): the app fakes its location (tap the map, fast-forward to the next
   stop) and sends `client.demo: true`. Demo check-ins work at any place, skip the speed check, and are rewarded like real
   ones; they stay marked `client.demo = true` in `checkins`, and the pace limit still applies.
+- The all-time leaderboard (migration 053) ranks by XP minus what demo check-ins earned (their stamps and Siam Si shakes),
+  and its cards count only non-demo stamps and provinces. Your own profile still shows everything. Quests a demo
+  check-in completes still count (a small leak, accepted).
 
 ## Profile, feed, quests (migration 024)
 - `me()` also returns `avatar`, `joined`, `coins`, `provinces`.
