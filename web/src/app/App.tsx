@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { Bell, Camera, Coins, LocateFixed, Map as MapIcon, MapPin, Navigation, Swords, Trophy, UserRound, X } from "lucide-react";
 import { ensureSession, supabase } from "../lib/supabase";
 import { addFriend, type CheckinTarget, getProfile, type LatLng, type Profile, readCodeParam, readScanParam } from "../lib/api";
@@ -27,6 +27,8 @@ import EtaView from "./nav/EtaView";
 import LayersButton from "./LayersButton";
 import { loadLook, type MapLook, saveLook } from "./mapLayers";
 import ExploreChips, { CHIPS } from "./ExploreChips";
+import DemoBar from "./DemoBar";
+import { demoOn, moveTo, onDemoChange } from "../lib/demoGps";
 
 
 type Tab = "map" | "board" | "quests" | "feed" | "profile";
@@ -76,6 +78,10 @@ export default function App() {
   // reload on sign-in and sign-out too: the profile belongs to whoever is signed in now
   useEffect(() => { getProfile().then(setProfile).catch(() => setProfile(null)); }, [refreshKey, user?.id]);
   const nearby = useStops(refreshKey);
+  // demo mode: re-render when you move, and watch the (fake) location from the start
+  const [, demoMoved] = useReducer((x: number) => x + 1, 0);
+  useEffect(() => onDemoChange(demoMoved), []);
+  useEffect(() => { if (demoOn()) nearby.start(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const zoneStop = nearby.inZone[0];
   const trip = useTrip(nearby.here, nearby.start, refreshKey);
   const [nameSheet, setNameSheet] = useState(false);
@@ -167,7 +173,10 @@ export default function App() {
               alternates={alternates} focus={focus} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop}
               nearby={nearby.stops} here={nearby.here} inZone={nearby.inZone.map((s) => s.id)}
               members={trip.trip?.members ?? NONE} skin={profile?.look.map ?? "liberty"} look={look}
-              kinds={d.stage === "browse" ? CHIPS.find((c) => c.id === chip)?.kinds ?? null : null} onPlace={(p) => setPlace(p.id)} />
+              kinds={d.stage === "browse" ? CHIPS.find((c) => c.id === chip)?.kinds ?? null : null} onPlace={(p) => setPlace(p.id)}
+              onTap={demoOn() ? moveTo : undefined} />
+            {demoOn() && <DemoBar nearby={nearby.stops}
+              route={mapPlan ? [...mapPlan.stops, ...(d.dest ? [{ ...d.dest.point, name: d.dest.name }] : [])] : []} />}
             {d.stage === "browse" && <ExploreChips active={chip} onPick={setChip} />}
             <div className="map-tools">
               <LayersButton look={look} setLook={setLook} />

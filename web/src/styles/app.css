@@ -868,3 +868,10 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .frame-naga img, .frame-naga .ph { border: 7px solid; border-image: repeating-linear-gradient(45deg, #d4a017 0 6px, #8e1c1c 6px 12px) 7; box-sizing: border-box; }
 .level-card.theme-red-lacquer, .passport-card.theme-red-lacquer, .page.cover.theme-red-lacquer {
   background: radial-gradient(circle at 30% 20%, #b22222, #5a0d0d 70%); color: #fde9c0; }
+
+/* demo mode */
+.demo-bar { position: absolute; left: 12px; right: 60px; top: 60px; z-index: 6; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 10px; border-radius: 14px; background: #fff4d6; color: #5a3d00; box-shadow: var(--shadow); border: 2px dashed #e0a800; }
+.demo-bar .btn { margin-left: auto; }
+.demo-toggle { margin: 6px 0 14px; }
+.demo-toggle > span { display: grid; gap: 2px; }

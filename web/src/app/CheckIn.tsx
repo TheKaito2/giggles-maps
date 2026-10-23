@@ -1,3 +1,4 @@
+import { demoOn } from "../lib/demoGps";
 import Fortune from "./fortune/Fortune";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "../lib/supabase";
@@ -65,7 +66,7 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
       setStatus("Checking…");
       const r = await verifyCheckin({
         place_id: target.id, lat, lng, accuracy_m: accuracy, selfie_path: path,
-        qr_code: code.trim() || null, client: { platform: "web", demo },
+        qr_code: code.trim() || null, client: { platform: "web", demo: demo || demoOn() },   // demo mode: the location is faked
       });
       if (caption.trim() && r.status !== "rejected") await setPhoto(r.checkin_id, false, caption).catch(() => undefined);
       if (sharePublic && r.status !== "rejected") await setPublicPhoto(r.checkin_id, true).catch(() => undefined);

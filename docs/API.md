@@ -194,6 +194,9 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
 - `verify-checkin` also returns `group_bonus: boolean`.
 - Reward pace (migration 051): at most 12 rewarded check-ins an hour, 60 a day, 30 s apart. Over that the check-in is
   still `approved` (photo kept) but `rewarded: false` with reason `slow_down`; the place can be stamped on a later visit.
+- Demo mode (migration 052, anyone, Profile → Demo mode): the app fakes its location (tap the map, fast-forward to the next
+  stop) and sends `client.demo: true`. Demo check-ins work at any place, skip the speed check, and are rewarded like real
+  ones; they stay marked `client.demo = true` in `checkins`, and the pace limit still applies.
 
 ## Profile, feed, quests (migration 024)
 - `me()` also returns `avatar`, `joined`, `coins`, `provinces`.

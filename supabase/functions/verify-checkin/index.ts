@@ -45,12 +45,8 @@ serve(async (req) => {
   const attestOk = client.platform === "ios"
     ? await checkAttest(db, user.id, client.attest, `${placeId}|${lat}|${lng}|${selfiePath ?? ""}`) : null;
   const clientRecord = { ...client, attest: null, attest_ok: attestOk };   // keep the verdict, not the blob
-  // Demo mode simulates GPS so judges can try check-in anywhere. Stamps and XP are real now, so demo only works at
-  // the example places (it would otherwise be a free "teleport" to any landmark).
-  if (client.demo) {
-    const { data: place } = await db.from("places").select("is_demo").eq("id", placeId).maybeSingle();
-    if (!place?.is_demo) throw new HttpError(403, "demo_only_at_example_places");
-  }
+  // Demo mode (anyone can switch it on) fakes the location so the app can be shown anywhere. Its check-ins are real
+  // and kept marked client.demo = true; record_checkin skips the speed check for them, the pace limit still applies.
   // the selfie must really be in this user's folder
   let uploaded: string | null = null;
   if (selfiePath?.startsWith(`${user.id}/`)) {

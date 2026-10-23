@@ -1,4 +1,5 @@
 import SiamSi from "./fortune/SiamSi";
+import { demoOn, setDemo } from "../lib/demoGps";
 import { useEffect, useState } from "react";
 import { ArrowLeft, BookOpen, Pencil, UserMinus, Zap } from "lucide-react";
 import { ApiError } from "../lib/supabase";
@@ -77,6 +78,13 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
       </button>
 
       {self && <SiamSi profile={profile} onChange={onChange} />}
+      {self && (
+        <label className="pref-row demo-toggle">
+          <span><b>Demo mode</b><span className="fine">Pretend to be anywhere: tap the map to move, or fast-forward to the next stop. Check-ins
+            still count (and are marked as demo). Turning it on or off reloads the app.</span></span>
+          <input type="checkbox" role="switch" className="switch" checked={demoOn()} onChange={(e) => { setDemo(e.target.checked); location.reload(); }} />
+        </label>
+      )}
 
       <h3>Achievements</h3>
       <Badges list={page.badges} />
