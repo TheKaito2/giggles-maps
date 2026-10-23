@@ -14,6 +14,12 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(dwell_minutes(park, "park"), 90)
         self.assertEqual(dwell_minutes(waterfall, "viewpoint"), 45)
 
+    def test_temples_are_buddhist_hindu_or_chinese_shrines(self):
+        self.assertEqual(category({"amenity": "place_of_worship", "religion": "buddhist"}), "temple")
+        self.assertEqual(category({"amenity": "place_of_worship", "religion": "chinese"}), "temple")
+        self.assertIsNone(category({"amenity": "place_of_worship", "religion": "muslim"}))
+        self.assertIsNone(category({"amenity": "place_of_worship"}))
+
     def test_region_filter_limits_initial_rollout(self):
         output = io.StringIO()
         exporter = Exporter(output, (13, 100, 14, 101))

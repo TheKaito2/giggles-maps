@@ -44,6 +44,15 @@ capped at 20 km. Configure `VALHALLA_URL` for a dedicated Thailand-capable routi
 service before relying on it for production availability; the public demo has
 fair-use limits. Requests carry `X-Client-Id: giggles-maps.pages.dev`.
 
+## Nationwide import (applied 23 Oct 2026)
+
+Applied to production from the Geofabrik Thailand extract (OSM data of 22 Oct 2026): **48,860 places** in total, including the 53 curated Sakon Nakhon places, which keep their fields (`ON CONFLICT DO NOTHING`). Breakdown: food 18,966 · café 11,073 · temple 7,991 · viewpoint/attraction 5,503 · park 2,204 · market 1,368 · art 708 · museum 572 · craft 471.
+- Temples are Buddhist, Hindu or Chinese places of worship only; mosques and churches aren't labelled "Temple".
+- Multipolygon relations are read too (345 places, e.g. national parks and large temple grounds).
+- All imported places are unrated (`rating` NULL) and unpriced except the curated set. Since migration 014 they join routes by default, ranked below rated places.
+- Known gaps: the extract's buffer includes some places just across the Lao/Cambodian/Myanmar borders, and some famous sites are tagged in ways the importer skips (Bangkok's Wat Pho shows up as its "Reclining Buddha" artwork). Address search (Apple Maps or Photon) still finds them.
+- `supabase/seed_thailand.sql` is the exact reviewed SQL that was applied. Re-run the importer on a newer extract and apply with `supabase db query --linked -f` in chunks of about 5k rows.
+
 ## Nationwide seed and staged rollout
 
 `supabase/seed_thailand.sql` has 5,070 named OSM places: 3,163 attractions/viewpoints,

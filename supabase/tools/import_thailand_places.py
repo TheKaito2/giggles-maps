@@ -24,7 +24,8 @@ def category(tags):
         return "art"
     if tags.get("leisure") in ("park", "garden", "nature_reserve"):
         return "park"
-    if tags.get("amenity") == "place_of_worship":
+    # "Temple" stops: Buddhist wat, Hindu and Chinese shrines. Mosques and churches aren't labelled temples.
+    if tags.get("amenity") == "place_of_worship" and tags.get("religion") in TEMPLE_RELIGIONS:
         return "temple"
     if tags.get("amenity") == "cafe":
         return "cafe"
@@ -36,6 +37,8 @@ def category(tags):
         return "craft"
     return None
 
+
+TEMPLE_RELIGIONS = {"buddhist", "hindu", "chinese", "taoist"}
 
 DWELL = {"museum": 40, "viewpoint": 15, "art": 10, "park": 20,
          "temple": 20, "cafe": 25, "food": 35, "market": 25, "craft": 20}
@@ -123,6 +126,17 @@ def export(source, destination, bbox=None):
                     if coords:
                         # POI marker only; routing snaps it to the reachable road network.
                         exporter.add("way", obj.id, dict(obj.tags),
+                                     sum(p[0] for p in coords) / len(coords),
+                                     sum(p[1] for p in coords) / len(coords))
+
+                def area(self, obj):
+                    # Multipolygon relations: big landmarks (Wat Pho, the Grand Palace) are often mapped this way.
+                    # Closed ways also arrive here as areas; way() already handled those.
+                    if obj.from_way() or not category(obj.tags):
+                        return
+                    coords = [(n.lat, n.lon) for ring in obj.outer_rings() for n in ring if n.location.valid()]
+                    if coords:
+                        exporter.add("relation", obj.orig_id(), dict(obj.tags),
                                      sum(p[0] for p in coords) / len(coords),
                                      sum(p[1] for p in coords) / len(coords))
             Handler().apply_file(str(source), locations=True, idx="flex_mem")
