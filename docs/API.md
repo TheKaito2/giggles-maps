@@ -192,6 +192,8 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
 - `buy_item(p_kind, p_id)` → coins left. Errors `members_only`, `bad_item`, `already_owned`, `not_enough_coins`.
 - `equip(p_kind, p_id)` → the new look. Error `not_owned`. `shop_items` is a public table.
 - `verify-checkin` also returns `group_bonus: boolean`.
+- Reward pace (migration 051): at most 12 rewarded check-ins an hour, 60 a day, 30 s apart. Over that the check-in is
+  still `approved` (photo kept) but `rewarded: false` with reason `slow_down`; the place can be stamped on a later visit.
 
 ## Profile, feed, quests (migration 024)
 - `me()` also returns `avatar`, `joined`, `coins`, `provinces`.

@@ -464,6 +464,7 @@ export const REASON_TEXT: Record<string, string> = {
   already_rewarded_today: "Already stamped here today. Come back tomorrow.",
   already_stamped: "You already have this stamp. The photo is added to your passport.",
   level_locked: "This place is for members at a higher level.",
+  slow_down: "You're stamping fast! Stamps here are paused for a bit; your photo is saved. Check in again later for the stamp.",
 };
 
 // what happened on the shop's side (shown as "Business view" for the demo)
