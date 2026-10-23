@@ -28,7 +28,7 @@ Status key: ✅ backend ready · 🟡 backend partly ready · 🔴 backend not b
 
 | Rank | Feature | Done when | Backend |
 |---|---|---|---|
-| 10 | **Google sign-in + upgrade anonymous account** | Credential Manager → Google ID token → `signInWithIdToken`, linking to the existing anonymous user so stamps survive. | 🟡 needs Google OAuth client set in Supabase (Krist does it) |
+| 10 | **Google sign-in + upgrade anonymous account** | Credential Manager → Google ID token → `signInWithIdToken`, linking to the existing anonymous user so stamps survive. | 🟡 Google is on; send Krist your package name + signing SHA-1 so he can add the Android client ID |
 | 11 | **Play Integrity token** | Standard request with `requestHash` = SHA-256 of the check-in body; send as `client.attest`. | 🟡 stored now, verified later |
 | 12 | **Mock-location + permission handling** | `Location.isMock()` (API 31+) / `isFromMockProvider()` below; clear messages when location or camera permission is denied, with a path to Settings. | ✅ |
 | 13 | **App Links for shop QR codes** | `https://giggles-maps.pages.dev/app/?scan=<place_id>-<code>` opens the app straight into check-in for that place. Needs `assetlinks.json` on the site (send Krist the SHA-256 cert fingerprint). | 🟡 web hosting ready, file not added yet |
@@ -39,14 +39,14 @@ Status key: ✅ backend ready · 🟡 backend partly ready · 🔴 backend not b
 
 ## P2: monetization rebuild and extras (wait for backend 🔴)
 
-The monetization model has been **decided but not built** (see `docs/MONETIZATION.md`). These will change the API; build them only after Krist ships the backend and updates `docs/API.md`.
+The monetization backend is **live** (see `docs/MONETIZATION.md`, `docs/API.md`). Plus via Play Billing still needs a server-side receipt check before launch.
 
 | Rank | Feature | Backend |
 |---|---|---|
-| 18 | Counter QR scan at partner stops (ML Kit barcode scanner + 6-character code entry fallback) | 🔴 |
-| 19 | Quality-first route with max 1 Partner stop + "Near this spot" partner cards under nature/temple stops | 🔴 |
-| 20 | Free coupon spin after a rewarded check-in, with odds shown + coupon wallet in Passport | 🔴 |
-| 21 | **Giggles Plus** subscription (no Partner stops or cards, bigger extra-time limit, cosmetic badges, offline maps later) via Google Play Billing | 🔴 |
+| 18 | Counter QR scan at partner stops (ML Kit barcode scanner + code entry fallback; sticker link `/app/?scan=<id>-<code>`) | ✅ |
+| 19 | Quality-first route with max 1 Partner stop + "Near this spot" partner cards under nature/temple stops | ✅ |
+| 20 | Free coupon spin after a rewarded check-in, with odds shown + coupon wallet in Passport | ✅ |
+| 21 | **Giggles Plus** subscription (no Partner stops or cards, bigger extra-time limit, cosmetic badges, offline maps later) via Google Play Billing | 🟡 routing ready; Play receipt check not built |
 | 22 | LINE login | 🔴 |
 | 23 | Home-screen widget (Glance): badge count / nearest stop | ✅ |
 | 24 | Push notifications (FCM): new badge, trail updates | 🔴 |

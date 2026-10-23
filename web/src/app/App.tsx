@@ -1,6 +1,6 @@
-import { useCallback, useState } from "react";
-import { ApiError } from "../lib/supabase";
-import { type LatLng, planRoute, type RoutePlan, type RouteStop } from "../lib/api";
+import { useCallback, useEffect, useState } from "react";
+import { ApiError, ensureSession, supabase } from "../lib/supabase";
+import { type CheckinTarget, getPlusUntil, type LatLng, planRoute, readScanParam, type RoutePlan } from "../lib/api";
 import MapView from "./MapView";
 import CheckIn from "./CheckIn";
 import Passport from "./Passport";
@@ -8,10 +8,13 @@ import Passport from "./Passport";
 // Real places from the seed: Phu Phan Museum -> Wat Phra That Choeng Chum
 const DEFAULT_ORIGIN: LatLng = { lat: 17.17313, lng: 104.14488 };
 const DEFAULT_DEST: LatLng = { lat: 17.16445, lng: 104.15345 };
+const FREE_MAX = 120;
+const PLUS_MAX = 240;
 
 const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(Math.round(m) % 60).padStart(2, "0")}`;
 const CATEGORY: Record<string, string> = { cafe: "Café", food: "Food", craft: "Craft shop", temple: "Temple", park: "Park", museum: "Museum", market: "Market", viewpoint: "Viewpoint", art: "Art" };
+const PARTNER_TIP = "This shop pays Giggles Maps when you visit. It only gets your spare minutes and never replaces a better free stop.";
 
 export default function App() {
   const [tab, setTab] = useState<"plan" | "passport">("plan");
@@ -24,9 +27,27 @@ export default function App() {
   const [plan, setPlan] = useState<RoutePlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [checkinStop, setCheckinStop] = useState<RouteStop | null>(null);
+  const [checkin, setCheckin] = useState<{ target: CheckinTarget; code?: string } | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [plusUntil, setPlusUntil] = useState<Date | null>(null);
+  const maxBudget = plusUntil ? PLUS_MAX : FREE_MAX;
+
+  useEffect(() => { getPlusUntil().then(setPlusUntil).catch(() => setPlusUntil(null)); }, [refreshKey]);
+
+  // QR sticker at a shop counter opens /app/?scan=<place>-<code> straight into check-in
+  useEffect(() => {
+    const scan = readScanParam();
+    if (!scan) return;
+    (async () => {
+      await ensureSession();
+      const { data } = await supabase.rpc("place_for_checkin", { p_id: scan.placeId });
+      const place = (data as CheckinTarget[] | null)?.[0];
+      if (!place) return;
+      setCheckin({ target: place, code: scan.code });
+      history.replaceState(null, "", location.pathname);
+    })().catch(() => setError("Couldn't open that shop's check-in. Try scanning again."));
+  }, []);
 
   const onPick = useCallback((p: LatLng) => {
     if (picking === "origin") setOrigin(p); else if (picking === "dest") setDest(p);
@@ -44,9 +65,11 @@ export default function App() {
     setBusy(true); setError("");
     const [h, m] = start.split(":").map(Number);
     try {
-      setPlan(await planRoute({ origin, dest, start_min: h * 60 + m, budget_min: budget, mode }));
+      setPlan(await planRoute({ origin, dest, start_min: h * 60 + m, budget_min: Math.min(budget, maxBudget), mode }));
     } catch (e) {
-      setError(e instanceof ApiError && e.code.startsWith("bad_") ? "Pick a start and destination inside Thailand." : "Couldn't plan the route. Try again in a moment.");
+      const code = e instanceof ApiError ? e.code : "";
+      setError(code === "plus_required" ? `More than +${FREE_MAX} min needs Giggles Plus.`
+        : code.startsWith("bad_") ? "Pick a start and destination inside Thailand." : "Couldn't plan the route. Try again in a moment.");
     } finally { setBusy(false); }
   };
 
@@ -55,13 +78,15 @@ export default function App() {
     document.getElementById(`stop-${id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, []);
 
+  const hasAds = !!plan && plan.stops.some((s) => s.is_partner || s.nearby_partner);
+
   return (
     <div className="shell">
       <header className="topbar">
         <a className="brand" href="/">Giggles <span>Maps</span></a>
         <nav className="tabs" aria-label="Sections">
           <button className={tab === "plan" ? "on" : ""} onClick={() => setTab("plan")}>Plan</button>
-          <button className={tab === "passport" ? "on" : ""} onClick={() => setTab("passport")}>Passport</button>
+          <button className={tab === "passport" ? "on" : ""} onClick={() => setTab("passport")}>Passport{plusUntil && <span className="plus-dot">Plus</span>}</button>
         </nav>
       </header>
 
@@ -103,9 +128,10 @@ export default function App() {
               </div>
 
               <label className="field budget">
-                <span>Extra time I'm OK with: <strong className="num">+{budget} min</strong></span>
-                <input id="budget" type="range" min={0} max={120} step={5} value={budget}
+                <span>Extra time I'm OK with: <strong className="num">+{Math.min(budget, maxBudget)} min</strong></span>
+                <input id="budget" type="range" min={0} max={maxBudget} step={5} value={Math.min(budget, maxBudget)}
                   onChange={(e) => { setBudget(Number(e.target.value)); setPlan(null); }} />
+                {!plusUntil && <span className="fine">Up to +{FREE_MAX} min. Giggles Plus goes to +{PLUS_MAX}.</span>}
               </label>
 
               <button className="btn gold big" onClick={submit} disabled={busy || !origin || !dest}>
@@ -123,31 +149,43 @@ export default function App() {
                   {plan.stops.length === 0 && <p className="fine">Nothing fits in +{plan.budget_min} min. Give yourself a bit more time.</p>}
                   <ol className="stops">
                     {plan.stops.map((s, i) => (
-                      <li key={s.id} id={`stop-${s.id}`} className={`stop ${selected === s.id ? "sel" : ""}`}>
-                        <span className={`pin static ${s.is_partner ? "stop partner" : "stop"}`}>{i + 1}</span>
-                        <div className="stop-body">
-                          <div className="stop-name">{s.name}</div>
-                          {s.name_th && s.name_th !== s.name && <div className="fine">{s.name_th}</div>}
-                          <div className="stop-meta">
-                            <span className="num">{hhmm(s.eta_min)}</span>
-                            <span>{CATEGORY[s.category] ?? s.category}</span>
-                            <span>{s.dwell_min} min</span>
-                            {s.is_partner && <span className="chip partner" title="Shops pay Giggles Maps when you visit. Example partners have not signed up.">{s.is_demo ? "Example partner" : "Partner"}</span>}
+                      <li key={s.id} id={`stop-${s.id}`} className="stop-item">
+                        <div className={`stop ${selected === s.id ? "sel" : ""} ${s.is_partner ? "is-partner" : ""}`}>
+                          <span className={`pin static ${s.is_partner ? "stop partner" : "stop"}`}>{i + 1}</span>
+                          <div className="stop-body">
+                            <div className="stop-name">{s.name}</div>
+                            {s.name_th && s.name_th !== s.name && <div className="fine">{s.name_th}</div>}
+                            <div className="stop-meta">
+                              <span className="num">{hhmm(s.eta_min)}</span>
+                              <span>{CATEGORY[s.category] ?? s.category}</span>
+                              <span>{s.dwell_min} min</span>
+                              {s.is_partner && <span className="chip partner" title={PARTNER_TIP}>{s.is_demo ? "Example partner" : "Partner"}</span>}
+                            </div>
                           </div>
+                          <button className="btn small" onClick={() => setCheckin({ target: s })}>Check in</button>
                         </div>
-                        <button className="btn small" onClick={() => setCheckinStop(s)}>Check in</button>
+                        {s.nearby_partner && (
+                          <div className="near-card">
+                            <span className="near-label">Near this spot</span>
+                            <span className="near-name">{s.nearby_partner.name}</span>
+                            <span className="fine num">{s.nearby_partner.distance_m} m</span>
+                            <span className="chip partner" title={PARTNER_TIP}>{s.nearby_partner.is_demo ? "Example partner" : "Partner"}</span>
+                            <button className="link" onClick={() => setCheckin({ target: { ...s.nearby_partner!, is_partner: true } })}>Check in</button>
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ol>
-                  {plan.expected_thb > 0 && (
-                    <p className="fine biz">Business view: partners on this route pay about <span className="num">฿{plan.expected_thb.toFixed(2)}</span> in expected visit fees.</p>
+                  <p className="fine">Stops are picked for quality first. At most one Partner stop, and only in your spare minutes.</p>
+                  {hasAds && !plusUntil && (
+                    <button className="link upsell" onClick={() => setTab("passport")}>Hide Partner stops with Giggles Plus</button>
                   )}
                 </div>
               )}
             </div>
           )}
 
-          {tab === "passport" && <Passport refreshKey={refreshKey} />}
+          {tab === "passport" && <Passport refreshKey={refreshKey} plusUntil={plusUntil} />}
         </section>
       </main>
 
@@ -155,8 +193,8 @@ export default function App() {
         Places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors · Routing <a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noreferrer">Valhalla</a>
       </footer>
 
-      {checkinStop && (
-        <CheckIn stop={checkinStop} onClose={() => setCheckinStop(null)} onDone={() => setRefreshKey((k) => k + 1)} />
+      {checkin && (
+        <CheckIn target={checkin.target} initialCode={checkin.code} onClose={() => setCheckin(null)} onDone={() => setRefreshKey((k) => k + 1)} />
       )}
     </div>
   );

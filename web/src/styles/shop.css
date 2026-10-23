@@ -15,3 +15,15 @@ th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--li
 th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
 tr:last-child td { border-bottom: 0; }
 .r { text-align: right; }
+.tile .fine { font-size: 12px; }
+.plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.plan { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: grid; gap: 10px; align-content: start; }
+.plan.current { border-color: var(--indigo); box-shadow: 0 0 0 2px var(--indigo-soft); }
+.plan h3 { font-size: 19px; }
+.stickers { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.sticker { margin: 0; display: flex; gap: 14px; align-items: center; background: #fff; color: #161b3d; border-radius: var(--radius); padding: 14px; border: 1px solid var(--line); }
+.sticker img { flex: none; width: 120px; height: 120px; }
+.sticker figcaption { display: grid; gap: 4px; min-width: 0; }
+.sticker .fine { color: #4a5078; }
+.sticker-code { font-size: 20px; letter-spacing: .15em; font-weight: 600; }
+td .row { flex-wrap: nowrap; }

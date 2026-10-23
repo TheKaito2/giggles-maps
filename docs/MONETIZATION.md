@@ -1,6 +1,6 @@
-# Monetization plan (decided 22 Oct 2026, not built yet)
+# Monetization plan (decided 22 Oct 2026, built 23 Oct 2026)
 
-The live backend still ranks stops by money per added minute. This is the target model. Krist will rebuild the backend for it, then update `docs/API.md`. Client work for these items waits until then.
+Live on the backend and web app (migration `20261023000004_monetization.sql`, `docs/API.md`). Not built yet: booking commissions, province visit reports, StoreKit / Play Billing receipt checks for Plus, offline maps.
 
 ## Principle: the route is never for sale
 

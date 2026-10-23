@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "../lib/supabase";
-import { type CheckinResult, REASON_TEXT, type RouteStop, uploadSelfie, verifyCheckin } from "../lib/api";
+import { BILLING_TEXT, type CheckinResult, type CheckinTarget, REASON_TEXT, uploadSelfie, verifyCheckin } from "../lib/api";
 
 const CONSENT_KEY = "giggles.selfieConsent.v1";
 const readConsent = () => { try { return localStorage.getItem(CONSENT_KEY) === "yes"; } catch { return false; } };
@@ -11,9 +11,12 @@ type Step = "consent" | "camera" | "working" | "result" | "error";
 const getPosition = () => new Promise<GeolocationPosition>((ok, fail) =>
   navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }));
 
-export default function CheckIn({ stop, onClose, onDone }: { stop: RouteStop; onClose: () => void; onDone: (r: CheckinResult) => void }) {
+interface Props { target: CheckinTarget; initialCode?: string; onClose: () => void; onDone: (r: CheckinResult) => void }
+
+export default function CheckIn({ target, initialCode, onClose, onDone }: Props) {
   const [step, setStep] = useState<Step>(readConsent() ? "camera" : "consent");
   const [demo, setDemo] = useState(false);
+  const [code, setCode] = useState(initialCode ?? "");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [result, setResult] = useState<CheckinResult | null>(null);
@@ -44,7 +47,7 @@ export default function CheckIn({ stop, onClose, onDone }: { stop: RouteStop; on
       setStatus("Looking for a face…");
       const { countFaces } = await import("../lib/face"); // load the face model only when needed
       const faces = await countFaces(canvas);
-      let lat = stop.lat, lng = stop.lng, accuracy = 5;
+      let lat = target.lat, lng = target.lng, accuracy = 5;
       if (!demo) {
         setStatus("Getting your location…");
         const pos = await getPosition().catch(() => { throw new Error("We need your location to check in. Allow location access and try again."); });
@@ -54,14 +57,15 @@ export default function CheckIn({ stop, onClose, onDone }: { stop: RouteStop; on
       const blob = await new Promise<Blob>((ok, fail) => canvas.toBlob((b) => (b ? ok(b) : fail(new Error("Couldn't read the photo."))), "image/jpeg", 0.82));
       const path = await uploadSelfie(blob);
       setStatus("Checking…");
-      const r = await verifyCheckin({ place_id: stop.id, lat, lng, accuracy_m: accuracy, selfie_path: path, face_count: faces, client: { platform: "web", demo } });
+      const r = await verifyCheckin({
+        place_id: target.id, lat, lng, accuracy_m: accuracy, selfie_path: path, face_count: faces,
+        qr_code: code.trim() || null, client: { platform: "web", demo },
+      });
       setResult(r);
       setStep("result");
       onDone(r);
     } catch (e) {
-      setError(e instanceof ApiError
-        ? (e.code === "demo_only_at_example_places" ? "Simulated location only works at example partner places." : "Check-in failed. Try again in a moment.")
-        : (e as Error).message);
+      setError(e instanceof ApiError ? "Check-in failed. Try again in a moment." : (e as Error).message);
       setStep("error");
     }
   };
@@ -78,11 +82,13 @@ export default function CheckIn({ stop, onClose, onDone }: { stop: RouteStop; on
     img.src = URL.createObjectURL(f);
   };
 
+  const billing = result ? BILLING_TEXT[result.billing] : undefined;
+
   return (
     <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="ci-title">
       <div className="modal">
         <header className="modal-head">
-          <h2 id="ci-title">Check in at {stop.name}</h2>
+          <h2 id="ci-title">Check in at {target.name}</h2>
           <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </header>
 
@@ -103,9 +109,17 @@ export default function CheckIn({ stop, onClose, onDone }: { stop: RouteStop; on
             {camOk
               ? <video ref={video} className="cam" autoPlay playsInline muted />
               : <p className="fine">Camera isn't available here. Take a selfie with your phone camera instead.</p>}
+            {target.is_partner && (
+              <label className="field">
+                <span>Counter code <span className="fine">(under the Giggles QR sticker at the counter)</span></span>
+                <input id="qr-code" className="text-in code-in" value={code} maxLength={16} autoCapitalize="characters"
+                  placeholder={target.is_demo ? "DEMO" : "ABC123"} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+                {target.is_demo && <span className="fine">Example shops use the code DEMO.</span>}
+              </label>
+            )}
             <label className="toggle">
               <input id="demo-toggle" type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} />
-              <span>I'm not in Sakon Nakhon: simulate being here (example places only)</span>
+              <span>I'm not in Sakon Nakhon: simulate being here (never charges a real shop)</span>
             </label>
             <div className="row">
               {camOk && <button className="btn" onClick={capture}>Take selfie</button>}
@@ -122,7 +136,7 @@ export default function CheckIn({ stop, onClose, onDone }: { stop: RouteStop; on
         {step === "result" && result && (
           <div className="stack result">
             {result.status === "approved" && result.rewarded && (
-              <div className="stamp" aria-label="Stamped">STAMPED<span>{stop.name}</span></div>
+              <div className="stamp" aria-label="Stamped">STAMPED<span>{target.name}</span></div>
             )}
             <p className={`verdict ${result.status}`}>
               {result.status === "approved" ? (result.rewarded ? "Checked in!" : "Checked in, no new stamp.")
@@ -130,7 +144,24 @@ export default function CheckIn({ stop, onClose, onDone }: { stop: RouteStop; on
             </p>
             {result.reasons.map((r) => <p key={r} className="fine">{REASON_TEXT[r] ?? r}</p>)}
             {result.new_badges.map((b) => <p key={b.slug} className="badge-earned">New badge: {b.name}</p>)}
-            {result.billed_thb > 0 && <p className="fine biz">Business view: this visit earned the shop's bid of <span className="num">฿{result.billed_thb}</span>.</p>}
+
+            {result.spin && (
+              <div className={`spin ${result.spin.won ? "won" : ""}`}>
+                <span className="spin-label">Free spin</span>
+                {result.spin.won
+                  ? <>
+                      <b>{result.spin.title}</b>
+                      <span className="fine">at {result.spin.place}</span>
+                      <span className="coupon-code num">{result.spin.code}</span>
+                      <span className="fine">Show this code at the counter. Chance of this prize: {Math.round(result.spin.odds * 100)}%.</span>
+                    </>
+                  : <span>No prize this time. Every spin has a 50% chance to win a nearby coupon.</span>}
+              </div>
+            )}
+
+            {billing && (
+              <p className="fine biz">Business view: {billing}{result.billed_thb > 0 && <> (<span className="num">฿{result.billed_thb}</span>)</>}</p>
+            )}
             <button className="btn" onClick={onClose}>Done</button>
           </div>
         )}
