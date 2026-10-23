@@ -11,6 +11,8 @@ interface Props {
   dest: LatLng | null;
   stops: RouteStop[];
   geometry: [number, number][];
+  baseGeometry?: [number, number][];
+  estimated?: boolean;
   picking: "origin" | "dest" | null;
   onPick: (p: LatLng) => void;
   onSelectStop: (id: number) => void;
@@ -24,7 +26,7 @@ const pin = (cls: string, text: string, label: string) => {
   return el;
 };
 
-export default function MapView({ origin, dest, stops, geometry, picking, onPick, onSelectStop }: Props) {
+export default function MapView({ origin, dest, stops, geometry, baseGeometry = [], estimated = false, picking, onPick, onSelectStop }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markers = useRef<maplibregl.Marker[]>([]);
@@ -33,6 +35,9 @@ export default function MapView({ origin, dest, stops, geometry, picking, onPick
   const pickingRef = useRef(picking);
   pickingRef.current = picking;
   const lineRef = useRef<GeoJSON.FeatureCollection>({ type: "FeatureCollection", features: [] });
+  const baseRef = useRef<GeoJSON.FeatureCollection>({ type: "FeatureCollection", features: [] });
+  const estimatedRef = useRef(estimated);
+  estimatedRef.current = estimated;
 
   useEffect(() => {
     const m = new maplibregl.Map({
@@ -42,9 +47,13 @@ export default function MapView({ origin, dest, stops, geometry, picking, onPick
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     m.on("click", (e) => { if (pickingRef.current) pickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng }); });
     m.on("load", () => {
+      m.addSource("baseline", { type: "geojson", data: baseRef.current });
+      m.addLayer({ id: "baseline", type: "line", source: "baseline", paint: { "line-color": "#777f97", "line-width": 4, "line-opacity": 0.6, "line-dasharray": [2, 2] } });
       m.addSource("route", { type: "geojson", data: lineRef.current }); // picks up a route planned before the style loaded
       m.addLayer({ id: "route-casing", type: "line", source: "route", paint: { "line-color": "#ffffff", "line-width": 9, "line-opacity": 0.9 }, layout: { "line-cap": "round", "line-join": "round" } });
       m.addLayer({ id: "route", type: "line", source: "route", paint: { "line-color": "#27348b", "line-width": 5 }, layout: { "line-cap": "round", "line-join": "round" } });
+      m.setPaintProperty("route", "line-dasharray", estimatedRef.current ? [2, 2] : [1, 0]);
+      m.setPaintProperty("route-casing", "line-dasharray", estimatedRef.current ? [2, 2] : [1, 0]);
     });
     map.current = m;
     return () => m.remove();
@@ -70,14 +79,20 @@ export default function MapView({ origin, dest, stops, geometry, picking, onPick
     });
 
     lineRef.current = { type: "FeatureCollection", features: geometry.length ? [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: geometry } }] : [] };
+    baseRef.current = { type: "FeatureCollection", features: baseGeometry.length && stops.length ? [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: baseGeometry } }] : [] };
+    (m.getSource("baseline") as maplibregl.GeoJSONSource | undefined)?.setData(baseRef.current);
     (m.getSource("route") as maplibregl.GeoJSONSource | undefined)?.setData(lineRef.current);
+    if (m.getLayer("route")) {
+      m.setPaintProperty("route", "line-dasharray", estimated ? [2, 2] : [1, 0]);
+      m.setPaintProperty("route-casing", "line-dasharray", estimated ? [2, 2] : [1, 0]);
+    }
 
     const pts: [number, number][] = geometry.length ? geometry : [origin, dest].filter(Boolean).map((p) => [p!.lng, p!.lat]);
     if (pts.length > 1) {
       const b = pts.reduce((acc, p) => acc.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
       m.fitBounds(b, { padding: { top: 60, bottom: 60, left: 40, right: 40 }, maxZoom: 16, duration: 600 });
     }
-  }, [origin, dest, stops, geometry, onSelectStop]);
+  }, [origin, dest, stops, geometry, baseGeometry, estimated, onSelectStop]);
 
-  return <div ref={box} className="map" role="application" aria-label="Map of Sakon Nakhon" />;
+  return <div ref={box} className="map" role="application" aria-label="Trip map of Thailand" />;
 }

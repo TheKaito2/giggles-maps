@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, ensureSession, supabase } from "../lib/supabase";
 import { type CheckinTarget, getProfile, KIND_NAME, type LatLng, planRoute, type Profile, readScanParam, type RoutePlan } from "../lib/api";
 import MapView from "./MapView";
 import CheckIn from "./CheckIn";
 import Passport from "./Passport";
+import PlaceSearch from "./PlaceSearch";
 import { resumeSignIn } from "../lib/auth";
 
 // Real places from the seed: Phu Phan Museum -> Wat Phra That Choeng Chum
@@ -31,6 +32,9 @@ export default function App() {
   const [selected, setSelected] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [profile, setProfile] = useState<Profile | null>(null);
+
+  const routeRequest = useRef(0);
+  useEffect(() => { routeRequest.current++; setBusy(false); }, [origin, dest, start, budget, mode]);
 
   useEffect(() => { getProfile().then(setProfile).catch(() => setProfile(null)); }, [refreshKey]);
   // back from Google/Apple: finish sign-in if linking to the guest account wasn't possible
@@ -63,14 +67,18 @@ export default function App() {
 
   const submit = async () => {
     if (!origin || !dest) return;
-    setBusy(true); setError("");
+    const requestId = ++routeRequest.current;
+    setBusy(true); setError(""); setPlan(null);
     const [h, m] = start.split(":").map(Number);
     try {
-      setPlan(await planRoute({ origin, dest, start_min: h * 60 + m, budget_min: Math.min(budget, MAX_BUDGET), mode }));
+      const result = await planRoute({ origin, dest, start_min: h * 60 + m, budget_min: Math.min(budget, MAX_BUDGET), mode });
+      if (requestId === routeRequest.current) setPlan(result);
     } catch (e) {
+      if (requestId !== routeRequest.current) return;
       const code = e instanceof ApiError ? e.code : "";
-      setError(code.startsWith("bad_") ? "Pick a start and destination inside Thailand." : "Couldn't plan the route. Try again in a moment.");
-    } finally { setBusy(false); }
+      setError(code === "routing_unavailable" ? "Couldn't find a road route. Try a nearby road pin, check Walk/Drive, or retry shortly."
+        : code.startsWith("bad_") ? "Pick a start and destination inside Thailand." : "Couldn't plan the route. Try again in a moment.");
+    } finally { if (requestId === routeRequest.current) setBusy(false); }
   };
 
   const onSelectStop = useCallback((id: number) => {
@@ -90,7 +98,7 @@ export default function App() {
 
       <main className="layout">
         <MapView origin={origin} dest={dest} stops={plan?.stops ?? []} geometry={plan?.geometry ?? []}
-          picking={picking} onPick={onPick} onSelectStop={onSelectStop} />
+          baseGeometry={plan?.base_geometry} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop} />
 
         <section className="panel" aria-live="polite">
           {picking && <p className="hint">Tap the map to set your {picking === "origin" ? "start" : "destination"}.</p>}
@@ -110,6 +118,9 @@ export default function App() {
                   <button className="link" onClick={() => setPicking("dest")}>Set on map</button>
                 </div>
               </div>
+
+              <PlaceSearch label="Start" point={origin} onPick={(p) => { setOrigin(p); setPicking(null); setPlan(null); }} />
+              <PlaceSearch label="Destination" point={dest} onPick={(p) => { setDest(p); setPicking(null); setPlan(null); }} />
 
               <div className="row fields">
                 <label className="field">
@@ -141,9 +152,11 @@ export default function App() {
                   <div className="summary">
                     <div><span className="num big-num">+{plan.extra_min}</span><span className="fine"> of +{plan.budget_min} min used</span></div>
                     <div className="fine">{plan.stops.length} stop{plan.stops.length === 1 ? "" : "s"} · trip {plan.total_min} min instead of {plan.base_min}</div>
-                    {plan.routing === "estimate" && <div className="fine">Times are estimates (routing service busy).</div>}
+                    {plan.routing === "estimate" && <div className="fine" role="status">Routing is unavailable. The dashed line is an approximate walking connection, not road directions. Times and your allowance are checked using estimates.</div>}
+                    {plan.stops.length > 0 && !!plan.base_geometry?.length && <div className="fine">Dashed grey: direct road route · Indigo: your detour. Both end at your destination.</div>}
+                    {plan.warnings?.some((w) => w !== "estimated_local_walk") && <div className="fine" role="status">Some stops were adjusted or couldn't be checked. Retry to explore more detours.</div>}
                   </div>
-                  {plan.stops.length === 0 && <p className="fine">Nothing fits in +{plan.budget_min} min. Give yourself a bit more time.</p>}
+                  {plan.stops.length === 0 && <p className="fine">No available stops fit +{plan.budget_min} min; place coverage varies by area.</p>}
                   <ol className="stops">
                     {plan.stops.map((s, i) => (
                       <li key={s.id} id={`stop-${s.id}`} className="stop-item">

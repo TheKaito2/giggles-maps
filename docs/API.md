@@ -61,6 +61,13 @@ Response
 ```
 - `routing: "estimate"` means the routing server was down and times are straight-line estimates.
 - `geometry` is `[lng, lat]` pairs (GeoJSON order) for the polyline.
+- Routing update: optional `base_geometry` is the direct road line. Optional `warnings`
+  includes `estimated_local_walk`, `places_unavailable`, `matrix_unavailable`,
+  `some_detours_unavailable` and `detours_adjusted`. Only local pedestrian trips
+  (endpoints within 10 km) may return approximate geometry after a baseline outage;
+  render it dashed and label it as approximate. Other baseline outages return
+  503 `routing_unavailable`. Road detours include verified leg times, dwell and
+  meal waiting within the budget. See `THAILAND-ROUTING.md` for rollout.
 - Stops are chosen by quality only (rating, variety, fit inside the budget). Paying never changes rank; there is no paid slot.
 - `is_partner: true` means the place is a signed-up shop that pays per verified visit. It can appear any number of times, only on merit. Show a **Partner** label (`Example partner` when `is_demo`) so users know the shop pays.
 - `nearby_partner` (on park/viewpoint/temple stops, max 2 per route): a "Near this spot" card `{id, name, category, lat, lng, distance_m, is_partner, is_demo}`. It is the best nearby place by quality (rating, then distance), signed up or not; the field name is kept from v2 so existing clients keep working. Show the Partner label only when the card's `is_partner` is true. Users can check in there too.
@@ -164,3 +171,11 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
 | `shops`, `billable_visits` (no `user_id`), `payments` | shop owner (or payer), or anyone for demo shops |
 
 No client can write to profiles, check-ins, billing, badges or wallets directly; only the functions above can.
+
+## Nationwide POI search (routing update)
+
+`search_route_places(p_query)` returns up to 10 public named POIs with
+`id`, `name`, `name_th`, `lat`, `lng`. Only `min_level = 0` records are returned;
+exclusive names/coordinates are not exposed. Literal Thai/English queries are
+2–100 characters. It searches imported POIs, not every address; any map pin or
+coordinate can still be the destination.

@@ -2,7 +2,8 @@ import { admin, HttpError, json, num, requireUser, serve } from "../_shared/http
 import { type Meal, MEAL_WINDOWS, mealsInTrip } from "../_shared/meals.ts";
 import { type Plan, planDetour, type Stop } from "../_shared/planner.ts";
 import { isTheme, THEMES } from "../_shared/themes.ts";
-import { estimateMinutes, type LatLng, matrixMinutes, type Mode, routeLine } from "../_shared/valhalla.ts";
+import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan } from "../_shared/road-detour.ts";
+import { createRouter, estimateMinutes, haversineM, type LatLng, matrixMinutes, type Mode, type RoadRoute } from "../_shared/valhalla.ts";
 
 interface Candidate {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
@@ -43,25 +44,46 @@ serve(async (req) => {
   if (lErr) throw lErr;
   const budgetMin = num(body.budget_min, 0, MAX_BUDGET, "bad_budget_min");
 
-  const metersPerMin = mode === "pedestrian" ? 80 : 500;
-  const { data: cands, error } = await db.rpc("detour_candidates", {
-    o_lat: origin.lat, o_lng: origin.lng, d_lat: dest.lat, d_lng: dest.lng,
-    extra_m: budgetMin * metersPerMin, max_n: MAX_CANDIDATES, p_level: level, p_per_group: 5,
-  });
-  if (error) throw error;
-  const candidates = cands as Candidate[];
-
-  // index 0 = origin, 1 = destination, 2.. = candidates
-  const points: LatLng[] = [origin, dest, ...candidates.map((c) => ({ lat: c.lat, lng: c.lng }))];
-  let routing = "valhalla";
-  let matrix: number[][];
-  try {
-    matrix = await matrixMinutes(points, mode);
-  } catch (e) {
-    console.error(e);
-    routing = "estimate";
-    matrix = estimateMinutes(points, mode);
+  const warnings: string[] = [];
+  const shortTrip = haversineM(origin, dest) <= 10000;
+  const localWalkingFallback = allowsEstimateFallback(mode, haversineM(origin, dest));
+  const routeRoad = createRouter(Deno.env.get("VALHALLA_URL") ?? "https://valhalla1.openstreetmap.de");
+  let baseline: RoadRoute | null = null;
+  try { baseline = await routeRoad([origin, dest], mode); }
+  catch (error) {
+    console.error("baseline routing failed", error);
+    if (!localWalkingFallback) throw new HttpError(503, "routing_unavailable");
+    warnings.push("estimated_local_walk");
   }
+  const maxCandidates = shortTrip ? 16 : MAX_CANDIDATES;
+  const { data: cands, error } = baseline
+    ? await db.rpc("route_detour_candidates", {
+      p_geometry: baseline.geometry,
+      p_radius_m: Math.min(20000, budgetMin * (mode === "auto" ? 500 : 80) / 2),
+      p_budget_min: budgetMin, p_level: level, p_max_n: maxCandidates, p_per_group: shortTrip ? 4 : 5,
+    })
+    : await db.rpc("detour_candidates", {
+      o_lat: origin.lat, o_lng: origin.lng, d_lat: dest.lat, d_lng: dest.lng,
+      extra_m: budgetMin * 80, max_n: 16, p_level: level, p_per_group: 4,
+    });
+  if (error) { console.error("candidate lookup failed", error); warnings.push("places_unavailable"); }
+  const candidates = (cands ?? []) as Candidate[];
+  const points: LatLng[] = [origin, dest, ...candidates.map((c) => ({ lat: c.lat, lng: c.lng }))];
+  let matrix = estimateMinutes(points, mode);
+  if (baseline && shortTrip) {
+    try {
+      const roadMatrix = await matrixMinutes(points, mode);
+      if (!Number.isFinite(roadMatrix[0]?.[1])) throw new Error("unreachable_baseline");
+      matrix = roadMatrix;
+    } catch (error) { console.error("local matrix failed", error); warnings.push("matrix_unavailable"); }
+  }
+  // Long trips use an estimated matrix to propose orders, NEVER to approve a road detour.
+  // Calibrate proposals to the known direct road duration; verify complete routes below.
+  if (baseline && (!shortTrip || warnings.includes("matrix_unavailable"))) {
+    const scale = matrix[0][1] > 0 ? baseline.travelMin / matrix[0][1] : 1;
+    matrix = matrix.map((row) => row.map((minutes) => minutes * scale));
+  }
+  const routing = baseline ? "valhalla" : "estimate";
 
   const stops: Stop[] = candidates.map((c, i) => ({
     idx: i + 2, id: c.id, category: c.category, rating: Number(c.rating), dwellMin: c.dwell_min,
@@ -69,11 +91,11 @@ serve(async (req) => {
   }));
   const travelMin = (a: number, b: number) => matrix[a][b];
   // meals the whole trip window (direct time + extra budget) runs through get a food stop
-  const meals = mealsInTrip(startMin, startMin + matrix[0][1] + budgetMin);
+  const meals = mealsInTrip(startMin, startMin + (baseline?.travelMin ?? matrix[0][1]) + budgetMin);
 
   // one plan per theme from the same shortlist + matrix; drop themed plans identical to an earlier one
   const seen = new Set<string>();
-  const themed: { id: string; name: string; plan: Plan }[] = [];
+  const themed: { id: string; name: string; plan: Plan; geometry?: [number, number][]; etaMin?: number[] }[] = [];
   for (const t of THEMES) {
     const plan = planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin, stops, travelMin, theme: t.id, meals });
     const key = plan.order.map((s) => s.id).join(",");
@@ -81,7 +103,28 @@ serve(async (req) => {
     seen.add(key);
     themed.push({ id: t.id, name: t.name, plan });
   }
-  // the asked-for theme goes first in plans[]; top-level fields stay Top picks for existing clients
+  const verification = boundedRouter(routeRoad);
+  const verifiedKeys = new Set<string>();
+  for (let i = 0; i < themed.length; i++) {
+    const t = themed[i];
+    if (baseline) {
+      const verified = await verifyRoadPlan({ plan: t.plan, origin, dest, candidates, mode,
+        baseline, startMin, budgetMin, route: verification.route });
+      t.plan = verified.plan; t.geometry = verified.geometry; t.etaMin = verified.etaMin;
+      if (verified.failed) warnings.push("some_detours_unavailable");
+      else if (verified.adjusted) warnings.push("detours_adjusted");
+    } else {
+      const legs = []; let at = 0;
+      for (const s of t.plan.order) { legs.push(matrix[at][s.idx]); at = s.idx; }
+      legs.push(matrix[at][1]);
+      t.etaMin = scheduleStops(t.plan.order, legs, startMin, t.plan.mealOf).etaMin;
+      t.geometry = [origin, ...t.plan.order.map((s) => candidates[s.idx - 2]), dest].map((p) => [p.lng, p.lat]);
+    }
+    const key = t.plan.order.map((s) => s.id).join(",");
+    if (t.id !== "top_picks" && verifiedKeys.has(key)) { themed.splice(i--, 1); continue; }
+    verifiedKeys.add(key);
+  }
+  // The asked-for theme goes first; top-level fields remain Top picks for existing clients.
   if (body.theme) themed.sort((a, b) => Number(b.id === body.theme) - Number(a.id === body.theme));
 
   // "Near this spot" cards under nature/temple stops: the best nearby place by quality (rating, then
@@ -97,7 +140,7 @@ serve(async (req) => {
       if (!CARD_CATEGORIES.has(c.category)) continue;
       if (!nearCache.has(c.id)) {
         const { data, error: nErr } = await db.rpc("places_near", { p_lat: c.lat, p_lng: c.lng, p_radius_m: 400, p_level: level });
-        if (nErr) throw nErr;
+        if (nErr) { console.error("nearby places failed", nErr); warnings.push("places_unavailable"); }
         nearCache.set(c.id, (data ?? []) as NearPlace[]);
       }
       const best = nearCache.get(c.id)!.find((p) =>
@@ -107,16 +150,16 @@ serve(async (req) => {
     return cards;
   };
 
-  const build = async (plan: Plan) => {
+  const build = async ({ plan, geometry, etaMin }: typeof themed[number]) => {
     const cards = await cardsFor(plan);
     // ETA per stop for the UI; early arrivals at a meal stop wait for the window, as the planner does
     let t = startMin, at = 0;
-    const ordered = plan.order.map((s) => {
+    const ordered = plan.order.map((s, index) => {
       t += matrix[at][s.idx];
       const meal: Meal | null = plan.mealOf.get(s.id) ?? null;
       if (meal) t = Math.max(t, MEAL_WINDOWS[meal][0]);
       const c = byId.get(s.id)!;
-      const eta = Math.round(t);
+      const eta = etaMin![index];
       t += s.dwellMin;
       at = s.idx;
       const card = cards.get(s.id);
@@ -135,17 +178,10 @@ serve(async (req) => {
       };
     });
 
-    const linePts = [origin, ...ordered.map((s) => ({ lat: s.lat, lng: s.lng })), dest];
-    let geometry: [number, number][];
-    try {
-      geometry = routing === "valhalla" ? await routeLine(linePts, mode) : linePts.map((p) => [p.lng, p.lat]);
-    } catch {
-      geometry = linePts.map((p) => [p.lng, p.lat]);
-    }
     return { ordered, cards, geometry };
   };
 
-  const built = await Promise.all(themed.map((t) => build(t.plan)));
+  const built = await Promise.all(themed.map(build));
   const topIdx = themed.findIndex((t) => t.id === "top_picks");
   const plan = themed[topIdx].plan;
   const { ordered, geometry } = built[topIdx];
@@ -174,7 +210,8 @@ serve(async (req) => {
     extra_min: Math.round(plan.extraMin), budget_min: budgetMin,
     max_budget_min: MAX_BUDGET,
     candidates_considered: candidates.length,
-    stops: ordered, geometry,
+    stops: ordered, geometry, base_geometry: baseline?.geometry ?? [],
+    warnings: [...new Set(warnings)],
     meals, missed_meals: plan.missedMeals,
     plans: themed.map((t, i) => ({
       id: t.id, name: t.name, stops: built[i].ordered, geometry: built[i].geometry,
