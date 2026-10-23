@@ -101,7 +101,7 @@ def export(source, destination, bbox=None):
     with destination.open("w", encoding="utf-8", newline="\n") as out:
         out.write("-- Thailand POIs: OpenStreetMap contributors, ODbL.\n")
         out.write("-- Source: " + ("Overpass Thailand snapshot" if source.suffix == ".json" else "Geofabrik Thailand extract") + "\n")
-        out.write("-- Ratings use the schema's 4.2 placeholder, NOT verified reviews. Hours are unknown.\n")
+        out.write("-- Ratings load as NULL (unrated, migration 013): no verified reviews. Hours are unknown.\n")
         out.write("-- Review before applying. No partner, QR, coupon or billing data is imported.\nSET standard_conforming_strings = on;\nBEGIN;\n")
         exporter = Exporter(out, bbox)
         if source.suffix == ".json":

@@ -1,6 +1,6 @@
 -- Thailand POIs: OpenStreetMap contributors, ODbL.
 -- Source: Overpass Thailand snapshot
--- Ratings use the schema's 4.2 placeholder, NOT verified reviews. Hours are unknown.
+-- Ratings load as NULL (unrated, migration 013): no verified reviews. Hours are unknown.
 -- Review before applying. No partner, QR, coupon or billing data is imported.
 SET standard_conforming_strings = on;
 BEGIN;

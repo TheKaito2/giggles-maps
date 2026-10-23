@@ -34,12 +34,20 @@ Request
   "start_min": 600,
   "budget_min": 45,
   "mode": "pedestrian",
-  "theme": "food"
+  "theme": "food",
+  "interests": ["cafes", "culture"],
+  "min_rating": 4, "include_unrated": false, "max_stops": 3, "max_price": 1
 }
 ```
 - `start_min`: minutes after local midnight (0–1439). Used for opening hours.
 - `budget_min`: extra minutes the user accepts (0–240). Never exceeded.
-- `mode`: `"pedestrian"` (default) or `"auto"`.
+- `mode`: `"pedestrian"` (default), `"bicycle"` or `"auto"`; anything else is 400 `bad_mode`.
+- Planner preferences (all optional; omitted = the defaults below):
+  - `interests`: up to 6 of `food`, `cafes`, `culture`, `nature`, `shopping`, `landmarks`. Adds a **Your mix** plan (`id: "mix"`) first, boosting (×2) every kind of stop the picks cover. Empty or omitted = no mix plan ("Surprise me"). 400 `bad_interests`.
+  - `min_rating`: `0`, `3.5`, `4` (default) or `4.5`. 400 `bad_min_rating`.
+  - `include_unrated`: `true` lets unrated places (`rating: null`, e.g. the OpenStreetMap seed) join routes. Default false.
+  - `max_stops`: 1–6 stops per plan; omitted = no cap. Meal stops count. 400 `bad_max_stops`.
+  - `max_price`: 0 (free) to 3 (฿฿฿). Drops places whose **known** price is higher; places with no listed price stay. 400 `bad_max_price`.
 - `theme` (optional): `top_picks`, `nature`, `food`, `culture` or `shopping`. Only reorders `plans` so that one comes first; anything else is 400 `bad_theme`.
 - Coordinates must be inside Thailand (lat 5–21, lng 97–106).
 
@@ -51,7 +59,7 @@ Response
   "plus": false, "member": false, "level": 0, "max_budget_min": 240, "candidates_considered": 15,
   "stops": [{ "id": 31, "name": "…", "name_th": "…", "category": "craft", "lat": 17.16, "lng": 104.14,
               "is_partner": true, "is_demo": true, "rating": 4.2, "dwell_min": 20, "eta_min": 617,
-              "meal": null, "min_level": 0, "exclusive_kind": null, "perk_text": null,
+              "meal": null, "price_level": 0, "min_level": 0, "exclusive_kind": null, "perk_text": null,
               "nearby_partner": null }],
   "geometry": [[104.14488, 17.17313], "…"],
   "meals": ["lunch"], "missed_meals": [],
@@ -76,7 +84,9 @@ Response
 - Meals: when the trip window (start → start + direct time + budget) overlaps breakfast 07:00–09:30, lunch 11:30–13:30 or dinner 17:30–20:00 by ≥ 30 min, the meal is in `meals` and every plan tries to place a cafe/food/market stop arriving inside that window; that stop has `meal: "lunch"` etc. Arriving early means waiting for the window (counted in the extra time). If nothing fits, the meal is in that plan's `missed_meals`.
 - Every stop and card in any plan counts as an impression, once per place per route.
 
-Errors: `not_signed_in` 401, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_theme` / `bad_json` 400.
+- Each stop has `rating` (number, or `null` = unrated) and `price_level` (0 free, 1–3 = ฿–฿฿฿, `null` = not listed).
+
+Errors: `not_signed_in` 401, `routing_unavailable` 503, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_mode` / `bad_theme` / `bad_interests` / `bad_min_rating` / `bad_max_stops` / `bad_max_price` / `bad_json` 400.
 
 ## `verify-checkin`
 

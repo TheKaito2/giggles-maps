@@ -1,14 +1,15 @@
 import { admin, HttpError, json, num, requireUser, serve } from "../_shared/http.ts";
 import { type Meal, MEAL_WINDOWS, mealsInTrip } from "../_shared/meals.ts";
 import { type Plan, planDetour, type Stop } from "../_shared/planner.ts";
-import { isTheme, THEMES } from "../_shared/themes.ts";
+import { isInterest, isTheme, mixWeight, THEMES } from "../_shared/themes.ts";
 import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan } from "../_shared/road-detour.ts";
-import { createRouter, estimateMinutes, haversineM, type LatLng, matrixMinutes, type Mode, type RoadRoute } from "../_shared/valhalla.ts";
+import { createRouter, estimateMinutes, haversineM, type LatLng, matrixMinutes, METERS_PER_MIN, type Mode, type RoadRoute } from "../_shared/valhalla.ts";
 
 interface Candidate {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
-  open_min: number | null; close_min: number | null; dwell_min: number; rating: number;
+  open_min: number | null; close_min: number | null; dwell_min: number; rating: number | null;
   is_partner: boolean; is_demo: boolean; min_level: number; exclusive_kind: string | null; perk_text: string | null;
+  price_level: number | null;
 }
 interface NearPlace {
   id: number; name: string; category: string; lat: number; lng: number; rating: number;
@@ -19,6 +20,8 @@ const MAX_BUDGET = 240; // v4: 4-hour detours for everyone (Plus is cosmetic onl
 const CARD_CATEGORIES = new Set(["park", "viewpoint", "temple"]); // "Near this spot" cards sit under these
 const MAX_CARDS = 2;
 const MAX_CANDIDATES = 22; // up to 5 per theme group, so every themed plan has its kind of stop to pick
+const MODES = new Set<Mode>(["pedestrian", "bicycle", "auto"]);
+const MIN_RATINGS = new Set([0, 3.5, 4, 4.5]);
 
 // Thailand bounding box: reject coordinates we can't route anyway
 const point = (v: unknown, code: string): LatLng => {
@@ -32,8 +35,20 @@ serve(async (req) => {
   const origin = point(body.origin, "bad_origin");
   const dest = point(body.dest, "bad_dest");
   const startMin = num(body.start_min, 0, 1439, "bad_start_min");
-  const mode: Mode = body.mode === "auto" ? "auto" : "pedestrian";
+  if (body.mode != null && !MODES.has(body.mode)) throw new HttpError(400, "bad_mode");
+  const mode: Mode = body.mode ?? "pedestrian";
   if (body.theme != null && !isTheme(body.theme)) throw new HttpError(400, "bad_theme");
+  // planner preferences, all optional; omitted = the defaults every plan used before
+  const interests: string[] = body.interests ?? [];
+  if (!Array.isArray(interests) || interests.length > 6 || !interests.every(isInterest)) throw new HttpError(400, "bad_interests");
+  const minRating = body.min_rating ?? 4;
+  if (!MIN_RATINGS.has(minRating)) throw new HttpError(400, "bad_min_rating");
+  const includeUnrated = body.include_unrated === true;
+  const maxStops = body.max_stops == null ? undefined : num(body.max_stops, 1, 6, "bad_max_stops");
+  if (maxStops != null && !Number.isInteger(maxStops)) throw new HttpError(400, "bad_max_stops");
+  const maxPrice = body.max_price == null ? null : num(body.max_price, 0, 3, "bad_max_price");
+  if (maxPrice != null && !Number.isInteger(maxPrice)) throw new HttpError(400, "bad_max_price");
+  const filters = { p_min_rating: minRating, p_unrated: includeUnrated, p_max_price: maxPrice };
 
   const db = admin();
   const { data: profile } = await db.from("profiles").select("plus_until, member_since").eq("id", user.id).maybeSingle();
@@ -59,12 +74,12 @@ serve(async (req) => {
   const { data: cands, error } = baseline
     ? await db.rpc("route_detour_candidates", {
       p_geometry: baseline.geometry,
-      p_radius_m: Math.min(20000, budgetMin * (mode === "auto" ? 500 : 80) / 2),
-      p_budget_min: budgetMin, p_level: level, p_max_n: maxCandidates, p_per_group: shortTrip ? 4 : 5,
+      p_radius_m: Math.min(20000, budgetMin * METERS_PER_MIN[mode] / 2),
+      p_budget_min: budgetMin, p_level: level, p_max_n: maxCandidates, p_per_group: shortTrip ? 4 : 5, ...filters,
     })
     : await db.rpc("detour_candidates", {
       o_lat: origin.lat, o_lng: origin.lng, d_lat: dest.lat, d_lng: dest.lng,
-      extra_m: budgetMin * 80, max_n: 16, p_level: level, p_per_group: 4,
+      extra_m: budgetMin * 80, max_n: 16, p_level: level, p_per_group: 4, ...filters,
     });
   if (error) { console.error("candidate lookup failed", error); warnings.push("places_unavailable"); }
   const candidates = (cands ?? []) as Candidate[];
@@ -86,7 +101,7 @@ serve(async (req) => {
   const routing = baseline ? "valhalla" : "estimate";
 
   const stops: Stop[] = candidates.map((c, i) => ({
-    idx: i + 2, id: c.id, category: c.category, rating: Number(c.rating), dwellMin: c.dwell_min,
+    idx: i + 2, id: c.id, category: c.category, rating: c.rating == null ? null : Number(c.rating), dwellMin: c.dwell_min,
     openMin: c.open_min, closeMin: c.close_min,
   }));
   const travelMin = (a: number, b: number) => matrix[a][b];
@@ -96,10 +111,17 @@ serve(async (req) => {
   // one plan per theme from the same shortlist + matrix; drop themed plans identical to an earlier one
   const seen = new Set<string>();
   const themed: { id: string; name: string; plan: Plan; geometry?: [number, number][]; etaMin?: number[] }[] = [];
-  for (const t of THEMES) {
-    const plan = planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin, stops, travelMin, theme: t.id, meals });
+  // "Your mix" (the user's interest chips) leads; the five themed plans follow as alternatives
+  const variants = [
+    ...(interests.length ? [{ id: "mix", name: "Your mix", weight: mixWeight(interests) }] : []),
+    ...THEMES.map((t) => ({ id: t.id, name: t.name, theme: t.id })),
+  ];
+  const prefs = { minRating, allowUnrated: includeUnrated, maxStops };
+  for (const t of variants) {
+    const plan = planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin, stops, travelMin, meals, ...prefs,
+                              theme: "theme" in t ? t.theme : undefined, weight: "weight" in t ? t.weight : undefined });
     const key = plan.order.map((s) => s.id).join(",");
-    if (t.id !== "top_picks" && seen.has(key)) continue;
+    if (t.id !== "top_picks" && t.id !== "mix" && seen.has(key)) continue;
     seen.add(key);
     themed.push({ id: t.id, name: t.name, plan });
   }
@@ -121,7 +143,7 @@ serve(async (req) => {
       t.geometry = [origin, ...t.plan.order.map((s) => candidates[s.idx - 2]), dest].map((p) => [p.lng, p.lat]);
     }
     const key = t.plan.order.map((s) => s.id).join(",");
-    if (t.id !== "top_picks" && verifiedKeys.has(key)) { themed.splice(i--, 1); continue; }
+    if (t.id !== "top_picks" && t.id !== "mix" && verifiedKeys.has(key)) { themed.splice(i--, 1); continue; }
     verifiedKeys.add(key);
   }
   // The asked-for theme goes first; top-level fields remain Top picks for existing clients.
@@ -166,7 +188,8 @@ serve(async (req) => {
       return {
         id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng,
         is_partner: c.is_partner, is_demo: c.is_demo,
-        rating: Number(c.rating), dwell_min: c.dwell_min, eta_min: eta, meal,
+        rating: c.rating == null ? null : Number(c.rating), price_level: c.price_level,
+        dwell_min: c.dwell_min, eta_min: eta, meal,
         // exclusive places only reach a route when the member's level opens them
         min_level: c.min_level, exclusive_kind: c.exclusive_kind, perk_text: c.perk_text,
         // field name kept for existing clients; the card is any nearby place, picked by quality

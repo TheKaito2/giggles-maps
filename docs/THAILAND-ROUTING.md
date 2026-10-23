@@ -51,7 +51,7 @@ fair-use limits. Requests carry `X-Client-Id: giggles-maps.pages.dev`.
 names are categorized as parks with 90-minute dwell; waterfalls use 45-minute dwell.
 These are planning defaults, not verified visit-duration data. Other dwell defaults
 remain category-based. Real opening hours, entrance positions and reviews need curation.
-The existing schema's 4.2 rating is a placeholder, not an assertion of quality.
+Since migration 013 these places load unrated (rating NULL); they join routes only when a user turns on "Include places without ratings".
 
 Source: offline OpenStreetMap/Overpass Thailand snapshot, OSM timestamp
 `2026-10-23T03:02:49Z`, ODbL attribution. The original query selected named

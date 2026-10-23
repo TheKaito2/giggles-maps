@@ -3,7 +3,10 @@ const env = (name: string) => typeof Deno === "undefined" ? undefined : Deno.env
 // production sets VALHALLA_URL to our own instance built from the Thailand OSM extract.
 const BASE = env("VALHALLA_URL") ?? "https://valhalla1.openstreetmap.de";
 
-export type Mode = "pedestrian" | "auto";
+export type Mode = "pedestrian" | "bicycle" | "auto";   // Valhalla costing names
+
+/** Rough straight-line speed per mode, for estimates and search radii (walk 4.8, cycle 15, drive 30 km/h). */
+export const METERS_PER_MIN: Record<Mode, number> = { pedestrian: 80, bicycle: 250, auto: 500 };
 export interface LatLng { lat: number; lng: number }
 
 const post = async (path: string, body: unknown) => {
@@ -43,7 +46,7 @@ export async function routeLine(points: LatLng[], mode: Mode): Promise<[number, 
 
 // straight-line fallback when routing is down: haversine * 1.3 detour factor
 export function estimateMinutes(points: LatLng[], mode: Mode): number[][] {
-  const metersPerMin = mode === "pedestrian" ? 80 : 500;
+  const metersPerMin = METERS_PER_MIN[mode];
   return points.map((a) => points.map((b) => (haversineM(a, b) * 1.3) / metersPerMin));
 }
 

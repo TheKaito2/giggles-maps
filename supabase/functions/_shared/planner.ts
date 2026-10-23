@@ -1,7 +1,7 @@
 // Giggles Maps detour planner. The route is never for sale: stops are chosen on quality
 // (rating x variety x trip theme) per added minute. The planner doesn't know which places pay.
-// Constraints: total extra time <= budget, every stop open on arrival, rating >= floor,
-// and meal stops arrive inside their meal window.
+// Constraints: total extra time <= budget, every stop open on arrival, rating >= floor (unrated only if allowed),
+// meal stops arrive inside their meal window, and at most maxStops stops.
 // Phase 0 places meal stops, phase 1 fills the rest; greedy insertion + 2-opt, fine for ~22 candidates.
 
 import { inMealWindow, type Meal, MEAL_CATEGORIES, MEAL_WINDOWS } from "./meals.ts";
@@ -11,7 +11,7 @@ export interface Stop {
   idx: number;          // row/column in the travel matrix
   id: number;
   category: string;
-  rating: number;
+  rating: number | null;   // null = unrated
   dwellMin: number;
   openMin?: number | null;   // minutes after midnight
   closeMin?: number | null;
@@ -25,7 +25,10 @@ export interface PlanInput {
   stops: Stop[];
   travelMin: (from: number, to: number) => number;
   minRating?: number;
+  allowUnrated?: boolean;
+  maxStops?: number;    // default no cap; meal stops count
   theme?: Theme;        // default top_picks (no boost)
+  weight?: (category: string) => number;   // overrides theme, e.g. the user's own mix of interests
   meals?: Meal[];       // meals the trip should cover, from mealsInTrip()
 }
 
@@ -38,11 +41,14 @@ export interface Plan {
   missedMeals: Meal[];
 }
 
-const quality = (s: Stop) => s.rating / 5;
+const UNRATED = 3.5;   // unrated places score like a middling rating, below the 4.0 default floor
+const quality = (s: Stop) => (s.rating ?? UNRATED) / 5;
 
 export function planDetour(input: PlanInput): Plan {
-  const { originIdx, destIdx, startMin, budgetMin, travelMin, minRating = 4.0, theme = "top_picks", meals = [] } = input;
-  const eligible = input.stops.filter((s) => s.rating >= minRating);
+  const { originIdx, destIdx, startMin, budgetMin, travelMin, minRating = 4.0, allowUnrated = false,
+          maxStops = Infinity, theme = "top_picks", meals = [] } = input;
+  const weight = input.weight ?? ((category: string) => themeWeight(theme, category));
+  const eligible = input.stops.filter((s) => s.rating == null ? allowUnrated : s.rating >= minRating);
   const mealOf = new Map<number, Meal>();
 
   // Walk the order on the clock. Arriving early for a meal means waiting until the window opens
@@ -101,13 +107,14 @@ export function planDetour(input: PlanInput): Plan {
 
   const score = (s: Stop, order: Stop[], added: number) => {
     const variety = order.some((o) => o.category === s.category) ? 0.5 : 1;
-    return (quality(s) * themeWeight(theme, s.category) * variety) / Math.max(added, 1);
+    return (quality(s) * weight(s.category) * variety) / Math.max(added, 1);
   };
 
   // phase 0: one food stop per meal the trip runs through, in time order
   let order: Stop[] = [];
   const missedMeals: Meal[] = [];
   for (const meal of [...meals].sort((a, b) => MEAL_WINDOWS[a][0] - MEAL_WINDOWS[b][0])) {
+    if (order.length >= maxStops) { missedMeals.push(meal); continue; }
     let pick: { order: Stop[]; ratio: number; s: Stop } | null = null;
     for (const s of eligible) {
       if (!MEAL_CATEGORIES.has(s.category) || order.includes(s)) continue;
@@ -123,7 +130,7 @@ export function planDetour(input: PlanInput): Plan {
   }
 
   // phase 1: fill the remaining budget by quality x theme x variety per added minute
-  for (;;) {
+  while (order.length < maxStops) {
     let pick: { order: Stop[]; ratio: number } | null = null;
     for (const s of eligible) {
       if (order.includes(s)) continue;

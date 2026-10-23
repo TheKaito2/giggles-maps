@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { planDetour, type Stop } from "./planner.ts";
+import { mixWeight } from "./themes.ts";
 
 // grid world: travel minutes = manhattan distance between points
 const pts = [
@@ -89,4 +90,31 @@ test("a meal that can't fit is reported, not forced", () => {
                          travelMin: travel2, meals: ["dinner"] });
   expect(p.missedMeals).toEqual(["dinner"]);
   expect([...p.mealOf.values()]).not.toContain("dinner");
+});
+
+test("your mix boosts the kinds your interests cover, like a theme does", () => {
+  const p = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 25, stops: two, travelMin: travel2,
+                         weight: mixWeight(["nature"]) });
+  expect(p.order[0]?.category).toBe("park");
+  expect(mixWeight(["cafes", "shopping"])("market")).toBe(2);
+  expect(mixWeight([])("cafe")).toBe(1);
+});
+
+test("max stops caps every plan; meals count toward the cap", () => {
+  const capped = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 120, stops, travelMin, maxStops: 1 });
+  expect(capped.order.length).toBe(1);
+  const meal = planDetour({ originIdx: 0, destIdx: 1, startMin: 11 * 60 + 25, budgetMin: 120, stops, travelMin,
+                           maxStops: 1, meals: ["lunch"] });
+  expect(meal.order.length).toBe(1);
+  expect(meal.mealOf.size + meal.missedMeals.length).toBe(1);
+});
+
+test("unrated places only join when allowed, and the rating floor is the user's", () => {
+  const withUnrated: Stop[] = [...stops, { idx: 6, id: 60, category: "viewpoint", rating: null, dwellMin: 5 }];
+  const off = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 120, stops: withUnrated, travelMin });
+  expect(off.order.map((s) => s.id)).not.toContain(60);
+  const on = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 120, stops: withUnrated, travelMin, allowUnrated: true });
+  expect(on.order.map((s) => s.id)).toContain(60);
+  const strict = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 120, stops, travelMin, minRating: 4.5 });
+  expect(strict.order.every((s) => (s.rating ?? 0) >= 4.5)).toBe(true);
 });

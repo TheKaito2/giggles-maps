@@ -16,6 +16,24 @@ export const THEME_BOOST = 2;
 
 export const isTheme = (v: unknown): v is Theme => THEMES.some((t) => t.id === v);
 
+// "What draws you in?": the kinds of stop each interest chip means. Landmarks are the sights a trip is built around.
+export const INTERESTS: Record<string, string[]> = {
+  food: ["food", "market"],
+  cafes: ["cafe"],
+  culture: ["temple", "museum", "art"],
+  nature: ["park", "viewpoint"],
+  shopping: ["craft", "market"],
+  landmarks: ["viewpoint", "museum", "temple"],
+};
+
+export const isInterest = (v: unknown): v is string => typeof v === "string" && v in INTERESTS;
+
+/** The user's own mix: x2 for any kind one of their picked interests covers. */
+export function mixWeight(interests: string[]): (category: string) => number {
+  const boosted = new Set(interests.flatMap((i) => INTERESTS[i] ?? []));
+  return (category) => boosted.has(category) ? THEME_BOOST : 1;
+}
+
 export function themeWeight(theme: Theme, category: string): number {
   return THEMES.find((t) => t.id === theme)!.boost.includes(category) ? THEME_BOOST : 1;
 }
