@@ -1,12 +1,10 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type LatLng, mapPlaces, type MapPlace, type RouteStop, type Stop, type TripMember } from "../lib/api";
 import { addPinIcons } from "./pinIcons";
 import { colourOf } from "./kinds";
-
-// map skins from the coin shop: OpenFreeMap styles
-const styleUrl = (skin: string) => `https://tiles.openfreemap.org/styles/${["bright", "positron"].includes(skin) ? skin : "liberty"}`;
+import { addMapType, isNight, type MapLook, offlineStyle, styleUrl } from "./mapLayers";
 export const SAKON: LatLng = { lat: 17.163, lng: 104.149 };
 
 interface Props {
@@ -23,7 +21,8 @@ interface Props {
   here?: LatLng | null;   // the user's live position
   inZone?: number[];      // stops the user is standing in the check-in zone of
   members?: TripMember[]; // ride along: trip-mates with a fresh position
-  skin?: string;
+  skin?: string;           // coin-shop map skin (daytime basemap)
+  look?: MapLook;          // map type + night map (Layers button)
   kinds?: string[] | null;          // Explore chip filter for the place pins (null = the default mix for the zoom)
   onPlace?: (p: MapPlace) => void;  // a place pin was tapped
 }
@@ -39,7 +38,16 @@ const pin = (cls: string, text: string, label: string) => {
 };
 
 export default function MapView({ origin, dest, stops, geometry, baseGeometry = [], estimated = false, picking, onPick, onSelectStop,
-  nearby = [], here = null, inZone = [], members = [], skin = "liberty", kinds = null, onPlace }: Props) {
+  nearby = [], here = null, inZone = [], members = [], skin = "liberty", look = { type: "default", night: "auto" }, kinds = null, onPlace }: Props) {
+  const night = isNight(look.night);
+  const [online, setOnline] = useState(navigator.onLine);
+  const lookRef = useRef({ type: look.type, night, online });
+  lookRef.current = { type: look.type, night, online };
+  useEffect(() => {
+    const on = () => setOnline(true), off = () => setOnline(false);
+    addEventListener("online", on); addEventListener("offline", off);
+    return () => { removeEventListener("online", on); removeEventListener("offline", off); };
+  }, []);
   const kindsRef = useRef(kinds);
   kindsRef.current = kinds;
   const onPlaceRef = useRef(onPlace);
@@ -60,22 +68,23 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
 
   useEffect(() => {
     const m = new maplibregl.Map({
-      container: box.current!, style: styleUrl(skin), center: [SAKON.lng, SAKON.lat], zoom: 13.4,
+      container: box.current!, style: styleUrl(skin, night), center: [SAKON.lng, SAKON.lat], zoom: 13.4,
       attributionControl: { compact: true, customAttribution: "Routing: Valhalla" },
     });
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     m.on("click", (e) => { if (pickingRef.current) pickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng }); });
-    m.on("style.load", () => {   // also after a skin change, which drops every source and layer
+    m.on("style.load", () => {   // also after a skin, night or offline change, which drops every source and layer
+      if (lookRef.current.online) addMapType(m, lookRef.current.type);
       // our own place pins replace the basemap's POI icons
       for (const l of m.getStyle().layers ?? []) if (l.id.startsWith("poi")) m.setLayoutProperty(l.id, "visibility", "none");
-      m.addSource("pois", { type: "geojson", data: poisRef.current });
+      m.addSource("gm-pois", { type: "geojson", data: poisRef.current });
       addPinIcons(m).then(() => {
-        if (m.getLayer("pois") || !m.getSource("pois")) return;
-        m.addLayer({ id: "pois", type: "symbol", source: "pois", layout: {
+        if (m.getLayer("gm-pois") || !m.getSource("gm-pois")) return;
+        m.addLayer({ id: "gm-pois", type: "symbol", source: "gm-pois", layout: {
           "icon-image": ["concat", "k-", ["get", "kind"]], "icon-allow-overlap": false, "symbol-sort-key": ["get", "rank"],
           "text-field": ["step", ["zoom"], "", 15, ["get", "name"]], "text-size": 12, "text-offset": [0, 1.3], "text-anchor": "top",
           "text-optional": true, "text-max-width": 9, "text-font": ["Noto Sans Regular"],
-        }, paint: { "text-color": ["get", "colour"], "text-halo-color": "#ffffff", "text-halo-width": 1.6 } }, "baseline");
+        }, paint: { "text-color": ["get", "colour"], "text-halo-color": lookRef.current.night ? "#1c1f26" : "#ffffff", "text-halo-width": 1.6 } }, "baseline");
       }).catch((e) => console.error("place pin icons failed", e));
       m.addSource("baseline", { type: "geojson", data: baseRef.current });
       m.addLayer({ id: "baseline", type: "line", source: "baseline", paint: { "line-color": "#777f97", "line-width": 4, "line-opacity": 0.6, "line-dasharray": [2, 2] } });
@@ -93,29 +102,39 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
         poisRef.current = { type: "FeatureCollection", features: list.map((p, i) => ({ type: "Feature",
           properties: { ...p, rank: i, colour: colourOf(p.kind, p.category) },
           geometry: { type: "Point", coordinates: [p.lng, p.lat] } })) };
-        (m.getSource("pois") as maplibregl.GeoJSONSource | undefined)?.setData(poisRef.current);
+        (m.getSource("gm-pois") as maplibregl.GeoJSONSource | undefined)?.setData(poisRef.current);
       }).catch(() => undefined);
     };
     let t: ReturnType<typeof setTimeout>;
     m.on("moveend", () => { clearTimeout(t); t = setTimeout(loadPins, 250); });
     m.on("load", loadPins);
-    m.on("click", "pois", (e) => {
+    m.on("click", "gm-pois", (e) => {
       const f = e.features?.[0];
       if (f && !pickingRef.current) onPlaceRef.current?.(f.properties as unknown as MapPlace);
     });
-    m.on("mouseenter", "pois", () => { m.getCanvas().style.cursor = "pointer"; });
-    m.on("mouseleave", "pois", () => { m.getCanvas().style.cursor = pickingRef.current ? "crosshair" : ""; });
+    m.on("mouseenter", "gm-pois", () => { m.getCanvas().style.cursor = "pointer"; });
+    m.on("mouseleave", "gm-pois", () => { m.getCanvas().style.cursor = pickingRef.current ? "crosshair" : ""; });
     reloadPins.current = loadPins;
     map.current = m;
-    return () => m.remove();
+    return () => { clearTimeout(t); m.remove(); };
   }, []);
   const reloadPins = useRef<() => void>(() => undefined);
   useEffect(() => { reloadPins.current(); }, [kinds]);
 
-  const firstSkin = useRef(skin);
+  // basemap: skin by day, dark at night, a saved province pack when offline; map type rides on top
+  // ponytail: the offline pack is picked at the map centre; panning into another saved province needs a look change
+  const shown = useRef(`${skin}|${night}|${look.type}|true`), styleRequest = useRef(0);
   useEffect(() => {
-    if (skin !== firstSkin.current) { firstSkin.current = skin; map.current?.setStyle(styleUrl(skin), { diff: false }); }
-  }, [skin]);
+    const key = `${skin}|${night}|${look.type}|${online}`, m = map.current;
+    if (!m || key === shown.current) return;
+    const id = ++styleRequest.current, c = m.getCenter();
+    (online ? Promise.resolve(null) : offlineStyle(c.lng, c.lat, night).catch(() => null)).then((offline) => {
+      if (id !== styleRequest.current || map.current !== m) return;   // a newer change won, or the map is gone
+      if (!online && !offline) return;   // no saved map here: keep what's on screen (cached tiles), retry when back online
+      shown.current = key;
+      m.setStyle(offline ?? styleUrl(skin, night), { diff: false });
+    });
+  }, [skin, night, look.type, online]);
 
   useEffect(() => {
     if (map.current) map.current.getCanvas().style.cursor = picking ? "crosshair" : "";

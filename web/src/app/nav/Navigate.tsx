@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, ArrowUp, CornerUpLeft, CornerUpRight, Flag, Lang
 import { type Avoid, getNavRoute, type LatLng, type NavRoute, shareEta, SITE, stopEta, type TravelMode, tripPing } from "../../lib/api";
 import { cumulative, dueCall, type Progress, progress } from "./progress";
 import { say } from "./thai";
+import { isNight, loadLook, styleUrl } from "../mapLayers";
 
 export interface Waypoint extends LatLng { name: string }
 const OFF_ROUTE_M = 60, OFF_ROUTE_S = 10, REROUTE_GAP_S = 20;
@@ -60,7 +61,7 @@ export default function Navigate({ waypoints, mode, onClose }: { waypoints: Wayp
 
   // map, GPS and wake lock for the life of nav mode
   useEffect(() => {
-    const m = new maplibregl.Map({ container: box.current!, style: "https://tiles.openfreemap.org/styles/liberty", zoom: 16, pitch: 50,
+    const m = new maplibregl.Map({ container: box.current!, style: styleUrl("liberty", isNight(loadLook().night)), zoom: 16, pitch: 50,
       center: [waypoints[0].lng, waypoints[0].lat], attributionControl: { compact: true } });
     m.on("load", () => {
       m.addSource("nav", { type: "geojson", data: { type: "FeatureCollection", features: [] } });

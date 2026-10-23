@@ -22,6 +22,8 @@ import PlaceSheet from "./PlaceSheet";
 import AddPlace from "./AddPlace";
 import Navigate, { type Waypoint } from "./nav/Navigate";
 import EtaView from "./nav/EtaView";
+import LayersButton from "./LayersButton";
+import { loadLook, type MapLook, saveLook } from "./mapLayers";
 import ExploreChips, { CHIPS } from "./ExploreChips";
 
 
@@ -47,6 +49,8 @@ export default function App() {
   const [dest, setDest] = useState<Place | null>(DEFAULT_DEST);
   const [chip, setChip] = useState<string | null>(null);
   const [nav, setNav] = useState<Waypoint[] | null>(null);   // turn-by-turn running
+  const [look, setLookState] = useState<MapLook>(loadLook);   // map type + night map, remembered on this device
+  const setLook = (patch: Partial<MapLook>) => setLookState((l) => { const next = { ...l, ...patch }; saveLook(next); return next; });
   const [etaToken, setEtaToken] = useState(() => {
     const t = /^[0-9a-f]{32}$/.exec(new URLSearchParams(location.search).get("eta") ?? "")?.[0] ?? null;
     if (t) history.replaceState(null, "", location.pathname);   // keep the link out of history and referrers
@@ -187,9 +191,10 @@ export default function App() {
             <MapView origin={origin?.point ?? null} dest={dest?.point ?? null} stops={showResults ? plan.stops : NONE} geometry={showResults ? plan.geometry : NONE}
               baseGeometry={showResults ? plan.base_geometry : NONE} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop}
               nearby={nearby.stops} here={nearby.here} inZone={nearby.inZone.map((s) => s.id)}
-              members={trip.trip?.members ?? NONE} skin={profile?.look.map ?? "liberty"}
+              members={trip.trip?.members ?? NONE} skin={profile?.look.map ?? "liberty"} look={look}
               kinds={CHIPS.find((c) => c.id === chip)?.kinds ?? null} onPlace={(p) => setPlace(p.id)} />
             <ExploreChips active={chip} onPick={setChip} />
+            <LayersButton look={look} setLook={setLook} />
             <button type="button" className="btn soft small add-place-fab" onClick={() => setOverlay("add")}><Plus size={15} aria-hidden /> Add place</button>
             {place && <PlaceSheet id={place} onClose={() => setPlace(null)}
               onDirections={(p) => { setDest({ point: { lat: p.lat, lng: p.lng }, name: p.name }); setPlace(null); setView("plan"); }}

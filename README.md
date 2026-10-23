@@ -42,4 +42,20 @@ Secrets (set with `supabase secrets set`): `CRON_SECRET`, `SITE_URL`, later `STR
 cd web && npm run build && wrangler pages deploy dist --project-name giggles-maps --branch main
 ```
 
+## Map layers and offline maps
+
+- Map type (Layers button on the map): Default (OpenFreeMap skin), Satellite (EOX Sentinel-2 cloudless 2016, CC BY 4.0,
+  under the roads and labels), Terrain (hillshade from the Mapzen/AWS terrarium elevation tiles). Night map: OpenFreeMap
+  `dark`, Auto from 18:30 to 06:00.
+- Offline province maps: one Protomaps PMTiles pack per province in the R2 bucket `giggles-maps-offline`
+  (public at `https://pub-33a938fc0962483c8bdce739ffec9e22.r2.dev`, CORS for the site and `localhost:5181`).
+  Rebuild from a newer Protomaps daily build (needs the `pmtiles` CLI at `.tools/bin/pmtiles`, not committed):
+
+```bash
+python3 supabase/tools/offline_packs.py --build 20261020 --upload
+```
+
+  The app saves a pack in Cache Storage and switches to it when the device goes offline; `public/sw.js` keeps the app
+  itself, the map fonts and icons loadable with no signal. Planning, directions and check-ins still need a connection.
+
 Place data © OpenStreetMap contributors (ODbL).
