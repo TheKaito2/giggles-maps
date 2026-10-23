@@ -187,6 +187,15 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
 - `equip(p_kind, p_id)` → the new look. Error `not_owned`. `shop_items` is a public table.
 - `verify-checkin` also returns `group_bonus: boolean`.
 
+## Profile, feed, quests (migration 024)
+- `me()` also returns `avatar`, `joined`, `coins`, `provinces`.
+- `set_avatar(p jsonb)`: `{slot: part}`; errors `bad_avatar`, `not_owned`. `equip('avatar', …)` raises `use_builder`.
+- `profile_of(p_id)`: me or a friend: card + `photos, friends, rank, badges, friend_code (mine only)`. Error `not_friends`.
+- `feed(p_scope 'all'|'friends'|'me')`: `[{id, kind, at, mine, data, who, to, place, province, photo, caption, reactions, my_reaction}]`.
+- `react(p_activity, p_emoji 'heart'|'fire'|'clap'|'wow'|null)`, `nudge(p_friend)` (error `already_nudged`).
+- `friend_quest()` → `{partner, week, me, them}` or null; `set_friend_quest(p_friend)` (error `already_paired`); `claim_quests()`.
+- `verify-checkin` also returns `badges: [badge]` for tiers reached by that check-in.
+
 ## Search (`search_places` RPC)
 
 `rpc("search_places", { p_query, p_lat?, p_lng?, p_kind?, p_limit? })`: our places by name (Thai or English, substring), nearest first when `p_lat`/`p_lng` are given.

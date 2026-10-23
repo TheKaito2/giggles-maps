@@ -76,3 +76,35 @@ no longer own, e.g. after Plus ends. Titles can also be a completed province set
 | Map skins | Standard 0 · Bright 150 · Paper 150 (OpenFreeMap styles) |
 | Photo frames | None 0 · Polaroid 100 · Film strip 150 · Postage stamp 200 · Gold leaf 250 |
 | Titles | Wanderer 50 · Foodie 150 · Temple hopper 150 · Road tripper 200 · Trailblazer 400 · Legend of the road 1000 |
+
+## App shell (migration 024): Duolingo-style
+Tabs: Map · Leaderboard · Quests · Feed · Profile (bottom bar on phones, sidebar on desktop). The top bar shows level/XP,
+provinces N/77 and coins; tapping coins opens the Shop.
+
+- **Avatar**: a mix-and-match character (`web/src/app/avatar/parts.tsx`): skin, face, eyes, brows, mouth, hair + colour,
+  facial hair, glasses, headwear, outfit + colour, background. `public.avatar_parts` whitelists every part id
+  (keep it in sync with `parts.tsx`); 15 premium parts are `shop_items` of kind `avatar` (100-500 coins) and are bought
+  inside the builder. `set_avatar` checks ids and ownership.
+- **Passport book**: cover, ID page, Thailand map, 77 province visa stamps (drawn from each province outline, region ink,
+  one of five stamp shapes), place entries, photos. Illustrated art can replace a province stamp later by adding
+  `/stamps/<iso>.webp` and its ISO code to `ART` in `ProvinceStamp.tsx`.
+- **Feed** (`feed`, `react`, `nudge`): stamps, new provinces, level-ups, quests, badges and nudges from you and your
+  friends, last 30 days. Reactions: heart, fire, clap, wow (one per person per item). Nudge: once per friend per 20 h.
+- **Achievements** (`achievements`, computed): 10 badges with tiers I-V
+
+  | Badge | Counts | Tiers |
+  |---|---|---|
+  | Province Hopper | provinces | 1 / 5 / 15 / 40 / 77 |
+  | Landmark Hunter | landmark stamps | 1 / 5 / 15 / 40 / 100 |
+  | Collector | stamps | 5 / 25 / 75 / 200 / 500 |
+  | Shutterbug | photos | 1 / 10 / 50 / 150 / 400 |
+  | Foodie | food stamps | 1 / 10 / 30 / 75 / 150 |
+  | Temple Runner | temple stamps | 1 / 10 / 30 / 75 / 150 |
+  | Social Butterfly | friends | 1 / 3 / 10 / 25 / 50 |
+  | Road Crew | ride-along trips with others | 1 / 3 / 10 / 25 / 50 |
+  | Quest Master | quests claimed | 5 / 25 / 100 / 250 / 500 |
+  | High Flyer | level | 2 / 4 / 6 / 8 / 10 |
+
+- **Friends Quest** (weekly): pick one friend (`set_friend_quest`); 10 new stamps between you this week gives both
+  +150 XP and +40 coins. Opening the Quests tab claims finished quests (`claim_quests`).
+- **Profile** (`profile_of`): yours or a friend's: avatar, title, joined date, stats, all-time rank, badges, passport.
