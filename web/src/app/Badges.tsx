@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
-import { Camera, Car, Flower2, Landmark, Map, Stamp, Star, Trophy, Users, UtensilsCrossed } from "lucide-react";
+import { Camera, Car, Flower2, Landmark, Map, MapPinPlus, Stamp, Star, Trophy, Users, UtensilsCrossed } from "lucide-react";
 import type { Badge } from "../lib/api";
 
 const ICON: Record<string, (s: number) => ReactNode> = {
   map: (s) => <Map size={s} />, landmark: (s) => <Landmark size={s} />, stamp: (s) => <Stamp size={s} />, camera: (s) => <Camera size={s} />,
   utensils: (s) => <UtensilsCrossed size={s} />, temple: (s) => <Flower2 size={s} />, users: (s) => <Users size={s} />,
-  car: (s) => <Car size={s} />, trophy: (s) => <Trophy size={s} />, star: (s) => <Star size={s} />,
+  car: (s) => <Car size={s} />, trophy: (s) => <Trophy size={s} />, star: (s) => <Star size={s} />, pin: (s) => <MapPinPlus size={s} />,
 };
 // tier 0 = not earned yet; then bronze, silver, gold, platinum, diamond
 export const TIER_COLOURS = ["#c4c9d6", "#c8813f", "#9aa7b8", "#e9a400", "#3fb3c6", "#7b5cff"];

@@ -9,13 +9,15 @@ import FriendsSection from "./social/Friends";
 import Badges from "./Badges";
 import Book from "./passport/Book";
 import Account from "./Account";
+import SavedLists from "./SavedLists";
+import AdminEdits from "./AdminEdits";
 
 const month = (iso?: string | null) => iso ? new Date(iso).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "";
 
 /** One profile page (Duolingo-style): header, stats tiles, the passport, badges. Mine adds friends and account; a friend's adds Nudge. */
-function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editName, onChange, openFriend }: {
+function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editName, onChange, openFriend, openPlace }: {
   id: string; self: boolean; profile: Profile | null; refreshKey: number; onBack?: () => void;
-  editAvatar?: () => void; editName?: () => void; onChange: () => void; openFriend?: (id: string) => void;
+  editAvatar?: () => void; editName?: () => void; onChange: () => void; openFriend?: (id: string) => void; openPlace?: (id: number) => void;
 }) {
   const [page, setPage] = useState<ProfilePage | null>(null);
   const [book, setBook] = useState<{ stamps: PassportStamp[]; photos: PassportPhoto[] } | null>(null);
@@ -76,7 +78,9 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
       <h3>Achievements</h3>
       <Badges list={page.badges} />
 
+      {self && openPlace && <SavedLists openPlace={openPlace} />}
       {self && openFriend && <FriendsSection profile={profile} onOpen={openFriend} />}
+      {self && profile?.isAdmin && <AdminEdits />}
       {self && <Account refreshKey={refreshKey} profile={profile} onChange={onChange} />}
 
       {book && <Book onClose={() => setBook(null)} stamps={book.stamps} photos={book.photos} theme={look.theme} frame={look.frame}
@@ -87,14 +91,14 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
 }
 
 /** Profile tab: mine, or a friend's when one is opened (from the feed, friends list or a link). */
-export default function ProfileTab({ profile, refreshKey, onChange, editAvatar, editName, friend, setFriend }: {
+export default function ProfileTab({ profile, refreshKey, onChange, editAvatar, editName, friend, setFriend, openPlace }: {
   profile: Profile | null; refreshKey: number; onChange: () => void; editAvatar: () => void; editName: () => void;
-  friend: string | null; setFriend: (id: string | null) => void;
+  friend: string | null; setFriend: (id: string | null) => void; openPlace: (id: number) => void;
 }) {
   const user = useUser();
   if (!user) return <div className="page-col"><p className="fine">Loading…</p></div>;
   return friend
     ? <ProfileView key={friend} id={friend} self={false} profile={profile} refreshKey={refreshKey} onBack={() => setFriend(null)} onChange={onChange} />
     : <ProfileView key="me" id={user.id} self profile={profile} refreshKey={refreshKey} editAvatar={editAvatar} editName={editName} onChange={onChange}
-        openFriend={(id) => { setFriend(id); scrollTo({ top: 0 }); }} />;
+        openFriend={(id) => { setFriend(id); scrollTo({ top: 0 }); }} openPlace={openPlace} />;
 }

@@ -632,3 +632,53 @@ body { background: var(--paper); overflow: hidden; }
 .result-icon.address { background: var(--indigo-soft); color: var(--indigo); }
 .result-text { display: grid; gap: 1px; min-width: 0; }
 .results-head { padding: 6px 10px 2px; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; font-size: 11px; }
+
+/* ---------- place page sheet (Google-Maps-style) ---------- */
+.place-sheet { position: absolute; z-index: 30; top: 12px; left: 12px; bottom: 12px; width: 440px; overflow-y: auto; overscroll-behavior: contain;
+  padding: 0 0 20px; display: grid; align-content: start; gap: 14px; border-radius: 22px; background: var(--card); }
+.place-sheet > *:not(.photo-strip) { margin-inline: 18px; }
+.place-sheet > .sheet-close { position: absolute; top: 10px; right: 10px; z-index: 2; margin: 0; background: var(--card); box-shadow: var(--shadow); border-radius: 50%; }
+.place-sheet > p.fine:only-of-type { padding-top: 20px; }
+.photo-strip { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.photo-strip li { position: relative; flex: 0 0 86%; scroll-snap-align: start; }
+.photo-strip li:only-child { flex-basis: 100%; }
+.photo-strip img, .photo-strip .ph { width: 100%; height: 210px; object-fit: cover; display: block; background: var(--indigo-soft); }
+.photo-credit { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); font-size: 10px; color: #fff; background: rgb(0 0 0 / .5); padding: 1px 6px; border-radius: 6px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.place-head { display: flex; gap: 12px; align-items: flex-start; padding-top: 14px; }
+.place-head h2 { margin: 0; font: 800 22px var(--font-display); }
+.place-card-icon.big { width: 44px; height: 44px; }
+.row.tight { gap: 6px; flex-wrap: wrap; }
+.chip.otop { background: #f3e5f5; color: #6a1b9a; }
+.stars { display: inline-flex; gap: 1px; color: #c4c9d6; }
+.stars .on { color: #f2a900; fill: #f2a900; }
+.stars button { border: 0; background: none; padding: 2px; color: inherit; }
+.place-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.save-menu { padding: 12px 14px; display: grid; gap: 8px; border-radius: 16px; }
+.place-info { list-style: none; padding: 12px 0 0; display: grid; gap: 10px; border-top: 2px solid var(--paper); }
+.place-info li { display: flex; gap: 12px; align-items: flex-start; overflow-wrap: anywhere; }
+.place-info svg { flex: none; color: var(--ink-2); margin-top: 2px; }
+.open { color: var(--good); }
+.closed { color: var(--bad); }
+.busy-bars { display: flex; align-items: flex-end; gap: 3px; height: 66px; }
+.busy-bars span { flex: 1; background: #aecbfa; border-radius: 4px 4px 0 0; }
+.busy-bars span.now { background: var(--indigo); }
+.busy-axis { display: flex; justify-content: space-between; }
+.review { padding: 10px 0; border-top: 2px solid var(--paper); }
+.review p { margin: 6px 0 0; }
+.review header .icon-btn { margin-left: auto; width: 28px; height: 28px; }
+.review-form textarea { width: 100%; resize: vertical; }
+.edit-form .field { display: grid; gap: 4px; }
+@media (max-width: 959px) {
+  .place-sheet { position: fixed; top: auto; left: 0; right: 0; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); width: auto; max-height: 72vh;
+    border-radius: 22px 22px 0 0; box-shadow: 0 -10px 30px rgb(0 0 0 / .2); }
+}
+.add-place-fab { position: absolute; right: 12px; bottom: 40px; z-index: 5; }
+.saved-list { border: 2px solid var(--line); border-radius: 16px; padding: 10px 12px; background: var(--card); display: grid; gap: 10px; }
+.saved-list summary { display: flex; align-items: center; gap: 8px; cursor: pointer; flex-wrap: wrap; }
+.admin-edit { padding: 12px 14px; display: grid; gap: 6px; border-radius: 16px; }
+.admin-edit dl { margin: 0; display: grid; gap: 4px; }
+.admin-edit dt { font: 700 11px var(--font-data); text-transform: uppercase; color: var(--ink-2); }
+.admin-edit dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 959px) { .add-place-fab { bottom: 36px; } }
+.place-head .person-main > * { white-space: normal; overflow: visible; }

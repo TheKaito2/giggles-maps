@@ -188,7 +188,7 @@ export interface Profile {
   theme: string; flair: string;   // what the passport header wears (from look)
   nickname: string | null; colour: string; friendCode: string; onLeaderboard: boolean;
   look: Look; title: string | null; owned: string[];   // owned = "kind:id" bought with coins
-  avatar: AvatarLook; joined: string | null; coins: number; provinces: number;
+  avatar: AvatarLook; joined: string | null; coins: number; provinces: number; isAdmin: boolean;
 }
 
 export async function getProfile(): Promise<Profile> {
@@ -202,7 +202,7 @@ export async function getProfile(): Promise<Profile> {
     theme: look.theme ?? "classic", flair: look.flair ?? "none",
     nickname: data?.nickname ?? null, colour: data?.colour ?? "marigold", friendCode: data?.friend_code ?? "",
     onLeaderboard: data?.on_leaderboard ?? true, look, title: data?.title ?? null, owned: data?.owned ?? [],
-    avatar: data?.avatar ?? {}, joined: data?.joined ?? null, coins: data?.coins ?? 0, provinces: data?.provinces ?? 0,
+    avatar: data?.avatar ?? {}, joined: data?.joined ?? null, coins: data?.coins ?? 0, provinces: data?.provinces ?? 0, isAdmin: !!data?.is_admin,
   };
 }
 
@@ -282,6 +282,38 @@ export async function mapPlaces(w: number, s: number, e: number, n: number, zoom
   if (error) throw error;
   return (data ?? []) as MapPlace[];
 }
+
+// ---------- place page: reviews, photos, lists, edits ----------
+export interface PlaceReview { who: Who; rating: number; body: string | null; at: string; mine: boolean }
+export interface PlacePhoto { url?: string; path?: string; credit: string | null; licence?: string | null; source: "wikimedia" | "owner" | "checkin" }
+export interface PlacePage {
+  id: number; name: string; name_th: string | null; kind: string | null; category: string; tier: number; lat: number; lng: number;
+  opening_hours: string | null; phone: string | null; website: string | null; address: string | null;
+  local: boolean; otop: boolean; community: boolean; detour: boolean;
+  rating: number | null; review_count: number; reviews: PlaceReview[]; checked_in: boolean; stamped: boolean;
+  photos: PlacePhoto[]; busy: number[] | null; saved_in: string[];
+}
+export const getPlacePage = (id: number) => rpc<PlacePage | null>("place_page", { p_id: id });
+export const writeReview = (place: number, rating: number, body: string) => rpc<void>("write_review", { p_place: place, p_rating: rating, p_body: body });
+export const deleteReview = (place: number) => rpc<void>("delete_review", { p_place: place });
+export const reportReview = (user: string, place: number) => rpc<void>("report_review", { p_user: user, p_place: place });
+export const setPublicPhoto = (checkin: string, isPublic: boolean) => rpc<void>("set_public_photo", { p_checkin: checkin, p_public: isPublic });
+
+export interface SavedList { id: string; name: string; shared: boolean; places: { id: number; name: string; kind: string | null; category: string; lat: number; lng: number }[] }
+export const getMyLists = () => rpc<SavedList[]>("my_lists");
+export const savePlace = (list: string, place: number, saved: boolean) => rpc<void>("save_place", { p_list: list, p_place: place, p_saved: saved });
+export const createList = (name: string) => rpc<string>("create_list", { p_name: name });
+export const updateList = (list: string, p: { name?: string; shared?: boolean; remove?: boolean }) =>
+  rpc<void>("update_list", { p_list: list, p_name: p.name ?? null, p_shared: p.shared ?? null, p_delete: p.remove ?? false });
+
+export type EditPayload = Partial<{ name: string; name_th: string; kind: string; opening_hours: string; phone: string; website: string;
+  closed: boolean; lat: number; lng: number }>;
+export const suggestEdit = (place: number | null, payload: EditPayload, here?: LatLng) =>
+  rpc<void>("suggest_edit", { p_place: place, p_payload: payload, p_here_lat: here?.lat ?? null, p_here_lng: here?.lng ?? null });
+export interface PendingEdit { id: number; place_id: number | null; payload: EditPayload; at: string; who: Who;
+  place: { name: string; kind: string | null; opening_hours: string | null; phone: string | null; website: string | null } | null }
+export const getAdminEdits = () => rpc<PendingEdit[]>("admin_edits");
+export const reviewEdit = (id: number, approve: boolean) => rpc<void>("review_edit", { p_edit: id, p_approve: approve });
 
 export const SITE = "https://giggles-maps.pages.dev";
 // "?friend=CODE" (friend QR) and "?trip=CODE" (ride-along QR)

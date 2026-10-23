@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "../lib/supabase";
 import ShareCard from "./ShareCard";
-import { BILLING_TEXT, type CheckinResult, type CheckinTarget, REASON_TEXT, setPhoto, uploadSelfie, verifyCheckin } from "../lib/api";
+import { BILLING_TEXT, type CheckinResult, type CheckinTarget, REASON_TEXT, setPhoto, setPublicPhoto, uploadSelfie, verifyCheckin } from "../lib/api";
 
 const TIER_NAME = { 3: "Landmark", 2: "Worth a visit", 1: "Everyday" } as const;
 const CONSENT_KEY = "giggles.photoConsent.v2";   // v2: photos are kept for the passport album
@@ -25,6 +25,7 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
   const [camOk, setCamOk] = useState(true);
   const [facing, setFacing] = useState<"environment" | "user">("environment");
   const [caption, setCaption] = useState("");
+  const [sharePublic, setSharePublic] = useState(false);   // off by default: photos stay friends-only
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
 
@@ -63,6 +64,7 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
         qr_code: code.trim() || null, client: { platform: "web", demo },
       });
       if (caption.trim() && r.status !== "rejected") await setPhoto(r.checkin_id, false, caption).catch(() => undefined);
+      if (sharePublic && r.status !== "rejected") await setPublicPhoto(r.checkin_id, true).catch(() => undefined);
       setResult(r);
       setStep("result");
       onDone(r);
@@ -113,6 +115,10 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
               : <p className="fine">Camera isn't available here. Use Upload photo instead.</p>}
             <input className="text-in" value={caption} maxLength={140} placeholder="Caption (optional)" aria-label="Caption"
               onChange={(e) => setCaption(e.target.value)} />
+            <label className="toggle">
+              <input type="checkbox" checked={sharePublic} onChange={(e) => setSharePublic(e.target.checked)} />
+              <span>Share this photo on the place page (anyone on Giggles Maps can see it; you can hide it later)</span>
+            </label>
             {target.is_partner && (
               <label className="field">
                 <span>Counter code <span className="fine">(under the Giggles QR sticker at the counter)</span></span>
