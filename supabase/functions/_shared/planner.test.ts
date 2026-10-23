@@ -153,7 +153,7 @@ test("a picked place that can't fit is reported, never forced over budget or the
 const ptsL = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 10 }];
 const travelL = (a: number, b: number) => Math.abs(ptsL[a].x - ptsL[b].x) + Math.abs(ptsL[a].y - ptsL[b].y);
 const lmStops: Stop[] = [
-  { idx: 2, id: 200, category: "cafe", rating: null, dwellMin: 25, tier: 1 },
+  { idx: 2, id: 200, category: "cafe", rating: null, dwellMin: 25, tier: 1, local: true },
   { idx: 3, id: 300, category: "temple", rating: null, dwellMin: 20, tier: 3 },   // adds 20 travel + 20 visit
 ];
 
@@ -191,4 +191,28 @@ test("stops spread out along the route instead of bunching at one end", () => {
   const p = spreadPlan(5);
   expect(stretches(p.order)).toBeGreaterThanOrEqual(3);
   expect(p.extraMin).toBeLessThanOrEqual(50);
+});
+
+// local first: OTOP / community / independent places, free and published boost (never paid)
+const lpts = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 5, y: 1 }, { x: 5, y: -1 }, { x: 3, y: 1 }, { x: 7, y: -1 }];
+const lMin = (a: number, b: number) => Math.abs(lpts[a].x - lpts[b].x) + Math.abs(lpts[a].y - lpts[b].y);
+const lStops: Stop[] = [
+  { idx: 2, id: 2, category: "cafe", rating: 4.5, dwellMin: 15 },
+  { idx: 3, id: 3, category: "craft", rating: 4.5, dwellMin: 15, otop: true },
+  { idx: 4, id: 4, category: "temple", rating: 4.8, dwellMin: 15 },
+  { idx: 5, id: 5, category: "temple", rating: 4.9, dwellMin: 15, tier: 3 },
+];
+const lPlan = (budgetMin: number, maxStops?: number, stops = lStops) =>
+  planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin, stops, travelMin: lMin, maxStops });
+
+test("an OTOP shop beats an equally good, equally close café", () => {
+  expect(lPlan(19, 1, lStops.slice(0, 2)).order.map((s) => s.id)).toEqual([3]);
+});
+
+test("a plan makes room for one local stop when it fits, and never breaks the budget for it", () => {
+  const roomy = lPlan(60);
+  expect(roomy.order.some((s) => s.otop || s.community || s.local)).toBe(true);
+  expect(roomy.extraMin).toBeLessThanOrEqual(60);
+  const tight = lPlan(18, 1);   // only one stop fits: the landmark may win, and that's fine
+  expect(tight.extraMin).toBeLessThanOrEqual(18);
 });

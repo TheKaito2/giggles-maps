@@ -12,6 +12,7 @@ interface Candidate {
   price_level: number | null;
   tier: Tier;   // 3 landmark, 2 worth a visit, 1 everyday
   frac?: number;   // 0 start .. 1 destination along the direct route (route shortlist only)
+  local?: boolean; otop?: boolean; community?: boolean;   // local-first flags (route shortlist only)
 }
 interface NearPlace {
   id: number; name: string; category: string; lat: number; lng: number; rating: number;
@@ -138,7 +139,7 @@ serve(async (req) => {
 
   const stops: Stop[] = candidates.map((c, i) => ({
     idx: i + 2, id: c.id, category: c.category, rating: c.rating == null ? null : Number(c.rating), tier: c.tier ?? 2, dwellMin: c.dwell_min,
-    openMin: c.open_min, closeMin: c.close_min, frac: c.frac,
+    openMin: c.open_min, closeMin: c.close_min, frac: c.frac, local: c.local, otop: c.otop, community: c.community,
   }));
   const travelMin = (a: number, b: number) => matrix[a][b];
 
@@ -229,6 +230,7 @@ serve(async (req) => {
         is_partner: c.is_partner, is_demo: c.is_demo,
         rating: c.rating == null ? null : Number(c.rating), price_level: c.price_level, tier: c.tier ?? 2,
         dwell_min: c.dwell_min, eta_min: eta, meal, meal_late: !!late, picked: mustInclude.includes(c.id),
+        local: !!c.local, otop: !!c.otop, community: !!c.community,
         // exclusive places only reach a route when the member's level opens them
         min_level: c.min_level, exclusive_kind: c.exclusive_kind, perk_text: c.perk_text,
         // field name kept for existing clients; the card is any nearby place, picked by quality

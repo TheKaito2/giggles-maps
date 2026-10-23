@@ -18,7 +18,15 @@ export interface Stop {
   openMin?: number | null;   // minutes after midnight
   closeMin?: number | null;
   frac?: number;            // where along the direct route it sits: 0 start, 1 destination
+  local?: boolean;          // independent food/café/craft/market place (not a chain)
+  otop?: boolean;           // OTOP shop (One Tambon One Product)
+  community?: boolean;      // community enterprise
 }
+
+// Local first (docs/LOCAL-FIRST.md): a free, published boost for independent and community businesses. Paying
+// partners never change ranking; this does, for everyone equally.
+const localBoost = (s: Stop) => s.otop || s.community ? 1.6 : s.local ? 1.3 : 1;
+const isLocal = (s: Stop) => !!(s.otop || s.community || s.local);
 
 export interface PlanInput {
   originIdx: number;
@@ -58,7 +66,8 @@ export function planDetour(input: PlanInput): Plan {
   const { originIdx, destIdx, startMin, budgetMin, travelMin, minRating = 4.0, allowUnrated = false,
           maxStops = Infinity, theme = "top_picks", meals = [] } = input;
   const weight = input.weight ?? ((category: string, tier?: Tier) => themeWeight(theme, category, tier));
-  const eligible = input.stops.filter((s) => s.rating == null ? allowUnrated : s.rating >= minRating);
+  // Local gems: independent and community places only
+  const eligible = input.stops.filter((s) => (s.rating == null ? allowUnrated : s.rating >= minRating) && (theme !== "local" || isLocal(s)));
   const mealOf = new Map<number, Meal>();
 
   // Walk the order on the clock. Arriving early for a meal means waiting until the window opens
@@ -131,7 +140,7 @@ export function planDetour(input: PlanInput): Plan {
   const score = (s: Stop, order: Stop[], added: number) => {
     const variety = order.some((o) => o.category === s.category) ? 0.5 : 1;
     // value per minute, but sqrt(minutes): a landmark 40 min away should beat a cafe 5 min away
-    return (TIER_VALUE[s.tier ?? 2] * quality(s) * weight(s.category, s.tier) * variety * spread(s, order))
+    return (TIER_VALUE[s.tier ?? 2] * quality(s) * weight(s.category, s.tier) * variety * spread(s, order) * localBoost(s))
       / Math.sqrt(Math.max(added, 1));
   };
 
@@ -181,6 +190,19 @@ export function planDetour(input: PlanInput): Plan {
     }
     if (!pick) break;
     order = twoOpt(pick.order);
+  }
+
+  // every plan offers at least one local stop when one still fits the time and the stop cap
+  if (!order.some(isLocal) && order.length < maxStops) {
+    let pick: { order: Stop[]; ratio: number } | null = null;
+    for (const s of eligible) {
+      if (!isLocal(s) || order.includes(s) || weight(s.category, s.tier) === 0) continue;
+      const ins = bestInsert(order, s);
+      if (!ins) continue;
+      const ratio = score(s, order, ins.added);
+      if (!pick || ratio > pick.ratio) pick = { order: ins.order, ratio };
+    }
+    if (pick) order = twoOpt(pick.order);
   }
 
   const totalMin = duration(order);
