@@ -17,7 +17,10 @@ import Feed from "./Feed";
 import ProfileTab from "./Profile";
 import Shop from "./passport/Shop";
 import AvatarBuilder from "./avatar/AvatarBuilder";
-import { levelFor, levelProgress } from "../lib/api";
+import { levelFor, levelProgress, type MapPlace } from "../lib/api";
+import ExploreChips, { CHIPS } from "./ExploreChips";
+import { GROUPS, kindOf } from "./kinds";
+const GROUP_COLOUR = Object.fromEntries(Object.entries(GROUPS).map(([g, v]) => [g, v.colour]));
 
 type Tab = "map" | "board" | "quests" | "feed" | "profile";
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -39,6 +42,8 @@ export default function App() {
   const [overlay, setOverlay] = useState<"shop" | "avatar" | "ride" | null>(() => readCodeParam("trip") ? "ride" : null);
   const [origin, setOrigin] = useState<Place | null>(DEFAULT_ORIGIN);
   const [dest, setDest] = useState<Place | null>(DEFAULT_DEST);
+  const [chip, setChip] = useState<string | null>(null);
+  const [place, setPlace] = useState<MapPlace | null>(null);   // the pin tapped on the map
   const [picking, setPicking] = useState<"origin" | "dest" | null>(null);
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [response, setPlan] = useState<RoutePlan | null>(null);
@@ -172,7 +177,21 @@ export default function App() {
             <MapView origin={origin?.point ?? null} dest={dest?.point ?? null} stops={showResults ? plan.stops : NONE} geometry={showResults ? plan.geometry : NONE}
               baseGeometry={showResults ? plan.base_geometry : NONE} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop}
               nearby={nearby.stops} here={nearby.here} inZone={nearby.inZone.map((s) => s.id)}
-              members={trip.trip?.members ?? NONE} skin={profile?.look.map ?? "liberty"} />
+              members={trip.trip?.members ?? NONE} skin={profile?.look.map ?? "liberty"}
+              kinds={CHIPS.find((c) => c.id === chip)?.kinds ?? null} onPlace={setPlace} />
+            <ExploreChips active={chip} onPick={setChip} />
+            {place && (() => {
+              const k = kindOf(place.kind, place.category);
+              return (
+                <div className="place-card glass" role="dialog" aria-label={place.name}>
+                  <span className="place-card-icon" style={{ background: GROUP_COLOUR[k.group] }}><k.icon size={18} aria-hidden /></span>
+                  <span className="person-main"><b>{place.name}</b>
+                    <span className="fine">{k.en}{place.name_th && place.name_th !== place.name ? ` · ${place.name_th}` : ""}{place.otop ? " · OTOP" : place.local ? " · Local" : ""}</span></span>
+                  <button type="button" className="btn small" onClick={() => { setDest({ point: { lat: place.lat, lng: place.lng }, name: place.name }); setPlace(null); setView("plan"); }}>Go here</button>
+                  <button type="button" className="icon-btn" onClick={() => setPlace(null)} aria-label="Close"><X size={18} /></button>
+                </div>
+              );
+            })()}
             <button type="button" className={`btn soft small trip-chip${trip.trip ? " live" : ""}`} onClick={() => setOverlay("ride")}>
               <Car size={16} aria-hidden /> {trip.trip ? `Ride along · ${trip.trip.members.length}` : "Ride along"}
             </button>

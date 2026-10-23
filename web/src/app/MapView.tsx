@@ -1,7 +1,9 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
-import type { LatLng, RouteStop, Stop, TripMember } from "../lib/api";
+import { type LatLng, mapPlaces, type MapPlace, type RouteStop, type Stop, type TripMember } from "../lib/api";
+import { addPinIcons } from "./pinIcons";
+import { colourOf } from "./kinds";
 
 // map skins from the coin shop: OpenFreeMap styles
 const styleUrl = (skin: string) => `https://tiles.openfreemap.org/styles/${["bright", "positron"].includes(skin) ? skin : "liberty"}`;
@@ -22,7 +24,11 @@ interface Props {
   inZone?: number[];      // stops the user is standing in the check-in zone of
   members?: TripMember[]; // ride along: trip-mates with a fresh position
   skin?: string;
+  kinds?: string[] | null;          // Explore chip filter for the place pins (null = the default mix for the zoom)
+  onPlace?: (p: MapPlace) => void;  // a place pin was tapped
 }
+
+const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
 const pin = (cls: string, text: string, label: string) => {
   const el = document.createElement("button");
@@ -33,7 +39,13 @@ const pin = (cls: string, text: string, label: string) => {
 };
 
 export default function MapView({ origin, dest, stops, geometry, baseGeometry = [], estimated = false, picking, onPick, onSelectStop,
-  nearby = [], here = null, inZone = [], members = [], skin = "liberty" }: Props) {
+  nearby = [], here = null, inZone = [], members = [], skin = "liberty", kinds = null, onPlace }: Props) {
+  const kindsRef = useRef(kinds);
+  kindsRef.current = kinds;
+  const onPlaceRef = useRef(onPlace);
+  onPlaceRef.current = onPlace;
+  const poisRef = useRef<GeoJSON.FeatureCollection>(EMPTY);
+  const pinRequest = useRef(0);
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markers = useRef<maplibregl.Marker[]>([]);
@@ -54,6 +66,17 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     m.on("click", (e) => { if (pickingRef.current) pickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng }); });
     m.on("style.load", () => {   // also after a skin change, which drops every source and layer
+      // our own place pins replace the basemap's POI icons
+      for (const l of m.getStyle().layers ?? []) if (l.id.startsWith("poi")) m.setLayoutProperty(l.id, "visibility", "none");
+      m.addSource("pois", { type: "geojson", data: poisRef.current });
+      addPinIcons(m).then(() => {
+        if (m.getLayer("pois") || !m.getSource("pois")) return;
+        m.addLayer({ id: "pois", type: "symbol", source: "pois", layout: {
+          "icon-image": ["concat", "k-", ["get", "kind"]], "icon-allow-overlap": false, "symbol-sort-key": ["get", "rank"],
+          "text-field": ["step", ["zoom"], "", 15, ["get", "name"]], "text-size": 12, "text-offset": [0, 1.3], "text-anchor": "top",
+          "text-optional": true, "text-max-width": 9, "text-font": ["Noto Sans Regular"],
+        }, paint: { "text-color": ["get", "colour"], "text-halo-color": "#ffffff", "text-halo-width": 1.6 } }, "baseline");
+      }).catch((e) => console.error("place pin icons failed", e));
       m.addSource("baseline", { type: "geojson", data: baseRef.current });
       m.addLayer({ id: "baseline", type: "line", source: "baseline", paint: { "line-color": "#777f97", "line-width": 4, "line-opacity": 0.6, "line-dasharray": [2, 2] } });
       m.addSource("route", { type: "geojson", data: lineRef.current }); // picks up a route planned before the style loaded
@@ -62,9 +85,32 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
       m.setPaintProperty("route", "line-dasharray", estimatedRef.current ? [2, 2] : [1, 0]);
       m.setPaintProperty("route-casing", "line-dasharray", estimatedRef.current ? [2, 2] : [1, 0]);
     });
+    // load the pins for the visible box after each pan/zoom (newest request wins)
+    const loadPins = () => {
+      const b = m.getBounds(), id = ++pinRequest.current;
+      mapPlaces(b.getWest(), b.getSouth(), b.getEast(), b.getNorth(), m.getZoom(), kindsRef.current).then((list) => {
+        if (id !== pinRequest.current) return;
+        poisRef.current = { type: "FeatureCollection", features: list.map((p, i) => ({ type: "Feature",
+          properties: { ...p, rank: i, colour: colourOf(p.kind, p.category) },
+          geometry: { type: "Point", coordinates: [p.lng, p.lat] } })) };
+        (m.getSource("pois") as maplibregl.GeoJSONSource | undefined)?.setData(poisRef.current);
+      }).catch(() => undefined);
+    };
+    let t: ReturnType<typeof setTimeout>;
+    m.on("moveend", () => { clearTimeout(t); t = setTimeout(loadPins, 250); });
+    m.on("load", loadPins);
+    m.on("click", "pois", (e) => {
+      const f = e.features?.[0];
+      if (f && !pickingRef.current) onPlaceRef.current?.(f.properties as unknown as MapPlace);
+    });
+    m.on("mouseenter", "pois", () => { m.getCanvas().style.cursor = "pointer"; });
+    m.on("mouseleave", "pois", () => { m.getCanvas().style.cursor = pickingRef.current ? "crosshair" : ""; });
+    reloadPins.current = loadPins;
     map.current = m;
     return () => m.remove();
   }, []);
+  const reloadPins = useRef<() => void>(() => undefined);
+  useEffect(() => { reloadPins.current(); }, [kinds]);
 
   const firstSkin = useRef(skin);
   useEffect(() => {
@@ -116,7 +162,8 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
     nearbyMarkers.current = [];
     const routeIds = new Set(stops.map((s) => s.id));
     for (const s of nearby) {
-      if (routeIds.has(s.id)) continue;   // route stops already have a numbered pin
+      // the place pins show every stop; only the ones you're standing in get a glowing check-in marker
+      if (routeIds.has(s.id) || !inZone.includes(s.id)) continue;
       const el = document.createElement("span");
       el.className = `stop-dot tier-${s.tier}${inZone.includes(s.id) ? " in-zone" : ""}${s.stamped ? " stamped" : ""}`;
       el.title = s.name;

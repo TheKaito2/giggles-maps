@@ -97,7 +97,7 @@ export type Kind = "food" | "cafes" | "culture" | "nature" | "shopping";
 /** A search hit: one of our places (has id) or an address from Photon (OpenStreetMap search). */
 export interface FoundPlace extends LatLng {
   id?: number; name: string; name_th?: string | null; category?: string;
-  rating?: number | null; price_level?: number | null; distance_m?: number | null; tier?: number; source: "giggles" | "photon";
+  rating?: number | null; price_level?: number | null; distance_m?: number | null; tier?: number; kind?: string | null; source: "giggles" | "photon";
 }
 
 export async function searchPlaces(query: string, near?: LatLng | null, kind?: Kind | null): Promise<FoundPlace[]> {
@@ -111,10 +111,10 @@ export async function searchPlaces(query: string, near?: LatLng | null, kind?: K
 
 // Photon (photon.komoot.io): free OpenStreetMap search, fair use. Called on Search/Enter only, never per keystroke.
 const THAILAND_BBOX = "97.3,5.6,105.7,20.5";
-export async function searchAddresses(query: string, near?: LatLng | null): Promise<FoundPlace[]> {
+export async function searchAddresses(query: string, near?: LatLng | null, signal?: AbortSignal): Promise<FoundPlace[]> {
   const params = new URLSearchParams({ q: query, limit: "5", bbox: THAILAND_BBOX });
   if (near) { params.set("lat", String(near.lat)); params.set("lon", String(near.lng)); }
-  const res = await fetch(`https://photon.komoot.io/api/?${params}`);
+  const res = await fetch(`https://photon.komoot.io/api/?${params}`, { signal });
   if (!res.ok) throw new Error(`photon ${res.status}`);
   const json = await res.json() as { features: { geometry: { coordinates: [number, number] }; properties: Record<string, string> }[] };
   return json.features.map(({ geometry, properties: p }) => ({
@@ -273,6 +273,15 @@ export interface FriendQuest { partner: Who; week: string; me: number; them: num
 export const getFriendQuest = () => rpc<FriendQuest | null>("friend_quest");
 export const setFriendQuest = (friend: string) => rpc<void>("set_friend_quest", { p_friend: friend });
 export const claimQuests = () => rpc<{ slug: string; title: string; xp: number; coins: number }[]>("claim_quests");
+
+export interface MapPlace { id: number; name: string; name_th: string | null; kind: string | null; category: string; tier: number;
+  lat: number; lng: number; local: boolean; otop: boolean; community: boolean }
+/** Place pins for the visible map box: fewer when zoomed out, landmarks and OTOP first. */
+export async function mapPlaces(w: number, s: number, e: number, n: number, zoom: number, kinds: string[] | null): Promise<MapPlace[]> {
+  const { data, error } = await supabase.rpc("map_places", { p_min_lng: w, p_min_lat: s, p_max_lng: e, p_max_lat: n, p_zoom: zoom, p_kinds: kinds });
+  if (error) throw error;
+  return (data ?? []) as MapPlace[];
+}
 
 export const SITE = "https://giggles-maps.pages.dev";
 // "?friend=CODE" (friend QR) and "?trip=CODE" (ride-along QR)
