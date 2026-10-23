@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { planDetour, type Stop, insertionCost } from "./planner.ts";
-import { mixWeight } from "./themes.ts";
+import { fitsInterests, independent, mixWeight } from "./themes.ts";
 
 // grid world: travel minutes = manhattan distance between points
 const pts = [
@@ -224,4 +224,15 @@ test("insertionCost: cheapest slot plus dwell, and the saving for a stop already
   expect(insertionCost([], 2, tm, 10)).toBeCloseTo(10);          // on the way: no extra road
   expect(insertionCost([2], 3, tm, 0)).toBeCloseTo(2 + Math.hypot(5, 2) - 5);   // next to stop 2, either side
   expect(insertionCost([2, 3], 3, tm, 15)).toBeCloseTo(Math.hypot(0, 2) + Math.hypot(5, 2) - 5 + 15);
+});
+
+test("fitsInterests: only the picked kinds, landmarks by tier; independent: chains out, sights in", () => {
+  expect(fitsInterests([], "temple")).toBe(true);
+  expect(fitsInterests(["cafes"], "cafe")).toBe(true);
+  expect(fitsInterests(["cafes"], "temple")).toBe(false);
+  expect(fitsInterests(["landmarks"], "park", 3)).toBe(true);
+  expect(fitsInterests(["landmarks"], "park", 2)).toBe(false);
+  expect(independent({ category: "cafe", local: false })).toBe(false);
+  expect(independent({ category: "cafe", local: true })).toBe(true);
+  expect(independent({ category: "temple" })).toBe(true);
 });

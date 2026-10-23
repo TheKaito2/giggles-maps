@@ -44,7 +44,10 @@ Request
 - `budget_min`: extra minutes the user accepts (0–240), or `"auto"`: half the direct trip time, rounded to 15 min, between 45 min and 3 h (the response's `budget_min` is the chosen value and `budget_auto: true`). Never exceeded.
 - `mode`: `"pedestrian"` (default), `"bicycle"` or `"auto"`; anything else is 400 `bad_mode`.
 - Planner preferences (all optional; omitted = the defaults below):
-  - `interests`: up to 6 of `food`, `cafes`, `culture`, `nature`, `shopping`, `landmarks`. Adds a **Your mix** plan (`id: "mix"`) first, boosting (×2) every kind of stop the picks cover. Empty or omitted = no mix plan ("Surprise me"). 400 `bad_interests`.
+  - `interests`: up to 6 of `food`, `cafes`, `culture`, `nature`, `shopping`, `landmarks`. **Only those kinds**: every plan uses just places the picks cover (`landmarks` = tier 3 of any kind), plus a restaurant when a meal is asked for and any `must_include` place. A **Your mix** plan (`id: "mix"`) comes first. Empty or omitted = any kind. 400 `bad_interests`.
+  - `open_only: true`: only places whose opening hours are known (the planner then checks you arrive while they're open; it does that for every place with known hours anyway). About 1 in 5 places lists hours, fewer in small towns.
+  - `no_chains: true`: shops, cafés, restaurants and markets must be independent (`local`, OTOP or community); temples, parks and other sights are unaffected.
+  - `min_rating`, `include_unrated`, `max_price`: still accepted, but the web app no longer sends them: OpenStreetMap has no ratings or prices, so they filter nothing useful until reviews and prices exist.
   - `min_rating`: `0`, `3.5`, `4` (default) or `4.5`. 400 `bad_min_rating`.
   - `include_unrated`: default **true**: unrated places (`rating: null`, most of the OpenStreetMap import) join routes, scored below rated ones (as 3.5/5). `false` = rated places only.
   - `must_include`: up to 6 place ids the user picked or added (from `search_places` or a plan's `along`). They go into every plan when they fit the budget, opening hours and `max_stops`, even below the rating floor; the rest are listed in each plan's `unfit_required`. Stops have `picked: true`. 400 `bad_must_include`.

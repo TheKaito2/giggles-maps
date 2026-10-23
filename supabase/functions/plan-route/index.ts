@@ -1,7 +1,7 @@
 import { admin, HttpError, json, num, requireUser, serve } from "../_shared/http.ts";
 import { type Meal, MEAL_WINDOWS } from "../_shared/meals.ts";
 import { insertionCost, type Plan, planDetour, type Stop } from "../_shared/planner.ts";
-import { isInterest, mixWeight, type Tier, THEMES, toTheme } from "../_shared/themes.ts";
+import { fitsInterests, independent, isInterest, mixWeight, type Tier, THEMES, toTheme } from "../_shared/themes.ts";
 import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan } from "../_shared/road-detour.ts";
 import { createRouter, estimateMinutes, haversineM, type LatLng, matrixMinutes, METERS_PER_MIN, type Mode, type RoadRoute } from "../_shared/valhalla.ts";
 
@@ -57,6 +57,9 @@ serve(async (req) => {
   const meals: Meal[] = body.meals ?? [];
   if (!Array.isArray(meals) || meals.length > 3 || !meals.every((m) => m in MEAL_WINDOWS)) throw new HttpError(400, "bad_meals");
   const filters = { p_min_rating: minRating, p_unrated: includeUnrated, p_max_price: maxPrice };
+  // stricter filters (all optional): only places whose opening hours we know (the planner then checks you arrive
+  // while they're open), and no chain shops, cafés or restaurants
+  const openOnly = body.open_only === true, noChains = body.no_chains === true;
   // places the user picked or added from "along your route" (up to 6); they go into every plan when they fit
   const ids = (v: unknown, max: number, code: string): number[] => {
     if (v == null) return [];
@@ -95,6 +98,7 @@ serve(async (req) => {
     budgetMin = Math.min(MAX_BUDGET, budgetMin + 35 * meals.length);   // room to actually sit down and eat
   }
   const maxCandidates = shortTrip ? 16 : MAX_CANDIDATES;
+  const narrowed = interests.length > 0 || openOnly || noChains;   // the filters below drop places: fetch more first
   // spread stops along the way: 5 stretches on long drives, 3 on short ones, none inside a city block
   const directM = haversineM(origin, dest);
   const SEGMENTS = () => directM < 3000 ? 0 : directM < 30000 ? 3 : 5;
@@ -103,7 +107,8 @@ serve(async (req) => {
       p_geometry: baseline.geometry,
       p_radius_m: Math.min(20000, budgetMin * METERS_PER_MIN[mode] / 2),
       // over-fetch by the excluded count so removed stops don't eat the shortlist (they're dropped below)
-      p_budget_min: budgetMin, p_level: level, p_max_n: maxCandidates + exclude.size, p_per_group: (shortTrip ? 4 : 5) + Math.min(exclude.size, 3), ...filters,
+      p_budget_min: budgetMin, p_level: level, p_max_n: maxCandidates + exclude.size + (narrowed ? 20 : 0),
+      p_per_group: (shortTrip ? 4 : 5) + Math.min(exclude.size, 3) + (narrowed ? 4 : 0), ...filters,
       p_meal_slots: meals.length ? 4 : 0,   // nearest restaurants always make the shortlist when a meal is asked for
       p_segments: SEGMENTS(),
     })
@@ -113,7 +118,14 @@ serve(async (req) => {
     });
   if (error) { console.error("candidate lookup failed", error); warnings.push("places_unavailable"); }
   // the start and destination themselves aren't detours: drop places within 150 m of either end
-  const candidates = ((cands ?? []) as Candidate[]).filter((c) => !exclude.has(c.id) && haversineM(c, origin) > 150 && haversineM(c, dest) > 150);
+  // "only these kinds" (a meal asked for still allows restaurants), confirmed opening hours, no chains;
+  // places the user named as must-visit always stay in
+  const keep = (c: Candidate) => mustInclude.includes(c.id) || (
+    (fitsInterests(interests, c.category, c.tier) || (meals.length > 0 && c.category === "food"))
+    && (!openOnly || (c.open_min != null && c.close_min != null))
+    && (!noChains || independent(c)));
+  const candidates = ((cands ?? []) as Candidate[]).filter((c) => !exclude.has(c.id) && keep(c) && haversineM(c, origin) > 150 && haversineM(c, dest) > 150)
+    .slice(0, maxCandidates);   // over-fetched for the filters: the road-time matrix stays its usual size
   if (mustInclude.length) {
     const { data: picked, error: pErr } = await db.rpc("places_by_ids", { p_ids: mustInclude, p_level: level });
     if (pErr) throw pErr;

@@ -35,6 +35,17 @@ export const INTERESTS: Record<string, string[]> = {
 
 export const isInterest = (v: unknown): v is string => typeof v === "string" && v in INTERESTS;
 
+/** "Only these kinds": does a place fit any picked interest? ("landmarks" = tier 3 of any kind). Empty = everything. */
+export function fitsInterests(interests: string[], category: string, tier?: Tier): boolean {
+  if (!interests.length) return true;
+  return interests.some((i) => (INTERESTS[i] ?? []).includes(category)) || (interests.includes("landmarks") && tier === 3);
+}
+
+/** "Avoid chains": shops, cafés and restaurants must be independent (local, OTOP or community); sights always pass. */
+export const COMMERCIAL = new Set(["food", "cafe", "market", "craft"]);
+export const independent = (p: { category: string; local?: boolean; otop?: boolean; community?: boolean }) =>
+  !COMMERCIAL.has(p.category) || !!(p.local || p.otop || p.community);
+
 /** The user's own mix: x2 for any kind one of their picked interests covers (and for landmarks if picked). */
 export function mixWeight(interests: string[]): (category: string, tier?: Tier) => number {
   const boosted = new Set(interests.flatMap((i) => INTERESTS[i] ?? []));
