@@ -17,6 +17,8 @@ export interface RoutePlan {
   base_min: number; total_min: number; extra_min: number; budget_min: number; max_budget_min: number;
   candidates_considered: number;
   stops: RouteStop[]; geometry: [number, number][];
+  base_geometry?: [number, number][];
+  warnings?: string[];
 }
 
 export type Billing = "charged" | "starter_plan" | "no_qr" | "not_shown_on_route" | "repeat_visit_30d"

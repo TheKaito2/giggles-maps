@@ -23,7 +23,7 @@ Redirect URLs allowed: `https://giggles-maps.pages.dev/**`, `http://localhost:51
 
 ## `plan-route`
 
-Plan a detour that fits the user's extra-time budget, partner stops first.
+Plan a road detour that fits the user's extra-time budget, quality first.
 
 Request
 ```json
@@ -54,11 +54,24 @@ Response
 ```
 - `routing: "estimate"` means the routing server was down and times are straight-line estimates.
 - `geometry` is `[lng, lat]` pairs (GeoJSON order) for the polyline.
+- Road-routing update: `base_geometry` optionally contains the direct A -> B road line;
+  `warnings` optionally contains `places_unavailable` or `some_detours_unavailable`.
+  The updated backend returns road geometry only (`routing: "valhalla"`). If no baseline
+  road route can be found, it returns 503 `routing_unavailable`, never a straight-line route.
+  `estimate` describes legacy deployed responses only. See `THAILAND-ROUTING.md` for deployment.
 - Stops are chosen by quality; **at most one** stop has `is_partner: true` (the paid slot, only in leftover minutes). Show a **Partner** label (`Example partner` when `is_demo`).
 - `nearby_partner` (on park/viewpoint/temple stops, max 2 per route): a "Near this spot" card `{id, name, category, lat, lng, distance_m, is_demo}`. Users can check in there too.
 - Giggles Plus users (`plus: true`) get no partner stop or cards and `budget_min` up to 240; free users over 120 get 402 `plus_required`.
 
 Errors: `not_signed_in` 401, `plus_required` 402, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_json` 400.
+
+With the road-routing update: `routing_unavailable` 503. Clients should offer a retry,
+nearby road pin, or travel-mode change. Routing times remain estimates of actual travel.
+
+`search_route_places(p_query)` (public RPC) returns up to 10 named POIs with
+`id`, `name`, `name_th`, `lat`, `lng`. Query length is 2–100 characters; Thai and
+English names are searched literally. This searches the imported POI catalog, not
+every address. Any map pin/coordinate can still be used as a destination.
 
 ## `verify-checkin`
 

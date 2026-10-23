@@ -1,11 +1,11 @@
 import { admin, HttpError, json, num, requireUser, serve } from "../_shared/http.ts";
-import { planDetour, type Stop } from "../_shared/planner.ts";
-import { estimateMinutes, type LatLng, matrixMinutes, type Mode, routeLine } from "../_shared/valhalla.ts";
+import { planRoadDetour } from "../_shared/road-detour.ts";
+import { createRouter, type LatLng, type Mode, type RoadRoute } from "../_shared/valhalla.ts";
 
 interface Candidate {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
   open_min: number | null; close_min: number | null; dwell_min: number; rating: number;
-  paid: boolean; bid_thb: number; p_checkin: number; is_demo: boolean;
+  paid: boolean; bid_thb: number; progress: number; is_demo: boolean;
 }
 interface NearPartner { id: number; name: string; category: string; lat: number; lng: number; bid_thb: number; dist_m: number; is_demo: boolean }
 
@@ -34,33 +34,28 @@ serve(async (req) => {
   const budgetMin = num(body.budget_min, 0, PLUS_MAX_BUDGET, "bad_budget_min");
   if (!plus && budgetMin > FREE_MAX_BUDGET) throw new HttpError(402, "plus_required");
 
-  const metersPerMin = mode === "pedestrian" ? 80 : 500;
-  const { data: cands, error } = await db.rpc("detour_candidates", {
-    o_lat: origin.lat, o_lng: origin.lng, d_lat: dest.lat, d_lng: dest.lng,
-    extra_m: budgetMin * metersPerMin, max_free: 12, max_paid: plus ? 0 : 4,
-  });
-  if (error) throw error;
-  const candidates = cands as Candidate[];
-
-  // index 0 = origin, 1 = destination, 2.. = candidates
-  const points: LatLng[] = [origin, dest, ...candidates.map((c) => ({ lat: c.lat, lng: c.lng }))];
-  let routing = "valhalla";
-  let matrix: number[][];
+  const routeRoad = createRouter(Deno.env.get("VALHALLA_URL") ?? "https://valhalla1.openstreetmap.de");
+  let baseline: RoadRoute;
   try {
-    matrix = await matrixMinutes(points, mode);
-  } catch (e) {
-    console.error(e);
-    routing = "estimate";
-    matrix = estimateMinutes(points, mode);
+    baseline = await routeRoad([origin, dest], mode);
+  } catch (error) {
+    console.error("baseline routing failed", error);
+    throw new HttpError(503, "routing_unavailable");
   }
-
-  const stops: Stop[] = candidates.map((c, i) => ({
-    idx: i + 2, id: c.id, category: c.category, rating: Number(c.rating), dwellMin: c.dwell_min,
-    openMin: c.open_min, closeMin: c.close_min, paid: c.paid, bidThb: Number(c.bid_thb),
-  }));
-  const plan = planDetour({
-    originIdx: 0, destIdx: 1, startMin, budgetMin, stops, travelMin: (a, b) => matrix[a][b], allowPaid: !plus,
+  const warnings: string[] = [];
+  const { data: cands, error } = budgetMin > 0
+    ? await db.rpc("route_detour_candidates", {
+      p_geometry: baseline.geometry,
+      p_radius_m: Math.min(20000, budgetMin * (mode === "auto" ? 500 : 80) / 2),
+      p_budget_min: budgetMin, p_allow_paid: !plus,
+    }) : { data: [], error: null };
+  if (error) { console.error("candidate lookup failed", error); warnings.push("places_unavailable"); }
+  const candidates = (cands ?? []) as Candidate[];
+  const plan = await planRoadDetour({
+    origin, dest, mode, startMin, budgetMin, baseline, candidates, allowPaid: !plus, route: routeRoad,
   });
+  if (plan.failures) warnings.push("some_detours_unavailable");
+  const routing = "valhalla";
 
   // "Near this spot" cards: best nearby funded partner (relevance x bid) under nature/temple stops
   const inRoute = new Set(plan.order.map((s) => s.id));
@@ -79,18 +74,13 @@ serve(async (req) => {
   }
 
   // ETA per stop for the UI
-  let t = startMin, at = 0;
-  const byId = new Map(candidates.map((c) => [c.id, c]));
-  const ordered = plan.order.map((s) => {
-    t += matrix[at][s.idx];
-    const c = byId.get(s.id)!;
-    const eta = Math.round(t);
-    t += s.dwellMin;
-    at = s.idx;
+  const ordered = plan.order.map((c, i) => {
+    const s = c;
+    const eta = plan.etaMin[i];
     const card = cards.get(s.id);
     return {
       id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng,
-      is_partner: s === plan.partner, is_demo: c.is_demo,
+      is_partner: s.paid, is_demo: c.is_demo,
       rating: Number(c.rating), dwell_min: c.dwell_min, eta_min: eta,
       nearby_partner: card
         ? { id: card.id, name: card.name, category: card.category, lat: card.lat, lng: card.lng,
@@ -99,13 +89,7 @@ serve(async (req) => {
     };
   });
 
-  const linePts = [origin, ...ordered.map((s) => ({ lat: s.lat, lng: s.lng })), dest];
-  let geometry: [number, number][];
-  try {
-    geometry = routing === "valhalla" ? await routeLine(linePts, mode) : linePts.map((p) => [p.lng, p.lat]);
-  } catch {
-    geometry = linePts.map((p) => [p.lng, p.lat]);
-  }
+  const geometry = plan.road.geometry;
 
   const { data: route, error: rErr } = await db.from("routes").insert({
     user_id: user.id,
@@ -117,7 +101,7 @@ serve(async (req) => {
   // impressions: every stop and card shown; the 3 h billing window starts here
   const shown = [
     ...ordered.map((s, i) => ({ route_id: route.id, user_id: user.id, place_id: s.id, position: i,
-      kind: s.is_partner ? "partner" : "stop", bid_thb: s.is_partner ? plan.partner!.bidThb : 0 })),
+      kind: s.is_partner ? "partner" : "stop", bid_thb: s.is_partner ? Number(plan.order.find((p) => p.id === s.id)!.bid_thb) : 0 })),
     ...[...cards.values()].map((c) => ({ route_id: route.id, user_id: user.id, place_id: c.id, position: null,
       kind: "card", bid_thb: Number(c.bid_thb) })),
   ];
@@ -132,6 +116,6 @@ serve(async (req) => {
     extra_min: Math.round(plan.extraMin), budget_min: budgetMin,
     max_budget_min: plus ? PLUS_MAX_BUDGET : FREE_MAX_BUDGET,
     candidates_considered: candidates.length,
-    stops: ordered, geometry,
+    stops: ordered, geometry, base_geometry: baseline.geometry, warnings,
   });
 });
