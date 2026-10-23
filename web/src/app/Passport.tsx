@@ -1,19 +1,17 @@
 import { type CSSProperties, useEffect, useState } from "react";
 import { ApiError, callFn, ensureSession, supabase } from "../lib/supabase";
-import { type ExclusivePlace, getExclusives, getMonthlyStamps, getPassport, KIND_NAME, levelFor, levelProgress, type PassportData, type Profile, setCosmetics, startCheckout } from "../lib/api";
+import { type ExclusivePlace, getExclusives, getMonthlyStamps, getPassport, KIND_NAME, levelFor, levelProgress, type PassportData, type Profile, startCheckout } from "../lib/api";
 import { isGuest, useUser } from "../lib/auth";
 import SignIn from "./SignIn";
 import ProvinceMap from "./passport/ProvinceMap";
 import Stamps from "./passport/Stamps";
 import Album from "./passport/Album";
 import Challenges from "./passport/Challenges";
+import Shop from "./passport/Shop";
 
 
 const PLUS_THB = 59;
 const MEMBER_THB = 349;
-// ids match the whitelist in public.set_cosmetics
-const THEMES: Record<string, string> = { classic: "Classic", indigo: "Indigo cloth", lotus: "Lotus", "night-market": "Night market", "temple-gold": "Temple gold", rain: "Rainy season" };
-const FLAIRS: Record<string, string> = { none: "None", marigold: "Marigold", indigo: "Indigo", lotus: "Lotus", sparkle: "Sparkle" };
 const monthName = (m: string) => new Date(`${m}T00:00:00+07:00`).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
 const fmtDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
@@ -22,7 +20,7 @@ export default function Passport({ refreshKey, profile, onChange }: { refreshKey
   const user = useUser();
   const [data, setData] = useState<PassportData | null>(null);
   const [province, setProvince] = useState<number | null>(null);
-  const [tab, setTab] = useState<"stamps" | "photos" | "challenges">("stamps");
+  const [tab, setTab] = useState<"stamps" | "photos" | "challenges" | "shop">("stamps");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [msg, setMsg] = useState("");
   const [plusMsg, setPlusMsg] = useState("");
@@ -60,11 +58,6 @@ export default function Passport({ refreshKey, profile, onChange }: { refreshKey
     }
   };
 
-  const saveLook = async (p: { p_theme?: string; p_flair?: string }) => {
-    setPlusMsg("");
-    try { await setCosmetics(p); onChange(); } catch { setPlusMsg("Couldn't save that. Try again."); }
-  };
-
   const deleteAccount = async () => {
     try {
       await callFn("delete-account", {});
@@ -80,7 +73,7 @@ export default function Passport({ refreshKey, profile, onChange }: { refreshKey
   const level = levelFor(xp);
   const { into, span } = levelProgress(xp);
   const member = profile?.member ?? false;
-  const name = user?.email?.split("@")[0] ?? "Guest explorer";
+  const name = profile?.nickname ?? "Guest explorer";
 
   return (
     <div className="stack passport">
@@ -95,6 +88,7 @@ export default function Passport({ refreshKey, profile, onChange }: { refreshKey
           </div>
           <div className="level-info">
             <b className={`flair flair-${profile?.flair ?? "none"}`}>{name}</b>
+            {profile?.title && <span className="fine">{profile.title}</span>}
             <span className="num">{xp} XP{member && <> · {data?.profile?.coins ?? 0} coins</>}</span>
             {span ? <><progress value={into} max={span} /><span className="fine">{span - into} XP to level {level + 1}</span></>
               : <span className="fine">Top level</span>}
@@ -119,15 +113,16 @@ export default function Passport({ refreshKey, profile, onChange }: { refreshKey
           <section className="passport-book" aria-label="Your travels">
             <ProvinceMap counts={counts} selected={province} onSelect={setProvince} />
             <div className="seg" role="tablist" aria-label="Passport pages">
-              {(["stamps", "photos", "challenges"] as const).map((t) => (
+              {(["stamps", "photos", "challenges", "shop"] as const).map((t) => (
                 <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
-                  {t === "stamps" ? `Stamps (${stamps.length})` : t === "photos" ? `Photos (${photos.length})` : "Challenges"}
+                  {t === "stamps" ? `Stamps (${stamps.length})` : t === "photos" ? `Photos (${photos.length})` : t === "challenges" ? "Challenges" : "Shop"}
                 </button>
               ))}
             </div>
             {tab === "stamps" && <Stamps stamps={stamps} provinceName={provinceName} />}
-            {tab === "photos" && <Album photos={photos} onChange={onChange} />}
+            {tab === "photos" && <Album photos={photos} onChange={onChange} frame={profile?.look.frame} />}
             {tab === "challenges" && <Challenges list={data.challenges} member={member} />}
+            {tab === "shop" && <Shop profile={profile} coins={data.profile?.coins ?? 0} onChange={onChange} />}
           </section>
         );
       })()}
@@ -148,18 +143,7 @@ export default function Passport({ refreshKey, profile, onChange }: { refreshKey
         </div>
         {plusUntil
           ? <>
-              <label className="field">
-                <span>Passport theme</span>
-                <select value={profile?.theme} onChange={(e) => saveLook({ p_theme: e.target.value })}>
-                  {Object.entries(THEMES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-                </select>
-              </label>
-              <label className="field">
-                <span>Name flair</span>
-                <select value={profile?.flair} onChange={(e) => saveLook({ p_flair: e.target.value })}>
-                  {Object.entries(FLAIRS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-                </select>
-              </label>
+              <p className="fine">Every Plus cover and name flair is yours in the Shop tab.</p>
               <div className="field">
                 <span>Monthly stamps</span>
                 <div className="month-stamps">{stamps.map((m) => <span key={m} className="month-stamp">{monthName(m)}</span>)}</div>
@@ -167,7 +151,7 @@ export default function Passport({ refreshKey, profile, onChange }: { refreshKey
               <button className="link" onClick={() => buy("plus", setPlusMsg)}>Add another 30 days</button>
             </>
           : <>
-              <p className="fine">Make your passport yours: 6 cover themes, a coloured name, 3 premium share-card designs, a new stamp every month, and 25% more coins from stamps and challenges. Every place and route stays free.</p>
+              <p className="fine">Make your passport yours: every Plus cover and name flair in the shop, 3 premium share-card designs, a new stamp every month, and 25% more coins from stamps and challenges. Every place and route stays free.</p>
               {guest ? <p className="fine">Sign in above to get Plus.</p>
                 : <button className="btn gold" onClick={() => buy("plus", setPlusMsg)}>Get Plus · ฿{PLUS_THB}</button>}
             </>}

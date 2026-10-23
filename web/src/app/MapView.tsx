@@ -1,9 +1,10 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
-import type { LatLng, RouteStop, Stop } from "../lib/api";
+import type { LatLng, RouteStop, Stop, TripMember } from "../lib/api";
 
-const STYLE = "https://tiles.openfreemap.org/styles/liberty";
+// map skins from the coin shop: OpenFreeMap styles
+const styleUrl = (skin: string) => `https://tiles.openfreemap.org/styles/${["bright", "positron"].includes(skin) ? skin : "liberty"}`;
 export const SAKON: LatLng = { lat: 17.163, lng: 104.149 };
 
 interface Props {
@@ -19,6 +20,8 @@ interface Props {
   nearby?: Stop[];        // PokéStop-style places around the user
   here?: LatLng | null;   // the user's live position
   inZone?: number[];      // stops the user is standing in the check-in zone of
+  members?: TripMember[]; // ride along: trip-mates with a fresh position
+  skin?: string;
 }
 
 const pin = (cls: string, text: string, label: string) => {
@@ -30,7 +33,7 @@ const pin = (cls: string, text: string, label: string) => {
 };
 
 export default function MapView({ origin, dest, stops, geometry, baseGeometry = [], estimated = false, picking, onPick, onSelectStop,
-  nearby = [], here = null, inZone = [] }: Props) {
+  nearby = [], here = null, inZone = [], members = [], skin = "liberty" }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markers = useRef<maplibregl.Marker[]>([]);
@@ -45,12 +48,12 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
 
   useEffect(() => {
     const m = new maplibregl.Map({
-      container: box.current!, style: STYLE, center: [SAKON.lng, SAKON.lat], zoom: 13.4,
+      container: box.current!, style: styleUrl(skin), center: [SAKON.lng, SAKON.lat], zoom: 13.4,
       attributionControl: { compact: true, customAttribution: "Routing: Valhalla" },
     });
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     m.on("click", (e) => { if (pickingRef.current) pickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng }); });
-    m.on("load", () => {
+    m.on("style.load", () => {   // also after a skin change, which drops every source and layer
       m.addSource("baseline", { type: "geojson", data: baseRef.current });
       m.addLayer({ id: "baseline", type: "line", source: "baseline", paint: { "line-color": "#777f97", "line-width": 4, "line-opacity": 0.6, "line-dasharray": [2, 2] } });
       m.addSource("route", { type: "geojson", data: lineRef.current }); // picks up a route planned before the style loaded
@@ -62,6 +65,11 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
     map.current = m;
     return () => m.remove();
   }, []);
+
+  const firstSkin = useRef(skin);
+  useEffect(() => {
+    if (skin !== firstSkin.current) { firstSkin.current = skin; map.current?.setStyle(styleUrl(skin), { diff: false }); }
+  }, [skin]);
 
   useEffect(() => {
     if (map.current) map.current.getCanvas().style.cursor = picking ? "crosshair" : "";
@@ -122,6 +130,21 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
       nearbyMarkers.current.push(new maplibregl.Marker({ element: me }).setLngLat([here.lng, here.lat]).addTo(m));
     }
   }, [nearby, here, inZone, stops]);
+
+  const memberMarkers = useRef<maplibregl.Marker[]>([]);
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+    memberMarkers.current.forEach((mk) => mk.remove());
+    memberMarkers.current = members.filter((p) => !p.me && p.lat != null && p.lng != null).map((p) => {
+      const el = document.createElement("span");
+      el.className = `member-dot c-${p.colour}`;
+      el.textContent = [...p.nickname][0]?.toUpperCase() ?? "?";
+      el.title = p.nickname;
+      el.setAttribute("aria-label", `${p.nickname} is here`);
+      return new maplibregl.Marker({ element: el }).setLngLat([p.lng!, p.lat!]).addTo(m);
+    });
+  }, [members]);
 
   return <div ref={box} className="map" role="application" aria-label="Trip map of Thailand" />;
 }

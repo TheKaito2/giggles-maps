@@ -1,4 +1,4 @@
-import { callFn, ensureSession, supabase } from "./supabase";
+import { ApiError, callFn, ensureSession, supabase } from "./supabase";
 
 export interface LatLng { lat: number; lng: number }
 
@@ -70,6 +70,7 @@ export interface CheckinResult {
   stamp?: { tier: 1 | 2 | 3; new_province: boolean; province: string | null; event: string | null } | null;   // first visit
   challenges?: { slug: string; title: string; title_th: string; xp: number; coins: number }[];                 // completed now
   coins?: number;   // members' coin balance
+  group_bonus?: boolean;   // ride along: a trip-mate checked in here within the hour, +50%
 }
 
 // A place the user can check in at: a route stop, a "Near this spot" card, or a scanned sticker
@@ -178,23 +179,79 @@ export const verifyCheckin = (p: {
 export const startCheckout = (p: { kind: "plus" } | { kind: "membership" } | { kind: "credit"; shop_id: string; pack: number }) =>
   callFn<{ url: string }>("stripe-checkout", p);
 
+export type Look = Partial<Record<ShopKind, string>>;
 export interface Profile {
   member: boolean; xp: number;
   plusUntil: Date | null; // null unless Plus is active now
-  theme: string; flair: string;
+  theme: string; flair: string;   // what the passport header wears (from look)
+  nickname: string | null; colour: string; friendCode: string; onLeaderboard: boolean;
+  look: Look; title: string | null; owned: string[];   // owned = "kind:id" bought with coins
 }
 
 export async function getProfile(): Promise<Profile> {
-  const s = await ensureSession();
-  const { data } = await supabase.from("profiles").select("member_since, xp, plus_until, cosmetics").eq("id", s.user.id).maybeSingle();
+  await ensureSession();
+  const { data, error } = await supabase.rpc("me");
+  if (error) throw error;
   const until = data?.plus_until ? new Date(data.plus_until) : null;
-  const plusUntil = until && until > new Date() ? until : null;
+  const look: Look = data?.look ?? {};
   return {
-    member: !!data?.member_since, xp: data?.xp ?? 0, plusUntil,
-    theme: plusUntil ? data?.cosmetics?.theme ?? "classic" : "classic",
-    flair: plusUntil ? data?.cosmetics?.flair ?? "none" : "none",
+    member: !!data?.member, xp: data?.xp ?? 0, plusUntil: until && until > new Date() ? until : null,
+    theme: look.theme ?? "classic", flair: look.flair ?? "none",
+    nickname: data?.nickname ?? null, colour: data?.colour ?? "marigold", friendCode: data?.friend_code ?? "",
+    onLeaderboard: data?.on_leaderboard ?? true, look, title: data?.title ?? null, owned: data?.owned ?? [],
   };
 }
+
+// ---------- phase 2: friends, leaderboard, ride along, coin shop ----------
+// every RPC raises a short code ("code_not_found", "not_enough_coins", ...) as its message
+async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
+  await ensureSession();
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) throw new ApiError(error.message);
+  return data as T;
+}
+
+export const COLOURS = ["marigold", "indigo", "lotus", "jade", "sky", "coral", "plum", "slate"] as const;
+export const setMe = (p: { nickname?: string; colour?: string; onLeaderboard?: boolean }) =>
+  rpc<void>("set_me", { p_nickname: p.nickname ?? null, p_colour: p.colour ?? null, p_on_leaderboard: p.onLeaderboard ?? null });
+
+export interface Card { id: string; nickname: string; colour: string; xp: number; level: number; stamps: number; provinces: number;
+  look: Look; title: string | null; rank?: number }
+export interface Social { friends: Card[]; incoming: Card[]; outgoing: Card[] }
+export const getSocial = () => rpc<Social>("social");
+export const addFriend = (code: string) => rpc<"friends" | "requested">("add_friend", { p_code: code });
+export const answerFriend = (from: string, accept: boolean) => rpc<void>("answer_friend", { p_from: from, p_accept: accept });
+export const removeFriend = (id: string) => rpc<void>("remove_friend", { p_id: id });
+export interface FriendPassport { card: Card; stamps: PassportStamp[]; photos: PassportPhoto[]; provinces: PassportData["provinces"] }
+export const getFriendPassport = (id: string) => rpc<FriendPassport>("friend_passport", { p_id: id });
+export const getLeaderboard = () => rpc<{ top: Card[]; me: Card | null; total: number }>("leaderboard");
+
+export interface TripMember { id: string; me: boolean; owner: boolean; nickname: string; colour: string; lat: number | null; lng: number | null }
+export interface TripPhoto { checkin_id: string; path: string; caption: string | null; place: string; at: string; nickname: string; colour: string }
+export interface Trip { id: string; code: string; name: string | null; owner: boolean; started_at: string; ends_at: string;
+  members: TripMember[]; album: TripPhoto[] }
+export const getTrip = () => rpc<Trip | null>("my_trip");
+export const startTrip = (name?: string) => rpc<Trip>("start_trip", { p_name: name ?? null });
+export const joinTrip = (code: string) => rpc<Trip>("join_trip", { p_code: code });
+export const leaveTrip = () => rpc<void>("leave_trip");
+export const tripPing = (p: LatLng) => rpc<void>("trip_ping", { p_lat: p.lat, p_lng: p.lng });
+
+export type ShopKind = "theme" | "flair" | "map" | "frame" | "title";
+export interface ShopItem { kind: ShopKind; id: string; name_en: string; name_th: string; price: number; plus: boolean; sort: number }
+export async function getShop(): Promise<ShopItem[]> {
+  const { data, error } = await supabase.from("shop_items").select("*").order("sort");
+  if (error) throw error;
+  return data as ShopItem[];
+}
+export const buyItem = (kind: ShopKind, id: string) => rpc<number>("buy_item", { p_kind: kind, p_id: id });
+export const equip = (kind: ShopKind, id: string) => rpc<Look>("equip", { p_kind: kind, p_id: id });
+
+export const SITE = "https://giggles-maps.pages.dev";
+// "?friend=CODE" (friend QR) and "?trip=CODE" (ride-along QR)
+export const readCodeParam = (name: "friend" | "trip") => {
+  const m = /^[A-Za-z0-9]{6,8}$/.exec(new URLSearchParams(location.search).get(name) ?? "");
+  return m ? m[0].toUpperCase() : null;
+};
 
 export interface ExclusivePlace {
   id: number; name: string; category: string; exclusive_kind: ExclusiveKind; min_level: number; unlocked: boolean;
@@ -206,12 +263,6 @@ export async function getExclusives(): Promise<ExclusivePlace[]> {
   const { data, error } = await supabase.rpc("my_exclusives");
   if (error) throw error;
   return data as ExclusivePlace[];
-}
-
-// Plus only; the server checks and whitelists the values
-export async function setCosmetics(p: { p_theme?: string; p_flair?: string }) {
-  const { error } = await supabase.rpc("set_cosmetics", p);
-  if (error) throw error;
 }
 
 // Collects this month's Plus stamp (no-op without Plus), then lists them: "2026-10-01", newest first

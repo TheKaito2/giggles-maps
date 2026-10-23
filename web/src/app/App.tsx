@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Camera, LocateFixed, MapPin } from "lucide-react";
+import { ArrowLeft, ArrowRight, Camera, Car, LocateFixed, MapPin } from "lucide-react";
 import { ApiError, ensureSession, supabase } from "../lib/supabase";
-import { type CheckinTarget, choosePlan, getProfile, type LatLng, planRoute, type Profile, readScanParam, type RoutePlan } from "../lib/api";
+import { addFriend, type CheckinTarget, choosePlan, getProfile, type LatLng, planRoute, type Profile, readCodeParam, readScanParam, type RoutePlan } from "../lib/api";
 import MapView from "./MapView";
 import CheckIn from "./CheckIn";
 import Passport from "./Passport";
@@ -10,6 +10,9 @@ import Results from "./Results";
 import { budgetLabel, DEFAULT_PREFS, departLabel, MODES, type Place, type Prefs, toRequest } from "./prefs";
 import { resumeSignIn } from "../lib/auth";
 import { useStops } from "./useStops";
+import Friends from "./social/Friends";
+import Nickname from "./social/Nickname";
+import { useTrip } from "./social/RideAlong";
 
 // Real places from the seed: Phu Phan Museum -> Wat Phra That Choeng Chum
 const DEFAULT_ORIGIN: Place = { point: { lat: 17.17313, lng: 104.14488 }, name: "Phu Phan Museum" };
@@ -19,7 +22,7 @@ const DEFAULT_DEST: Place = { point: { lat: 17.16445, lng: 104.15345 }, name: "W
 const NONE: never[] = [];
 
 export default function App() {
-  const [tab, setTab] = useState<"plan" | "passport">("plan");
+  const [tab, setTab] = useState<"plan" | "passport" | "friends">(() => readCodeParam("friend") || readCodeParam("trip") ? "friends" : "plan");
   const [origin, setOrigin] = useState<Place | null>(DEFAULT_ORIGIN);
   const [dest, setDest] = useState<Place | null>(DEFAULT_DEST);
   const [picking, setPicking] = useState<"origin" | "dest" | null>(null);
@@ -44,6 +47,28 @@ export default function App() {
   useEffect(() => { getProfile().then(setProfile).catch(() => setProfile(null)); }, [refreshKey]);
   const nearby = useStops(refreshKey);
   const zoneStop = nearby.inZone[0];
+  const trip = useTrip(nearby.here, nearby.start, refreshKey);
+  const [nameSheet, setNameSheet] = useState(false);
+  const [nameLater, setNameLater] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [pendingFriend, setPendingFriend] = useState(() => readCodeParam("friend"));
+
+  // ride-along QR: /app/?trip=CODE joins straight away
+  useEffect(() => {
+    const code = readCodeParam("trip");
+    if (!code) return;
+    history.replaceState(null, "", location.pathname);
+    trip.join(code);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // friend QR: /app/?friend=CODE adds them once you have a name (they see it on the request)
+  useEffect(() => {
+    if (!pendingFriend || !profile?.nickname) return;
+    history.replaceState(null, "", location.pathname);
+    setPendingFriend(null);
+    addFriend(pendingFriend)
+      .then((r) => setNotice(r === "friends" ? "You're friends now." : "Friend request sent."))
+      .catch(() => setNotice("Couldn't add that friend code. It may be your own or mistyped."));
+  }, [pendingFriend, profile?.nickname]);
   // back from Google/Apple: finish sign-in if linking to the guest account wasn't possible
   useEffect(() => { resumeSignIn().then((m) => { if (m) { setError(m); setTab("passport"); } }); }, []);
 
@@ -103,6 +128,7 @@ export default function App() {
         <nav className="tabs" aria-label="Sections">
           <button className={tab === "plan" ? "on" : ""} onClick={() => setTab("plan")}>Plan</button>
           <button className={tab === "passport" ? "on" : ""} onClick={() => setTab("passport")}>Passport{profile?.plusUntil && <span className="plus-dot">Plus</span>}</button>
+          <button className={tab === "friends" ? "on" : ""} onClick={() => setTab("friends")}>Friends</button>
         </nav>
       </header>
 
@@ -114,8 +140,14 @@ export default function App() {
           )}
           <MapView origin={origin?.point ?? null} dest={dest?.point ?? null} stops={showResults ? plan.stops : NONE} geometry={showResults ? plan.geometry : NONE}
             baseGeometry={showResults ? plan.base_geometry : NONE} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop}
-            nearby={nearby.stops} here={nearby.here} inZone={nearby.inZone.map((s) => s.id)} />
+            nearby={nearby.stops} here={nearby.here} inZone={nearby.inZone.map((s) => s.id)}
+            members={trip.trip?.members ?? NONE} skin={profile?.look.map ?? "liberty"} />
           <div className="map-actions">
+            {trip.trip && tab !== "friends" && (
+              <button type="button" className="btn soft trip-chip" onClick={() => setTab("friends")}>
+                <Car size={16} aria-hidden /> Ride along · {trip.trip.members.length}
+              </button>
+            )}
             {zoneStop ? (
               <button type="button" className={`btn checkin-cta tier-${zoneStop.tier}`}
                 onClick={() => setCheckin({ target: { id: zoneStop.id, name: zoneStop.name, lat: zoneStop.lat, lng: zoneStop.lng, is_partner: false, is_demo: false } })}>
@@ -128,7 +160,12 @@ export default function App() {
         </div>
 
         <section className="panel glass" aria-live="polite">
-          {tab === "passport" ? (
+          {tab === "friends" ? (
+            <div className="panel-body">
+              {notice && <p className="hint" role="status">{notice}</p>}
+              <Friends profile={profile} trip={trip} onChange={() => setRefreshKey((k) => k + 1)} editName={() => setNameSheet(true)} />
+            </div>
+          ) : tab === "passport" ? (
             <div className="panel-body"><Passport refreshKey={refreshKey} profile={profile} onChange={() => setRefreshKey((k) => k + 1)} /></div>
           ) : showResults ? (
             <>
@@ -160,6 +197,12 @@ export default function App() {
           )}
         </section>
       </main>
+
+      {profile && (nameSheet || (tab !== "plan" && !profile.nickname && !nameLater)) && (
+        <Nickname current={profile.nickname} colour={profile.colour}
+          onDone={() => { setNameSheet(false); setRefreshKey((k) => k + 1); }}
+          onLater={() => { setNameSheet(false); setNameLater(true); }} />
+      )}
 
       {checkin && (
         <CheckIn target={checkin.target} initialCode={checkin.code} hasPlus={!!profile?.plusUntil} onClose={() => setCheckin(null)} onDone={() => setRefreshKey((k) => k + 1)} />
