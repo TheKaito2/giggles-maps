@@ -47,7 +47,32 @@ Empty by default: add one with SQL, e.g.
 - `passport_v2()` returns profile, stamps, photos, provinces and challenge progress in one call.
 - `stops_near(lat, lng, radius)` returns map stops with zone size and whether you have the stamp.
 
-## Phase 2 (not built yet)
-Friends (passports visible to friends only), Ride along (shared trip by link, group check-in bonus, shared album,
-live locations during the trip), public all-time leaderboard, coin shop (passport covers, map skins, photo frames and
-stickers, flair and titles).
+## Social (phase 2, migration 022)
+- **Names**: everyone picks a nickname (2–20 chars) and one of 8 avatar colours (`set_me`). Other people never see emails.
+- **Friends**: every profile has an 8-character `friend_code`. The friend QR is a link, `/app/?friend=CODE`, that phone
+  cameras open. `add_friend(code)` sends a request, or accepts one if they already asked you. Requests expire after 7 days.
+  Friends see each other's passport (`friend_passport`): stamps, province map, level and photos that aren't hidden.
+- **Leaderboard** (`leaderboard`): all time, by XP; top 50 plus your own row and rank. Shows nickname, colour, level,
+  XP and stamp and province counts, never photos. Everyone with a nickname and XP is on it unless they opt out.
+- **Ride along**: `start_trip` gives a 6-character code; others join with `/app/?trip=CODE` or `join_trip`. A trip runs
+  at most 12 hours (or until the owner ends it), with up to 20 people, and you're in one trip at a time.
+  - Live positions (`trip_ping`, sent at most every 30 s by the web app) are shown to trip members only. A position
+    older than 10 minutes is hidden, and all positions are wiped when the trip ends or you leave.
+  - The shared album is every member's photo (not hidden) taken during the trip.
+  - **Group bonus**: if you get a stamp at a place where another member of your running trip checked in within the
+    last 60 minutes, your stamp gets +50% XP and coins, and so does their stamp at that place (once, `stamps.group_bonus`).
+- Photos: the storage policy `can_see_photo` lets friends and trip-mates (for photos from that trip) open a photo,
+  unless it is hidden or the check-in was rejected.
+
+## Coin shop
+Coins are earned only, never bought. `coins_of` = earned − spent (`coin_spends`). Members buy (`buy_item`), anyone
+wears what they own (`equip`). Items marked Plus are included while Plus is active; `look_of` drops anything you
+no longer own, e.g. after Plus ends. Titles can also be a completed province set ("<Province> Explorer").
+
+| Kind | Items (coins) |
+|---|---|
+| Passport covers | Classic 0 · Indigo cloth 150 · Lotus 150 · Rainy season 150 · Night market 200 · Temple gold 300 (all except Classic included with Plus) |
+| Name flair | Plain 0 · Marigold 100 · Indigo 100 · Lotus 100 · Sparkle 250 (included with Plus) |
+| Map skins | Standard 0 · Bright 150 · Paper 150 (OpenFreeMap styles) |
+| Photo frames | None 0 · Polaroid 100 · Film strip 150 · Postage stamp 200 · Gold leaf 250 |
+| Titles | Wanderer 50 · Foodie 150 · Temple hopper 150 · Road tripper 200 · Trailblazer 400 · Legend of the road 1000 |

@@ -172,6 +172,21 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
 - Photos are in the private `selfies` bucket under `<user id>/…`; use signed URLs.
 - `verify-checkin` now returns, on top of the old fields: `stamp: {tier, new_province, province, event} | null` (first visit only), `challenges: [{slug, title, title_th, xp, coins}]` (completed by this check-in), `coins` (member balance). `face_count` is optional and ignored. Rules and numbers: `docs/GAMIFICATION.md`.
 
+## Social and shop (RPCs, signed-in user; errors come back as the message, e.g. `code_not_found`)
+
+- `me()`: `{member, xp, plus_until, nickname, colour, friend_code, on_leaderboard, look, title, owned: ["kind:id"]}`.
+- `set_me(p_nickname, p_colour, p_on_leaderboard)`: any argument may be null (unchanged). Errors `bad_nickname`, `bad_colour`.
+- `add_friend(p_code)` → `"requested" | "friends"`. Errors `nickname_required`, `code_not_found`, `own_code`.
+- `answer_friend(p_from, p_accept)`, `remove_friend(p_id)`.
+- `social()`: `{friends, incoming, outgoing}`, each a list of cards `{id, nickname, colour, xp, level, stamps, provinces, look, title}`.
+- `friend_passport(p_id)`: `{card, stamps, photos, provinces}`. Error `not_friends`.
+- `leaderboard()`: `{top: [card + rank], me: card + rank | null, total}`.
+- `start_trip(p_name)`, `join_trip(p_code)`, `my_trip()` → `{id, code, name, owner, started_at, ends_at, members: [{id, me, owner, nickname, colour, lat, lng, seen_at}], album: [...]}` or null. Errors `trip_not_found`, `trip_full`.
+- `trip_ping(p_lat, p_lng)`, `leave_trip()` (the owner leaving ends the trip).
+- `buy_item(p_kind, p_id)` → coins left. Errors `members_only`, `bad_item`, `already_owned`, `not_enough_coins`.
+- `equip(p_kind, p_id)` → the new look. Error `not_owned`. `shop_items` is a public table.
+- `verify-checkin` also returns `group_bonus: boolean`.
+
 ## Search (`search_places` RPC)
 
 `rpc("search_places", { p_query, p_lat?, p_lng?, p_kind?, p_limit? })`: our places by name (Thai or English, substring), nearest first when `p_lat`/`p_lng` are given.
