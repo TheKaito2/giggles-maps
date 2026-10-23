@@ -65,7 +65,9 @@ export default function Results({ response, plan, choice, setChoice, selected, o
         {plan.stops.length > 0 && !!plan.base_geometry?.length && <div className="fine">Dashed grey: direct road route · Indigo: your detour. Both end at your destination.</div>}
         {plan.warnings?.some((w) => w !== "estimated_local_walk") && <div className="fine" role="status">Some stops were adjusted or couldn't be checked. Retry to explore more detours.</div>}
       </div>
-      {plan.stops.length === 0 && <p className="fine">No stops fit +{plan.budget_min} min with these preferences. Try a lower rating, more time, or include unrated places.</p>}
+      {plan.stops.length === 0 && (plan.warnings?.some((w) => w === "places_unavailable" || w === "some_detours_unavailable")
+        ? <p className="error" role="status">Couldn't load places or check road times right now. Tap Edit trip and Find again in a moment.</p>
+        : <p className="fine">No stops fit +{plan.budget_min} min with these preferences. Try more time, a lower rating, or fewer filters.</p>)}
 
       <ol className="stops">
         {plan.stops.map((s, i) => (

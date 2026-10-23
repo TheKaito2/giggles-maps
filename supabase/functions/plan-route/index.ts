@@ -144,7 +144,8 @@ serve(async (req) => {
     seen.add(key);
     themed.push({ id: t.id, name: t.name, plan });
   }
-  const verification = boundedRouter(routeRoad);
+  // up to 12 routing calls per request, shared by all plans: one per plan plus retries when a long route times out
+  const verification = boundedRouter(routeRoad, 12);
   const verifiedKeys = new Set<string>();
   for (let i = 0; i < themed.length; i++) {
     const t = themed[i];
@@ -153,6 +154,8 @@ serve(async (req) => {
         baseline, startMin, budgetMin, route: verification.route });
       t.plan = verified.plan; t.geometry = verified.geometry; t.etaMin = verified.etaMin; t.travelMin = verified.travelMin;
       if (verified.failed) warnings.push("some_detours_unavailable");
+      // an alternative plan the routing server couldn't check at all isn't worth a tab; Top picks always stays
+      if (verified.failed && t.id !== "top_picks") { themed.splice(i--, 1); continue; }
       else if (verified.adjusted) warnings.push("detours_adjusted");
     } else {
       const legs = []; let at = 0;

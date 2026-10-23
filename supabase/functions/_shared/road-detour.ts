@@ -56,12 +56,20 @@ export async function verifyRoadPlan(input: {
   baseline: RoadRoute; startMin: number; budgetMin: number;
   route: (points: LatLng[], mode: Mode) => Promise<RoadRoute>;
 }) {
-  let order = [...input.plan.order], adjusted = false, failed = false;
+  let order = [...input.plan.order], adjusted = false, routeErrors = 0;
+  // the stop to give up first: the last one that isn't a meal or a place the user picked
+  const dropIndex = () => {
+    const discretionary = order.map((s, i) => !input.plan.mealOf.has(s.id) && !input.plan.requiredIds.includes(s.id) ? i : -1)
+      .filter((i) => i >= 0);
+    return discretionary.at(-1) ?? order.length - 1;
+  };
   for (;;) {
     let road = input.baseline;
     if (order.length) {
       try { road = await input.route([input.origin, ...order.map((s) => input.candidates[s.idx - 2]), input.dest], input.mode); }
-      catch { failed = true; adjusted = true; order = []; continue; }
+      // a long many-stop route can time out on the routing server: drop one stop and try again,
+      // rather than throwing the whole plan away (that left long trips with no stops at all)
+      catch { routeErrors++; adjusted = true; order.splice(dropIndex(), 1); continue; }
     }
     const clock = scheduleStops(order, road.legMin, input.startMin, input.plan.mealOf);
     if (clock.failed < 0 && clock.totalMin - input.baseline.travelMin <= input.budgetMin + 1e-7) {
@@ -72,13 +80,12 @@ export async function verifyRoadPlan(input: {
         extraMin: Math.max(0, clock.totalMin - input.baseline.travelMin),
         missedMeals: [...new Set([...input.plan.missedMeals, ...lostMeals])],
         unfitRequired: input.plan.requiredIds.filter((id) => !order.some((s) => s.id === id)) },
-        geometry: road.geometry, etaMin: clock.etaMin, travelMin: road.legMin.reduce((a, b) => a + b, 0), adjusted, failed };
+        geometry: road.geometry, etaMin: clock.etaMin, travelMin: road.legMin.reduce((a, b) => a + b, 0), adjusted,
+        failed: routeErrors > 0 && !order.length && input.plan.order.length > 0 };
     }
     if (!order.length) throw new Error("invalid_baseline_route");
-    // Preserve meals while trimming discretionary stops to fit the actual road duration.
-    const discretionary = order.map((s, i) => !input.plan.mealOf.has(s.id) && !input.plan.requiredIds.includes(s.id) ? i : -1)
-      .filter((i) => i >= 0);
-    order.splice(clock.failed >= 0 ? clock.failed : discretionary.at(-1) ?? order.length - 1, 1);
+    // Preserve meals and picked places while trimming stops to fit the actual road duration.
+    order.splice(clock.failed >= 0 ? clock.failed : dropIndex(), 1);
     adjusted = true;
   }
 }

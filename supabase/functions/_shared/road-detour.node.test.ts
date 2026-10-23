@@ -78,3 +78,10 @@ test("valid road provider response preserves leg times and encoded geometry", as
   });
   const p = await route([origin, dest], "auto"); assert.equal(p.travelMin, 2); assert.equal(p.geometry.length, 2);
 });
+test("a routing failure on a long route drops one stop and retries instead of emptying the plan", async () => {
+  const p = await run(proposal([stop(1), stop(2)]), async (points) => {
+    if (points.length > 3) throw Error("timeout");   // origin + 2 stops + dest fails, 1 stop works
+    return { geometry: points.map((x) => [x.lng, x.lat]), legMin: [12, 12], travelMin: 24 };
+  });
+  assert.equal(p.plan.order.length, 1); assert.equal(p.failed, false); assert.equal(p.adjusted, true);
+});
