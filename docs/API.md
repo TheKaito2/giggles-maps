@@ -222,6 +222,18 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
   `admin_edits()` / `review_edit(p_edit, p_approve)` for `profiles.is_admin`; an approved edit gives +50 XP and counts
   toward the Map Maker badge.
 
+## Turn-by-turn and live ETA (migrations 041-042)
+- `POST /functions/v1/navigate` (signed in): `{ points: [{lat,lng}] (2-8, first = you, then stops left, last = destination),
+  mode: "auto"|"bicycle"|"pedestrian", avoid?: { tolls, highways, ferries } }` returns `{ shape: [[lng,lat]], maneuvers:
+  [{ type, instruction, street, begin, lengthM, timeS }], distanceM, timeS, legEnds }` (Valhalla maneuver types; `legEnds`
+  = shape index where each stop is reached). Throttled to 40 requests per account per 10 minutes (`429 slow_down`).
+  Clients: announce at 800/200/0 m driving, 300/80/0 cycling, 150/40/0 walking; reroute after 10 s more than 60 m off.
+- `share_eta(p_dest_lat, p_dest_lng, p_dest_name, p_eta_min, p_refresh=false)` returns the link token (32 hex). Link:
+  `https://giggles-maps.pages.dev/app/?eta=TOKEN`. Refresh the ETA every 30 s with `p_refresh => true` (returns null once
+  sharing stopped; it never reopens a share). Position comes from `trip_ping`. `stop_eta()` ends it.
+- `view_eta(p_token)` (anyone, no sign-in): `{ who (nickname, colour, avatar, level), dest, eta_at, at (fix from the last
+  10 min) }`, or null once stopped, the trip ended, or 6 hours after sharing started.
+
 ## Search (`search_places` RPC)
 
 `rpc("search_places", { p_query, p_lat?, p_lng?, p_kind?, p_limit? })`: our places by name (Thai or English, substring), nearest first when `p_lat`/`p_lng` are given.
