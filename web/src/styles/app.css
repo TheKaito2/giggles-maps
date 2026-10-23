@@ -280,3 +280,6 @@ body { background: var(--paper); overflow: hidden; }
 .time-split div { display: flex; justify-content: space-between; gap: 10px; }
 .time-split dt { color: var(--ink-2); }
 .time-split dd { margin: 0; font-weight: 700; color: var(--ink); }
+
+/* landmarks (tier 3): the must-go places detours are built around */
+.chip.landmark { background: var(--marigold); color: #241a00; margin-left: 6px; vertical-align: middle; }

@@ -71,7 +71,7 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions }
           {results.map((p, i) => (
             <li key={p.id ?? `a${i}`}>
               <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick({ lat: p.lat, lng: p.lng }, p.name)}>
-                <b>{p.name}</b>
+                <b>{p.name}{p.tier === 3 && <span className="chip landmark">Landmark</span>}</b>
                 <span className="fine">{p.source === "photon" ? "Address · OpenStreetMap" : CATEGORY[p.category ?? ""] ?? p.category}
                   {p.distance_m != null && ` · ${formatDistance(p.distance_m)}`}</span>
               </button>

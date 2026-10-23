@@ -3,7 +3,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from import_thailand_places import Exporter, category, dwell_minutes, export
+from import_thailand_places import Exporter, category, dwell_minutes, export, tier
 
 
 class ImportTests(unittest.TestCase):
@@ -19,6 +19,13 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(category({"amenity": "place_of_worship", "religion": "chinese"}), "temple")
         self.assertIsNone(category({"amenity": "place_of_worship", "religion": "muslim"}))
         self.assertIsNone(category({"amenity": "place_of_worship"}))
+
+    def test_tiers_landmark_worth_a_visit_everyday(self):
+        self.assertEqual(tier({"amenity": "cafe", "wikidata": "Q1"}, "cafe"), 3)          # famous cafe/market
+        self.assertEqual(tier({"boundary": "national_park", "name": "Doi Suthep-Pui National Park"}, "park"), 3)
+        self.assertEqual(tier({"natural": "waterfall", "name": "x"}, "viewpoint"), 3)
+        self.assertEqual(tier({"amenity": "place_of_worship", "religion": "buddhist", "name": "Wat X"}, "temple"), 2)
+        self.assertEqual(tier({"amenity": "cafe", "name": "Cafe"}, "cafe"), 1)
 
     def test_region_filter_limits_initial_rollout(self):
         output = io.StringIO()

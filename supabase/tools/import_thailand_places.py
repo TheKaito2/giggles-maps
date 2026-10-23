@@ -50,6 +50,16 @@ def is_national_park(tags):
             or "อุทยานแห่งชาติ" in names)
 
 
+def tier(tags, cat):
+    """3 = landmark (must-go), 2 = worth a visit, 1 = everyday. A Wikipedia/Wikidata link is the landmark signal."""
+    names = " ".join(tags.get(k, "") for k in ("name", "name:en", "name:th")).casefold()
+    if (tags.get("wikidata") or any(k == "wikipedia" or k.startswith("wikipedia:") for k in tags)
+            or "heritage" in tags or is_national_park(tags) or tags.get("natural") in ("waterfall", "peak")
+            or "waterfall" in names or "น้ำตก" in names):
+        return 3
+    return 1 if cat in ("cafe", "food", "craft") else 2
+
+
 def dwell_minutes(tags, cat):
     names = " ".join(tags.get(k, "") for k in ("name", "name:en", "name:th")).casefold()
     if is_national_park(tags):
@@ -82,7 +92,7 @@ class Exporter:
         self.seen.add(key)
         # Unknown OSM opening_hours are NOT guessed into daily hours.
         self.rows.append((f"{kind}/{osm_id}", name, tags.get("name:th"), cat,
-                          f"SRID=4326;POINT({lng} {lat})", dwell_minutes(tags, cat)))
+                          f"SRID=4326;POINT({lng} {lat})", dwell_minutes(tags, cat), tier(tags, cat), tags.get("wikidata")))
         self.counts[cat] = self.counts.get(cat, 0) + 1
         if len(self.rows) >= 500:
             self.flush()
@@ -93,7 +103,7 @@ class Exporter:
         def quote(value):
             return "NULL" if value is None else "'" + str(value).replace("\x00", "").replace("'", "''") + "'"
         values = ",\n".join("(" + ",".join(quote(v) for v in row) + ")" for row in self.rows)
-        self.output.write("INSERT INTO public.places (osm_id,name,name_th,category,location,dwell_min) VALUES\n")
+        self.output.write("INSERT INTO public.places (osm_id,name,name_th,category,location,dwell_min,tier,wikidata) VALUES\n")
         self.output.write(values)
         # Preserve manually curated fields, partner links, wallet bids and existing demo records.
         self.output.write("\nON CONFLICT (osm_id) DO NOTHING;\n")

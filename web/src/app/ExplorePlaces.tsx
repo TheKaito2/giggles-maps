@@ -55,7 +55,7 @@ export default function ExplorePlaces({ near, picks, setPicks }: { near: LatLng 
             return (
               <li key={p.id}>
                 <div className="explore-name">
-                  <b>{p.name}</b>
+                  <b>{p.name}{p.tier === 3 && <span className="chip landmark">Landmark</span>}</b>
                   <span className="fine">{CATEGORY[p.category ?? ""] ?? p.category}
                     {p.rating != null ? ` · ★ ${p.rating.toFixed(1)}` : " · Unrated"}
                     {p.distance_m != null && ` · ${formatDistance(p.distance_m)}`}</span>

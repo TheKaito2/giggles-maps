@@ -136,3 +136,24 @@ test("a picked place that can't fit is reported, never forced over budget or the
   expect(capped.order.map((s) => s.id)).toEqual([2]);
   expect(capped.unfitRequired).toEqual([3]);
 });
+
+// landmark world: a cafe right on the route vs a landmark temple well off it
+const ptsL = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 10 }];
+const travelL = (a: number, b: number) => Math.abs(ptsL[a].x - ptsL[b].x) + Math.abs(ptsL[a].y - ptsL[b].y);
+const lmStops: Stop[] = [
+  { idx: 2, id: 200, category: "cafe", rating: null, dwellMin: 25, tier: 1 },
+  { idx: 3, id: 300, category: "temple", rating: null, dwellMin: 20, tier: 3 },   // adds 20 travel + 20 visit
+];
+
+test("a landmark well off the route beats the cafe on it, inside the budget", () => {
+  const p = planDetour({ originIdx: 0, destIdx: 1, startMin: 600, budgetMin: 45, stops: lmStops, travelMin: travelL, maxStops: 1, allowUnrated: true });
+  expect(p.order.map((s) => s.id)).toEqual([300]);
+  expect(p.extraMin).toBeLessThanOrEqual(45);
+});
+
+test("Local gems never picks a landmark; a tight budget never goes over", () => {
+  const p = planDetour({ originIdx: 0, destIdx: 1, startMin: 600, budgetMin: 120, stops: lmStops, travelMin: travelL, theme: "local", allowUnrated: true });
+  expect(p.order.map((s) => s.id)).toEqual([200]);
+  const tight = planDetour({ originIdx: 0, destIdx: 1, startMin: 600, budgetMin: 15, stops: lmStops, travelMin: travelL, allowUnrated: true });
+  expect(tight.order).toEqual([]);
+});

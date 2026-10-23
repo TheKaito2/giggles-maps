@@ -1,7 +1,7 @@
 import { admin, HttpError, json, num, requireUser, serve } from "../_shared/http.ts";
 import { type Meal, MEAL_WINDOWS } from "../_shared/meals.ts";
 import { type Plan, planDetour, type Stop } from "../_shared/planner.ts";
-import { isInterest, isTheme, mixWeight, THEMES } from "../_shared/themes.ts";
+import { isInterest, mixWeight, type Tier, THEMES, toTheme } from "../_shared/themes.ts";
 import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan } from "../_shared/road-detour.ts";
 import { createRouter, estimateMinutes, haversineM, type LatLng, matrixMinutes, METERS_PER_MIN, type Mode, type RoadRoute } from "../_shared/valhalla.ts";
 
@@ -10,6 +10,7 @@ interface Candidate {
   open_min: number | null; close_min: number | null; dwell_min: number; rating: number | null;
   is_partner: boolean; is_demo: boolean; min_level: number; exclusive_kind: string | null; perk_text: string | null;
   price_level: number | null;
+  tier: Tier;   // 3 landmark, 2 worth a visit, 1 everyday
 }
 interface NearPlace {
   id: number; name: string; category: string; lat: number; lng: number; rating: number;
@@ -37,7 +38,8 @@ serve(async (req) => {
   const startMin = num(body.start_min, 0, 1439, "bad_start_min");
   if (body.mode != null && !MODES.has(body.mode)) throw new HttpError(400, "bad_mode");
   const mode: Mode = body.mode ?? "pedestrian";
-  if (body.theme != null && !isTheme(body.theme)) throw new HttpError(400, "bad_theme");
+  const requestedTheme = body.theme == null ? null : toTheme(body.theme);   // "scenic" works as well as "nature"
+  if (body.theme != null && !requestedTheme) throw new HttpError(400, "bad_theme");
   // planner preferences, all optional; omitted = the defaults every plan used before
   const interests: string[] = body.interests ?? [];
   if (!Array.isArray(interests) || interests.length > 6 || !interests.every(isInterest)) throw new HttpError(400, "bad_interests");
@@ -122,7 +124,7 @@ serve(async (req) => {
   const routing = baseline ? "valhalla" : "estimate";
 
   const stops: Stop[] = candidates.map((c, i) => ({
-    idx: i + 2, id: c.id, category: c.category, rating: c.rating == null ? null : Number(c.rating), dwellMin: c.dwell_min,
+    idx: i + 2, id: c.id, category: c.category, rating: c.rating == null ? null : Number(c.rating), tier: c.tier ?? 2, dwellMin: c.dwell_min,
     openMin: c.open_min, closeMin: c.close_min,
   }));
   const travelMin = (a: number, b: number) => matrix[a][b];
@@ -170,7 +172,7 @@ serve(async (req) => {
     verifiedKeys.add(key);
   }
   // The asked-for theme goes first; top-level fields remain Top picks for existing clients.
-  if (body.theme) themed.sort((a, b) => Number(b.id === body.theme) - Number(a.id === body.theme));
+  if (requestedTheme) themed.sort((a, b) => Number(b.id === requestedTheme) - Number(a.id === requestedTheme));
 
   // "Near this spot" cards under nature/temple stops: the best nearby place by quality (rating, then
   // distance), signed up or not. Another park/temple isn't a card; that would be a stop of its own.
@@ -211,7 +213,7 @@ serve(async (req) => {
       return {
         id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng,
         is_partner: c.is_partner, is_demo: c.is_demo,
-        rating: c.rating == null ? null : Number(c.rating), price_level: c.price_level,
+        rating: c.rating == null ? null : Number(c.rating), price_level: c.price_level, tier: c.tier ?? 2,
         dwell_min: c.dwell_min, eta_min: eta, meal, picked: mustInclude.includes(c.id),
         // exclusive places only reach a route when the member's level opens them
         min_level: c.min_level, exclusive_kind: c.exclusive_kind, perk_text: c.perk_text,

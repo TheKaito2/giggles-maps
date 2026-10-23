@@ -60,7 +60,9 @@ export default function Results({ response, plan, choice, setChoice, selected, o
             {!!plan.wait_min && <div><dt>Waiting for a meal time</dt><dd className="num">{plan.wait_min} min</dd></div>}
           </dl>
         )}
-        <div className="fine">{plan.stops.length} stop{plan.stops.length === 1 ? "" : "s"} · trip {plan.total_min} min instead of {plan.base_min}</div>
+        <div className="fine">{plan.stops.length} stop{plan.stops.length === 1 ? "" : "s"}
+          {(() => { const n = plan.stops.filter((s) => s.tier === 3).length; return n ? ` (${n} landmark${n === 1 ? "" : "s"})` : ""; })()}
+          {" "}· trip {plan.total_min} min instead of {plan.base_min}</div>
         {plan.routing === "estimate" && <div className="fine" role="status">Routing is unavailable. The dashed line is an approximate walking connection, not road directions. Times and your allowance are checked using estimates.</div>}
         {plan.stops.length > 0 && !!plan.base_geometry?.length && <div className="fine">Dashed grey: direct road route · Indigo: your detour. Both end at your destination.</div>}
         {plan.warnings?.some((w) => w !== "estimated_local_walk") && <div className="fine" role="status">Some stops were adjusted or couldn't be checked. Retry to explore more detours.</div>}
@@ -83,6 +85,7 @@ export default function Results({ response, plan, choice, setChoice, selected, o
                   <span>{s.dwell_min} min</span>
                   <span>{s.rating == null ? "Unrated" : `★ ${s.rating.toFixed(1)}`}</span>
                   <span className="chip price">{s.price_level == null ? "Price not listed" : PRICE[s.price_level]}</span>
+                  {s.tier === 3 && <span className="chip landmark">Landmark</span>}
                   {s.picked && <span className="chip picked">You picked this</span>}
                   {s.meal && <span className="chip meal">{MEAL_NAME[s.meal]}</span>}
                   {s.is_partner && <span className="chip partner" title={PARTNER_TIP}>{s.is_demo ? "Example partner" : "Partner"}</span>}

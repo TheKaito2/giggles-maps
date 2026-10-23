@@ -50,7 +50,7 @@ Request
   - `must_include`: up to 3 place ids the user picked (from `search_places`). They go into every plan when they fit the budget, opening hours and `max_stops`, even below the rating floor; the rest are listed in each plan's `unfit_required`. Stops have `picked: true`. 400 `bad_must_include`.
   - `max_stops`: 1–6 stops per plan; omitted = no cap. Meal stops count. 400 `bad_max_stops`.
   - `max_price`: 0 (free) to 3 (฿฿฿). Drops places whose **known** price is higher; places with no listed price stay. 400 `bad_max_price`.
-- `theme` (optional): `top_picks`, `nature`, `food`, `culture` or `shopping`. Only reorders `plans` so that one comes first; anything else is 400 `bad_theme`.
+- `theme` (optional): `top_picks` (Landmarks), `nature` or `scenic` (Scenic), `culture` (Culture & heritage), `local` (Local gems), `food` or `shopping`. Only reorders `plans` so that one comes first; anything else is 400 `bad_theme`.
 - Coordinates must be inside Thailand (lat 5–21, lng 97–106).
 
 Response
@@ -87,6 +87,7 @@ Response
 - Meals: only when asked. Request `meals`: any of `breakfast` (07:00–09:30), `lunch` (11:30–13:30), `dinner` (17:30–20:00); omitted = no food stop is forced. For each asked meal every plan tries to place a cafe/food/market stop arriving inside that window (arriving early means waiting, counted in the extra time); that stop has `meal: "lunch"` etc. If the trip can't reach the window or nothing fits, the meal is in that plan's `missed_meals`. 400 `bad_meals`.
 - Every stop and card in any plan counts as an impression, once per place per route.
 
+- Each stop has `tier`: 3 = landmark (must-go: Wikipedia/Wikidata-linked, national parks, heritage, waterfalls, named peaks), 2 = worth a visit, 1 = everyday (cafes, food, crafts). Shown as a Landmark chip for tier 3.
 - Each stop has `rating` (number, or `null` = unrated) and `price_level` (0 free, 1–3 = ฿–฿฿฿, `null` = not listed).
 
 Errors: `not_signed_in` 401, `routing_unavailable` 503, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_mode` / `bad_theme` / `bad_interests` / `bad_min_rating` / `bad_max_stops` / `bad_max_price` / `bad_must_include` / `bad_meals` / `bad_json` 400.

@@ -6,13 +6,14 @@
 // greedy insertion + 2-opt, fine for ~25 candidates.
 
 import { inMealWindow, type Meal, MEAL_CATEGORIES, MEAL_WINDOWS } from "./meals.ts";
-import { type Theme, themeWeight } from "./themes.ts";
+import { type Theme, type Tier, themeWeight } from "./themes.ts";
 
 export interface Stop {
   idx: number;          // row/column in the travel matrix
   id: number;
   category: string;
   rating: number | null;   // null = unrated
+  tier?: Tier;             // 3 landmark, 2 worth a visit, 1 everyday (default 2)
   dwellMin: number;
   openMin?: number | null;   // minutes after midnight
   closeMin?: number | null;
@@ -29,7 +30,7 @@ export interface PlanInput {
   allowUnrated?: boolean;
   maxStops?: number;    // default no cap; meal stops count
   theme?: Theme;        // default top_picks (no boost)
-  weight?: (category: string) => number;   // overrides theme, e.g. the user's own mix of interests
+  weight?: (category: string, tier?: Tier) => number;   // overrides theme, e.g. the user's own mix of interests
   requiredIds?: number[];   // places the user picked; go in first, skip the rating floor, count toward maxStops
   meals?: Meal[];       // meals the trip should cover, from mealsInTrip()
 }
@@ -47,11 +48,13 @@ export interface Plan {
 
 const UNRATED = 3.5;   // unrated places score like a middling rating, below the 4.0 default floor
 const quality = (s: Stop) => (s.rating ?? UNRATED) / 5;
+// Landmarks are what a detour is for: they outweigh a nearby cafe even when they add more minutes.
+const TIER_VALUE: Record<Tier, number> = { 3: 3, 2: 1.2, 1: 0.5 };
 
 export function planDetour(input: PlanInput): Plan {
   const { originIdx, destIdx, startMin, budgetMin, travelMin, minRating = 4.0, allowUnrated = false,
           maxStops = Infinity, theme = "top_picks", meals = [] } = input;
-  const weight = input.weight ?? ((category: string) => themeWeight(theme, category));
+  const weight = input.weight ?? ((category: string, tier?: Tier) => themeWeight(theme, category, tier));
   const eligible = input.stops.filter((s) => s.rating == null ? allowUnrated : s.rating >= minRating);
   const mealOf = new Map<number, Meal>();
 
@@ -111,7 +114,8 @@ export function planDetour(input: PlanInput): Plan {
 
   const score = (s: Stop, order: Stop[], added: number) => {
     const variety = order.some((o) => o.category === s.category) ? 0.5 : 1;
-    return (quality(s) * weight(s.category) * variety) / Math.max(added, 1);
+    // value per minute, but sqrt(minutes): a landmark 40 min away should beat a cafe 5 min away
+    return (TIER_VALUE[s.tier ?? 2] * quality(s) * weight(s.category, s.tier) * variety) / Math.sqrt(Math.max(added, 1));
   };
 
   // phase 0a: the places the user picked, each at its cheapest feasible position
@@ -130,7 +134,7 @@ export function planDetour(input: PlanInput): Plan {
     if (order.length >= maxStops) { missedMeals.push(meal); continue; }
     let pick: { order: Stop[]; ratio: number; s: Stop } | null = null;
     for (const s of eligible) {
-      if (!MEAL_CATEGORIES.has(s.category) || order.includes(s)) continue;
+      if (!MEAL_CATEGORIES.has(s.category) || order.includes(s) || weight(s.category, s.tier) === 0) continue;
       const trial = new Map(mealOf).set(s.id, meal);
       const ins = bestInsert(order, s, trial);
       if (!ins) continue;
@@ -146,7 +150,7 @@ export function planDetour(input: PlanInput): Plan {
   while (order.length < maxStops) {
     let pick: { order: Stop[]; ratio: number } | null = null;
     for (const s of eligible) {
-      if (order.includes(s)) continue;
+      if (order.includes(s) || weight(s.category, s.tier) === 0) continue;
       const ins = bestInsert(order, s);
       if (!ins) continue;
       const ratio = score(s, order, ins.added);

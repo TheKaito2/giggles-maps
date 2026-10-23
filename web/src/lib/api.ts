@@ -21,6 +21,7 @@ export interface RouteStop {
   min_level?: number; exclusive_kind?: ExclusiveKind | null; perk_text?: string | null;
   meal?: Meal | null; // engine v2: this stop covers a meal
   picked?: boolean;   // the user asked for this place (must_include)
+  tier?: 1 | 2 | 3;   // 3 = landmark (must-go), 2 = worth a visit, 1 = everyday
 }
 
 export type Meal = "breakfast" | "lunch" | "dinner";
@@ -88,7 +89,7 @@ export type Kind = "food" | "cafes" | "culture" | "nature" | "shopping";
 /** A search hit: one of our places (has id) or an address from Photon (OpenStreetMap search). */
 export interface FoundPlace extends LatLng {
   id?: number; name: string; name_th?: string | null; category?: string;
-  rating?: number | null; price_level?: number | null; distance_m?: number | null; source: "giggles" | "photon";
+  rating?: number | null; price_level?: number | null; distance_m?: number | null; tier?: number; source: "giggles" | "photon";
 }
 
 export async function searchPlaces(query: string, near?: LatLng | null, kind?: Kind | null): Promise<FoundPlace[]> {

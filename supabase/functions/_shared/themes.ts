@@ -1,39 +1,50 @@
-// Trip themes: the engine plans one route per theme and the user picks one.
-// A theme boosts its kinds of stop (x2) in the planner's score; other kinds can still appear.
-// Pure module, shared by planner.ts and any other planner (e.g. road-route planning).
+// Detour styles: the engine plans one route per style and the user picks one.
+// A style boosts its kinds of stop (x2) in the planner's score; other kinds can still appear.
+// Landmarks (tier 3: Wikipedia/Wikidata-linked places, national parks, heritage, waterfalls) are what a detour is for;
+// "Local gems" deliberately skips them so it feels different. Pure module, shared by every planner.
 
-export type Theme = "top_picks" | "nature" | "food" | "culture" | "shopping";
+export type Theme = "top_picks" | "nature" | "culture" | "local" | "food" | "shopping";
+export type Tier = 1 | 2 | 3;   // 3 = landmark, 2 = worth a visit, 1 = everyday
 
-export const THEMES: { id: Theme; name: string; boost: string[] }[] = [
-  { id: "top_picks", name: "Top picks", boost: [] },
-  { id: "nature", name: "Nature lover", boost: ["park", "viewpoint"] },
+export const THEMES: { id: Theme; name: string; boost: string[]; landmarks?: "boost" | "skip" }[] = [
+  { id: "top_picks", name: "Landmarks", boost: [], landmarks: "boost" },
+  { id: "nature", name: "Scenic", boost: ["park", "viewpoint"] },
+  { id: "culture", name: "Culture & heritage", boost: ["temple", "museum", "art"] },
+  { id: "local", name: "Local gems", boost: [], landmarks: "skip" },
   { id: "food", name: "Food lover", boost: ["cafe", "food", "market"] },
-  { id: "culture", name: "Culture & temples", boost: ["temple", "museum", "art"] },
   { id: "shopping", name: "Shopping & crafts", boost: ["craft", "market"] },
 ];
 
 export const THEME_BOOST = 2;
 
-export const isTheme = (v: unknown): v is Theme => THEMES.some((t) => t.id === v);
+const ALIASES: Record<string, Theme> = { scenic: "nature" };
+/** The theme id a request names (accepts "scenic" for the Scenic style), or null. */
+export const toTheme = (v: unknown): Theme | null =>
+  typeof v !== "string" ? null : ALIASES[v] ?? (THEMES.some((t) => t.id === v) ? v as Theme : null);
+export const isTheme = (v: unknown): v is Theme => toTheme(v) === v;
 
-// "What draws you in?": the kinds of stop each interest chip means. Landmarks are the sights a trip is built around.
+// "What draws you in?": the kinds of stop each interest chip means. "landmarks" means tier 3 of any kind.
 export const INTERESTS: Record<string, string[]> = {
   food: ["food", "market"],
   cafes: ["cafe"],
   culture: ["temple", "museum", "art"],
   nature: ["park", "viewpoint"],
   shopping: ["craft", "market"],
-  landmarks: ["viewpoint", "museum", "temple"],
+  landmarks: [],
 };
 
 export const isInterest = (v: unknown): v is string => typeof v === "string" && v in INTERESTS;
 
-/** The user's own mix: x2 for any kind one of their picked interests covers. */
-export function mixWeight(interests: string[]): (category: string) => number {
+/** The user's own mix: x2 for any kind one of their picked interests covers (and for landmarks if picked). */
+export function mixWeight(interests: string[]): (category: string, tier?: Tier) => number {
   const boosted = new Set(interests.flatMap((i) => INTERESTS[i] ?? []));
-  return (category) => boosted.has(category) ? THEME_BOOST : 1;
+  const landmarks = interests.includes("landmarks");
+  return (category, tier) => boosted.has(category) || (landmarks && tier === 3) ? THEME_BOOST : 1;
 }
 
-export function themeWeight(theme: Theme, category: string): number {
-  return THEMES.find((t) => t.id === theme)!.boost.includes(category) ? THEME_BOOST : 1;
+/** 0 means the style leaves this stop out (Local gems never picks a landmark). */
+export function themeWeight(theme: Theme, category: string, tier?: Tier): number {
+  const t = THEMES.find((x) => x.id === theme)!;
+  if (tier === 3 && t.landmarks === "skip") return 0;
+  return t.boost.includes(category) || (tier === 3 && t.landmarks === "boost") ? THEME_BOOST : 1;
 }
