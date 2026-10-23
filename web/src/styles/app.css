@@ -32,7 +32,7 @@ body { background:
 .passport-wrap { padding: 22px; max-width: 720px; margin-inline: auto; }
 
 /* liquid glass (OneShot Theme.swift LiquidGlass, ported) */
-:root { --glass-fill: rgb(255 255 255 / .62); --glass-top: rgb(255 255 255 / .9); --glass-bottom: rgb(22 27 61 / .1);
+:root { --glass-fill: rgb(255 255 255 / .86); --glass-top: rgb(255 255 255 / .9); --glass-bottom: rgb(22 27 61 / .1);
   --glass-side: rgb(22 27 61 / .04); --glass-rim: 22 27 61; --rim-edge: .2; --rim-near: .07; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --glass-fill: rgb(255 255 255 / .045); --glass-top: rgb(255 255 255 / .2);
   --glass-bottom: rgb(0 0 0 / .5); --glass-side: rgb(255 255 255 / .05); --glass-rim: 255 255 255; --rim-edge: .4; --rim-near: .13; } }
