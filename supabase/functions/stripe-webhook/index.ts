@@ -1,6 +1,7 @@
 import { admin, json } from "../_shared/http.ts";
 
-// Stripe calls this; no user JWT (deploy with --no-verify-jwt). Trust comes from the signature.
+// Stripe calls this; no user JWT (verify_jwt = false). Trust comes from the signature.
+// metadata.kind = credit (shop wallet) | starter (shop plan) | plus (user plan); see stripe-checkout.
 async function verify(payload: string, header: string, secret: string): Promise<boolean> {
   const parts = Object.fromEntries(header.split(",").map((p) => p.split("=") as [string, string]));
   const t = Number(parts.t);
@@ -29,8 +30,9 @@ Deno.serve(async (req) => {
   if (!paid) return json({ received: true });
 
   const s = event.data.object;
-  const { error } = await admin().rpc("credit_wallet", {
-    p_shop: s.metadata.shop_id, p_amount: s.amount_total / 100, p_session: s.id,
+  const { error } = await admin().rpc("apply_payment", {
+    p_session: s.id, p_kind: s.metadata.kind ?? "credit", p_amount: s.amount_total / 100,
+    p_shop: s.metadata.shop_id ?? null, p_user: s.metadata.user_id ?? null,
   });
   if (error) { console.error(error); return json({ error: "credit_failed" }, 500); } // Stripe retries
   return json({ received: true });

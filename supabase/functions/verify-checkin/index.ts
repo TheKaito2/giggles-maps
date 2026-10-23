@@ -9,6 +9,7 @@ serve(async (req) => {
   const accuracy = num(body.accuracy_m, 0, 10000, "bad_accuracy");
   const faceCount = num(body.face_count, 0, 20, "bad_face_count");
   const selfiePath = typeof body.selfie_path === "string" ? body.selfie_path : null;
+  let qr = typeof body.qr_code === "string" ? body.qr_code.trim().slice(0, 16) : null;
   if (selfiePath && !/^[0-9a-f-]{36}\/[\w.-]{1,80}$/.test(selfiePath)) throw new HttpError(400, "bad_selfie_path");
 
   // client signals: platform, mock-location flag, App Attest / Play Integrity token (verified server-side later)
@@ -22,10 +23,10 @@ serve(async (req) => {
 
   const db = admin();
   // Demo mode lets people outside Sakon Nakhon try check-in with simulated GPS.
-  // Only allowed at example places, so it can never bill a real shop.
+  // It can never bill a real shop: away from example places the QR is dropped, so billing says no_qr.
   if (client.demo) {
     const { data: place } = await db.from("places").select("is_demo").eq("id", placeId).maybeSingle();
-    if (!place?.is_demo) throw new HttpError(403, "demo_only_at_example_places");
+    if (!place?.is_demo) qr = null;
   }
   // the selfie must really be in this user's folder
   let uploaded: string | null = null;
@@ -37,7 +38,7 @@ serve(async (req) => {
 
   const { data, error } = await db.rpc("record_checkin", {
     p_user: user.id, p_place: placeId, p_lat: lat, p_lng: lng, p_accuracy: accuracy,
-    p_selfie_path: uploaded, p_face_count: faceCount, p_client: client,
+    p_selfie_path: uploaded, p_face_count: faceCount, p_qr: qr, p_client: client,
   });
   if (error?.code === "P0002") throw new HttpError(404, "place_not_found");
   if (error) throw error;

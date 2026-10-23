@@ -321,18 +321,15 @@ max_frequency = "5s"
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
 [auth.external.apple]
-enabled = false
-client_id = ""
-# DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
+enabled = true
+# Services ID (web sign-in) first, then the iOS bundle ID (native sign-in)
+client_id = "com.kristpaul.gigglesmaps.web,com.kristpaul.gigglesmaps"
+# ES256 JWT from the Sign in with Apple key (D9B84JZ9VL, team 97BS2K8UQ2). Expires every 6 months:
+# regenerate before 2027-04-21 and push again. Never commit it.
 secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
-# Overrides the default auth callback URL derived from auth.external_url.
-redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
+redirect_uri = "https://xrlxfvwrkowaybtkkrdl.supabase.co/auth/v1/callback"
 url = ""
-# If enabled, the nonce check will be skipped. Required for local sign in with Google auth.
 skip_nonce_check = false
-# If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
 email_optional = false
 
 [auth.external.google]

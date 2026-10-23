@@ -1,12 +1,18 @@
 import { admin, HttpError, json, num, requireUser, serve } from "../_shared/http.ts";
-import { expectedValue, planDetour, type Stop } from "../_shared/planner.ts";
+import { planDetour, type Stop } from "../_shared/planner.ts";
 import { estimateMinutes, type LatLng, matrixMinutes, type Mode, routeLine } from "../_shared/valhalla.ts";
 
 interface Candidate {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
   open_min: number | null; close_min: number | null; dwell_min: number; rating: number;
-  is_partner: boolean; effective_bid: number; p_checkin: number; is_demo: boolean;
+  paid: boolean; bid_thb: number; p_checkin: number; is_demo: boolean;
 }
+interface NearPartner { id: number; name: string; category: string; lat: number; lng: number; bid_thb: number; dist_m: number; is_demo: boolean }
+
+const FREE_MAX_BUDGET = 120;
+const PLUS_MAX_BUDGET = 240;
+const CARD_CATEGORIES = new Set(["park", "viewpoint", "temple"]); // "Near this spot" cards sit under these
+const MAX_CARDS = 2;
 
 // Thailand bounding box: reject coordinates we can't route anyway
 const point = (v: unknown, code: string): LatLng => {
@@ -20,14 +26,18 @@ serve(async (req) => {
   const origin = point(body.origin, "bad_origin");
   const dest = point(body.dest, "bad_dest");
   const startMin = num(body.start_min, 0, 1439, "bad_start_min");
-  const budgetMin = num(body.budget_min, 0, 240, "bad_budget_min");
   const mode: Mode = body.mode === "auto" ? "auto" : "pedestrian";
 
   const db = admin();
+  const { data: profile } = await db.from("profiles").select("plus_until").eq("id", user.id).maybeSingle();
+  const plus = !!profile?.plus_until && new Date(profile.plus_until) > new Date();
+  const budgetMin = num(body.budget_min, 0, PLUS_MAX_BUDGET, "bad_budget_min");
+  if (!plus && budgetMin > FREE_MAX_BUDGET) throw new HttpError(402, "plus_required");
+
   const metersPerMin = mode === "pedestrian" ? 80 : 500;
   const { data: cands, error } = await db.rpc("detour_candidates", {
     o_lat: origin.lat, o_lng: origin.lng, d_lat: dest.lat, d_lng: dest.lng,
-    extra_m: budgetMin * metersPerMin, max_n: 15,
+    extra_m: budgetMin * metersPerMin, max_free: 12, max_paid: plus ? 0 : 4,
   });
   if (error) throw error;
   const candidates = cands as Candidate[];
@@ -45,13 +55,28 @@ serve(async (req) => {
   }
 
   const stops: Stop[] = candidates.map((c, i) => ({
-    idx: i + 2, id: c.id, rating: Number(c.rating), dwellMin: c.dwell_min,
-    openMin: c.open_min, closeMin: c.close_min,
-    value: expectedValue(Number(c.effective_bid), Number(c.p_checkin), Number(c.rating)),
+    idx: i + 2, id: c.id, category: c.category, rating: Number(c.rating), dwellMin: c.dwell_min,
+    openMin: c.open_min, closeMin: c.close_min, paid: c.paid, bidThb: Number(c.bid_thb),
   }));
   const plan = planDetour({
-    originIdx: 0, destIdx: 1, startMin, budgetMin, stops, travelMin: (a, b) => matrix[a][b],
+    originIdx: 0, destIdx: 1, startMin, budgetMin, stops, travelMin: (a, b) => matrix[a][b], allowPaid: !plus,
   });
+
+  // "Near this spot" cards: best nearby funded partner (relevance x bid) under nature/temple stops
+  const inRoute = new Set(plan.order.map((s) => s.id));
+  const cards = new Map<number, NearPartner>();
+  if (!plus) {
+    for (const s of plan.order) {
+      if (cards.size >= MAX_CARDS) break;
+      const c = candidates.find((x) => x.id === s.id)!;
+      if (!CARD_CATEGORIES.has(c.category)) continue;
+      const { data } = await db.rpc("partners_near", { p_lat: c.lat, p_lng: c.lng, p_radius_m: 400 });
+      const best = ((data ?? []) as NearPartner[])
+        .filter((p) => !inRoute.has(p.id) && ![...cards.values()].some((x) => x.id === p.id))
+        .sort((a, b) => b.bid_thb / (1 + b.dist_m / 100) - a.bid_thb / (1 + a.dist_m / 100))[0];
+      if (best) cards.set(s.id, best);
+    }
+  }
 
   // ETA per stop for the UI
   let t = startMin, at = 0;
@@ -62,10 +87,15 @@ serve(async (req) => {
     const eta = Math.round(t);
     t += s.dwellMin;
     at = s.idx;
+    const card = cards.get(s.id);
     return {
       id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng,
-      is_partner: c.is_partner, bid_thb: Number(c.effective_bid), is_demo: c.is_demo,
+      is_partner: s === plan.partner, is_demo: c.is_demo,
       rating: Number(c.rating), dwell_min: c.dwell_min, eta_min: eta,
+      nearby_partner: card
+        ? { id: card.id, name: card.name, category: card.category, lat: card.lat, lng: card.lng,
+            distance_m: Math.round(card.dist_m), is_demo: card.is_demo }
+        : null,
     };
   });
 
@@ -83,18 +113,24 @@ serve(async (req) => {
     start_min: startMin, budget_min: budgetMin, extra_min: Math.round(plan.extraMin * 10) / 10,
   }).select("id").single();
   if (rErr) throw rErr;
-  if (ordered.length) {
-    const { error: sErr } = await db.from("route_stops").insert(
-      ordered.map((s, i) => ({ route_id: route.id, place_id: s.id, position: i, bid_thb: s.bid_thb })),
-    );
+
+  // impressions: every stop and card shown; the 3 h billing window starts here
+  const shown = [
+    ...ordered.map((s, i) => ({ route_id: route.id, user_id: user.id, place_id: s.id, position: i,
+      kind: s.is_partner ? "partner" : "stop", bid_thb: s.is_partner ? plan.partner!.bidThb : 0 })),
+    ...[...cards.values()].map((c) => ({ route_id: route.id, user_id: user.id, place_id: c.id, position: null,
+      kind: "card", bid_thb: Number(c.bid_thb) })),
+  ];
+  if (shown.length) {
+    const { error: sErr } = await db.from("route_stops").insert(shown);
     if (sErr) throw sErr;
   }
 
   return json({
-    route_id: route.id, routing, mode,
+    route_id: route.id, routing, mode, plus,
     base_min: Math.round(plan.baseMin), total_min: Math.round(plan.totalMin),
     extra_min: Math.round(plan.extraMin), budget_min: budgetMin,
-    expected_thb: Math.round(plan.expectedThb * 100) / 100,
+    max_budget_min: plus ? PLUS_MAX_BUDGET : FREE_MAX_BUDGET,
     candidates_considered: candidates.length,
     stops: ordered, geometry,
   });
