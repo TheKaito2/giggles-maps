@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Bell, Camera, Car, Coins, LocateFixed, Map as MapIcon, MapPin, Navigation, Plus, Swords, Trophy, UserRound, X } from "lucide-react";
-import { ApiError, ensureSession, supabase } from "../lib/supabase";
-import { addFriend, type CheckinTarget, choosePlan, getProfile, type LatLng, planRoute, type Profile, readCodeParam, readScanParam, type RoutePlan } from "../lib/api";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Bell, Camera, Coins, LocateFixed, Map as MapIcon, MapPin, Navigation, Swords, Trophy, UserRound, X } from "lucide-react";
+import { ensureSession, supabase } from "../lib/supabase";
+import { addFriend, type CheckinTarget, getProfile, type LatLng, type Profile, readCodeParam, readScanParam } from "../lib/api";
 import MapView from "./MapView";
 import CheckIn from "./CheckIn";
-import Planner from "./Planner";
-import Results from "./Results";
-import { budgetLabel, DEFAULT_PREFS, departLabel, MODES, type Place, type Prefs, toRequest } from "./prefs";
+import Sheet, { type Snap } from "./detour/Sheet";
+import WhereTo from "./detour/WhereTo";
+import Choose, { TripHead } from "./detour/Choose";
+import Results from "./detour/Results";
+import { useDetour } from "./detour/useDetour";
 import { resumeSignIn, useUser } from "../lib/auth";
 import { useStops } from "./useStops";
 import Nickname from "./social/Nickname";
@@ -34,9 +36,6 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "profile", label: "Profile", icon: <UserRound size={24} /> },
 ];
 
-// Real places from the seed: Phu Phan Museum -> Wat Phra That Choeng Chum
-const DEFAULT_ORIGIN: Place = { point: { lat: 17.17313, lng: 104.14488 }, name: "Phu Phan Museum" };
-const DEFAULT_DEST: Place = { point: { lat: 17.16445, lng: 104.15345 }, name: "Wat Phra That Choeng Chum" };
 
 // shared empty arrays: a fresh [] each render would make the map refit the route on every position update
 const NONE: never[] = [];
@@ -45,8 +44,6 @@ export default function App() {
   const [tab, setTab] = useState<Tab>(() => readCodeParam("friend") ? "profile" : "map");
   const [friend, setFriend] = useState<string | null>(null);   // a friend's profile open in the Profile tab
   const [overlay, setOverlay] = useState<"shop" | "avatar" | "ride" | "add" | null>(() => readCodeParam("trip") ? "ride" : null);
-  const [origin, setOrigin] = useState<Place | null>(DEFAULT_ORIGIN);
-  const [dest, setDest] = useState<Place | null>(DEFAULT_DEST);
   const [chip, setChip] = useState<string | null>(null);
   const [nav, setNav] = useState<Waypoint[] | null>(null);   // turn-by-turn running
   const [look, setLookState] = useState<MapLook>(loadLook);   // map type + night map, remembered on this device
@@ -59,23 +56,21 @@ export default function App() {
   // the place page open on the map: a tapped pin, a saved place, or a shared /app/?place=ID link
   const [place, setPlace] = useState<number | null>(() => Number(new URLSearchParams(location.search).get("place")) || null);
   const [picking, setPicking] = useState<"origin" | "dest" | null>(null);
-  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
-  const [response, setPlan] = useState<RoutePlan | null>(null);
-  const [choice, setChoice] = useState<string | null>(null);
-  const plan = response && choosePlan(response, choice);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [checkin, setCheckin] = useState<{ target: CheckinTarget; code?: string } | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [view, setView] = useState<"plan" | "results">("plan");
-
-  // any change to the trip drops the old result and cancels a request in flight
-  const routeRequest = useRef(0);
-  useEffect(() => { routeRequest.current++; setBusy(false); setPlan(null); }, [origin, dest, prefs]);
-  const set = (patch: Partial<Prefs> | ((p: Prefs) => Partial<Prefs>)) =>
-    setPrefs((p) => ({ ...p, ...(typeof patch === "function" ? patch(p) : patch) }));
+  const d = useDetour(setError);
+  const plan = d.stage === "results" ? d.plan : null;
+  const mapPlan = d.stage === "browse" ? null : d.plan;   // while choosing, the highlighted option's route previews
+  // the other plan cards' routes, faint on the map behind the one you picked
+  const alternates = useMemo(() => d.stage === "results" && plan ? (d.response?.plans ?? []).filter((p) => p.geometry !== plan.geometry).map((p) => p.geometry) : NONE,
+    [d.stage, d.response, plan?.geometry]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [focus, setFocus] = useState<LatLng | null>(null);
+  // the sheet rises as you go: peek while browsing, half while choosing and on results (drag for more)
+  const [snap, setSnap] = useState<Snap>("peek");
+  useEffect(() => { setSnap(d.stage === "browse" ? "peek" : "half"); }, [d.stage]);
 
   const user = useUser();
   // reload on sign-in and sign-out too: the profile belongs to whoever is signed in now
@@ -123,39 +118,16 @@ export default function App() {
 
   const onPick = useCallback((point: LatLng) => {
     const place = { point, name: `Pin at ${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}` };
-    if (picking === "origin") setOrigin(place); else if (picking === "dest") setDest(place);
+    if (picking === "origin") d.setOrigin(place); else if (picking === "dest") d.goTo(place);
     setPicking(null);
-  }, [picking]);
+  }, [picking]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const useMyLocation = () => navigator.geolocation.getCurrentPosition(
-    (pos) => setOrigin({ point: { lat: pos.coords.latitude, lng: pos.coords.longitude }, name: "My location" }),
-    () => setError("Location is blocked. Search for a place or pick your start on the map instead."),
-    { enableHighAccuracy: true, timeout: 10000 });
-
-  const submit = async () => {
-    if (!origin || !dest) return;
-    const requestId = ++routeRequest.current;
-    setBusy(true); setError(""); setPlan(null);
-    try {
-      const result = await planRoute(toRequest(prefs, origin.point, dest.point));
-      if (requestId !== routeRequest.current) return;
-      setChoice(null); setPlan(result); setView("results");
-    } catch (e) {
-      if (requestId !== routeRequest.current) return;
-      const code = e instanceof ApiError ? e.code : "";
-      setError(code === "routing_unavailable" ? "Couldn't find a road route. Try a nearby road pin, another way to travel, or retry shortly."
-        : code.startsWith("bad_") ? "Pick a start and destination inside Thailand." : "Couldn't plan the route. Try again in a moment.");
-    } finally { if (requestId === routeRequest.current) setBusy(false); }
-  };
 
   const onSelectStop = useCallback((id: number) => {
-    setSelected(id);
+    setSelected(id); setSnap((sn) => sn === "peek" ? "half" : sn);
     document.getElementById(`stop-${id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, []);
 
-  const tripLine = `${prefs.budget === "auto" ? (plan ? `+${budgetLabel(plan.budget_min)} (auto)` : "auto extra time") : `+${budgetLabel(prefs.budget)}`} · ${MODES.find((m) => m.id === prefs.mode)!.label.toLowerCase()} · leaves ${departLabel(prefs)}`
-    + (prefs.meals.length ? ` · ${prefs.meals.join(" & ")}` : "");
-  const showResults = view === "results" && response && plan;
   const refresh = () => setRefreshKey((k) => k + 1);
   const level = levelFor(profile?.xp ?? 0);
   const { into, span } = levelProgress(profile?.xp ?? 0);
@@ -190,66 +162,44 @@ export default function App() {
               <p className="map-banner">Tap the map to set your {picking === "origin" ? "start" : "destination"}.
                 <button className="link" onClick={() => setPicking(null)}>Cancel</button></p>
             )}
-            <MapView origin={origin?.point ?? null} dest={dest?.point ?? null} stops={showResults ? plan.stops : NONE} geometry={showResults ? plan.geometry : NONE}
-              baseGeometry={showResults ? plan.base_geometry : NONE} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop}
+            <MapView origin={d.stage === "browse" ? null : d.origin?.point ?? null} dest={d.dest?.point ?? null}
+              stops={mapPlan?.stops ?? NONE} geometry={mapPlan?.geometry ?? NONE}
+              alternates={alternates} focus={focus} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop}
               nearby={nearby.stops} here={nearby.here} inZone={nearby.inZone.map((s) => s.id)}
               members={trip.trip?.members ?? NONE} skin={profile?.look.map ?? "liberty"} look={look}
-              kinds={CHIPS.find((c) => c.id === chip)?.kinds ?? null} onPlace={(p) => setPlace(p.id)} />
-            <ExploreChips active={chip} onPick={setChip} />
-            <LayersButton look={look} setLook={setLook} />
-            <button type="button" className="btn soft small add-place-fab" onClick={() => setOverlay("add")}><Plus size={15} aria-hidden /> Add place</button>
+              kinds={d.stage === "browse" ? CHIPS.find((c) => c.id === chip)?.kinds ?? null : null} onPlace={(p) => setPlace(p.id)} />
+            {d.stage === "browse" && <ExploreChips active={chip} onPick={setChip} />}
+            <div className="map-tools">
+              <LayersButton look={look} setLook={setLook} />
+              {!nearby.watching && <button type="button" className="map-tool" onClick={nearby.start} aria-label="Show stops near me"><LocateFixed size={20} /></button>}
+            </div>
             {place && <PlaceSheet id={place} onClose={() => setPlace(null)}
-              onDirections={(p) => { setDest({ point: { lat: p.lat, lng: p.lng }, name: p.name }); setPlace(null); setView("plan"); }}
+              onDirections={(p) => { setPlace(null); d.goTo({ point: { lat: p.lat, lng: p.lng }, name: p.name }); }}
               onCheckin={(p) => setCheckin({ target: { id: p.id, name: p.name, lat: p.lat, lng: p.lng, is_partner: false, is_demo: false } })} />}
-            <button type="button" className={`btn soft small trip-chip${trip.trip ? " live" : ""}`} onClick={() => setOverlay("ride")}>
-              <Car size={16} aria-hidden /> {trip.trip ? `Ride along · ${trip.trip.members.length}` : "Ride along"}
-            </button>
-            <div className="map-actions">
-              {zoneStop ? (
+            {zoneStop && (
+              <div className="map-actions">
                 <button type="button" className={`btn checkin-cta tier-${zoneStop.tier}`}
                   onClick={() => setCheckin({ target: { id: zoneStop.id, name: zoneStop.name, lat: zoneStop.lat, lng: zoneStop.lng, is_partner: false, is_demo: false } })}>
                   <Camera size={18} aria-hidden /> {zoneStop.stamped ? "Add a photo at" : "Check in at"} {zoneStop.name}
                 </button>
-              ) : !nearby.watching && (
-                <button type="button" className="btn soft" onClick={nearby.start}><LocateFixed size={16} aria-hidden /> Show stops near me</button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
-          <section className="panel glass" aria-live="polite">
-            {showResults ? (
-              <>
-                <div className="panel-head">
-                  <div className="row between">
-                    <button type="button" className="link" onClick={() => setView("plan")}><ArrowLeft size={16} aria-hidden /> Edit trip</button>
-                    <button type="button" className="btn small" onClick={() => setNav([...plan.stops.map((st) => ({ lat: st.lat, lng: st.lng, name: st.name })),
-                      { ...dest!.point, name: dest!.name }])}><Navigation size={15} aria-hidden /> Start</button>
-                  </div>
-                  <p className="trip-title"><span><b>{origin?.name}</b> → <b>{dest?.name}</b></span><span className="fine">{tripLine}</span></p>
-                </div>
-                <div className="panel-body">
-                  <Results response={response} plan={plan} choice={choice} setChoice={setChoice} selected={selected}
-                    onCheckin={(target) => setCheckin({ target })} picks={prefs.picks} />
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="panel-body">
-                  <h1 className="panel-title">Plan your detour</h1>
-                  <Planner prefs={prefs} set={set} origin={origin} dest={dest} setOrigin={setOrigin} setDest={setDest}
-                    swap={() => { setOrigin(dest); setDest(origin); }} pickOnMap={setPicking} useMyLocation={useMyLocation} />
-                </div>
-                <div className="panel-foot">
-                  {error && <p className="error" role="alert">{error}</p>}
-                  {plan && !busy && <button type="button" className="link" onClick={() => setView("results")}>Back to your plans <ArrowRight size={14} aria-hidden /></button>}
-                  <button type="button" className="btn big find" onClick={submit} disabled={busy || !origin || !dest}>
-                    {busy ? "Finding your detour…" : "Find my detour"}
-                  </button>
-                  <p className="fine center">{tripLine}</p>
-                </div>
-              </>
-            )}
-          </section>
+          <Sheet snap={snap} setSnap={setSnap} label={d.stage === "browse" ? "Where to?" : "Your detour"}
+            head={d.stage !== "browse" && <TripHead d={d} onBack={d.stage === "results" ? () => d.setStage("choose") : d.close}
+              backLabel={d.stage === "results" ? "Back to time options" : "Close this trip"} onSearch={() => setSnap("full")} />}
+            foot={d.stage === "results" && plan && plan.stops.length > 0 && (
+              <button type="button" className="btn big find" onClick={() => setNav([...plan.stops.map((st) => ({ lat: st.lat, lng: st.lng, name: st.name })),
+                { ...d.dest!.point, name: d.dest!.name }])}><Navigation size={18} aria-hidden /> Start · {plan.stops.length} stop{plan.stops.length === 1 ? "" : "s"}</button>
+            )}>
+            {error && <p className="error" role="alert">{error}<button type="button" className="icon-btn" onClick={() => setError("")} aria-label="Dismiss"><X size={16} /></button></p>}
+            {d.stage === "browse" && <WhereTo near={nearby.here} onPick={(point, name) => d.goTo({ point, name })} pickOnMap={() => { setPicking("dest"); setSnap("peek"); }}
+              addPlace={() => setOverlay("add")} rideAlong={() => setOverlay("ride")} rideLive={trip.trip ? trip.trip.members.length : null} onSearch={() => setSnap("full")} />}
+            {d.stage === "choose" && <Choose d={d} onPicked={() => d.setStage("results")} />}
+            {d.stage === "results" && <Results d={d} selected={selected} onOpen={(s) => { setSelected(s.id); setFocus({ lat: s.lat, lng: s.lng }); setPlace(s.id); }}
+              onCheckin={(target) => setCheckin({ target })} />}
+          </Sheet>
         </main>
       ) : (
         <main className="page-view">
@@ -271,7 +221,7 @@ export default function App() {
         </div>
       )}
       {overlay === "add" && <AddPlace onClose={() => setOverlay(null)} />}
-      {nav && <Navigate waypoints={nav} mode={prefs.mode} onClose={() => setNav(null)} />}
+      {nav && <Navigate waypoints={nav} mode={d.prefs.mode} onClose={() => setNav(null)} />}
       {etaToken && <EtaView token={etaToken} onClose={() => setEtaToken(null)} />}
       {overlay === "avatar" && profile && <AvatarBuilder profile={profile} onClose={() => setOverlay(null)} onSaved={() => { setOverlay(null); refresh(); }} />}
       {overlay === "ride" && (

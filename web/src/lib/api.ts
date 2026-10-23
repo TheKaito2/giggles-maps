@@ -25,6 +25,14 @@ export interface RouteStop {
   picked?: boolean;   // the user asked for this place (must_include)
   local?: boolean; otop?: boolean; community?: boolean;   // local first: independent / OTOP / community enterprise
   tier?: 1 | 2 | 3;   // 3 = landmark (must-go), 2 = worth a visit, 1 = everyday
+  extra_min?: number | null;   // about how many minutes this stop adds (road detour + time there); null if unknown
+  photo?: string | null;  // a photo of the place, when we have one
+}
+
+// a place the plan left out that you can add ("along your route"); extra_min is an estimate
+export interface AlongPlace {
+  id: number; name: string; name_th: string | null; category: string; lat: number; lng: number; tier: 1 | 2 | 3;
+  rating: number | null; local: boolean; otop: boolean; community: boolean; photo: string | null; extra_min: number;
 }
 
 export type Meal = "breakfast" | "lunch" | "dinner";
@@ -35,6 +43,7 @@ export interface ThemedPlan {
   extra_min: number; total_min: number; meals: Meal[]; missed_meals: Meal[];
   unfit_required?: number[];   // picked places that didn't fit this plan
   road_extra_min?: number; stop_min?: number; wait_min?: number;   // where extra_min goes
+  along?: AlongPlace[];
 }
 
 export interface RoutePlan {
@@ -45,6 +54,7 @@ export interface RoutePlan {
   base_geometry?: [number, number][];
   warnings?: string[];
   meals?: Meal[]; missed_meals?: Meal[];
+  unfit_required?: number[];   // picked places that didn't fit (Top picks)
   plans?: ThemedPlan[]; // top-level fields = Top picks
   road_extra_min?: number; stop_min?: number; wait_min?: number;
   budget_auto?: boolean;   // budget_min was picked by the server ("auto")
@@ -89,7 +99,9 @@ export interface PlanRequest {
   include_unrated?: boolean;
   max_stops?: number;           // 1-6; omitted = Auto
   max_price?: 0 | 1 | 2 | 3;    // omitted = Any
-  must_include?: number[];      // up to 3 places the user picked
+  must_include?: number[];      // up to 6 places the user picked or added
+  exclude?: number[];           // stops the user removed or swapped out
+  theme?: string;               // this plan comes first
   meals?: Meal[];               // meals to stop for; omitted = no food stop forced
 }
 

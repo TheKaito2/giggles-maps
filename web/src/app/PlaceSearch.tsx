@@ -19,9 +19,10 @@ function ResultIcon({ p }: { p: FoundPlace }) {
 
 // Start/destination field, Google-style: our places AND addresses (Photon, OpenStreetMap search) preview as you type.
 // Photon asks for fair use: 3+ characters, a 400 ms pause, and the previous request is cancelled.
-export default function PlaceSearch({ label, value, pin, near, onPick, actions }: {
+export default function PlaceSearch({ label, value, pin, near, onPick, actions, footer }: {
   label: string; value: string; pin: ReactNode; near?: LatLng | null;
   onPick: (point: LatLng, name: string) => void; actions?: ReactNode;
+  footer?: ReactNode;   // last rows of the open list, e.g. "Pick on the map", "Add a missing place"
 }) {
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
@@ -33,7 +34,7 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions }
 
   useEffect(() => {
     const text = query.trim();
-    if (!open || text.length < 2 || text === value) { setPlaces([]); setAddresses([]); return; }
+    if (!open || text.length < 2 || text === value) { request.current++; setPlaces([]); setAddresses([]); return; }   // drop late replies
     const coords = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/.exec(text);
     if (coords) { setPlaces([]); setAddresses([]); return; }
     const id = ++request.current;
@@ -47,7 +48,7 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions }
         .catch(() => undefined);   // cancelled or Photon down: places still show
     }, 400) : undefined;
     return () => { clearTimeout(t1); clearTimeout(t2); abort.abort(); };
-  }, [query, open, near, value]);
+  }, [query, open, near?.lat, near?.lng, value]); // eslint-disable-line react-hooks/exhaustive-deps -- near by value: a GPS fix is a new object
 
   const pick = (p: FoundPlace) => {
     request.current++;
@@ -90,7 +91,11 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions }
         {pin}
         <input value={query} maxLength={100} aria-label={label} placeholder={label}
           onFocus={(e) => { setOpen(true); e.target.select(); }}
-          onBlur={() => setTimeout(() => { setOpen(false); setQuery((q) => q.trim() ? q : value); }, 150)}
+          onBlur={(e) => {
+            // Tab into a suggestion keeps the list open; leaving the field closes it
+            if (e.relatedTarget && e.currentTarget.closest(".place-field")?.contains(e.relatedTarget as Node)) return;
+            setTimeout(() => { setOpen(false); setQuery((q) => q.trim() ? q : value); }, 150);
+          }}
           onChange={(e) => { setQuery(e.target.value); setMessage(""); }}
           onKeyDown={(e) => {
             if (e.key === "Enter") { e.preventDefault(); enter(); }
@@ -98,7 +103,7 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions }
           }} />
         {actions}
       </div>
-      {open && (recent.length > 0 || places.length > 0 || addresses.length > 0 || message) && (
+      {open && (recent.length > 0 || places.length > 0 || addresses.length > 0 || message || footer) && (
         <ul className="place-results" aria-label={`${label} suggestions`}>
           {recent.length > 0 && <li className="results-head fine">Recent</li>}
           {recent.map((p, i) => row(p, i, true))}
@@ -107,6 +112,7 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions }
           {addresses.length > 0 && <li className="results-head fine">Addresses</li>}
           {addresses.map((p, i) => row(p, i))}
           {message && <li className="fine msg" role="status">{message}</li>}
+          {footer}
         </ul>
       )}
     </div>
