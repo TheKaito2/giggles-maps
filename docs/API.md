@@ -23,7 +23,8 @@ Redirect URLs allowed: `https://giggles-maps.pages.dev/**`, `http://localhost:51
 
 ## `plan-route`
 
-Plan a detour that fits the user's extra-time budget. Stops are ranked on quality only (monetization v3, `docs/MONETIZATION.md`).
+Plan a detour that fits the user's extra-time budget. Stops are ranked on quality only (`docs/MONETIZATION.md`).
+The engine returns several themed plans for the same trip (`plans`) and the user picks one; the top-level fields are always the **Top picks** plan, so older clients keep working.
 
 Request
 ```json
@@ -32,12 +33,14 @@ Request
   "dest":   { "lat": 17.16445, "lng": 104.15345 },
   "start_min": 600,
   "budget_min": 45,
-  "mode": "pedestrian"
+  "mode": "pedestrian",
+  "theme": "food"
 }
 ```
 - `start_min`: minutes after local midnight (0–1439). Used for opening hours.
 - `budget_min`: extra minutes the user accepts (0–240). Never exceeded.
 - `mode`: `"pedestrian"` (default) or `"auto"`.
+- `theme` (optional): `top_picks`, `nature`, `food`, `culture` or `shopping`. Only reorders `plans` so that one comes first; anything else is 400 `bad_theme`.
 - Coordinates must be inside Thailand (lat 5–21, lng 97–106).
 
 Response
@@ -45,11 +48,15 @@ Response
 {
   "route_id": "uuid", "routing": "valhalla", "mode": "pedestrian",
   "base_min": 21, "total_min": 66, "extra_min": 44, "budget_min": 45,
-  "plus": false, "max_budget_min": 120, "candidates_considered": 15,
+  "plus": false, "member": false, "level": 0, "max_budget_min": 240, "candidates_considered": 15,
   "stops": [{ "id": 31, "name": "…", "name_th": "…", "category": "craft", "lat": 17.16, "lng": 104.14,
               "is_partner": true, "is_demo": true, "rating": 4.2, "dwell_min": 20, "eta_min": 617,
+              "meal": null, "min_level": 0, "exclusive_kind": null, "perk_text": null,
               "nearby_partner": null }],
-  "geometry": [[104.14488, 17.17313], "…"]
+  "geometry": [[104.14488, 17.17313], "…"],
+  "meals": ["lunch"], "missed_meals": [],
+  "plans": [{ "id": "top_picks", "name": "Top picks", "stops": ["…same shape as stops…"],
+              "geometry": ["…"], "extra_min": 44, "total_min": 66, "meals": ["lunch"], "missed_meals": [] }]
 }
 ```
 - `routing: "estimate"` means the routing server was down and times are straight-line estimates.
@@ -57,9 +64,12 @@ Response
 - Stops are chosen by quality only (rating, variety, fit inside the budget). Paying never changes rank; there is no paid slot.
 - `is_partner: true` means the place is a signed-up shop that pays per verified visit. It can appear any number of times, only on merit. Show a **Partner** label (`Example partner` when `is_demo`) so users know the shop pays.
 - `nearby_partner` (on park/viewpoint/temple stops, max 2 per route): a "Near this spot" card `{id, name, category, lat, lng, distance_m, is_partner, is_demo}`. It is the best nearby place by quality (rating, then distance), signed up or not; the field name is kept from v2 so existing clients keep working. Show the Partner label only when the card's `is_partner` is true. Users can check in there too.
-- Giggles Plus users (`plus: true`) get `budget_min` up to 240; free users over 120 get 402 `plus_required`. Plus users see the same stops and cards as everyone.
+- `budget_min` goes up to 240 for everyone. Plus is cosmetic; members (`level` > 0) also get exclusive places their level opens (`min_level`, `exclusive_kind`, `perk_text`).
+- `plans`: one per theme, Top picks first (or the requested `theme` first). A themed plan with exactly the same stops as an earlier one is dropped, so there can be 1–5 plans. Themes and their ×2-boosted categories (`_shared/themes.ts`): Top picks (none), Nature lover (park, viewpoint), Food lover (cafe, food, market), Culture & temples (temple, museum, art), Shopping & crafts (craft, market). Other kinds can still appear.
+- Meals: when the trip window (start → start + direct time + budget) overlaps breakfast 07:00–09:30, lunch 11:30–13:30 or dinner 17:30–20:00 by ≥ 30 min, the meal is in `meals` and every plan tries to place a cafe/food/market stop arriving inside that window; that stop has `meal: "lunch"` etc. Arriving early means waiting for the window (counted in the extra time). If nothing fits, the meal is in that plan's `missed_meals`.
+- Every stop and card in any plan counts as an impression, once per place per route.
 
-Errors: `not_signed_in` 401, `plus_required` 402, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_json` 400.
+Errors: `not_signed_in` 401, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_theme` / `bad_json` 400.
 
 ## `verify-checkin`
 

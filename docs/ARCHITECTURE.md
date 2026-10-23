@@ -30,10 +30,12 @@ Giggles Maps fills the extra time a traveller allows on a trip with local stops 
 
 ## Algorithms
 
-**1. Candidate prefilter (SQL `detour_candidates`).** A stop is possible only if `d(origin,stop) + d(stop,dest) ≤ d(origin,dest) + budget × speed` (an ellipse). Returns the top 16 by rating (ties: smallest detour first). Partner status and bids are not used.
+**1. Candidate prefilter (SQL `detour_candidates`).** A stop is possible only if `d(origin,stop) + d(stop,dest) ≤ d(origin,dest) + budget × speed` (an ellipse). Takes the best 5 of each group (nature, food, culture, shopping, other; ties: smallest detour first), then the top 22 by rating, so every themed plan has its kind of stop. Level-gated by `place_open_to`. Partner status is not used.
 
 **2. Detour planner (`_shared/planner.ts`).** One Valhalla time matrix for origin, destination and candidates, then:
-- Greedy insertion choosing the stop and position with the highest `quality × variety / added_minutes` (quality = rating / 5; a repeated category counts half), subject to total extra time ≤ budget, arrival within opening hours, rating ≥ 4.0. After each insertion a 2-opt pass shortens the order.
+- Phase 0, meals (`_shared/meals.ts`): for each meal the trip runs through, insert the best cafe/food/market stop that arrives inside the meal window (early arrival waits for the window; the wait counts as extra time). None fits → `missed_meals`.
+- Phase 1: greedy insertion choosing the stop and position with the highest `quality × theme weight × variety / added_minutes` (quality = rating / 5; theme weight ×2 for the theme's categories, `_shared/themes.ts`; a repeated category counts half), subject to total extra time ≤ budget, arrival within opening hours, rating ≥ 4.0. After each insertion a 2-opt pass shortens the order.
+- `plan-route` runs the planner once per theme on the same shortlist and matrix (no extra routing calls), drops duplicate plans, and fetches road geometry per plan in parallel (straight-line fallback).
 - The planner never sees whether a place pays (monetization v3: no paid placement).
 - "Near this spot" cards (`places_near`): under park/viewpoint/temple stops, the best place within 400 m by rating then distance, signed up or not.
 
