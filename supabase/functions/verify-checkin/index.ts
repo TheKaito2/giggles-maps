@@ -27,9 +27,9 @@ serve(async (req) => {
   const lat = num(body.lat, 5, 21, "bad_lat");
   const lng = num(body.lng, 97, 106, "bad_lng");
   const accuracy = num(body.accuracy_m, 0, 10000, "bad_accuracy");
-  const faceCount = num(body.face_count, 0, 20, "bad_face_count");
+  const faceCount = body.face_count == null ? 0 : num(body.face_count, 0, 20, "bad_face_count");   // v5: any photo, faces not needed
   const selfiePath = typeof body.selfie_path === "string" ? body.selfie_path : null;
-  let qr = typeof body.qr_code === "string" ? body.qr_code.trim().slice(0, 16) : null;
+  const qr = typeof body.qr_code === "string" ? body.qr_code.trim().slice(0, 16) : null;
   if (selfiePath && !/^[0-9a-f-]{36}\/[\w.-]{1,80}$/.test(selfiePath)) throw new HttpError(400, "bad_selfie_path");
 
   // client signals: platform, mock-location flag, App Attest / Play Integrity token (verified server-side later)
@@ -45,11 +45,11 @@ serve(async (req) => {
   const attestOk = client.platform === "ios"
     ? await checkAttest(db, user.id, client.attest, `${placeId}|${lat}|${lng}|${selfiePath ?? ""}`) : null;
   const clientRecord = { ...client, attest: null, attest_ok: attestOk };   // keep the verdict, not the blob
-  // Demo mode lets people outside Sakon Nakhon try check-in with simulated GPS.
-  // It can never bill a real shop: away from example places the QR is dropped, so billing says no_qr.
+  // Demo mode simulates GPS so judges can try check-in anywhere. Stamps and XP are real now, so demo only works at
+  // the example places (it would otherwise be a free "teleport" to any landmark).
   if (client.demo) {
     const { data: place } = await db.from("places").select("is_demo").eq("id", placeId).maybeSingle();
-    if (!place?.is_demo) qr = null;
+    if (!place?.is_demo) throw new HttpError(403, "demo_only_at_example_places");
   }
   // the selfie must really be in this user's folder
   let uploaded: string | null = null;
@@ -59,7 +59,7 @@ serve(async (req) => {
     if (data?.some((o) => o.name === file)) uploaded = selfiePath;
   }
 
-  const { data, error } = await db.rpc("record_checkin_v4", {  // v4: level gate + XP around the v3 rules
+  const { data, error } = await db.rpc("record_checkin_v5", {  // v5: GPS stop zone, any photo, stamps, XP/coins, challenges
     p_user: user.id, p_place: placeId, p_lat: lat, p_lng: lng, p_accuracy: accuracy,
     p_selfie_path: uploaded, p_face_count: faceCount, p_qr: qr, p_client: clientRecord,
   });

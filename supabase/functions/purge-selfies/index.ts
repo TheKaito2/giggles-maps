@@ -1,12 +1,14 @@
 import { admin, HttpError, json, serve } from "../_shared/http.ts";
 
-// Called daily by pg_cron. Deletes selfies older than 30 days (PDPA: keep only as long as needed).
+// Called daily by pg_cron. Check-in photos are the passport album now and stay until the user deletes them;
+// this only clears photos of rejected check-ins after 30 days (PDPA: keep only as long as needed).
 serve(async (req) => {
   if (req.headers.get("x-cron-secret") !== Deno.env.get("CRON_SECRET")) throw new HttpError(401, "unauthorized");
   const db = admin();
   const { data: rows, error } = await db.from("checkins")
     .select("id, selfie_path")
     .not("selfie_path", "is", null)
+    .eq("status", "rejected")
     .lt("created_at", new Date(Date.now() - 30 * 86400_000).toISOString())
     .limit(1000);
   if (error) throw error;

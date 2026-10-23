@@ -164,6 +164,14 @@ Errors: `sign_in_required` 403 (guests), `invalid_transaction` 400, `bought_by_a
 
 Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`, then applies the payment once per Checkout session (`apply_payment`: credit → wallet, plus → `profiles.plus_until` +30 days, membership → `profiles.member_since`) on `checkout.session.completed` (paid) or `checkout.session.async_payment_succeeded` (PromptPay).
 
+## Passport (RPCs, signed-in user)
+
+- `stops_near(p_lat, p_lng, p_radius_m default 1500)`: places around a point for the map: `id, name, name_th, category, tier, lat, lng, zone_m (150 landmark/park, 50 else), distance_m, stamped`.
+- `passport_v2()`: `{ profile: {xp, level, member, plus, coins}, stamps: [...], photos: [...], provinces: [{id, iso, name_en, name_th, stamps}], challenges: [{slug, kind, title_en, title_th, have, need, xp, coins, claimed}] }`.
+- `set_photo(p_checkin, p_hidden, p_caption)`: hide or caption one of your check-in photos.
+- Photos are in the private `selfies` bucket under `<user id>/…`; use signed URLs.
+- `verify-checkin` now returns, on top of the old fields: `stamp: {tier, new_province, province, event} | null` (first visit only), `challenges: [{slug, title, title_th, xp, coins}]` (completed by this check-in), `coins` (member balance). `face_count` is optional and ignored. Rules and numbers: `docs/GAMIFICATION.md`.
+
 ## Search (`search_places` RPC)
 
 `rpc("search_places", { p_query, p_lat?, p_lng?, p_kind?, p_limit? })`: our places by name (Thai or English, substring), nearest first when `p_lat`/`p_lng` are given.
