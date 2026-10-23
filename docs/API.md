@@ -207,6 +207,21 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
   14+: everything. `p_kinds` filters (Explore chips). Ranked landmark, OTOP/community, local, nearest the centre.
 - `search_places` also returns `kind` and `tier`.
 
+## Place page (migration 035)
+- `place_page(p_id)`: details (hours, phone, website, address, flags), `rating` (review average, shown from 3 reviews),
+  `review_count`, latest 20 `reviews`, `checked_in`, `stamped`, `photos` (Wikimedia `url` + author + licence, or a public
+  check-in `path`), `busy` (check-ins per hour 6:00-23:00 for today's weekday, only once a place has 20+), `saved_in` (my list ids).
+- Reviews: `write_review(p_place, p_rating 1-5, p_body)` needs a non-rejected check-in there (error `check_in_first`);
+  `delete_review`, `report_review`. Three or more reviews set `places.rating`, which the planner uses.
+- Photos: `set_public_photo(p_checkin, p_public)`; public check-in photos are readable by anyone signed in.
+  `place_photos` holds Wikimedia Commons photos (`supabase/tools/wikimedia_photos.py`, free licences only).
+- Lists: `my_lists()` (makes "Want to go" + "Favourites" on first call), `save_place(p_list, p_place, p_saved)`,
+  `create_list(p_name)`, `update_list(p_list, p_name, p_shared, p_delete)`, `friend_lists(p_friend)` (shared ones, friends only).
+- Edits: `suggest_edit(p_place | null, p_payload, p_here_lat, p_here_lng)`: payload keys name, name_th, kind,
+  opening_hours, phone, website, closed (+ lat, lng for a new place, which must be within 100 m of `p_here`).
+  `admin_edits()` / `review_edit(p_edit, p_approve)` for `profiles.is_admin`; an approved edit gives +50 XP and counts
+  toward the Map Maker badge.
+
 ## Search (`search_places` RPC)
 
 `rpc("search_places", { p_query, p_lat?, p_lng?, p_kind?, p_limit? })`: our places by name (Thai or English, substring), nearest first when `p_lat`/`p_lng` are given.
