@@ -17,6 +17,7 @@ export interface Stop {
   dwellMin: number;
   openMin?: number | null;   // minutes after midnight
   closeMin?: number | null;
+  frac?: number;            // where along the direct route it sits: 0 start, 1 destination
 }
 
 export interface PlanInput {
@@ -33,6 +34,7 @@ export interface PlanInput {
   weight?: (category: string, tier?: Tier) => number;   // overrides theme, e.g. the user's own mix of interests
   requiredIds?: number[];   // places the user picked; go in first, skip the rating floor, count toward maxStops
   meals?: Meal[];       // meals the trip should cover, from mealsInTrip()
+  segments?: number;    // spread stops over this many stretches of the route (0/undefined = off, e.g. city trips)
 }
 
 export interface Plan {
@@ -113,10 +115,24 @@ export function planDetour(input: PlanInput): Plan {
     return best;
   };
 
+  // Spread stops along the way: without this, once one stop sits near an end its neighbours are the cheapest
+  // additions and the whole budget piles up at the start or the destination city.
+  const segments = input.segments ?? 0;
+  const stretch = (f: number) => Math.min(segments - 1, Math.floor(f * segments));
+  const spread = (s: Stop, order: Stop[]) => {
+    if (!segments || s.frac == null) return 1;
+    if (order.some((o) => o.frac != null && stretch(o.frac) === stretch(s.frac!))) return 0.55;
+    const fr = [0, ...order.map((o) => o.frac ?? 0), 1].sort((a, b) => a - b);
+    let lo = 0, hi = 1, gap = -1;
+    for (let i = 1; i < fr.length; i++) if (fr[i] - fr[i - 1] > gap) { gap = fr[i] - fr[i - 1]; lo = fr[i - 1]; hi = fr[i]; }
+    return s.frac > lo && s.frac < hi ? 1.15 : 1;   // a small nudge toward the longest empty stretch
+  };
+
   const score = (s: Stop, order: Stop[], added: number) => {
     const variety = order.some((o) => o.category === s.category) ? 0.5 : 1;
     // value per minute, but sqrt(minutes): a landmark 40 min away should beat a cafe 5 min away
-    return (TIER_VALUE[s.tier ?? 2] * quality(s) * weight(s.category, s.tier) * variety) / Math.sqrt(Math.max(added, 1));
+    return (TIER_VALUE[s.tier ?? 2] * quality(s) * weight(s.category, s.tier) * variety * spread(s, order))
+      / Math.sqrt(Math.max(added, 1));
   };
 
   // phase 0a: the places the user picked, each at its cheapest feasible position

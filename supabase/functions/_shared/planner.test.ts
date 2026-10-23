@@ -169,3 +169,26 @@ test("Local gems never picks a landmark; a tight budget never goes over", () => 
   const tight = planDetour({ originIdx: 0, destIdx: 1, startMin: 600, budgetMin: 15, stops: lmStops, travelMin: travelL, allowUnrated: true });
   expect(tight.order).toEqual([]);
 });
+
+// a 100-minute drive along x; 10 strong places bunched at the start, one decent place in each later stretch
+const line = (x: number) => ({ x, y: 1 });
+const along = [{ x: 0, y: 0 }, { x: 100, y: 0 },
+  ...[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5].map(line), ...[30, 50, 70, 90].map(line)];
+const alongMin = (a: number, b: number) => Math.abs(along[a].x - along[b].x) + Math.abs(along[a].y - along[b].y);
+const KINDS = ["temple", "museum", "park", "cafe", "viewpoint", "art", "market", "craft", "food", "temple", "temple", "park", "museum", "viewpoint"];
+const alongStops: Stop[] = along.slice(2).map((p, i) => ({
+  idx: i + 2, id: i + 2, category: KINDS[i], rating: i < 10 ? 4.8 : 4.4, dwellMin: 8, frac: p.x / 100,
+}));
+const spreadPlan = (segments?: number) => planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 50,
+  stops: alongStops, travelMin: alongMin, segments });
+const stretches = (order: Stop[]) => new Set(order.map((s) => Math.min(4, Math.floor((s.frac ?? 0) * 5)))).size;
+
+test("without spreading, stops bunch at the start (the bug)", () => {
+  expect(stretches(spreadPlan().order)).toBe(1);
+});
+
+test("stops spread out along the route instead of bunching at one end", () => {
+  const p = spreadPlan(5);
+  expect(stretches(p.order)).toBeGreaterThanOrEqual(3);
+  expect(p.extraMin).toBeLessThanOrEqual(50);
+});

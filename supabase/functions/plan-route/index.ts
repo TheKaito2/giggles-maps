@@ -11,6 +11,7 @@ interface Candidate {
   is_partner: boolean; is_demo: boolean; min_level: number; exclusive_kind: string | null; perk_text: string | null;
   price_level: number | null;
   tier: Tier;   // 3 landmark, 2 worth a visit, 1 everyday
+  frac?: number;   // 0 start .. 1 destination along the direct route (route shortlist only)
 }
 interface NearPlace {
   id: number; name: string; category: string; lat: number; lng: number; rating: number;
@@ -89,12 +90,16 @@ serve(async (req) => {
     budgetMin = Math.min(MAX_BUDGET, budgetMin + 35 * meals.length);   // room to actually sit down and eat
   }
   const maxCandidates = shortTrip ? 16 : MAX_CANDIDATES;
+  // spread stops along the way: 5 stretches on long drives, 3 on short ones, none inside a city block
+  const directM = haversineM(origin, dest);
+  const SEGMENTS = () => directM < 3000 ? 0 : directM < 30000 ? 3 : 5;
   const { data: cands, error } = baseline
     ? await db.rpc("route_detour_candidates", {
       p_geometry: baseline.geometry,
       p_radius_m: Math.min(20000, budgetMin * METERS_PER_MIN[mode] / 2),
       p_budget_min: budgetMin, p_level: level, p_max_n: maxCandidates, p_per_group: shortTrip ? 4 : 5, ...filters,
       p_meal_slots: meals.length ? 4 : 0,   // nearest restaurants always make the shortlist when a meal is asked for
+      p_segments: SEGMENTS(),
     })
     : await db.rpc("detour_candidates", {
       o_lat: origin.lat, o_lng: origin.lng, d_lat: dest.lat, d_lng: dest.lng,
@@ -133,7 +138,7 @@ serve(async (req) => {
 
   const stops: Stop[] = candidates.map((c, i) => ({
     idx: i + 2, id: c.id, category: c.category, rating: c.rating == null ? null : Number(c.rating), tier: c.tier ?? 2, dwellMin: c.dwell_min,
-    openMin: c.open_min, closeMin: c.close_min,
+    openMin: c.open_min, closeMin: c.close_min, frac: c.frac,
   }));
   const travelMin = (a: number, b: number) => matrix[a][b];
 
@@ -147,7 +152,7 @@ serve(async (req) => {
   ];
   const prefs = { minRating, allowUnrated: includeUnrated, maxStops, requiredIds: mustInclude };
   for (const t of variants) {
-    const plan = planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin, stops, travelMin, meals, ...prefs,
+    const plan = planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin, stops, travelMin, meals, ...prefs, segments: SEGMENTS(),
                               theme: "theme" in t ? t.theme : undefined, weight: "weight" in t ? t.weight : undefined });
     const key = plan.order.map((s) => s.id).join(",");
     if (t.id !== "top_picks" && t.id !== "mix" && seen.has(key)) continue;
