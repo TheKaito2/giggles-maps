@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
+import { ArrowLeft, ArrowRight, Camera, LocateFixed, MapPin } from "lucide-react";
 import { ApiError, ensureSession, supabase } from "../lib/supabase";
 import { type CheckinTarget, choosePlan, getProfile, type LatLng, planRoute, type Profile, readScanParam, type RoutePlan } from "../lib/api";
 import MapView from "./MapView";
@@ -9,10 +9,14 @@ import Planner from "./Planner";
 import Results from "./Results";
 import { budgetLabel, DEFAULT_PREFS, departLabel, MODES, type Place, type Prefs, toRequest } from "./prefs";
 import { resumeSignIn } from "../lib/auth";
+import { useStops } from "./useStops";
 
 // Real places from the seed: Phu Phan Museum -> Wat Phra That Choeng Chum
 const DEFAULT_ORIGIN: Place = { point: { lat: 17.17313, lng: 104.14488 }, name: "Phu Phan Museum" };
 const DEFAULT_DEST: Place = { point: { lat: 17.16445, lng: 104.15345 }, name: "Wat Phra That Choeng Chum" };
+
+// shared empty arrays: a fresh [] each render would make the map refit the route on every position update
+const NONE: never[] = [];
 
 export default function App() {
   const [tab, setTab] = useState<"plan" | "passport">("plan");
@@ -38,6 +42,8 @@ export default function App() {
     setPrefs((p) => ({ ...p, ...(typeof patch === "function" ? patch(p) : patch) }));
 
   useEffect(() => { getProfile().then(setProfile).catch(() => setProfile(null)); }, [refreshKey]);
+  const nearby = useStops(refreshKey);
+  const zoneStop = nearby.inZone[0];
   // back from Google/Apple: finish sign-in if linking to the guest account wasn't possible
   useEffect(() => { resumeSignIn().then((m) => { if (m) { setError(m); setTab("passport"); } }); }, []);
 
@@ -106,8 +112,19 @@ export default function App() {
             <p className="map-banner">Tap the map to set your {picking === "origin" ? "start" : "destination"}.
               <button className="link" onClick={() => setPicking(null)}>Cancel</button></p>
           )}
-          <MapView origin={origin?.point ?? null} dest={dest?.point ?? null} stops={showResults ? plan.stops : []} geometry={showResults ? plan.geometry : []}
-            baseGeometry={showResults ? plan.base_geometry : []} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop} />
+          <MapView origin={origin?.point ?? null} dest={dest?.point ?? null} stops={showResults ? plan.stops : NONE} geometry={showResults ? plan.geometry : NONE}
+            baseGeometry={showResults ? plan.base_geometry : NONE} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop}
+            nearby={nearby.stops} here={nearby.here} inZone={nearby.inZone.map((s) => s.id)} />
+          <div className="map-actions">
+            {zoneStop ? (
+              <button type="button" className={`btn checkin-cta tier-${zoneStop.tier}`}
+                onClick={() => setCheckin({ target: { id: zoneStop.id, name: zoneStop.name, lat: zoneStop.lat, lng: zoneStop.lng, is_partner: false, is_demo: false } })}>
+                <Camera size={18} aria-hidden /> {zoneStop.stamped ? "Add a photo at" : "Check in at"} {zoneStop.name}
+              </button>
+            ) : !nearby.watching && (
+              <button type="button" className="btn soft" onClick={nearby.start}><LocateFixed size={16} aria-hidden /> Show stops near me</button>
+            )}
+          </div>
         </div>
 
         <section className="panel glass" aria-live="polite">

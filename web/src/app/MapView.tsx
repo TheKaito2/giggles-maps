@@ -1,7 +1,7 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
-import type { LatLng, RouteStop } from "../lib/api";
+import type { LatLng, RouteStop, Stop } from "../lib/api";
 
 const STYLE = "https://tiles.openfreemap.org/styles/liberty";
 export const SAKON: LatLng = { lat: 17.163, lng: 104.149 };
@@ -16,6 +16,9 @@ interface Props {
   picking: "origin" | "dest" | null;
   onPick: (p: LatLng) => void;
   onSelectStop: (id: number) => void;
+  nearby?: Stop[];        // PokéStop-style places around the user
+  here?: LatLng | null;   // the user's live position
+  inZone?: number[];      // stops the user is standing in the check-in zone of
 }
 
 const pin = (cls: string, text: string, label: string) => {
@@ -26,7 +29,8 @@ const pin = (cls: string, text: string, label: string) => {
   return el;
 };
 
-export default function MapView({ origin, dest, stops, geometry, baseGeometry = [], estimated = false, picking, onPick, onSelectStop }: Props) {
+export default function MapView({ origin, dest, stops, geometry, baseGeometry = [], estimated = false, picking, onPick, onSelectStop,
+  nearby = [], here = null, inZone = [] }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markers = useRef<maplibregl.Marker[]>([]);
@@ -93,6 +97,31 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
       m.fitBounds(b, { padding: { top: 60, bottom: 60, left: 40, right: 40 }, maxZoom: 16, duration: 600 });
     }
   }, [origin, dest, stops, geometry, baseGeometry, estimated, onSelectStop]);
+
+  // nearby stops + "you are here": their own markers, so moving around never refits the map
+  const nearbyMarkers = useRef<maplibregl.Marker[]>([]);
+  const centred = useRef(false);   // fly to the user once, on their first position fix
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+    nearbyMarkers.current.forEach((mk) => mk.remove());
+    nearbyMarkers.current = [];
+    const routeIds = new Set(stops.map((s) => s.id));
+    for (const s of nearby) {
+      if (routeIds.has(s.id)) continue;   // route stops already have a numbered pin
+      const el = document.createElement("span");
+      el.className = `stop-dot tier-${s.tier}${inZone.includes(s.id) ? " in-zone" : ""}${s.stamped ? " stamped" : ""}`;
+      el.title = s.name;
+      nearbyMarkers.current.push(new maplibregl.Marker({ element: el }).setLngLat([s.lng, s.lat]).addTo(m));
+    }
+    if (here && !centred.current) { centred.current = true; m.flyTo({ center: [here.lng, here.lat], zoom: 15.5, duration: 900 }); }
+    if (here) {
+      const me = document.createElement("span");
+      me.className = "me-dot";
+      me.setAttribute("aria-label", "You are here");
+      nearbyMarkers.current.push(new maplibregl.Marker({ element: me }).setLngLat([here.lng, here.lat]).addTo(m));
+    }
+  }, [nearby, here, inZone, stops]);
 
   return <div ref={box} className="map" role="application" aria-label="Trip map of Thailand" />;
 }

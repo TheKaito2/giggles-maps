@@ -67,6 +67,9 @@ export interface CheckinResult {
   spin: Spin | null;
   xp_gained?: number; xp?: number; level?: number; level_up?: boolean; member?: boolean;
   required_level?: number; // with reason "level_locked"
+  stamp?: { tier: 1 | 2 | 3; new_province: boolean; province: string | null; event: string | null } | null;   // first visit
+  challenges?: { slug: string; title: string; title_th: string; xp: number; coins: number }[];                 // completed now
+  coins?: number;   // members' coin balance
 }
 
 // A place the user can check in at: a route stop, a "Near this spot" card, or a scanned sticker
@@ -127,8 +130,47 @@ export async function uploadSelfie(blob: Blob): Promise<string> {
   return path;
 }
 
+/** Hide or caption one of your check-in photos (passport album). */
+export const setPhoto = async (checkinId: string, hidden: boolean, caption?: string) => {
+  const { error } = await supabase.rpc("set_photo", { p_checkin: checkinId, p_hidden: hidden, p_caption: caption ?? null });
+  if (error) throw error;
+};
+
+export interface PassportStamp { place_id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3;
+  province_id: number | null; event: string | null; earned_at: string; photo: string | null }
+export interface PassportPhoto { checkin_id: string; path: string; caption: string | null; place: string; province_id: number | null; at: string }
+export interface Challenge { slug: string; kind: "daily" | "weekly" | "province" | "collection"; title_en: string; title_th: string;
+  have: number; need: number; xp: number; coins: number; claimed: boolean }
+export interface PassportData {
+  profile: { xp: number; level: number; member: boolean; plus: boolean; coins: number } | null;
+  stamps: PassportStamp[]; photos: PassportPhoto[]; challenges: Challenge[];
+  provinces: { id: number; iso: string; name_en: string; name_th: string; stamps: number }[];
+}
+export async function getPassport(): Promise<PassportData> {
+  await ensureSession();
+  const { data, error } = await supabase.rpc("passport_v2");
+  if (error) throw error;
+  return data as PassportData;
+}
+/** Short-lived links to your own check-in photos (private bucket). */
+export async function photoUrls(paths: string[]): Promise<Record<string, string>> {
+  if (!paths.length) return {};
+  const { data } = await supabase.storage.from("selfies").createSignedUrls(paths, 3600);
+  return Object.fromEntries((data ?? []).filter((d) => d.signedUrl).map((d) => [d.path!, d.signedUrl]));
+}
+
+export interface Stop { id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3;
+  lat: number; lng: number; zone_m: number; distance_m: number; stamped: boolean }
+/** Places around you, landmarks first, with their check-in zone and whether you have the stamp. */
+export async function stopsNear(p: LatLng, radiusM = 1500): Promise<Stop[]> {
+  await ensureSession();
+  const { data, error } = await supabase.rpc("stops_near", { p_lat: p.lat, p_lng: p.lng, p_radius_m: radiusM });
+  if (error) throw error;
+  return (data ?? []) as Stop[];
+}
+
 export const verifyCheckin = (p: {
-  place_id: number; lat: number; lng: number; accuracy_m: number; selfie_path: string; face_count: number;
+  place_id: number; lat: number; lng: number; accuracy_m: number; selfie_path: string;
   qr_code: string | null; client: { platform: "web"; demo: boolean };
 }) => callFn<CheckinResult>("verify-checkin", p);
 
@@ -196,13 +238,14 @@ export function readScanParam(): { placeId: number; code: string } | null {
 }
 
 export const REASON_TEXT: Record<string, string> = {
-  too_far: "You're more than 60 m from this place.",
+  too_far: "You're outside this place's check-in zone (150 m for landmarks and parks, 50 m elsewhere).",
   no_face: "We couldn't see a face in the selfie.",
-  no_selfie: "The selfie didn't upload.",
+  no_selfie: "The photo didn't upload.",
   mock_location: "Your location looks simulated.",
   speed_jump: "You moved faster than a car since your last check-in.",
-  low_accuracy: "GPS was too rough (over 50 m). A person will review it.",
+  low_accuracy: "GPS was too rough (over 75 m). A person will review it.",
   already_rewarded_today: "Already stamped here today. Come back tomorrow.",
+  already_stamped: "You already have this stamp. The photo is added to your passport.",
   level_locked: "This place is for members at a higher level.",
 };
 

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "../lib/supabase";
 import ShareCard from "./ShareCard";
-import { BILLING_TEXT, type CheckinResult, type CheckinTarget, REASON_TEXT, uploadSelfie, verifyCheckin } from "../lib/api";
+import { BILLING_TEXT, type CheckinResult, type CheckinTarget, REASON_TEXT, setPhoto, uploadSelfie, verifyCheckin } from "../lib/api";
 
-const CONSENT_KEY = "giggles.selfieConsent.v1";
+const TIER_NAME = { 3: "Landmark", 2: "Worth a visit", 1: "Everyday" } as const;
+const CONSENT_KEY = "giggles.photoConsent.v2";   // v2: photos are kept for the passport album
 const readConsent = () => { try { return localStorage.getItem(CONSENT_KEY) === "yes"; } catch { return false; } };
 const saveConsent = () => { try { localStorage.setItem(CONSENT_KEY, "yes"); } catch { /* storage blocked: ask again next time */ } };
 
@@ -22,19 +23,21 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
   const [error, setError] = useState("");
   const [result, setResult] = useState<CheckinResult | null>(null);
   const [camOk, setCamOk] = useState(true);
+  const [facing, setFacing] = useState<"environment" | "user">("environment");
+  const [caption, setCaption] = useState("");
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (step !== "camera") return;
-    navigator.mediaDevices?.getUserMedia({ video: { facingMode: "user", width: { ideal: 720 } }, audio: false })
+    navigator.mediaDevices?.getUserMedia({ video: { facingMode: facing, width: { ideal: 1080 } }, audio: false })
       .then((s) => { stream.current = s; if (video.current) video.current.srcObject = s; })
       .catch(() => setCamOk(false));
     return () => stream.current?.getTracks().forEach((t) => t.stop());
-  }, [step]);
+  }, [step, facing]);
 
   const toCanvas = (src: CanvasImageSource, w: number, h: number) => {
-    const scale = Math.min(1, 720 / Math.max(w, h));
+    const scale = Math.min(1, 1080 / Math.max(w, h));   // album-quality photo, still small enough to upload fast
     const c = document.createElement("canvas");
     c.width = Math.round(w * scale); c.height = Math.round(h * scale);
     c.getContext("2d")!.drawImage(src, 0, 0, c.width, c.height);
@@ -45,23 +48,21 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
     setStep("working");
     stream.current?.getTracks().forEach((t) => t.stop());
     try {
-      setStatus("Looking for a face…");
-      const { countFaces } = await import("../lib/face"); // load the face model only when needed
-      const faces = await countFaces(canvas);
       let lat = target.lat, lng = target.lng, accuracy = 5;
       if (!demo) {
         setStatus("Getting your location…");
         const pos = await getPosition().catch(() => { throw new Error("We need your location to check in. Allow location access and try again."); });
         ({ latitude: lat, longitude: lng, accuracy } = pos.coords);
       }
-      setStatus("Uploading selfie…");
+      setStatus("Uploading photo…");
       const blob = await new Promise<Blob>((ok, fail) => canvas.toBlob((b) => (b ? ok(b) : fail(new Error("Couldn't read the photo."))), "image/jpeg", 0.82));
       const path = await uploadSelfie(blob);
       setStatus("Checking…");
       const r = await verifyCheckin({
-        place_id: target.id, lat, lng, accuracy_m: accuracy, selfie_path: path, face_count: faces,
+        place_id: target.id, lat, lng, accuracy_m: accuracy, selfie_path: path,
         qr_code: code.trim() || null, client: { platform: "web", demo },
       });
+      if (caption.trim() && r.status !== "rejected") await setPhoto(r.checkin_id, false, caption).catch(() => undefined);
       setResult(r);
       setStep("result");
       onDone(r);
@@ -95,11 +96,11 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
 
         {step === "consent" && (
           <div className="stack">
-            <p>To stamp your passport we take one selfie and your location at this place.</p>
+            <p>Check in with one photo of the moment and your location at this place.</p>
             <ul className="fine">
-              <li>We only check that a face is in the photo. No face recognition.</li>
-              <li>Your selfie is private and deleted automatically after 30 days.</li>
-              <li>You can delete your account and all check-ins any time in Passport.</li>
+              <li>Any photo: you, your friends, the view, the food. We don't analyse faces.</li>
+              <li>Your photos go into your passport album. Only you can see them, and you can hide or delete any of them.</li>
+              <li>You can delete your account, check-ins and photos any time in Passport.</li>
             </ul>
             <button className="btn" onClick={() => { saveConsent(); setStep("camera"); }}>I agree, open camera</button>
           </div>
@@ -109,7 +110,9 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
           <div className="stack">
             {camOk
               ? <video ref={video} className="cam" autoPlay playsInline muted />
-              : <p className="fine">Camera isn't available here. Take a selfie with your phone camera instead.</p>}
+              : <p className="fine">Camera isn't available here. Use Upload photo instead.</p>}
+            <input className="text-in" value={caption} maxLength={140} placeholder="Caption (optional)" aria-label="Caption"
+              onChange={(e) => setCaption(e.target.value)} />
             {target.is_partner && (
               <label className="field">
                 <span>Counter code <span className="fine">(under the Giggles QR sticker at the counter)</span></span>
@@ -118,15 +121,18 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
                 {target.is_demo && <span className="fine">Example shops use the code DEMO.</span>}
               </label>
             )}
-            <label className="toggle">
-              <input id="demo-toggle" type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} />
-              <span>I'm not in Sakon Nakhon: simulate being here (never charges a real shop)</span>
-            </label>
+            {target.is_demo && (
+              <label className="toggle">
+                <input id="demo-toggle" type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} />
+                <span>Example place: simulate being here (never charges a real shop)</span>
+              </label>
+            )}
             <div className="row">
-              {camOk && <button className="btn" onClick={capture}>Take selfie</button>}
+              {camOk && <button className="btn" onClick={capture}>Take photo</button>}
+              {camOk && <button className="btn ghost" onClick={() => setFacing((f) => f === "user" ? "environment" : "user")}>Flip camera</button>}
               <label className="btn ghost">
                 Upload photo
-                <input type="file" accept="image/*" capture="user" hidden onChange={(e) => fromFile(e.target.files?.[0])} />
+                <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => fromFile(e.target.files?.[0])} />
               </label>
             </div>
           </div>
@@ -136,35 +142,26 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
 
         {step === "result" && result && (
           <div className="stack result">
-            {result.status === "approved" && result.rewarded && (
-              <div className="stamp" aria-label="Stamped">STAMPED<span>{target.name}</span></div>
-            )}
-            <p className={`verdict ${result.status}`}>
-              {result.status === "approved" ? (result.rewarded ? "Checked in!" : "Checked in, no new stamp.")
-                : result.status === "review" ? "Sent for review." : "Check-in not accepted."}
-            </p>
-            {result.reasons.map((r) => <p key={r} className="fine">
-              {r === "level_locked" && result.required_level ? `Needs member level ${result.required_level}.` : REASON_TEXT[r] ?? r}
-            </p>)}
-            {!!result.xp_gained && <p className="xp-gain num">+{result.xp_gained} XP</p>}
-            {result.level_up && <p className="badge-earned">{result.member
-              ? `Level up! You're now level ${result.level}.`
-              : `Level ${result.level} banked. Become a member to unlock it.`}</p>}
-            {result.new_badges.map((b) => <p key={b.slug} className="badge-earned">New badge: {b.name}</p>)}
-
-            {result.spin && (
-              <div className={`spin ${result.spin.won ? "won" : ""}`}>
-                <span className="spin-label">Free spin</span>
-                {result.spin.won
-                  ? <>
-                      <b>{result.spin.title}</b>
-                      <span className="fine">at {result.spin.place}</span>
-                      <span className="coupon-code num">{result.spin.code}</span>
-                      <span className="fine">Show this code at the counter. Chance of this prize: {Math.round(result.spin.odds * 100)}%.</span>
-                    </>
-                  : <span>No prize this time. Every spin has a 50% chance to win a nearby coupon.</span>}
+            {result.stamp && (
+              <div className={`stamp tier-${result.stamp.tier}`} aria-label="New stamp">
+                {TIER_NAME[result.stamp.tier]}<span>{target.name}</span>
               </div>
             )}
+            <p className={`verdict ${result.status}`}>
+              {result.status === "approved" ? (result.stamp ? "New stamp!" : "Photo added to your passport.")
+                : result.status === "review" ? "Sent for review." : "Check-in not accepted."}
+            </p>
+            {result.stamp?.new_province && <p className="badge-earned">New province: {result.stamp.province}!</p>}
+            {result.reasons.filter((r) => r !== "already_stamped" || !result.stamp).map((r) => <p key={r} className="fine">
+              {r === "level_locked" && result.required_level ? `Needs member level ${result.required_level}.` : REASON_TEXT[r] ?? r}
+            </p>)}
+            {result.challenges?.map((c) => (
+              <p key={c.slug} className="challenge-done">✓ {c.title} <span className="num">+{c.xp} XP · +{c.coins} coins</span></p>
+            ))}
+            {!!result.xp_gained && (result.member
+              ? <p className="xp-gain num">+{result.xp_gained} XP · {result.coins ?? 0} coins</p>
+              : <p className="fine">+{result.xp_gained} XP banked. Become a member to turn XP into levels and coins.</p>)}
+            {result.level_up && result.member && <p className="badge-earned">Level up! You're now level {result.level}.</p>}
 
             {result.status === "approved" && result.rewarded && (
               <ShareCard place={target.name} level={result.member ? result.level ?? null : null} hasPlus={hasPlus} />

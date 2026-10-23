@@ -283,3 +283,47 @@ body { background: var(--paper); overflow: hidden; }
 
 /* landmarks (tier 3): the must-go places detours are built around */
 .chip.landmark { background: var(--marigold); color: #241a00; margin-left: 6px; vertical-align: middle; }
+
+/* PokéStop-style stops: gold landmark, silver worth a visit, bronze everyday; glow when you're in the zone */
+.stop-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgb(0 0 0 / .35); background: #b8743c; }
+.stop-dot.tier-2 { background: #9aa3b5; }
+.stop-dot.tier-3 { background: var(--marigold); width: 18px; height: 18px; }
+.stop-dot.stamped { opacity: .55; }
+.stop-dot.stamped::after { content: "✓"; display: grid; place-items: center; height: 100%; font: 700 9px var(--font-body); color: #fff; }
+.stop-dot.in-zone { animation: glow 1.4s ease-in-out infinite; }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 rgb(233 164 0 / .7); } 50% { box-shadow: 0 0 0 10px rgb(233 164 0 / 0); } }
+.me-dot { width: 16px; height: 16px; border-radius: 50%; background: #2f7bf5; border: 3px solid #fff; box-shadow: 0 0 0 6px rgb(47 123 245 / .2); }
+.map-actions { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 5; max-width: calc(100% - 32px); }
+.checkin-cta { box-shadow: var(--shadow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.checkin-cta.tier-3 { background: var(--marigold); color: #241a00; }
+.stamp.tier-3 { color: #a87500; border-color: var(--marigold); }
+.stamp.tier-2 { color: #6b7385; border-color: #9aa3b5; }
+.stamp.tier-1 { color: #8a5428; border-color: #b8743c; }
+.challenge-done { font-weight: 700; color: var(--good); }
+@media (max-width: 959px) { .map-actions { bottom: 32px; } }
+
+/* passport: province map, stamps, album, challenges */
+.passport-book { display: grid; gap: 14px; }
+.province-map svg { width: 100%; max-height: 360px; display: block; margin: 6px auto 0; }
+.prov { fill: color-mix(in srgb, var(--line) 70%, var(--card)); stroke: var(--card); stroke-width: .6; cursor: pointer; transition: fill .15s; }
+.prov:hover { fill: var(--indigo-soft); }
+.prov.visited { fill: var(--indigo); }
+.prov.sel { stroke: var(--marigold); stroke-width: 2.2; }
+.stamp-grid { list-style: none; margin: 0; padding: 4px; display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 14px; }
+.stamp-card { position: relative; aspect-ratio: 1; border-radius: 50%; display: grid; place-content: center; justify-items: center; gap: 2px; padding: 14px;
+  text-align: center; border: 3px double #b8743c; color: #8a5428; background: color-mix(in srgb, #b8743c 8%, var(--card)); }
+.stamp-card.tier-2 { border-color: #9aa3b5; color: #59617a; background: color-mix(in srgb, #9aa3b5 10%, var(--card)); }
+.stamp-card.tier-3 { border: 4px double var(--marigold); color: #8a6200; background: color-mix(in srgb, var(--marigold) 14%, var(--card)); }
+.stamp-name { font-size: 12px; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.stamp-meta { font-size: 10px; opacity: .8; }
+.stamp-star { position: absolute; top: 8px; fill: currentColor; }
+.album { display: grid; gap: 14px; }
+.album-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.album-grid li { border-radius: 14px; overflow: hidden; background: var(--card); border: 1px solid var(--line); }
+.album-grid img, .album-grid .ph { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: var(--indigo-soft); }
+.album-cap { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 6px 8px; font-size: 13px; }
+.challenges { display: grid; gap: 14px; }
+.challenge-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.challenge-list li { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.challenge-list li.done { border-color: var(--good); }
+.challenge-list progress { width: 100%; height: 8px; accent-color: var(--indigo); }

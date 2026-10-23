@@ -1,11 +1,13 @@
 import { type CSSProperties, useEffect, useState } from "react";
 import { ApiError, callFn, ensureSession, supabase } from "../lib/supabase";
-import { type ExclusivePlace, getExclusives, getMonthlyStamps, KIND_NAME, levelFor, levelProgress, type Profile, setCosmetics, startCheckout } from "../lib/api";
+import { type ExclusivePlace, getExclusives, getMonthlyStamps, getPassport, KIND_NAME, levelFor, levelProgress, type PassportData, type Profile, setCosmetics, startCheckout } from "../lib/api";
 import { isGuest, useUser } from "../lib/auth";
 import SignIn from "./SignIn";
+import ProvinceMap from "./passport/ProvinceMap";
+import Stamps from "./passport/Stamps";
+import Album from "./passport/Album";
+import Challenges from "./passport/Challenges";
 
-interface Collection { id: number; slug: string; name: string; description: string; required_count: number; sponsor_name: string | null; collection_places: { place_id: number }[] }
-interface CouponWin { id: number; code: string; created_at: string; redeemed_at: string | null; coupons: { title: string; places: { name: string } | null } | null }
 
 const PLUS_THB = 59;
 const MEMBER_THB = 349;
@@ -18,11 +20,9 @@ const fmtDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", mon
 export default function Passport({ refreshKey, profile, onChange }: { refreshKey: number; profile: Profile | null; onChange: () => void }) {
   const plusUntil = profile?.plusUntil ?? null;
   const user = useUser();
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [visited, setVisited] = useState<Set<number>>(new Set());
-  const [badges, setBadges] = useState<Set<number>>(new Set());
-  const [recent, setRecent] = useState<{ id: string; status: string; created_at: string; places: { name: string } | null }[]>([]);
-  const [coupons, setCoupons] = useState<CouponWin[]>([]);
+  const [data, setData] = useState<PassportData | null>(null);
+  const [province, setProvince] = useState<number | null>(null);
+  const [tab, setTab] = useState<"stamps" | "photos" | "challenges">("stamps");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [msg, setMsg] = useState("");
   const [plusMsg, setPlusMsg] = useState("");
@@ -42,18 +42,7 @@ export default function Passport({ refreshKey, profile, onChange }: { refreshKey
   useEffect(() => {
     (async () => {
       await ensureSession();
-      const [c, ch, b, w] = await Promise.all([
-        supabase.from("collections").select("id, slug, name, description, required_count, sponsor_name, collection_places(place_id)").order("id"),
-        supabase.from("checkins").select("id, place_id, status, rewarded, created_at, places(name)").order("created_at", { ascending: false }).limit(50),
-        supabase.from("user_badges").select("collection_id"),
-        supabase.from("coupon_wins").select("id, code, created_at, redeemed_at, coupons(title, places(name))").order("created_at", { ascending: false }).limit(20),
-      ]);
-      setCollections((c.data ?? []) as Collection[]);
-      const rows = (ch.data ?? []) as unknown as { id: string; place_id: number; status: string; rewarded: boolean; created_at: string; places: { name: string } | null }[];
-      setVisited(new Set(rows.filter((r) => r.rewarded).map((r) => r.place_id)));
-      setRecent(rows.slice(0, 8));
-      setBadges(new Set((b.data ?? []).map((r) => r.collection_id as number)));
-      setCoupons((w.data ?? []) as unknown as CouponWin[]);
+      setData(await getPassport());
       setExclusives(await getExclusives());
       setStamps(await getMonthlyStamps());
     })().catch(() => setMsg("Couldn't load your passport. Check your connection."));
@@ -81,7 +70,7 @@ export default function Passport({ refreshKey, profile, onChange }: { refreshKey
       await callFn("delete-account", {});
       await supabase.auth.signOut();
       setMsg("Account deleted. A fresh guest passport starts next time you plan a route.");
-      setRecent([]); setVisited(new Set()); setBadges(new Set()); setCoupons([]);
+      setData(null);
     } catch { setMsg("Couldn't delete the account. Try again."); }
     setConfirmDelete(false);
   };
@@ -106,7 +95,7 @@ export default function Passport({ refreshKey, profile, onChange }: { refreshKey
           </div>
           <div className="level-info">
             <b className={`flair flair-${profile?.flair ?? "none"}`}>{name}</b>
-            <span className="num">{xp} XP</span>
+            <span className="num">{xp} XP{member && <> · {data?.profile?.coins ?? 0} coins</>}</span>
             {span ? <><progress value={into} max={span} /><span className="fine">{span - into} XP to level {level + 1}</span></>
               : <span className="fine">Top level</span>}
           </div>
@@ -114,12 +103,34 @@ export default function Passport({ refreshKey, profile, onChange }: { refreshKey
         {member
           ? <span className="chip">Member</span>
           : <>
-              <p className="fine">Become a member to unlock your level: hidden gems from level 2, member perks from level 4, events from level 6. One payment of <span className="num">฿{MEMBER_THB}</span>, yours for good. You keep earning XP either way.</p>
+              <p className="fine">Your stamps, photos and map are free. Become a member to unlock Level {level} and everything after it: coins for every level and challenge, hidden gems from level 2, member perks from level 4, events from level 6. One payment of <span className="num">฿{MEMBER_THB}</span>, yours for good. XP you earn now is kept.</p>
               {guest ? <p className="fine">Sign in below first, so your membership stays with your account.</p>
                 : <button className="btn gold" onClick={() => buy("membership", setMemberMsg)}>Become a member · ฿{MEMBER_THB}</button>}
             </>}
         {memberMsg && <p className="fine" role="status">{memberMsg}</p>}
       </section>
+
+      {data && (() => {
+        const counts = new Map(data.provinces.map((p) => [p.id, p.stamps]));
+        const provinceName = (id: number | null) => data.provinces.find((p) => p.id === id)?.name_en ?? "";
+        const stamps = data.stamps.filter((s) => province == null || s.province_id === province);
+        const photos = data.photos.filter((p) => province == null || p.province_id === province);
+        return (
+          <section className="passport-book" aria-label="Your travels">
+            <ProvinceMap counts={counts} selected={province} onSelect={setProvince} />
+            <div className="seg" role="tablist" aria-label="Passport pages">
+              {(["stamps", "photos", "challenges"] as const).map((t) => (
+                <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
+                  {t === "stamps" ? `Stamps (${stamps.length})` : t === "photos" ? `Photos (${photos.length})` : "Challenges"}
+                </button>
+              ))}
+            </div>
+            {tab === "stamps" && <Stamps stamps={stamps} provinceName={provinceName} />}
+            {tab === "photos" && <Album photos={photos} onChange={onChange} />}
+            {tab === "challenges" && <Challenges list={data.challenges} member={member} />}
+          </section>
+        );
+      })()}
 
       <section className="account" aria-label="Account">
         {guest
@@ -156,7 +167,7 @@ export default function Passport({ refreshKey, profile, onChange }: { refreshKey
               <button className="link" onClick={() => buy("plus", setPlusMsg)}>Add another 30 days</button>
             </>
           : <>
-              <p className="fine">Make your passport yours: 6 cover themes, a coloured name, 3 premium share-card designs and a new stamp every month. Looks only: every place and route stays free.</p>
+              <p className="fine">Make your passport yours: 6 cover themes, a coloured name, 3 premium share-card designs, a new stamp every month, and 25% more coins from stamps and challenges. Every place and route stays free.</p>
               {guest ? <p className="fine">Sign in above to get Plus.</p>
                 : <button className="btn gold" onClick={() => buy("plus", setPlusMsg)}>Get Plus · ฿{PLUS_THB}</button>}
             </>}
@@ -182,51 +193,11 @@ export default function Passport({ refreshKey, profile, onChange }: { refreshKey
         ))}</ul>
       </>}
 
-      <div className="collections">
-        {collections.map((c) => {
-          const have = c.collection_places.filter((p) => visited.has(p.place_id)).length;
-          const done = badges.has(c.id);
-          return (
-            <article key={c.id} className={`collection ${done ? "done" : ""}`}>
-              <div className="collection-top">
-                <h3>{c.name}</h3>
-                {done && <span className="mini-stamp">Earned</span>}
-              </div>
-              <p className="fine">{c.description}</p>
-              {c.sponsor_name && <p className="fine">Sponsored by {c.sponsor_name}</p>}
-              <div className="dots" aria-label={`${Math.min(have, c.required_count)} of ${c.required_count}`}>
-                {Array.from({ length: c.required_count }, (_, i) => <span key={i} className={i < have ? "on" : ""} />)}
-              </div>
-            </article>
-          );
-        })}
-      </div>
-
-      <h3>Coupons</h3>
-      {coupons.length === 0
-        ? <p className="fine">Every check-in gives you a free spin for a nearby coupon.</p>
-        : <ul className="coupons">{coupons.map((w) => (
-            <li key={w.id} className={w.redeemed_at ? "used" : ""}>
-              <div>
-                <b>{w.coupons?.title ?? "Coupon"}</b>
-                <div className="fine">{w.coupons?.places?.name}</div>
-              </div>
-              <span className="coupon-code num">{w.code}</span>
-            </li>
-          ))}</ul>}
-
-      <h3>Recent check-ins</h3>
-      {recent.length === 0
-        ? <p className="fine">No check-ins yet. Plan a route and check in at a stop to get your first stamp.</p>
-        : <ul className="recent">{recent.map((r) => (
-            <li key={r.id}><span>{r.places?.name ?? "Place"}</span><span className={`chip ${r.status}`}>{r.status}</span></li>
-          ))}</ul>}
-
       <div className="danger">
         {!confirmDelete
           ? <button className="btn ghost" onClick={() => setConfirmDelete(true)}>Delete my account</button>
           : <div className="stack">
-              <p>This deletes your account, check-ins, badges, coupons and selfies. It can't be undone.</p>
+              <p>This deletes your account, check-ins, stamps, photos and coins. It can't be undone.</p>
               <div className="row">
                 <button className="btn danger-btn" onClick={deleteAccount}>Delete everything</button>
                 <button className="btn ghost" onClick={() => setConfirmDelete(false)}>Keep my account</button>
