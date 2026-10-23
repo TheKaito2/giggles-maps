@@ -84,12 +84,12 @@ Response
 - `budget_min` goes up to 240 for everyone. Plus is cosmetic; members (`level` > 0) also get exclusive places their level opens (`min_level`, `exclusive_kind`, `perk_text`).
 - Each plan (and the top level) splits `extra_min` into `road_extra_min` (more time on the road), `stop_min` (time at the stops, sum of `dwell_min`) and `wait_min` (waiting for a meal window). They add up to `extra_min` (±1 for rounding).
 - `plans`: one per theme, Top picks first (or the requested `theme` first). A themed plan with exactly the same stops as an earlier one is dropped, so there can be 1–5 plans. Themes and their ×2-boosted categories (`_shared/themes.ts`): Top picks (none), Nature lover (park, viewpoint), Food lover (cafe, food, market), Culture & temples (temple, museum, art), Shopping & crafts (craft, market). Other kinds can still appear.
-- Meals: when the trip window (start → start + direct time + budget) overlaps breakfast 07:00–09:30, lunch 11:30–13:30 or dinner 17:30–20:00 by ≥ 30 min, the meal is in `meals` and every plan tries to place a cafe/food/market stop arriving inside that window; that stop has `meal: "lunch"` etc. Arriving early means waiting for the window (counted in the extra time). If nothing fits, the meal is in that plan's `missed_meals`.
+- Meals: only when asked. Request `meals`: any of `breakfast` (07:00–09:30), `lunch` (11:30–13:30), `dinner` (17:30–20:00); omitted = no food stop is forced. For each asked meal every plan tries to place a cafe/food/market stop arriving inside that window (arriving early means waiting, counted in the extra time); that stop has `meal: "lunch"` etc. If the trip can't reach the window or nothing fits, the meal is in that plan's `missed_meals`. 400 `bad_meals`.
 - Every stop and card in any plan counts as an impression, once per place per route.
 
 - Each stop has `rating` (number, or `null` = unrated) and `price_level` (0 free, 1–3 = ฿–฿฿฿, `null` = not listed).
 
-Errors: `not_signed_in` 401, `routing_unavailable` 503, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_mode` / `bad_theme` / `bad_interests` / `bad_min_rating` / `bad_max_stops` / `bad_max_price` / `bad_must_include` / `bad_json` 400.
+Errors: `not_signed_in` 401, `routing_unavailable` 503, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_mode` / `bad_theme` / `bad_interests` / `bad_min_rating` / `bad_max_stops` / `bad_max_price` / `bad_must_include` / `bad_meals` / `bad_json` 400.
 
 ## `verify-checkin`
 

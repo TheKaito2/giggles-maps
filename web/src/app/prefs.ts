@@ -1,4 +1,4 @@
-import type { Interest, LatLng, PlanRequest, TravelMode } from "../lib/api";
+import type { Interest, LatLng, Meal, PlanRequest, TravelMode } from "../lib/api";
 
 // Everything the planner form sets. The summary card reads the same object, so the two never disagree.
 export interface Prefs {
@@ -12,6 +12,7 @@ export interface Prefs {
   maxStops: number | null;       // null = Auto
   ratedOnly: boolean;             // false = unrated places join too (ranked below rated ones)
   picks: Pick[];                  // "Places you want to visit", sent as must_include
+  meals: Meal[];                  // "Stop for a meal?": a food stop arriving inside each meal's window
 }
 
 export interface Pick { id: number; name: string }
@@ -21,10 +22,15 @@ export const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2
 
 export const DEFAULT_PREFS: Prefs = {
   mode: "pedestrian", depart: "now", time: hhmm(Math.max(nowMin(), 9 * 60)), budget: 45,
-  interests: [], minRating: 4, maxPrice: null, maxStops: null, ratedOnly: false, picks: [],
+  interests: [], minRating: 4, maxPrice: null, maxStops: null, ratedOnly: false, picks: [], meals: [],
 };
 
 export const MAX_BUDGET = 240;
+export const MEALS: { id: Meal; label: string; window: string }[] = [
+  { id: "breakfast", label: "Breakfast", window: "07:00–09:30" },
+  { id: "lunch", label: "Lunch", window: "11:30–13:30" },
+  { id: "dinner", label: "Dinner", window: "17:30–20:00" },
+];
 export const BUDGETS = [15, 30, 45, 60, 90, 120, 180, 240];
 export const budgetLabel = (m: number) => m < 60 ? `${m} min` : `${m / 60} h`;
 
@@ -59,6 +65,7 @@ export function toRequest(p: Prefs, origin: LatLng, dest: LatLng): PlanRequest {
     ...(p.minRating !== 4 ? { min_rating: p.minRating } : {}),
     ...(p.ratedOnly ? { include_unrated: false } : {}),
     ...(p.picks.length ? { must_include: p.picks.map((x) => x.id) } : {}),
+    ...(p.meals.length ? { meals: p.meals } : {}),
     ...(p.maxStops != null ? { max_stops: p.maxStops } : {}),
     ...(p.maxPrice != null ? { max_price: p.maxPrice } : {}),
   };

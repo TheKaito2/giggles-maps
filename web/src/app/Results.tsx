@@ -1,5 +1,5 @@
 import { type CheckinTarget, KIND_NAME, type Meal, type RoutePlan } from "../lib/api";
-import { hhmm } from "./prefs";
+import { hhmm, MEALS } from "./prefs";
 
 const MEAL_NAME: Record<Meal, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
 export const CATEGORY: Record<string, string> = { cafe: "Café", food: "Food", craft: "Craft shop", temple: "Temple", park: "Park", museum: "Museum", market: "Market", viewpoint: "Viewpoint", art: "Art" };
@@ -44,7 +44,10 @@ export default function Results({ response, plan, choice, setChoice, selected, o
         </p>
       )}
       {current && current.missed_meals.length > 0 && (
-        <p className="fine">No food stop fits {current.missed_meals.map((m) => MEAL_NAME[m].toLowerCase()).join(", ")} on this plan.</p>
+        <p className="fine" role="status">
+          No food stop fits {current.missed_meals.map((m) => `${MEAL_NAME[m].toLowerCase()} (${MEALS.find((x) => x.id === m)!.window})`).join(", ")} in
+          this plan. Try leaving closer to that time or allowing more extra time.
+        </p>
       )}
 
       <div className="summary">

@@ -80,6 +80,7 @@ export interface PlanRequest {
   max_stops?: number;           // 1-6; omitted = Auto
   max_price?: 0 | 1 | 2 | 3;    // omitted = Any
   must_include?: number[];      // up to 3 places the user picked
+  meals?: Meal[];               // meals to stop for; omitted = no food stop forced
 }
 
 export type Kind = "food" | "cafes" | "culture" | "nature" | "shopping";

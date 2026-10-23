@@ -124,7 +124,7 @@ export function planDetour(input: PlanInput): Plan {
     if (ins) order = ins.order; else unfitRequired.push(id);
   }
 
-  // phase 0b: one food stop per meal the trip runs through, in time order
+  // phase 0b: one food stop per meal asked for, in time order
   const missedMeals: Meal[] = [];
   for (const meal of [...meals].sort((a, b) => MEAL_WINDOWS[a][0] - MEAL_WINDOWS[b][0])) {
     if (order.length >= maxStops) { missedMeals.push(meal); continue; }

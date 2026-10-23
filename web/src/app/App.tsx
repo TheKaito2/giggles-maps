@@ -87,7 +87,8 @@ export default function App() {
     document.getElementById(`stop-${id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, []);
 
-  const tripLine = `+${budgetLabel(prefs.budget)} · ${MODES.find((m) => m.id === prefs.mode)!.label.toLowerCase()} · leaves ${departLabel(prefs)}`;
+  const tripLine = `+${budgetLabel(prefs.budget)} · ${MODES.find((m) => m.id === prefs.mode)!.label.toLowerCase()} · leaves ${departLabel(prefs)}`
+    + (prefs.meals.length ? ` · ${prefs.meals.join(" & ")}` : "");
   const showResults = view === "results" && response && plan;
   return (
     <div className="app-shell">

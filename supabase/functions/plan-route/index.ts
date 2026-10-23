@@ -1,5 +1,5 @@
 import { admin, HttpError, json, num, requireUser, serve } from "../_shared/http.ts";
-import { type Meal, MEAL_WINDOWS, mealsInTrip } from "../_shared/meals.ts";
+import { type Meal, MEAL_WINDOWS } from "../_shared/meals.ts";
 import { type Plan, planDetour, type Stop } from "../_shared/planner.ts";
 import { isInterest, isTheme, mixWeight, THEMES } from "../_shared/themes.ts";
 import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan } from "../_shared/road-detour.ts";
@@ -49,6 +49,9 @@ serve(async (req) => {
   if (maxStops != null && !Number.isInteger(maxStops)) throw new HttpError(400, "bad_max_stops");
   const maxPrice = body.max_price == null ? null : num(body.max_price, 0, 3, "bad_max_price");
   if (maxPrice != null && !Number.isInteger(maxPrice)) throw new HttpError(400, "bad_max_price");
+  // meals the user asked to stop for ("Stop for a meal?"); none = no food stop is forced into the plans
+  const meals: Meal[] = body.meals ?? [];
+  if (!Array.isArray(meals) || meals.length > 3 || !meals.every((m) => m in MEAL_WINDOWS)) throw new HttpError(400, "bad_meals");
   const filters = { p_min_rating: minRating, p_unrated: includeUnrated, p_max_price: maxPrice };
   // places the user picked to visit (up to 3); they go into every plan when they fit
   const mustInclude: number[] = body.must_include ?? [];
@@ -123,8 +126,6 @@ serve(async (req) => {
     openMin: c.open_min, closeMin: c.close_min,
   }));
   const travelMin = (a: number, b: number) => matrix[a][b];
-  // meals the whole trip window (direct time + extra budget) runs through get a food stop
-  const meals = mealsInTrip(startMin, startMin + (baseline?.travelMin ?? matrix[0][1]) + budgetMin);
 
   // one plan per theme from the same shortlist + matrix; drop themed plans identical to an earlier one
   const seen = new Set<string>();

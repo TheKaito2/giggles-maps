@@ -3,7 +3,7 @@ import { ArrowUpDown, Bike, Car, Footprints, LocateFixed, MapPinned } from "luci
 import type { TravelMode } from "../lib/api";
 import PlaceSearch from "./PlaceSearch";
 import Customize from "./Customize";
-import { BUDGETS, budgetLabel, DEPARTS, MODES, type Place, type Prefs } from "./prefs";
+import { BUDGETS, budgetLabel, DEPARTS, MEALS, MODES, type Place, type Prefs } from "./prefs";
 
 const MODE_ICON: Record<TravelMode, ReactNode> = {
   pedestrian: <Footprints size={16} aria-hidden />, auto: <Car size={16} aria-hidden />, bicycle: <Bike size={16} aria-hidden />,
@@ -64,6 +64,21 @@ export default function Planner({ prefs, set, origin, dest, setOrigin, setDest, 
             <button key={m} type="button" role="radio" aria-checked={prefs.budget === m} className={`pill ${prefs.budget === m ? "on" : ""}`}
               onClick={() => set({ budget: m })}>{budgetLabel(m)}</button>
           ))}
+        </div>
+      </div>
+
+      <div className="field">
+        <span id="meal-label">Stop for a meal?</span>
+        <div className="chips-scroll" role="group" aria-labelledby="meal-label">
+          <button type="button" className={`pill ${prefs.meals.length === 0 ? "on" : ""}`} aria-pressed={prefs.meals.length === 0}
+            onClick={() => set({ meals: [] })}>No</button>
+          {MEALS.map((m) => {
+            const on = prefs.meals.includes(m.id);
+            return (
+              <button key={m.id} type="button" className={`pill ${on ? "on" : ""}`} aria-pressed={on} title={`Arrive at a food stop between ${m.window}`}
+                onClick={() => set((p) => ({ meals: on ? p.meals.filter((x) => x !== m.id) : [...p.meals, m.id] }))}>{m.label}</button>
+            );
+          })}
         </div>
       </div>
 
