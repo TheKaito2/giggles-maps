@@ -140,3 +140,43 @@ html, body, #root { height: 100%; }
 .coupons { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .coupons li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border: 1px dashed var(--stamp); border-radius: 12px; }
 .coupons li.used { opacity: .5; }
+
+/* --- monetization v4: level card, exclusives, cosmetic Plus, share card --- */
+.level-card { border-radius: 20px; padding: 16px 18px; display: grid; gap: 12px; color: var(--ink);
+  background: linear-gradient(135deg, var(--indigo-soft), var(--card)); }
+.level-top { display: flex; gap: 16px; align-items: center; }
+.level-ring { --p: 0; width: 76px; height: 76px; flex: none; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(var(--marigold) calc(var(--p) * 360deg), color-mix(in srgb, currentColor 18%, transparent) 0); }
+.level-ring.locked { background: conic-gradient(color-mix(in srgb, currentColor 40%, transparent) calc(var(--p) * 360deg), color-mix(in srgb, currentColor 15%, transparent) 0); }
+.level-ring span { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; align-content: center;
+  background: var(--card); color: var(--indigo); font: 700 26px var(--font-display); line-height: 1; }
+.level-ring small { font: 700 10px var(--font-data); }
+.level-ring.locked span::after { content: "locked"; font: 600 9px var(--font-data); color: var(--ink-2); }
+.level-info { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.level-info b { font-size: 18px; overflow-wrap: anywhere; }
+.level-info progress { width: 100%; accent-color: var(--marigold); height: 8px; }
+.level-card .fine { color: inherit; opacity: .85; }
+.level-card > .chip { justify-self: start; }
+/* Plus passport themes (ids from public.set_cosmetics) */
+.level-card.theme-indigo { background: linear-gradient(135deg, #283593, #0d1238); color: #fff; }
+.level-card.theme-lotus { background: linear-gradient(135deg, #fbd3e0, #fff5f8); color: #6b1f3a; }
+.level-card.theme-night-market { background: linear-gradient(135deg, #2b0a3d, #7a1e5a); color: #fff; }
+.level-card.theme-temple-gold { background: linear-gradient(135deg, #f6d77a, #b8860b); color: #3b2500; }
+.level-card.theme-rain { background: linear-gradient(135deg, #cfe3ea, #6f97a8); color: #10303c; }
+.flair-marigold { color: var(--marigold); }
+.flair-indigo { color: #5c6bc0; }
+.flair-lotus { color: #e05a8a; }
+.flair-sparkle { background: linear-gradient(90deg, #e8a317, #e05a8a, #5c6bc0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.flair-sparkle::after { content: " ✦"; color: var(--marigold); }
+
+.chip.exclusive { background: var(--indigo-soft); color: var(--indigo); }
+.exclusives { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.exclusives li { border: 1px solid var(--marigold); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; }
+.exclusives li.locked { border-color: var(--line); color: var(--ink-2); }
+.field select { font: inherit; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); }
+.month-stamps { display: flex; flex-wrap: wrap; gap: 8px; }
+.month-stamp { font: 700 12px var(--font-data); text-transform: uppercase; color: var(--stamp); border: 2px dashed var(--stamp);
+  border-radius: 50%; width: 64px; height: 64px; display: grid; place-items: center; text-align: center; transform: rotate(-8deg); }
+.xp-gain { font-weight: 700; color: var(--marigold); font-size: 18px; }
+.share-card { display: grid; gap: 10px; width: 100%; }
+.share-card img { width: 160px; aspect-ratio: 9 / 16; border-radius: 12px; box-shadow: var(--shadow); }

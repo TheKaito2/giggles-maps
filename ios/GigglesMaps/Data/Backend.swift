@@ -48,9 +48,41 @@ enum Backend {
         return place
     }
 
-    static func applePlus(jws: String) async throws {
-        struct Out: Decodable { let plus_until: String? }
+    /// Any verified App Store transaction (membership or Plus); the server works out which it is.
+    static func applePurchase(jws: String) async throws {
+        struct Out: Decodable { let plus_until: String?; let member_since: String? }
         let _: Out = try await call("apple-plus", ["jws": jws])
+    }
+
+    static func profile() async throws -> Profile {
+        let id = try await ensureSession()
+        return try await client.from("profiles").select("member_since, xp, plus_until, cosmetics").eq("id", value: id).single().execute().value
+    }
+
+    static func exclusives() async throws -> [ExclusivePlace] {
+        try await ensureSession()
+        return try await client.rpc("my_exclusives").execute().value
+    }
+
+    /// Plus only (server checks). Pass nil to leave a field as it is.
+    static func setCosmetics(theme: String? = nil, flair: String? = nil) async throws {
+        try await ensureSession()
+        var params: [String: String] = [:]
+        if let theme { params["p_theme"] = theme }
+        if let flair { params["p_flair"] = flair }
+        try await client.rpc("set_cosmetics", params: params).execute()
+    }
+
+    /// Collects this month's Plus stamp (no-op without Plus); returns the months collected.
+    static func monthlyStamps() async throws -> [Date] {
+        try await ensureSession()
+        _ = try? await client.rpc("claim_monthly_stamp").execute()
+        struct Row: Decodable { let month: String }   // a SQL date, "2026-10-01"
+        let rows: [Row] = try await client.from("plus_stamps").select("month").order("month", ascending: false).execute().value
+        let day = DateFormatter()
+        day.dateFormat = "yyyy-MM-dd"
+        day.timeZone = TimeZone(identifier: "Asia/Bangkok")
+        return rows.compactMap { day.date(from: $0.month) }
     }
 
     static func deleteAccount() async throws {

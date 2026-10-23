@@ -12,9 +12,9 @@ final class PlusTests: XCTestCase {
         session.disableDialogs = true
         session.clearTransactions()
 
-        let products = try await Product.products(for: [Plus.productID])
+        let products = try await Product.products(for: [Store.plusID, Store.membershipID])
         // iOS 26.5 Simulator: xcodebuild never syncs the .storekit file (Apple forum thread 826971); test on device/IDE
-        guard let product = products.first else { throw XCTSkip("StoreKit test config not loaded by this simulator runtime") }
+        guard let product = products.first(where: { $0.id == Store.plusID }) else { throw XCTSkip("StoreKit test config not loaded by this simulator runtime") }
         XCTAssertEqual(product.type, .autoRenewable)
         let token = UUID(uuidString: ProcessInfo.processInfo.environment["PLUS_TEST_USER"] ?? "") ?? UUID()
         let result = try await product.purchase(options: [.appAccountToken(token)])

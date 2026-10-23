@@ -104,7 +104,7 @@ struct PlanView: View {
                     Text("Extra time I'm OK with:").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ink2)
                     Text("+\(Int(model.budget)) min").font(Theme.data)
                 }
-                Slider(value: $model.budget, in: 0...Double(model.plan?.maxBudgetMin ?? 120), step: 5).tint(Theme.marigold)
+                Slider(value: $model.budget, in: 0...Double(model.plan?.maxBudgetMin ?? 240), step: 5).tint(Theme.marigold)
                     .accessibilityLabel("Extra time I'm OK with")
                     .accessibilityValue("\(Int(model.budget)) minutes")
             }
@@ -166,6 +166,13 @@ struct PlanView: View {
                     }
                     .font(.footnote).foregroundStyle(Theme.ink2).lineLimit(1)
                     if stop.isPartner { Chip(text: stop.isDemo ? String(localized: "Example partner") : String(localized: "Partner"), partner: true).fixedSize() }
+                    if let lvl = stop.minLevel, lvl > 0 {
+                        HStack(spacing: 6) {
+                            Chip(text: Levels.kindName(stop.exclusiveKind)).fixedSize()
+                            Chip(text: String(localized: "Level \(lvl)")).fixedSize()
+                        }
+                        if let perk = stop.perkText { Text(perk).font(.footnote).foregroundStyle(Theme.ink2) }
+                    }
                 }
                 Spacer(minLength: 0)
                 Button("Check in") { checkinTarget = CheckinTarget(stop) }
@@ -182,6 +189,9 @@ struct PlanView: View {
                     Image(systemName: "mappin.and.ellipse").foregroundStyle(Theme.marigold)
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Near this spot: \(card.name)").font(.subheadline.weight(.semibold))
+                        if let lvl = card.minLevel, lvl > 0 {
+                            Text("\(Levels.kindName(card.exclusiveKind)) · Level \(lvl)").font(.caption.weight(.semibold)).foregroundStyle(Theme.marigold)
+                        }
                         Text("\(Copy.category(card.category)) · \(card.distanceM) m away").font(.footnote).foregroundStyle(Theme.ink2)
                     }
                     Spacer(minLength: 0)
@@ -205,9 +215,7 @@ struct PlanView: View {
                     .buttonStyle(PrimaryButtonStyle())
             }
         }
-        if plan.plus == true {
-            Text("Giggles Plus: plan detours up to 240 extra minutes.").font(.footnote).foregroundStyle(Theme.ink2)
-        }
+
 
         if let thb = plan.expectedThb, thb > 0 {
             Text("Business view: partners on this route pay about ฿\(thb, specifier: "%.2f") in expected visit fees.")

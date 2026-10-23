@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "../lib/supabase";
+import ShareCard from "./ShareCard";
 import { BILLING_TEXT, type CheckinResult, type CheckinTarget, REASON_TEXT, uploadSelfie, verifyCheckin } from "../lib/api";
 
 const CONSENT_KEY = "giggles.selfieConsent.v1";
@@ -11,9 +12,9 @@ type Step = "consent" | "camera" | "working" | "result" | "error";
 const getPosition = () => new Promise<GeolocationPosition>((ok, fail) =>
   navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }));
 
-interface Props { target: CheckinTarget; initialCode?: string; onClose: () => void; onDone: (r: CheckinResult) => void }
+interface Props { target: CheckinTarget; initialCode?: string; hasPlus: boolean; onClose: () => void; onDone: (r: CheckinResult) => void }
 
-export default function CheckIn({ target, initialCode, onClose, onDone }: Props) {
+export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone }: Props) {
   const [step, setStep] = useState<Step>(readConsent() ? "camera" : "consent");
   const [demo, setDemo] = useState(false);
   const [code, setCode] = useState(initialCode ?? "");
@@ -142,7 +143,13 @@ export default function CheckIn({ target, initialCode, onClose, onDone }: Props)
               {result.status === "approved" ? (result.rewarded ? "Checked in!" : "Checked in, no new stamp.")
                 : result.status === "review" ? "Sent for review." : "Check-in not accepted."}
             </p>
-            {result.reasons.map((r) => <p key={r} className="fine">{REASON_TEXT[r] ?? r}</p>)}
+            {result.reasons.map((r) => <p key={r} className="fine">
+              {r === "level_locked" && result.required_level ? `Needs member level ${result.required_level}.` : REASON_TEXT[r] ?? r}
+            </p>)}
+            {!!result.xp_gained && <p className="xp-gain num">+{result.xp_gained} XP</p>}
+            {result.level_up && <p className="badge-earned">{result.member
+              ? `Level up! You're now level ${result.level}.`
+              : `Level ${result.level} banked. Become a member to unlock it.`}</p>}
             {result.new_badges.map((b) => <p key={b.slug} className="badge-earned">New badge: {b.name}</p>)}
 
             {result.spin && (
@@ -157,6 +164,10 @@ export default function CheckIn({ target, initialCode, onClose, onDone }: Props)
                     </>
                   : <span>No prize this time. Every spin has a 50% chance to win a nearby coupon.</span>}
               </div>
+            )}
+
+            {result.status === "approved" && result.rewarded && (
+              <ShareCard place={target.name} level={result.member ? result.level ?? null : null} hasPlus={hasPlus} />
             )}
 
             {billing && (

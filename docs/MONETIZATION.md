@@ -1,8 +1,9 @@
-# Monetization plan (v3, decided 23 Oct 2026)
+# Monetization plan (v4, decided 23 Oct 2026)
 
-v3 replaces v2 (22 Oct). The main change: **no paid placement anywhere.** Shops pay for customers we deliver (bookings and verified visits), never for position.
+v3 replaced v2 (22 Oct): **no paid placement anywhere.** Shops pay for customers we deliver (bookings and verified visits), never for position.
+v4 changes only what users pay for: a **one-time membership** unlocks levels and exclusive places, and **Giggles Plus becomes cosmetic only**. See "Users: membership and Plus" below.
 
-**Code:** migration `20261023000009_monetization_v3.sql` + `plan-route` remove the paid slot, `partner_live` and the Starter plan, and replace `partners_near` with quality-only `places_near`. Not built yet: bookings, deposits, listing claims, deals/stamps unlocking only via the counter QR.
+**Code:** v4 is migration `20261023000010_membership_levels.sql`. v3 was migration `20261023000009_monetization_v3.sql` + `plan-route` remove the paid slot, `partner_live` and the Starter plan, and replace `partners_near` with quality-only `places_near`. Not built yet: bookings, deposits, listing claims, deals/stamps unlocking only via the counter QR.
 
 ## Principle: the route is never for sale
 
@@ -33,9 +34,39 @@ The pitch to an unsigned place: "Giggles sent 34 tourists near you last month an
 | Restaurants, cafés, shops | Per verified visit (their per-visit fee), or per diner for table bookings |
 | Community enterprises | Same as shops, possibly subsidised |
 | Province / TAT | Sponsored trails (themed collections users choose to follow; every stop still meets the quality rules) + visit reports |
-| Users | **Giggles Plus**: bigger extra-time limit, cosmetic badges, offline maps later. iOS sells it through StoreKit, Android through Google Play Billing, web through Stripe. |
+| Users | **Membership** ฿349 one-time (levels unlock exclusive places) and **Giggles Plus** ฿59/month (cosmetic only). See below. |
 
 No monthly plans for shops: no customers, no bill. The v2 Starter ฿299/month plan is dropped.
+
+## Users: membership and Plus (v4)
+
+Nothing that matters for a trip sits behind a subscription. Every user gets quality routes with up to **+240 min** of extra time, stamps, trails, XP and the free coupon spin.
+
+### Membership: ฿349 (about $9.99), one-time
+
+- **XP for everyone:** +100 per rewarded check-in, +50 at a partner shop, +100 for the first visit to a new kind of place.
+- **Levels:** L1 0 · L2 300 · L3 800 · L4 1,500 · L5 2,500 · L6 4,000 · L7 6,000 · L8 8,500 · L9 11,500 · L10 15,000 XP (`public.level_for`).
+- Non-members keep earning XP, but their unlock level is 0. Buying membership unlocks the level they have already banked straight away.
+- **Exclusive places** (`places.min_level`, `exclusive_kind`):
+  - `gem`: hidden local gems (example: place 33, level 2).
+  - `perk`: member perks at partner shops, such as a free try-out (example: place 31, level 4).
+  - `event`: events and limited spots, only inside `event_starts`–`event_ends` (example: place 51, level 6).
+- A locked place never appears in routes or cards. The Passport list shows it with the level it needs, without its location or perk.
+- Check-in at a place above the user's level: `level_locked`, nothing recorded.
+- Sold through StoreKit (non-consumable `com.kristpaul.gigglesmaps.membership`), Google Play (one-time product, to build) and Stripe on the web (`kind: membership`). A refund removes it again.
+
+### Giggles Plus: ฿59/month, cosmetic only (like Discord Nitro)
+
+- 6 passport themes (`classic`, `indigo`, `lotus`, `night-market`, `temple-gold`, `rain`).
+- Name flair (`marigold`, `indigo`, `lotus`, `sparkle`).
+- 3 premium share-card designs (Postcard, Night neon, Indigo cloth); Classic stays free.
+- A collectible stamp for every month subscribed (`plus_stamps`).
+- Never unlocks places, never changes routes. No extra coupon spin.
+- iOS: auto-renewing subscription `com.kristpaul.gigglesmaps.plus.monthly`. Web: Stripe, 30 days, no auto-renew.
+
+### Security
+
+Clients cannot write `profiles` at all (v4 removed the old "own profile update" policy, which let a user give themselves Plus). Membership, XP, Plus and cosmetics change only through server functions.
 
 ## Billing rules (attribution)
 

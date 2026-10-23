@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, ensureSession, supabase } from "../lib/supabase";
-import { type CheckinTarget, getPlusUntil, type LatLng, planRoute, readScanParam, type RoutePlan } from "../lib/api";
+import { type CheckinTarget, getProfile, KIND_NAME, type LatLng, planRoute, type Profile, readScanParam, type RoutePlan } from "../lib/api";
 import MapView from "./MapView";
 import CheckIn from "./CheckIn";
 import Passport from "./Passport";
@@ -10,7 +10,7 @@ import { resumeSignIn } from "../lib/auth";
 // Real places from the seed: Phu Phan Museum -> Wat Phra That Choeng Chum
 const DEFAULT_ORIGIN: LatLng = { lat: 17.17313, lng: 104.14488 };
 const DEFAULT_DEST: LatLng = { lat: 17.16445, lng: 104.15345 };
-const MAX_BUDGET = 240;
+const MAX_BUDGET = 240; // v4: the same for everyone
 
 const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(Math.round(m) % 60).padStart(2, "0")}`;
@@ -31,12 +31,12 @@ export default function App() {
   const [checkin, setCheckin] = useState<{ target: CheckinTarget; code?: string } | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [plusUntil, setPlusUntil] = useState<Date | null>(null);
-  const maxBudget = MAX_BUDGET;
-  const routeRequest = useRef(0);
-  useEffect(() => { routeRequest.current++; setBusy(false); }, [origin, dest, start, budget, mode, maxBudget]);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
-  useEffect(() => { getPlusUntil().then(setPlusUntil).catch(() => setPlusUntil(null)); }, [refreshKey]);
+  const routeRequest = useRef(0);
+  useEffect(() => { routeRequest.current++; setBusy(false); }, [origin, dest, start, budget, mode]);
+
+  useEffect(() => { getProfile().then(setProfile).catch(() => setProfile(null)); }, [refreshKey]);
   // back from Google/Apple: finish sign-in if linking to the guest account wasn't possible
   useEffect(() => { resumeSignIn().then((m) => { if (m) { setError(m); setTab("passport"); } }); }, []);
 
@@ -71,7 +71,7 @@ export default function App() {
     setBusy(true); setError(""); setPlan(null);
     const [h, m] = start.split(":").map(Number);
     try {
-      const result = await planRoute({ origin, dest, start_min: h * 60 + m, budget_min: Math.min(budget, maxBudget), mode });
+      const result = await planRoute({ origin, dest, start_min: h * 60 + m, budget_min: Math.min(budget, MAX_BUDGET), mode });
       if (requestId === routeRequest.current) setPlan(result);
     } catch (e) {
       if (requestId !== routeRequest.current) return;
@@ -92,7 +92,7 @@ export default function App() {
         <a className="brand" href="/">Giggles <span>Maps</span></a>
         <nav className="tabs" aria-label="Sections">
           <button className={tab === "plan" ? "on" : ""} onClick={() => setTab("plan")}>Plan</button>
-          <button className={tab === "passport" ? "on" : ""} onClick={() => setTab("passport")}>Passport{plusUntil && <span className="plus-dot">Plus</span>}</button>
+          <button className={tab === "passport" ? "on" : ""} onClick={() => setTab("passport")}>Passport{profile?.plusUntil && <span className="plus-dot">Plus</span>}</button>
         </nav>
       </header>
 
@@ -137,10 +137,9 @@ export default function App() {
               </div>
 
               <label className="field budget">
-                <span>Extra time I'm OK with: <strong className="num">+{Math.min(budget, maxBudget)} min</strong></span>
-                <input id="budget" type="range" min={0} max={maxBudget} step={5} value={Math.min(budget, maxBudget)}
+                <span>Extra time I'm OK with: <strong className="num">+{Math.min(budget, MAX_BUDGET)} min</strong></span>
+                <input id="budget" type="range" min={0} max={MAX_BUDGET} step={5} value={Math.min(budget, MAX_BUDGET)}
                   onChange={(e) => { setBudget(Number(e.target.value)); setPlan(null); }} />
-                <span className="fine">Up to +{MAX_BUDGET} min for everyone.</span>
               </label>
 
               <button className="btn gold big" onClick={submit} disabled={busy || !origin || !dest}>
@@ -171,7 +170,9 @@ export default function App() {
                               <span>{CATEGORY[s.category] ?? s.category}</span>
                               <span>{s.dwell_min} min</span>
                               {s.is_partner && <span className="chip partner" title={PARTNER_TIP}>{s.is_demo ? "Example partner" : "Partner"}</span>}
+                              {!!s.min_level && s.exclusive_kind && <span className="chip exclusive">{KIND_NAME[s.exclusive_kind]} · Level {s.min_level}</span>}
                             </div>
+                            {!!s.min_level && s.perk_text && <div className="fine">{s.perk_text}</div>}
                           </div>
                           <button className="btn small" onClick={() => setCheckin({ target: s })}>Check in</button>
                         </div>
@@ -180,6 +181,7 @@ export default function App() {
                             <span className="near-label">Near this spot</span>
                             <span className="near-name">{s.nearby_partner.name}</span>
                             <span className="fine num">{s.nearby_partner.distance_m} m</span>
+                            {!!s.nearby_partner.min_level && s.nearby_partner.exclusive_kind && <span className="chip exclusive">{KIND_NAME[s.nearby_partner.exclusive_kind]} · Level {s.nearby_partner.min_level}</span>}
                             {s.nearby_partner.is_partner && <span className="chip partner" title={PARTNER_TIP}>{s.nearby_partner.is_demo ? "Example partner" : "Partner"}</span>}
                             <button className="link" onClick={() => setCheckin({ target: s.nearby_partner! })}>Check in</button>
                           </div>
@@ -193,7 +195,7 @@ export default function App() {
             </div>
           )}
 
-          {tab === "passport" && <Passport refreshKey={refreshKey} plusUntil={plusUntil} />}
+          {tab === "passport" && <Passport refreshKey={refreshKey} profile={profile} onChange={() => setRefreshKey((k) => k + 1)} />}
         </section>
       </main>
 
@@ -202,7 +204,7 @@ export default function App() {
       </footer>
 
       {checkin && (
-        <CheckIn target={checkin.target} initialCode={checkin.code} onClose={() => setCheckin(null)} onDone={() => setRefreshKey((k) => k + 1)} />
+        <CheckIn target={checkin.target} initialCode={checkin.code} hasPlus={!!profile?.plusUntil} onClose={() => setCheckin(null)} onDone={() => setRefreshKey((k) => k + 1)} />
       )}
     </div>
   );
