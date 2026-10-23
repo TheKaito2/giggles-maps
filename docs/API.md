@@ -196,6 +196,17 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
 - `friend_quest()` → `{partner, week, me, them}` or null; `set_friend_quest(p_friend)` (error `already_paired`); `claim_quests()`.
 - `verify-checkin` also returns `badges: [badge]` for tiers reached by that check-in.
 
+## Map pins, kinds (migrations 028-034)
+- Every place has a `kind` (39 types: restaurant, cafe, temple, waterfall, otop, community_enterprise, hospital, fuel,
+  atm, hotel, ...; icons and colours in `web/src/app/kinds.ts`), plus `detour` (false for services, stays, health
+  and big shops: they show on the map and in search but never become plan stops or passport stops), `opening_hours`,
+  `phone`, `website`, `address`, `brand`, and the flags `local` (independent food/café/craft/market, not a chain),
+  `otop`, `community`.
+- `map_places(p_min_lng, p_min_lat, p_max_lng, p_max_lat, p_zoom, p_kinds text[] default null)`: up to 400 pins in
+  the box. Zoomed out (< 11): landmarks, OTOP and community only; 11-14: plus every detour place and hospitals;
+  14+: everything. `p_kinds` filters (Explore chips). Ranked landmark, OTOP/community, local, nearest the centre.
+- `search_places` also returns `kind` and `tier`.
+
 ## Search (`search_places` RPC)
 
 `rpc("search_places", { p_query, p_lat?, p_lng?, p_kind?, p_limit? })`: our places by name (Thai or English, substring), nearest first when `p_lat`/`p_lng` are given.

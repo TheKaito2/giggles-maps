@@ -3,7 +3,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from import_thailand_places import Exporter, category, dwell_minutes, export, tier
+from import_thailand_places import KINDS, Exporter, category, dwell_minutes, export, flags, kind, tier
 
 
 class ImportTests(unittest.TestCase):
@@ -26,6 +26,38 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(tier({"natural": "waterfall", "name": "x"}, "viewpoint"), 3)
         self.assertEqual(tier({"amenity": "place_of_worship", "religion": "buddhist", "name": "Wat X"}, "temple"), 2)
         self.assertEqual(tier({"amenity": "cafe", "name": "Cafe"}, "cafe"), 1)
+
+    def test_kinds_for_icons(self):
+        self.assertEqual(kind({"amenity": "hospital", "name": "Sakon Hospital"}), "hospital")
+        self.assertEqual(kind({"shop": "gift", "name": "ร้าน OTOP สกลนคร"}), "otop")
+        self.assertEqual(kind({"shop": "clothes", "name": "วิสาหกิจชุมชนผ้าคราม"}), "community_enterprise")
+        self.assertEqual(kind({"amenity": "marketplace", "name": "ตลาดนัดคลองถม"}), "night_market")
+        self.assertEqual(kind({"natural": "waterfall", "name": "Kaeng Sopha"}), "waterfall")
+        self.assertEqual(kind({"amenity": "fuel"}), "fuel")
+        self.assertIsNone(kind({"shop": "hardware", "name": "Hardware"}))
+        self.assertIsNone(kind({"amenity": "hospital", "name": "X", "access": "private"}))
+
+    def test_services_are_on_the_map_but_never_detours(self):
+        for k in ("hospital", "fuel", "atm", "hotel", "convenience", "bar"):
+            self.assertFalse(KINDS[k][1], k)
+        for k in ("temple", "otop", "night_market", "cafe", "waterfall"):
+            self.assertTrue(KINDS[k][1], k)
+
+    def test_local_means_independent(self):
+        self.assertEqual(flags({"amenity": "cafe", "name": "Baan Kram Cafe"}, "cafe"), (True, False, False))
+        self.assertEqual(flags({"amenity": "cafe", "name": "Cafe Amazon", "brand": "Café Amazon"}, "cafe")[0], False)
+        self.assertEqual(flags({"shop": "gift", "name": "OTOP Center"}, "otop"), (True, True, False))
+        self.assertEqual(flags({"amenity": "hospital", "name": "H"}, "hospital")[0], False)
+        self.assertEqual(flags({"amenity": "cafe", "name": "Cafe Amazon Sakon"}, "cafe")[0], False)   # no brand tag
+        self.assertEqual(flags({"amenity": "restaurant", "name": "Street Food"}, "restaurant")[0], True)
+
+    def test_nameless_fuel_is_named_after_its_brand(self):
+        output = io.StringIO()
+        exporter = Exporter(output)
+        exporter.add("node", 9, {"amenity": "fuel", "brand": "PTT Station"}, 17.1, 104.1)
+        exporter.flush()
+        self.assertIn("'PTT Station'", output.getvalue())
+        self.assertIn("ON CONFLICT (osm_id) DO UPDATE", output.getvalue())
 
     def test_region_filter_limits_initial_rollout(self):
         output = io.StringIO()
@@ -65,7 +97,9 @@ class ImportTests(unittest.TestCase):
             self.assertEqual(export(source, target), {"park": 1, "museum": 1})
             sql = target.read_text(encoding="utf-8")
             self.assertIn("way/3", sql)
-            self.assertIn("ON CONFLICT (osm_id) DO NOTHING", sql)
+            upsert = sql.split("ON CONFLICT (osm_id) DO UPDATE SET", 1)[1].split(";", 1)[0]
+            for curated in ("name", "category", "tier", "rating", "is_partner", "bid_thb"):
+                self.assertNotIn(f" {curated} =", upsert)
             self.assertIn("COMMIT;", sql)
 
 

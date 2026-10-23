@@ -40,8 +40,124 @@ def category(tags):
 
 TEMPLE_RELIGIONS = {"buddhist", "hindu", "chinese", "taoist"}
 
+
+def _names(tags):
+    return " ".join(tags.get(k, "") for k in ("name", "name:en", "name:th", "brand", "operator")).casefold()
+
+
+# national chains, often mapped without a brand tag (hand-checked from names that repeat 8+ times in the extract)
+CHAINS = ("cafe amazon", "café amazon", "amazon cafe", "amazon", "inthanin", "punthai", "phanthai", "s&p", "black canyon",
+          "true coffee", "swensen", "starbucks", "yayoi", "doi chaang", "mk restaurant", "wawee", "fuji", "getfresh",
+          "wine connection", "suki teenoi", "the coffee club", "delicafe", "rabika", "pearly tea", "mixue", "dairy queen",
+          "mingmitr", "chao doi", "coffee world", "mister donut", "guss damn good", "zen restaurant", "kfc", "mcdonald",
+          "burger king", "the pizza company", "pizza company", "chester", "bar b q plaza", "sizzler", "shabushi", "oishi",
+          "after you", "texas chicken", "subway", "dunkin", "au bon pain", "auntie anne", "sukishi", "sushiro", "jollibee")
+
+
+def is_chain(tags):
+    name = (tags.get("name:en") or tags.get("name") or "").casefold().strip()
+    return bool(tags.get("brand") or tags.get("brand:wikidata")) or name == "mk" or name.startswith(CHAINS)
+
+
+OTOP_WORDS = ("otop", "โอทอป")
+COMMUNITY_WORDS = ("วิสาหกิจชุมชน", "กลุ่มแม่บ้าน", "กลุ่มอาชีพ", "community enterprise")
+NIGHT_MARKET_WORDS = ("night", "ตลาดนัด", "ตลาดโต้รุ่ง", "walking street", "ถนนคนเดิน")
+# kind -> (coarse category, detour). Detour places can become plan stops and passport stops; the rest
+# (services, stays, health, big-box shops) only show on the map and in search.
+KINDS = {
+    "restaurant": ("food", True), "fast_food": ("food", True), "cafe": ("cafe", True), "bakery": ("cafe", True),
+    "dessert": ("cafe", True), "bar": ("bar", False),
+    "temple": ("temple", True), "museum": ("museum", True), "viewpoint": ("viewpoint", True),
+    "waterfall": ("viewpoint", True), "beach": ("viewpoint", True), "attraction": ("viewpoint", True),
+    "park": ("park", True), "national_park": ("park", True), "art": ("art", True),
+    "otop": ("craft", True), "craft": ("craft", True), "souvenir": ("craft", True), "community_enterprise": ("craft", True),
+    "market": ("market", True), "night_market": ("market", True),
+    "mall": ("shop", False), "supermarket": ("shop", False), "convenience": ("shop", False),
+    "hotel": ("stay", False), "guesthouse": ("stay", False),
+    "hospital": ("health", False), "clinic": ("health", False), "pharmacy": ("health", False), "dentist": ("health", False),
+    "fuel": ("service", False), "ev_charging": ("service", False), "bank": ("service", False), "atm": ("service", False),
+    "police": ("service", False), "post_office": ("service", False), "toilets": ("service", False),
+    "parking": ("service", False), "community_centre": ("community", False),
+}
+# services people look for by type; an unnamed one is still worth a pin, named after its brand/operator
+NAMELESS_OK = {"fuel": "Gas station", "atm": "ATM", "ev_charging": "EV charging", "toilets": "Toilets", "bank": "Bank"}
+
+
+def kind(tags):
+    """Fine place type for icons and filters (see KINDS), or None when the place isn't one we show."""
+    if tags.get("access") in ("private", "no") or tags.get("disused") == "yes":
+        return None
+    names = _names(tags)
+    a, sh, t, l, n = tags.get("amenity"), tags.get("shop"), tags.get("tourism"), tags.get("leisure"), tags.get("natural")
+    if any(w in names for w in OTOP_WORDS):
+        return "otop"
+    if any(w in names for w in COMMUNITY_WORDS) and (sh or a in ("marketplace", "restaurant", "cafe")):
+        return "community_enterprise"
+    cat = category(tags)
+    if cat:
+        if cat == "park":
+            return "national_park" if is_national_park(tags) else "park"
+        if cat == "viewpoint":
+            if n == "waterfall" or "waterfall" in names or "น้ำตก" in names:
+                return "waterfall"
+            return "viewpoint" if t == "viewpoint" or n == "peak" else "attraction"
+        if cat == "food":
+            return "restaurant"
+        if cat == "market":
+            return "night_market" if any(w in names for w in NIGHT_MARKET_WORDS) else "market"
+        if cat == "craft":
+            return "souvenir" if sh == "gift" else "craft"
+        return cat
+    if n == "beach" and tags.get("name"):
+        return "beach"
+    if a == "fast_food":
+        return "fast_food"
+    if a == "ice_cream" or sh in ("confectionery", "pastry"):
+        return "dessert"
+    if sh == "bakery":
+        return "bakery"
+    if a in ("bar", "pub", "biergarten"):
+        return "bar"
+    if sh in ("souvenir",):
+        return "souvenir"
+    if sh in ("mall", "department_store"):
+        return "mall"
+    if sh in ("supermarket", "convenience"):
+        return sh
+    if t in ("hotel", "resort", "motel"):
+        return "hotel"
+    if t in ("guest_house", "hostel"):
+        return "guesthouse"
+    if a == "hospital":
+        return "hospital"
+    if a in ("clinic", "doctors"):
+        return "clinic"
+    if a in ("pharmacy", "dentist", "fuel", "bank", "atm", "police", "post_office", "toilets", "parking"):
+        return a
+    if a == "charging_station":
+        return "ev_charging"
+    if a == "community_centre":
+        return "community_centre"
+    return None
+
+
+def details(tags):
+    """Opening hours, phone, website, a one-line address and the brand, as OSM has them."""
+    addr = " ".join(tags[k] for k in ("addr:housenumber", "addr:street", "addr:subdistrict", "addr:district",
+                                       "addr:city", "addr:province", "addr:postcode") if tags.get(k)) or None
+    return (tags.get("opening_hours"), tags.get("phone") or tags.get("contact:phone"),
+            tags.get("website") or tags.get("contact:website"), addr, tags.get("brand"))
+
+
+def flags(tags, k):
+    """local = an independent food/café/craft/market place (no chain brand); otop and community from the name."""
+    chain = is_chain(tags)
+    names = _names(tags)
+    local = KINDS[k][0] in ("food", "cafe", "craft", "market") and k != "fast_food" and not chain
+    return local, k == "otop" or any(w in names for w in OTOP_WORDS), k == "community_enterprise" or any(w in names for w in COMMUNITY_WORDS)
+
 DWELL = {"museum": 40, "viewpoint": 15, "art": 10, "park": 20,
-         "temple": 20, "cafe": 25, "food": 35, "market": 25, "craft": 20}
+         "temple": 20, "cafe": 25, "food": 35, "market": 25, "craft": 20}   # other categories aren't detours: 15
 
 
 def is_national_park(tags):
@@ -57,7 +173,7 @@ def tier(tags, cat):
             or "heritage" in tags or is_national_park(tags) or tags.get("natural") in ("waterfall", "peak")
             or "waterfall" in names or "น้ำตก" in names):
         return 3
-    return 1 if cat in ("cafe", "food", "craft") else 2
+    return 2 if cat in ("temple", "museum", "viewpoint", "park", "art", "market") else 1
 
 
 def dwell_minutes(tags, cat):
@@ -66,7 +182,7 @@ def dwell_minutes(tags, cat):
         return 90
     if tags.get("natural") == "waterfall" or "waterfall" in names or "น้ำตก" in names:
         return 45
-    return DWELL[cat]
+    return DWELL.get(cat, 15)
 
 
 class Exporter:
@@ -77,23 +193,29 @@ class Exporter:
         self.rows = []
         self.counts = {}
 
-    def add(self, kind, osm_id, tags, lat, lng):
-        cat = category(tags)
+    def add(self, osm_type, osm_id, tags, lat, lng):
+        k = kind(tags)
+        if not k:
+            return
+        cat, detour = KINDS[k]
         name = (tags.get("name:en") or tags.get("name") or tags.get("name:th") or "").strip()
-        if not cat or not name or not (5 <= lat <= 21 and 97 <= lng <= 106):
+        if not name and k in NAMELESS_OK:
+            name = (tags.get("brand") or tags.get("operator") or NAMELESS_OK[k]).strip()
+        if not name or not (5 <= lat <= 21 and 97 <= lng <= 106):
             return
         if self.bbox and not (self.bbox[0] <= lat <= self.bbox[2] and self.bbox[1] <= lng <= self.bbox[3]):
             return
         # Nodes and building outlines often describe the same named POI.
         normalized = re.sub(r"[\W_]+", "", unicodedata.normalize("NFKC", name).casefold())
-        key = (normalized, cat, round(lat, 3), round(lng, 3))
+        key = (normalized, k, round(lat, 4 if k in NAMELESS_OK else 3), round(lng, 4 if k in NAMELESS_OK else 3))
         if key in self.seen:
             return
         self.seen.add(key)
         # Unknown OSM opening_hours are NOT guessed into daily hours.
-        self.rows.append((f"{kind}/{osm_id}", name, tags.get("name:th"), cat,
-                          f"SRID=4326;POINT({lng} {lat})", dwell_minutes(tags, cat), tier(tags, cat), tags.get("wikidata")))
-        self.counts[cat] = self.counts.get(cat, 0) + 1
+        self.rows.append((f"{osm_type}/{osm_id}", name, tags.get("name:th"), cat,
+                          f"SRID=4326;POINT({lng} {lat})", dwell_minutes(tags, cat), tier(tags, cat) if detour else 1,
+                          tags.get("wikidata"), k, detour, *details(tags), *flags(tags, k)))
+        self.counts[k] = self.counts.get(k, 0) + 1
         if len(self.rows) >= 500:
             self.flush()
 
@@ -101,12 +223,18 @@ class Exporter:
         if not self.rows:
             return
         def quote(value):
+            if isinstance(value, bool):
+                return "true" if value else "false"
             return "NULL" if value is None else "'" + str(value).replace("\x00", "").replace("'", "''") + "'"
         values = ",\n".join("(" + ",".join(quote(v) for v in row) + ")" for row in self.rows)
-        self.output.write("INSERT INTO public.places (osm_id,name,name_th,category,location,dwell_min,tier,wikidata) VALUES\n")
+        self.output.write("INSERT INTO public.places (osm_id,name,name_th,category,location,dwell_min,tier,wikidata,"
+                          "kind,detour,opening_hours,phone,website,address,brand,local,otop,community) VALUES\n")
         self.output.write(values)
-        # Preserve manually curated fields, partner links, wallet bids and existing demo records.
-        self.output.write("\nON CONFLICT (osm_id) DO NOTHING;\n")
+        # Existing places keep name, category, tier, ratings, partner links, bids and demo records (and so their
+        # stamps and check-ins); only the kind, details and flags are refreshed.
+        self.output.write("\nON CONFLICT (osm_id) DO UPDATE SET kind = EXCLUDED.kind, opening_hours = EXCLUDED.opening_hours, "
+                          "phone = EXCLUDED.phone, website = EXCLUDED.website, address = EXCLUDED.address, brand = EXCLUDED.brand, "
+                          "local = EXCLUDED.local, otop = EXCLUDED.otop, community = EXCLUDED.community;\n")
         self.rows.clear()
 
 
@@ -126,11 +254,11 @@ def export(source, destination, bbox=None):
             import osmium
             class Handler(osmium.SimpleHandler):
                 def node(self, obj):
-                    if category(obj.tags) and obj.location.valid():
+                    if kind(obj.tags) and obj.location.valid():
                         exporter.add("node", obj.id, dict(obj.tags), obj.location.lat, obj.location.lon)
 
                 def way(self, obj):
-                    if not category(obj.tags):
+                    if not kind(obj.tags):
                         return
                     coords = [(n.lat, n.lon) for n in obj.nodes if n.location.valid()]
                     if coords:
@@ -142,7 +270,7 @@ def export(source, destination, bbox=None):
                 def area(self, obj):
                     # Multipolygon relations: big landmarks (Wat Pho, the Grand Palace) are often mapped this way.
                     # Closed ways also arrive here as areas; way() already handled those.
-                    if obj.from_way() or not category(obj.tags):
+                    if obj.from_way() or not kind(obj.tags):
                         return
                     coords = [(n.lat, n.lon) for ring in obj.outer_rings() for n in ring if n.location.valid()]
                     if coords:
