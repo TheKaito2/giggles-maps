@@ -2,16 +2,15 @@ import maplibregl from "maplibre-gl";
 import { layers, namedFlavor } from "@protomaps/basemaps";
 import { FileSource, PMTiles, Protocol } from "pmtiles";
 
-// Google-Maps-style map types and night map, plus offline province maps (Protomaps packs saved on the device).
-export type MapType = "default" | "satellite" | "terrain";
+// Night map, plus offline province maps (Protomaps packs saved on the device).
 export type Night = "auto" | "on" | "off";
-export interface MapLook { type: MapType; night: Night }
+export interface MapLook { night: Night }
 
 const KEY = "gm-map-look";
 export function loadLook(): MapLook {
   let v: Partial<MapLook> = {};
   try { v = JSON.parse(localStorage.getItem(KEY) ?? "{}") ?? {}; } catch { /* nothing saved */ }
-  return { type: ["satellite", "terrain"].includes(v.type as string) ? v.type! : "default", night: ["on", "off"].includes(v.night as string) ? v.night! : "auto" };
+  return { night: ["on", "off"].includes(v.night as string) ? v.night! : "auto" };
 }
 export function saveLook(look: MapLook) { try { localStorage.setItem(KEY, JSON.stringify(look)); } catch { /* private mode: not remembered */ } }
 
@@ -22,25 +21,6 @@ export const isNight = (night: Night, d = new Date()) =>
 /** Online basemap: the coin-shop skin by day, OpenFreeMap's dark style at night. */
 export const styleUrl = (skin: string, night: boolean) =>
   `https://tiles.openfreemap.org/styles/${night ? "dark" : ["bright", "positron"].includes(skin) ? skin : "liberty"}`;
-
-/** Satellite (under the roads and labels, like Google's hybrid) or terrain shading; call after every style load. */
-export function addMapType(m: maplibregl.Map, type: MapType) {
-  if (type === "default") return;
-  if (type === "satellite") {
-    m.addSource("satellite", { type: "raster", tileSize: 256, maxzoom: 14,
-      tiles: ["https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg"],
-      attribution: '<a href="https://s2maps.eu">Sentinel-2 cloudless</a> by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016)' });
-    // hybrid: imagery at the bottom, the style's area fills hidden, its roads and labels kept on top
-    for (const l of m.getStyle().layers ?? []) if (["background", "fill", "fill-extrusion"].includes(l.type)) m.setLayoutProperty(l.id, "visibility", "none");
-    m.addLayer({ id: "satellite", type: "raster", source: "satellite" }, m.getStyle().layers?.[0]?.id);
-  } else {
-    m.addSource("dem", { type: "raster-dem", encoding: "terrarium", tileSize: 256, maxzoom: 13,
-      tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
-      attribution: 'Elevation: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Mapzen Terrain Tiles</a>' });
-    const firstLine = m.getStyle().layers?.find((l) => l.type === "line" || l.type === "symbol")?.id;   // shade the land, not the roads
-    m.addLayer({ id: "hillshade", type: "hillshade", source: "dem", paint: { "hillshade-exaggeration": 0.45, "hillshade-shadow-color": "#5b4a36" } }, firstLine);
-  }
-}
 
 // ---------- offline province maps ----------
 // ponytail: r2.dev is rate limited; serve from a custom domain if downloads get busy

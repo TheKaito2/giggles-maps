@@ -713,17 +713,9 @@ table.stats th, table.stats td { padding: 6px 8px; border-bottom: 1px solid var(
 .nav-avoid { justify-content: flex-start !important; gap: 14px; }
 .nav-me { width: 22px; height: 22px; border-radius: 50%; background: #2f7bf5; border: 4px solid #fff; box-shadow: 0 0 0 8px rgb(47 123 245 / .25); }
 
-/* ---------- map layers (type, night, offline maps) ---------- */
+/* ---------- map layers (night map, offline maps) ---------- */
 .layers-btn { position: absolute; top: 84px; right: 10px; z-index: 5; width: 40px; height: 40px; border-radius: 12px; border: 0;
   background: var(--card); color: var(--ink); box-shadow: var(--shadow); display: grid; place-items: center; }
 .layers-pop { width: min(360px, 100%); }
-.layer-types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.layer-types button { display: grid; gap: 4px; justify-items: center; border: 0; background: none; padding: 0; font-size: 13px; font-weight: 700; color: var(--ink-2); }
-.layer-types button.on { color: var(--indigo); }
-.thumb { width: 100%; aspect-ratio: 1; border-radius: 12px; border: 2px solid transparent; }
-.layer-types button.on .thumb { border-color: var(--indigo); }
-.thumb.default { background: linear-gradient(135deg, transparent 46%, #f6c35a 46% 54%, transparent 54%), linear-gradient(45deg, #e8eef2 0 60%, #cfe6c4 60%); }
-.thumb.satellite { background: radial-gradient(circle at 30% 30%, #5f7d3c, transparent 45%), radial-gradient(circle at 70% 70%, #8a7b52, transparent 50%), #3d5a2c; }
-.thumb.terrain { background: repeating-radial-gradient(circle at 60% 40%, #e9e3d4 0 6px, #d7cdb4 6px 8px), #e9e3d4; }
 .offline-maps .people { max-height: 50vh; overflow-y: auto; }
 .offline-maps .ok { color: var(--good); }

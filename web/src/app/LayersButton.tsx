@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, CloudDownload, Layers, Trash2, X } from "lucide-react";
-import { deletePack, downloadPack, type MapLook, type MapType, type Night, type Pack, PACKS_URL, savedPacks } from "./mapLayers";
+import { deletePack, downloadPack, type MapLook, type Night, type Pack, PACKS_URL, savedPacks } from "./mapLayers";
 
-const TYPES: { id: MapType; label: string }[] = [{ id: "default", label: "Default" }, { id: "satellite", label: "Satellite" }, { id: "terrain", label: "Terrain" }];
 const NIGHTS: { id: Night; label: string }[] = [{ id: "auto", label: "Auto" }, { id: "on", label: "On" }, { id: "off", label: "Off" }];
 const mb = (b: number) => `${(b / 1e6).toFixed(b < 1e7 ? 1 : 0)} MB`;
 
@@ -57,7 +56,7 @@ function OfflineMaps({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Google-Maps-style layers button on the map: map type, night map and offline maps. */
+/** Layers button on the map: night map and offline maps. */
 export default function LayersButton({ look, setLook }: { look: MapLook; setLook: (patch: Partial<MapLook>) => void }) {
   const [open, setOpen] = useState(false);
   const [offline, setOffline] = useState(false);
@@ -66,12 +65,8 @@ export default function LayersButton({ look, setLook }: { look: MapLook; setLook
       <button type="button" className="layers-btn" aria-label="Map layers" aria-expanded={open} onClick={() => setOpen(!open)}><Layers size={20} /></button>
       {open && <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="layers-title" onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
         <div className="modal layers-pop">
-        <header className="modal-head"><h2 id="layers-title">Map type</h2>
+        <header className="modal-head"><h2 id="layers-title">Map</h2>
           <button type="button" className="icon-btn" onClick={() => setOpen(false)} aria-label="Close"><X size={20} /></button></header>
-        <div className="layer-types">
-          {TYPES.map((t) => <button key={t.id} type="button" className={look.type === t.id ? "on" : ""} aria-pressed={look.type === t.id}
-            onClick={() => setLook({ type: t.id })}><span className={`thumb ${t.id}`} aria-hidden />{t.label}</button>)}
-        </div>
         <b>Night map</b>
         <div className="seg" role="radiogroup" aria-label="Night map">
           {NIGHTS.map((n) => <button key={n.id} type="button" role="radio" aria-checked={look.night === n.id} className={look.night === n.id ? "on" : ""}

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { type LatLng, mapPlaces, type MapPlace, type RouteStop, type Stop, type TripMember } from "../lib/api";
 import { addPinIcons } from "./pinIcons";
 import { colourOf } from "./kinds";
-import { addMapType, isNight, type MapLook, offlineStyle, styleUrl } from "./mapLayers";
+import { isNight, type MapLook, offlineStyle, styleUrl } from "./mapLayers";
 export const SAKON: LatLng = { lat: 17.163, lng: 104.149 };
 
 interface Props {
@@ -22,7 +22,7 @@ interface Props {
   inZone?: number[];      // stops the user is standing in the check-in zone of
   members?: TripMember[]; // ride along: trip-mates with a fresh position
   skin?: string;           // coin-shop map skin (daytime basemap)
-  look?: MapLook;          // map type + night map (Layers button)
+  look?: MapLook;          // night map (Layers button)
   kinds?: string[] | null;          // Explore chip filter for the place pins (null = the default mix for the zoom)
   onPlace?: (p: MapPlace) => void;  // a place pin was tapped
 }
@@ -38,11 +38,11 @@ const pin = (cls: string, text: string, label: string) => {
 };
 
 export default function MapView({ origin, dest, stops, geometry, baseGeometry = [], estimated = false, picking, onPick, onSelectStop,
-  nearby = [], here = null, inZone = [], members = [], skin = "liberty", look = { type: "default", night: "auto" }, kinds = null, onPlace }: Props) {
+  nearby = [], here = null, inZone = [], members = [], skin = "liberty", look = { night: "auto" }, kinds = null, onPlace }: Props) {
   const night = isNight(look.night);
   const [online, setOnline] = useState(navigator.onLine);
-  const lookRef = useRef({ type: look.type, night, online });
-  lookRef.current = { type: look.type, night, online };
+  const lookRef = useRef({ night });
+  lookRef.current = { night };
   useEffect(() => {
     const on = () => setOnline(true), off = () => setOnline(false);
     addEventListener("online", on); addEventListener("offline", off);
@@ -74,7 +74,6 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     m.on("click", (e) => { if (pickingRef.current) pickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng }); });
     m.on("style.load", () => {   // also after a skin, night or offline change, which drops every source and layer
-      if (lookRef.current.online) addMapType(m, lookRef.current.type);
       // our own place pins replace the basemap's POI icons
       for (const l of m.getStyle().layers ?? []) if (l.id.startsWith("poi")) m.setLayoutProperty(l.id, "visibility", "none");
       m.addSource("gm-pois", { type: "geojson", data: poisRef.current });
@@ -121,11 +120,11 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
   const reloadPins = useRef<() => void>(() => undefined);
   useEffect(() => { reloadPins.current(); }, [kinds]);
 
-  // basemap: skin by day, dark at night, a saved province pack when offline; map type rides on top
+  // basemap: skin by day, dark at night, a saved province pack when offline
   // ponytail: the offline pack is picked at the map centre; panning into another saved province needs a look change
-  const shown = useRef(`${skin}|${night}|${look.type}|true`), styleRequest = useRef(0);
+  const shown = useRef(`${skin}|${night}|true`), styleRequest = useRef(0);
   useEffect(() => {
-    const key = `${skin}|${night}|${look.type}|${online}`, m = map.current;
+    const key = `${skin}|${night}|${online}`, m = map.current;
     if (!m || key === shown.current) return;
     const id = ++styleRequest.current, c = m.getCenter();
     (online ? Promise.resolve(null) : offlineStyle(c.lng, c.lat, night).catch(() => null)).then((offline) => {
@@ -134,7 +133,7 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
       shown.current = key;
       m.setStyle(offline ?? styleUrl(skin, night), { diff: false });
     });
-  }, [skin, night, look.type, online]);
+  }, [skin, night, online]);
 
   useEffect(() => {
     if (map.current) map.current.getCanvas().style.cursor = picking ? "crosshair" : "";

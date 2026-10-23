@@ -12,13 +12,20 @@ const redirectTo = () => location.origin + location.pathname;
 // resumeSignIn() signs into that existing account instead.
 export async function signInWith(provider: Provider) {
   const { data } = await supabase.auth.getUser();
-  if (data.user?.is_anonymous) {
+  if (data.user?.is_anonymous && await hasProgress(data.user.id)) {
     try { sessionStorage.setItem(LINKING_KEY, provider); } catch { /* storage blocked: no fallback, plain sign-in below */ }
     const { error } = await supabase.auth.linkIdentity({ provider, options: { redirectTo: redirectTo() } });
     if (!error) return;
   }
   const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: redirectTo() } });
   if (error) throw new Error("Couldn't open the sign-in page. Try again.");
+}
+
+// Linking a Google/Apple account that already has a Giggles account fails and costs a second sign-in, so only try
+// when the guest has check-ins worth keeping (a fresh guest, e.g. right after signing out, signs in directly).
+async function hasProgress(id: string) {
+  const { count, error } = await supabase.from("checkins").select("id", { count: "exact", head: true }).eq("user_id", id);
+  return !!error || (count ?? 0) > 0;   // can't tell: link, so nothing is lost
 }
 
 // Run once on page load: finish the fallback after a failed link, and clean the error off the URL.
