@@ -21,7 +21,7 @@ export const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d
 export const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(Math.round(m) % 60).padStart(2, "0")}`;
 
 export const DEFAULT_PREFS: Prefs = {
-  mode: "pedestrian", depart: "now", time: hhmm(Math.max(nowMin(), 9 * 60)), budget: "auto",
+  mode: "auto", depart: "now", time: hhmm(Math.max(nowMin(), 9 * 60)), budget: "auto",
   interests: [], minRating: 4, maxPrice: null, maxStops: null, ratedOnly: false, picks: [], meals: [],
 };
 
