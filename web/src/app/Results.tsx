@@ -2,7 +2,7 @@ import { type CheckinTarget, KIND_NAME, type Meal, type RoutePlan } from "../lib
 import { hhmm } from "./prefs";
 
 const MEAL_NAME: Record<Meal, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
-const CATEGORY: Record<string, string> = { cafe: "Café", food: "Food", craft: "Craft shop", temple: "Temple", park: "Park", museum: "Museum", market: "Market", viewpoint: "Viewpoint", art: "Art" };
+export const CATEGORY: Record<string, string> = { cafe: "Café", food: "Food", craft: "Craft shop", temple: "Temple", park: "Park", museum: "Museum", market: "Market", viewpoint: "Viewpoint", art: "Art" };
 const PRICE = ["Free", "฿", "฿฿", "฿฿฿"];
 const PARTNER_TIP = "This shop pays Giggles Maps when you visit. It's ranked like every other place; paying never moves it up.";
 
@@ -13,9 +13,10 @@ interface Props {
   setChoice: (id: string) => void;
   selected: number | null;
   onCheckin: (target: CheckinTarget) => void;
+  picks: { id: number; name: string }[];
 }
 
-export default function Results({ response, plan, choice, setChoice, selected, onCheckin }: Props) {
+export default function Results({ response, plan, choice, setChoice, selected, onCheckin, picks }: Props) {
   const plans = response.plans ?? [];
   const current = plans.find((p) => p.id === choice) ?? plans[0];
   return (
@@ -35,6 +36,12 @@ export default function Results({ response, plan, choice, setChoice, selected, o
             })}
           </div>
         </div>
+      )}
+      {current && !!current.unfit_required?.length && (
+        <p className="fine" role="status">
+          Couldn't fit {current.unfit_required.map((id) => picks.find((p) => p.id === id)?.name ?? "a place you picked").join(", ")} in +{plan.budget_min} min
+          (too far, closed then, or over your stop limit). Try more time.
+        </p>
       )}
       {current && current.missed_meals.length > 0 && (
         <p className="fine">No food stop fits {current.missed_meals.map((m) => MEAL_NAME[m].toLowerCase()).join(", ")} on this plan.</p>
@@ -63,6 +70,7 @@ export default function Results({ response, plan, choice, setChoice, selected, o
                   <span>{s.dwell_min} min</span>
                   <span>{s.rating == null ? "Unrated" : `★ ${s.rating.toFixed(1)}`}</span>
                   <span className="chip price">{s.price_level == null ? "Price not listed" : PRICE[s.price_level]}</span>
+                  {s.picked && <span className="chip picked">You picked this</span>}
                   {s.meal && <span className="chip meal">{MEAL_NAME[s.meal]}</span>}
                   {s.is_partner && <span className="chip partner" title={PARTNER_TIP}>{s.is_demo ? "Example partner" : "Partner"}</span>}
                   {!!s.min_level && s.exclusive_kind && <span className="chip exclusive">{KIND_NAME[s.exclusive_kind]} · Level {s.min_level}</span>}

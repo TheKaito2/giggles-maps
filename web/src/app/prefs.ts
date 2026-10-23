@@ -10,15 +10,18 @@ export interface Prefs {
   minRating: 0 | 3.5 | 4 | 4.5;
   maxPrice: 0 | 1 | 2 | 3 | null;
   maxStops: number | null;       // null = Auto
-  includeUnrated: boolean;
+  ratedOnly: boolean;             // false = unrated places join too (ranked below rated ones)
+  picks: Pick[];                  // "Places you want to visit", sent as must_include
 }
+
+export interface Pick { id: number; name: string }
 
 export const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 export const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(Math.round(m) % 60).padStart(2, "0")}`;
 
 export const DEFAULT_PREFS: Prefs = {
   mode: "pedestrian", depart: "now", time: hhmm(Math.max(nowMin(), 9 * 60)), budget: 45,
-  interests: [], minRating: 4, maxPrice: null, maxStops: null, includeUnrated: false,
+  interests: [], minRating: 4, maxPrice: null, maxStops: null, ratedOnly: false, picks: [],
 };
 
 export const MAX_BUDGET = 240;
@@ -52,7 +55,8 @@ export function toRequest(p: Prefs, origin: LatLng, dest: LatLng): PlanRequest {
     origin, dest, start_min: startMin(p), budget_min: Math.min(p.budget, MAX_BUDGET), mode: p.mode,
     ...(p.interests.length ? { interests: p.interests } : {}),
     ...(p.minRating !== 4 ? { min_rating: p.minRating } : {}),
-    ...(p.includeUnrated ? { include_unrated: true } : {}),
+    ...(p.ratedOnly ? { include_unrated: false } : {}),
+    ...(p.picks.length ? { must_include: p.picks.map((x) => x.id) } : {}),
     ...(p.maxStops != null ? { max_stops: p.maxStops } : {}),
     ...(p.maxPrice != null ? { max_price: p.maxPrice } : {}),
   };

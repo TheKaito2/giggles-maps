@@ -6,7 +6,7 @@ body { background:
   radial-gradient(50rem 36rem at 100% 20%, color-mix(in srgb, var(--marigold-soft) 70%, transparent), transparent 60%),
   var(--paper) fixed; }
 .page-shell { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; }
-.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; position: sticky; top: 0; z-index: 10;
+.topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; position: sticky; top: 0; z-index: 10;
   padding-block: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   background: color-mix(in srgb, var(--card) 80%, transparent); border-bottom: 1px solid var(--line); backdrop-filter: saturate(1.4) blur(12px); }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 700; font-size: 22px; color: var(--ink); text-decoration: none; }
@@ -313,3 +313,15 @@ body { background:
 .plan-picker button.on .fine { color: inherit; }
 .plan-name { font-weight: 600; }
 .chip.meal { background: var(--marigold-soft); color: var(--ink); }
+
+/* search: places you want to visit */
+.explore { display: grid; gap: 10px; }
+.explore-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.explore-bar input { width: 100%; min-width: 0; font: inherit; padding: 11px 12px 11px 36px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); }
+.explore-results { list-style: none; margin: 0; padding: 0; display: grid; max-height: 280px; overflow-y: auto; border-top: 1px solid var(--line); }
+.explore-results li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.explore-name { display: grid; min-width: 0; overflow-wrap: anywhere; }
+.tag.picked { display: inline-flex; align-items: center; gap: 6px; background: var(--indigo-soft); color: var(--indigo); border-color: transparent; font-weight: 700; }
+.tag.picked button { border: 0; background: none; color: inherit; padding: 0; display: grid; }
+.chip.picked { background: var(--good); color: #fff; }
+.ink { color: var(--ink); }

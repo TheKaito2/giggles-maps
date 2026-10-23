@@ -1,15 +1,15 @@
 import { useRef, useState } from "react";
 import { MapPin } from "lucide-react";
-import { supabase } from "../lib/supabase";
-import type { LatLng } from "../lib/api";
+import { type FoundPlace, type LatLng, searchAddresses, searchPlaces } from "../lib/api";
+import { CATEGORY } from "./Results";
 
-interface Place extends LatLng { id: number; name: string; name_th: string | null }
-
-export default function PlaceSearch({ label, initial = "", tone = "start", onPick }: {
-  label: string; initial?: string; tone?: "start" | "end"; onPick: (point: LatLng, name: string) => void;
+// Start/destination search: our own places first, then addresses from Photon (OpenStreetMap search),
+// or "lat, lng" typed directly. Runs on Search/Enter only (Photon asks for fair use).
+export default function PlaceSearch({ label, initial = "", tone = "start", near, onPick }: {
+  label: string; initial?: string; tone?: "start" | "end"; near?: LatLng | null; onPick: (point: LatLng, name: string) => void;
 }) {
   const [query, setQuery] = useState(initial);
-  const [results, setResults] = useState<Place[]>([]);
+  const [results, setResults] = useState<FoundPlace[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const request = useRef(0);
@@ -27,28 +27,33 @@ export default function PlaceSearch({ label, initial = "", tone = "start", onPic
     if (text.length < 2) { setMessage("Enter at least 2 characters, or latitude, longitude."); return; }
     setBusy(true);
     try {
-      const { data, error } = await supabase.rpc("search_route_places", { p_query: text });
+      const ours = await searchPlaces(text, near).catch(() => [] as FoundPlace[]);
+      // few of our own matches: add addresses (hotels, malls, streets) from OpenStreetMap search
+      const addresses = ours.length < 4 ? await searchAddresses(text, near).catch(() => [] as FoundPlace[]) : [];
       if (id !== request.current) return;
-      if (error) throw error;
-      setResults((data ?? []) as Place[]);
-      if (!data?.length) setMessage("No matching places yet. Set a pin on the map or enter coordinates.");
-    } catch { if (id === request.current) setMessage("Place search is unavailable. Set a pin on the map instead."); }
-    finally { if (id === request.current) setBusy(false); }
+      const found = [...ours.slice(0, 6), ...addresses];
+      setResults(found);
+      if (!found.length) setMessage("Nothing found. Try another name, set a pin on the map, or enter coordinates.");
+    } finally { if (id === request.current) setBusy(false); }
   };
   return <div className="place-search">
     <label className="field">
       <span>{label}</span>
       <span className={`input-icon ${tone}`}><MapPin size={16} aria-hidden />
-      <input value={query} maxLength={100} placeholder="ชื่อสถานที่ / place / 13.7563, 100.5018"
+      <input value={query} maxLength={100} placeholder="ชื่อสถานที่ / place / address"
         onChange={(e) => { request.current++; setBusy(false); setResults([]); setMessage(""); setQuery(e.target.value); }}
         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void search(); } }} /></span>
     </label>
     <button type="button" className="btn small soft" disabled={busy} onClick={search}>{busy ? "Searching…" : "Search"}</button>
     {message && <p className="fine" role="status">{message}</p>}
     {!!results.length && <ul className="place-results" aria-label={`${label} search results`}>
-      {results.map((p) => <li key={p.id}><button type="button" className="link" onClick={() => {
+      {results.map((p, i) => <li key={p.id ?? `a${i}`}><button type="button" className="link" onClick={() => {
         request.current++; onPick({ lat: p.lat, lng: p.lng }, p.name); setQuery(p.name); setResults([]); setMessage("Location selected.");
-      }}>{p.name}{p.name_th && p.name_th !== p.name ? ` · ${p.name_th}` : ""}<span className="fine"> · {p.lat.toFixed(3)}, {p.lng.toFixed(3)}</span></button></li>)}
+      }}>{p.name}{p.name_th && p.name_th !== p.name ? ` · ${p.name_th}` : ""}
+        <span className="fine"> · {p.source === "photon" ? "address via OpenStreetMap" : CATEGORY[p.category ?? ""] ?? p.category}
+          {p.distance_m != null && ` · ${formatDistance(p.distance_m)}`}</span></button></li>)}
     </ul>}
   </div>;
 }
+
+export const formatDistance = (m: number) => m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`;

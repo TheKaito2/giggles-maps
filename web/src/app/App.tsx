@@ -121,7 +121,7 @@ export default function App() {
                 {response && plan && (
                   <div className="glass results-card" id="results">
                     <Results response={response} plan={plan} choice={choice} setChoice={setChoice} selected={selected}
-                      onCheckin={(target) => setCheckin({ target })} />
+                      onCheckin={(target) => setCheckin({ target })} picks={prefs.picks} />
                   </div>
                 )}
                 <Summary prefs={prefs} origin={origin} dest={dest} busy={busy} error={error} hasPlan={!!plan}

@@ -54,7 +54,7 @@ export function Summary({ prefs, origin, dest, busy, error, hasPlan, onFind, onR
     ["Stops", prefs.maxStops == null ? "Auto · best fit" : `Up to ${prefs.maxStops}`],
   ];
   const tags = prefs.interests.length ? INTERESTS.filter((i) => prefs.interests.includes(i.id)).map((i) => i.label) : ["Surprise me"];
-  if (prefs.includeUnrated) tags.push("Unrated places too");
+  if (prefs.ratedOnly) tags.push("Rated places only");
   return (
     <div className="glass adventure">
       <div className="row between"><h2>Your little adventure</h2><Sparkles size={20} aria-hidden className="muted" /></div>
@@ -62,6 +62,9 @@ export function Summary({ prefs, origin, dest, busy, error, hasPlan, onFind, onR
         <li className="from"><span className="fine">From</span>{origin?.name ?? "Pick a start"}</li>
         <li className="to"><span className="fine">To</span>{dest?.name ?? "Pick a destination"}</li>
       </ol>
+      {prefs.picks.length > 0 && (
+        <div className="fine">Must visit: <b className="ink">{prefs.picks.map((p) => p.name).join(", ")}</b></div>
+      )}
       <div className="discovery"><span>Room for discovery</span><span className="num"><b>+{prefs.budget}</b> min</span></div>
       <dl className="facts">{rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
       <div className="row tight">{tags.map((t) => <span key={t} className="tag">{t}</span>)}</div>

@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
-import { ArrowLeftRight, Bike, Car, Castle, Clock, Coffee, Footprints, Landmark, Leaf, LocateFixed, MapPin,
+import { ArrowLeftRight, Bike, Compass, Car, Castle, Clock, Coffee, Footprints, Landmark, Leaf, LocateFixed, MapPin,
   ShoppingBag, SlidersHorizontal, Sparkles, Star, UtensilsCrossed } from "lucide-react";
 import type { Interest, TravelMode } from "../lib/api";
 import PlaceSearch from "./PlaceSearch";
+import ExplorePlaces from "./ExplorePlaces";
 import { DEPARTS, INTERESTS, MAX_BUDGET, MODES, type Place, type Prefs, PRICES, RATINGS, ratingLabel } from "./prefs";
 
 const MODE_ICON: Record<TravelMode, ReactNode> = {
@@ -52,7 +53,7 @@ export default function Planner({ prefs, set, origin, dest, setOrigin, setDest, 
         <div className="journey">
           <div className="journey-point">
             {/* key: remount with the new name after a swap or a map pick */}
-            <PlaceSearch key={`o-${origin?.name}`} label="Starting point" initial={origin?.name} onPick={(point, name) => setOrigin({ point, name })} />
+            <PlaceSearch key={`o-${origin?.name}`} label="Starting point" initial={origin?.name} near={dest?.point} onPick={(point, name) => setOrigin({ point, name })} />
             <div className="row tight">
               <button type="button" className="link" onClick={useMyLocation}><LocateFixed size={14} aria-hidden /> Use my location</button>
               <button type="button" className="link" onClick={() => pickOnMap("origin")}>Set on map</button>
@@ -60,7 +61,7 @@ export default function Planner({ prefs, set, origin, dest, setOrigin, setDest, 
           </div>
           <button type="button" className="swap" onClick={swap} aria-label="Swap start and destination"><ArrowLeftRight size={16} aria-hidden /></button>
           <div className="journey-point">
-            <PlaceSearch key={`d-${dest?.name}`} label="Destination" tone="end" initial={dest?.name} onPick={(point, name) => setDest({ point, name })} />
+            <PlaceSearch key={`d-${dest?.name}`} label="Destination" tone="end" initial={dest?.name} near={origin?.point} onPick={(point, name) => setDest({ point, name })} />
             <div className="row tight">
               <button type="button" className="link" onClick={() => pickOnMap("dest")}>Set on map</button>
             </div>
@@ -124,6 +125,10 @@ export default function Planner({ prefs, set, origin, dest, setOrigin, setDest, 
         </div>
       </Section>
 
+      <Section icon={<Compass size={18} aria-hidden />} title="Places you want to visit" aside="Optional">
+        <ExplorePlaces near={origin?.point ?? null} picks={prefs.picks} setPicks={(picks) => set({ picks })} />
+      </Section>
+
       <Section icon={<SlidersHorizontal size={18} aria-hidden />} title="Make it your kind of detour">
         <div className="prefs-grid">
           <div className="field">
@@ -154,12 +159,12 @@ export default function Planner({ prefs, set, origin, dest, setOrigin, setDest, 
             </select>
           </label>
           <label className="pref-row">
-            <span>Include places without ratings</span>
-            <input type="checkbox" role="switch" className="switch" checked={prefs.includeUnrated}
-              onChange={(e) => set({ includeUnrated: e.target.checked })} />
+            <span>Rated places only</span>
+            <input type="checkbox" role="switch" className="switch" checked={prefs.ratedOnly}
+              onChange={(e) => set({ ratedOnly: e.target.checked })} />
           </label>
         </div>
-        <p className="fine">Higher rating filters may leave out newer local discoveries. Places with no listed price stay in, marked "price not listed".</p>
+        <p className="fine">Most places don't have ratings yet; they're included but ranked below rated ones. Places with no listed price stay in, marked "price not listed".</p>
       </Section>
     </div>
   );

@@ -20,6 +20,7 @@ export interface RouteStop {
   nearby_partner: NearbyPartner | null;
   min_level?: number; exclusive_kind?: ExclusiveKind | null; perk_text?: string | null;
   meal?: Meal | null; // engine v2: this stop covers a meal
+  picked?: boolean;   // the user asked for this place (must_include)
 }
 
 export type Meal = "breakfast" | "lunch" | "dinner";
@@ -28,6 +29,7 @@ export type Meal = "breakfast" | "lunch" | "dinner";
 export interface ThemedPlan {
   id: string; name: string; stops: RouteStop[]; geometry: [number, number][];
   extra_min: number; total_min: number; meals: Meal[]; missed_meals: Meal[];
+  unfit_required?: number[];   // picked places that didn't fit this plan
 }
 
 export interface RoutePlan {
@@ -74,6 +76,38 @@ export interface PlanRequest {
   include_unrated?: boolean;
   max_stops?: number;           // 1-6; omitted = Auto
   max_price?: 0 | 1 | 2 | 3;    // omitted = Any
+  must_include?: number[];      // up to 3 places the user picked
+}
+
+export type Kind = "food" | "cafes" | "culture" | "nature" | "shopping";
+
+/** A search hit: one of our places (has id) or an address from Photon (OpenStreetMap search). */
+export interface FoundPlace extends LatLng {
+  id?: number; name: string; name_th?: string | null; category?: string;
+  rating?: number | null; price_level?: number | null; distance_m?: number | null; source: "giggles" | "photon";
+}
+
+export async function searchPlaces(query: string, near?: LatLng | null, kind?: Kind | null): Promise<FoundPlace[]> {
+  await ensureSession();
+  const { data, error } = await supabase.rpc("search_places", {
+    p_query: query, p_lat: near?.lat ?? null, p_lng: near?.lng ?? null, p_kind: kind ?? null, p_limit: 12,
+  });
+  if (error) throw error;
+  return ((data ?? []) as Omit<FoundPlace, "source">[]).map((p) => ({ ...p, source: "giggles" }));
+}
+
+// Photon (photon.komoot.io): free OpenStreetMap search, fair use. Called on Search/Enter only, never per keystroke.
+const THAILAND_BBOX = "97.3,5.6,105.7,20.5";
+export async function searchAddresses(query: string, near?: LatLng | null): Promise<FoundPlace[]> {
+  const params = new URLSearchParams({ q: query, limit: "5", bbox: THAILAND_BBOX });
+  if (near) { params.set("lat", String(near.lat)); params.set("lon", String(near.lng)); }
+  const res = await fetch(`https://photon.komoot.io/api/?${params}`);
+  if (!res.ok) throw new Error(`photon ${res.status}`);
+  const json = await res.json() as { features: { geometry: { coordinates: [number, number] }; properties: Record<string, string> }[] };
+  return json.features.map(({ geometry, properties: p }) => ({
+    lat: geometry.coordinates[1], lng: geometry.coordinates[0], source: "photon" as const,
+    name: [p.name ?? p.street, p.city ?? p.county ?? p.state].filter(Boolean).join(", ") || "Unnamed place",
+  }));
 }
 
 export const planRoute = (p: PlanRequest) => callFn<RoutePlan>("plan-route", p);
