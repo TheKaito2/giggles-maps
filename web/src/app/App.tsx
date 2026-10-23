@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Leaf, MapPin } from "lucide-react";
+import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import { ApiError, ensureSession, supabase } from "../lib/supabase";
 import { type CheckinTarget, choosePlan, getProfile, type LatLng, planRoute, type Profile, readScanParam, type RoutePlan } from "../lib/api";
 import MapView from "./MapView";
@@ -7,8 +7,7 @@ import CheckIn from "./CheckIn";
 import Passport from "./Passport";
 import Planner from "./Planner";
 import Results from "./Results";
-import { Hero, Summary } from "./AdventureCard";
-import { DEFAULT_PREFS, type Place, type Prefs, toRequest } from "./prefs";
+import { budgetLabel, DEFAULT_PREFS, departLabel, MODES, type Place, type Prefs, toRequest } from "./prefs";
 import { resumeSignIn } from "../lib/auth";
 
 // Real places from the seed: Phu Phan Museum -> Wat Phra That Choeng Chum
@@ -30,6 +29,7 @@ export default function App() {
   const [selected, setSelected] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [view, setView] = useState<"plan" | "results">("plan");
 
   // any change to the trip drops the old result and cancels a request in flight
   const routeRequest = useRef(0);
@@ -63,7 +63,7 @@ export default function App() {
 
   const useMyLocation = () => navigator.geolocation.getCurrentPosition(
     (pos) => setOrigin({ point: { lat: pos.coords.latitude, lng: pos.coords.longitude }, name: "My location" }),
-    () => setError("Location is blocked. Search for a place or set your start on the map instead."),
+    () => setError("Location is blocked. Search for a place or pick your start on the map instead."),
     { enableHighAccuracy: true, timeout: 10000 });
 
   const submit = async () => {
@@ -73,8 +73,7 @@ export default function App() {
     try {
       const result = await planRoute(toRequest(prefs, origin.point, dest.point));
       if (requestId !== routeRequest.current) return;
-      setChoice(null); setPlan(result);
-      requestAnimationFrame(() => document.getElementById("results")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      setChoice(null); setPlan(result); setView("results");
     } catch (e) {
       if (requestId !== routeRequest.current) return;
       const code = e instanceof ApiError ? e.code : "";
@@ -88,9 +87,10 @@ export default function App() {
     document.getElementById(`stop-${id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, []);
 
-  const showMap = !!picking || !!plan;
+  const tripLine = `+${budgetLabel(prefs.budget)} · ${MODES.find((m) => m.id === prefs.mode)!.label.toLowerCase()} · leaves ${departLabel(prefs)}`;
+  const showResults = view === "results" && response && plan;
   return (
-    <div className="page-shell">
+    <div className="app-shell">
       <header className="topbar">
         <a className="brand" href="/"><span className="brand-mark" aria-hidden><MapPin size={18} /></span>giggles <span>maps</span></a>
         <nav className="tabs" aria-label="Sections">
@@ -99,48 +99,49 @@ export default function App() {
         </nav>
       </header>
 
-      <main className="page">
-        {tab === "plan" ? (
-          <>
-            <div className="page-head">
-              <p className="crumb fine"><MapPin size={14} aria-hidden /> Sakon Nakhon, Thailand <span aria-hidden>/</span> Your next little adventure</p>
-              <h1>Plan your detour</h1>
-              <p className="muted">Discover something worth the extra time.</p>
-            </div>
-            <div className="cols">
-              <Planner prefs={prefs} set={set} origin={origin} dest={dest} setOrigin={setOrigin} setDest={setDest}
-                swap={() => { setOrigin(dest); setDest(origin); }} pickOnMap={setPicking} useMyLocation={useMyLocation} />
-              <aside className="side" aria-live="polite">
-                {showMap ? (
-                  <div className="glass map-card">
-                    {picking && <p className="hint">Tap the map to set your {picking === "origin" ? "start" : "destination"}. <button className="link" onClick={() => setPicking(null)}>Cancel</button></p>}
-                    <MapView origin={origin?.point ?? null} dest={dest?.point ?? null} stops={plan?.stops ?? []} geometry={plan?.geometry ?? []}
-                      baseGeometry={plan?.base_geometry} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop} />
-                  </div>
-                ) : <Hero />}
-                {response && plan && (
-                  <div className="glass results-card" id="results">
-                    <Results response={response} plan={plan} choice={choice} setChoice={setChoice} selected={selected}
-                      onCheckin={(target) => setCheckin({ target })} picks={prefs.picks} />
-                  </div>
-                )}
-                <Summary prefs={prefs} origin={origin} dest={dest} busy={busy} error={error} hasPlan={!!plan}
-                  onFind={submit} onReset={() => { setPrefs(DEFAULT_PREFS); setOrigin(DEFAULT_ORIGIN); setDest(DEFAULT_DEST); }} />
-                <p className="fine aside-note"><Leaf size={16} aria-hidden /> The best bits aren't always on the way. Leave a little room for local flavours, quiet corners and happy discoveries.</p>
-              </aside>
-            </div>
-          </>
-        ) : (
-          <div className="glass passport-wrap">
-            <Passport refreshKey={refreshKey} profile={profile} onChange={() => setRefreshKey((k) => k + 1)} />
-          </div>
-        )}
-      </main>
+      <main className="workspace">
+        <div className="map-pane">
+          {picking && (
+            <p className="map-banner">Tap the map to set your {picking === "origin" ? "start" : "destination"}.
+              <button className="link" onClick={() => setPicking(null)}>Cancel</button></p>
+          )}
+          <MapView origin={origin?.point ?? null} dest={dest?.point ?? null} stops={showResults ? plan.stops : []} geometry={showResults ? plan.geometry : []}
+            baseGeometry={showResults ? plan.base_geometry : []} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop} />
+        </div>
 
-      <footer className="attrib fine">
-        <span>Giggles Maps · Made for the curious.</span>
-        <span>Places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors · Routing <a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noreferrer">Valhalla</a></span>
-      </footer>
+        <section className="panel glass" aria-live="polite">
+          {tab === "passport" ? (
+            <div className="panel-body"><Passport refreshKey={refreshKey} profile={profile} onChange={() => setRefreshKey((k) => k + 1)} /></div>
+          ) : showResults ? (
+            <>
+              <div className="panel-head">
+                <button type="button" className="link" onClick={() => setView("plan")}><ArrowLeft size={16} aria-hidden /> Edit trip</button>
+                <p className="trip-title"><span><b>{origin?.name}</b> → <b>{dest?.name}</b></span><span className="fine">{tripLine}</span></p>
+              </div>
+              <div className="panel-body">
+                <Results response={response} plan={plan} choice={choice} setChoice={setChoice} selected={selected}
+                  onCheckin={(target) => setCheckin({ target })} picks={prefs.picks} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="panel-body">
+                <h1 className="panel-title">Plan your detour</h1>
+                <Planner prefs={prefs} set={set} origin={origin} dest={dest} setOrigin={setOrigin} setDest={setDest}
+                  swap={() => { setOrigin(dest); setDest(origin); }} pickOnMap={setPicking} useMyLocation={useMyLocation} />
+              </div>
+              <div className="panel-foot">
+                {error && <p className="error" role="alert">{error}</p>}
+                {plan && !busy && <button type="button" className="link" onClick={() => setView("results")}>Back to your plans <ArrowRight size={14} aria-hidden /></button>}
+                <button type="button" className="btn big find" onClick={submit} disabled={busy || !origin || !dest}>
+                  {busy ? "Finding your detour…" : "Find my detour"}
+                </button>
+                <p className="fine center">{tripLine}</p>
+              </div>
+            </>
+          )}
+        </section>
+      </main>
 
       {checkin && (
         <CheckIn target={checkin.target} initialCode={checkin.code} hasPlus={!!profile?.plusUntil} onClose={() => setCheckin(null)} onDone={() => setRefreshKey((k) => k + 1)} />

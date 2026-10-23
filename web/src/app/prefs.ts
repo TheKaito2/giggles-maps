@@ -25,6 +25,8 @@ export const DEFAULT_PREFS: Prefs = {
 };
 
 export const MAX_BUDGET = 240;
+export const BUDGETS = [15, 30, 45, 60, 90, 120, 180, 240];
+export const budgetLabel = (m: number) => m < 60 ? `${m} min` : `${m / 60} h`;
 
 export const MODES: { id: TravelMode; label: string }[] = [
   { id: "pedestrian", label: "Walking" }, { id: "auto", label: "Driving" }, { id: "bicycle", label: "Cycling" },
@@ -47,7 +49,7 @@ export const startMin = (p: Prefs) =>
     : (nowMin() + (p.depart === "now" ? 0 : Number(p.depart))) % 1440;
 
 export const ratingLabel = (r: Prefs["minRating"]) => r === 0 ? "Any" : `${r.toFixed(1)}+`;
-export const departLabel = (p: Prefs) => p.depart === "custom" ? p.time : p.depart === "now" ? "Now" : DEPARTS.find((d) => d.id === p.depart)!.label;
+export const departLabel = (p: Prefs) => p.depart === "custom" ? `at ${p.time}` : p.depart === "now" ? "now" : DEPARTS.find((d) => d.id === p.depart)!.label.toLowerCase();
 
 /** The request body: defaults are left out so the server applies its own. */
 export function toRequest(p: Prefs, origin: LatLng, dest: LatLng): PlanRequest {

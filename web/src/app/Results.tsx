@@ -59,7 +59,7 @@ export default function Results({ response, plan, choice, setChoice, selected, o
       <ol className="stops">
         {plan.stops.map((s, i) => (
           <li key={s.id} id={`stop-${s.id}`} className="stop-item">
-            <div className={`stop ${selected === s.id ? "sel" : ""} ${s.is_partner ? "is-partner" : ""}`}>
+            <div className={`stop-card ${selected === s.id ? "sel" : ""} ${s.is_partner ? "is-partner" : ""}`}>
               <span className={`pin static ${s.is_partner ? "stop partner" : "stop"}`}>{i + 1}</span>
               <div className="stop-body">
                 <div className="stop-name">{s.name}</div>

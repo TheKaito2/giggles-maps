@@ -42,7 +42,7 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
   useEffect(() => {
     const m = new maplibregl.Map({
       container: box.current!, style: STYLE, center: [SAKON.lng, SAKON.lat], zoom: 13.4,
-      attributionControl: { compact: true },
+      attributionControl: { compact: true, customAttribution: "Routing: Valhalla" },
     });
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     m.on("click", (e) => { if (pickingRef.current) pickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng }); });
