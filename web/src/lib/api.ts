@@ -103,6 +103,8 @@ export interface PlanRequest {
   exclude?: number[];           // stops the user removed or swapped out
   theme?: string;               // this plan comes first
   meals?: Meal[];               // meals to stop for; omitted = no food stop forced
+  open_only?: boolean;          // only places whose opening hours are known
+  no_chains?: boolean;          // independent shops, cafés and restaurants only
 }
 
 export type Kind = "food" | "cafes" | "culture" | "nature" | "shopping";

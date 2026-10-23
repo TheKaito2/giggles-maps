@@ -2,8 +2,8 @@ import { type ReactNode, useState } from "react";
 import { ArrowUpDown, Bike, Car, Footprints, LocateFixed, SlidersHorizontal, X } from "lucide-react";
 import type { RoutePlan, TravelMode } from "../../lib/api";
 import PlaceSearch from "../PlaceSearch";
-import Filters, { filterCount } from "../Customize";
-import { BUDGETS, budgetLabel, DEPARTS, hhmm, MODES, type Prefs, startMin } from "../prefs";
+import Filters, { filterCount, KIND_ICON } from "../Customize";
+import { BUDGETS, budgetLabel, DEPARTS, filterSummary, hhmm, INTERESTS, MODES, type Prefs, startMin } from "../prefs";
 import { type Detour, PRESETS, type PresetId } from "./useDetour";
 import { Thumb } from "./Results";
 
@@ -79,6 +79,18 @@ export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => voi
       <div className="presets">
         {PRESETS.map((p) => card(p.id, p.label, p.min, p.blurb))}
       </div>
+      {/* one tap narrows every plan to these kinds; More has meals, must-visits, stop count and stricter options */}
+      <div className="filter-bar">
+        <div className="chips-scroll" role="group" aria-label="Only these kinds of stops">
+          {INTERESTS.map((i) => {
+            const Icon = KIND_ICON[i.id], on = d.prefs.interests.includes(i.id);
+            return <button key={i.id} type="button" className={`pill${on ? " on" : ""}`} aria-pressed={on}
+              onClick={() => d.set((p) => ({ interests: on ? p.interests.filter((x) => x !== i.id) : [...p.interests, i.id] }))}>
+              <Icon size={14} aria-hidden /> {i.label}</button>;
+          })}
+        </div>
+        <p className="fine summary-line" aria-live="polite">{filterSummary(d.prefs)}</p>
+      </div>
       <div className="row between">
         <label className="custom-time fine">Other time
           <select aria-label="Other amount of extra time" value="" onChange={(e) => { if (e.target.value) { d.pickCustom(e.target.value === "auto" ? "auto" : Number(e.target.value)); onPicked(); } }}>
@@ -87,7 +99,7 @@ export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => voi
           </select>
         </label>
         <button type="button" className="btn soft small" onClick={() => setFilters(true)}>
-          <SlidersHorizontal size={15} aria-hidden /> Filters{n ? ` · ${n}` : ""}</button>
+          <SlidersHorizontal size={15} aria-hidden /> More filters{n ? ` · ${n}` : ""}</button>
       </div>
       {filters && <Filters prefs={d.prefs} apply={(p) => d.set(p)} near={d.origin?.point ?? null} onClose={() => setFilters(false)} />}
     </div>

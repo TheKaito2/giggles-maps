@@ -1,22 +1,26 @@
 import { useEffect, useRef, useState } from "react";
-import { Star, X } from "lucide-react";
+import { Coffee, Landmark, type LucideIcon, ShoppingBag, Sparkles, Trees, UtensilsCrossed, X } from "lucide-react";
 import type { Interest, LatLng } from "../lib/api";
 import ExplorePlaces from "./ExplorePlaces";
-import { DEFAULT_PREFS, INTERESTS, MEALS, type Prefs, PRICES, RATINGS, ratingLabel } from "./prefs";
+import { DEFAULT_PREFS, filterSummary, INTERESTS, MEALS, type Prefs } from "./prefs";
 
+export const KIND_ICON: Record<Interest, LucideIcon> = {
+  culture: Landmark, nature: Trees, food: UtensilsCrossed, cafes: Coffee, shopping: ShoppingBag, landmarks: Sparkles,
+};
 
-/** How many filters differ from the defaults (shown on the Filters button). */
+/** How many filters are on (shown on the More button). */
 export function filterCount(p: Prefs): number {
-  return [p.interests.length > 0, p.minRating !== DEFAULT_PREFS.minRating, p.maxPrice != null, p.maxStops != null,
-    p.ratedOnly, p.picks.length > 0, p.meals.length > 0].filter(Boolean).length;
+  return [p.interests.length > 0, p.maxStops != null, p.picks.length > 0, p.meals.length > 0, p.openOnly, p.noChains].filter(Boolean).length;
 }
 
-/** Everything optional about a detour, in one sheet: meals, interests, places to visit, rating, price, stops.
- *  Edits a draft; Done applies it (each change re-plans every preset, so not on every tap). */
+/** All the ways to shape your stops, each a plain question. Edits a draft; "Show plans" applies it
+ *  (each change re-plans every time option, so not on every tap). */
 export default function Filters({ prefs: start, apply, near, onClose }: { prefs: Prefs; apply: (p: Prefs) => void; near: LatLng | null; onClose: () => void }) {
   const [prefs, setDraft] = useState(start);
+  const set = (patch: Partial<Prefs> | ((p: Prefs) => Partial<Prefs>)) =>
+    setDraft((p) => ({ ...p, ...(typeof patch === "function" ? patch(p) : patch) }));
   const box = useRef<HTMLDivElement>(null);
-  // focus moves in on open, Escape closes, focus returns to the Filters button
+  // focus moves in on open, Escape closes, focus returns to the button that opened it
   useEffect(() => {
     const back = document.activeElement as HTMLElement | null;
     box.current?.querySelector<HTMLElement>("h2")?.focus();
@@ -24,82 +28,73 @@ export default function Filters({ prefs: start, apply, near, onClose }: { prefs:
     document.addEventListener("keydown", esc);
     return () => { document.removeEventListener("keydown", esc); back?.focus(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const set = (patch: Partial<Prefs> | ((p: Prefs) => Partial<Prefs>)) =>
-    setDraft((p) => ({ ...p, ...(typeof patch === "function" ? patch(p) : patch) }));
   const toggle = (id: Interest) =>
     set((p) => ({ interests: p.interests.includes(id) ? p.interests.filter((i) => i !== id) : [...p.interests, id] }));
+
   return (
     <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="filters-title"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal filters" ref={box}>
-        <header className="modal-head"><h2 id="filters-title" tabIndex={-1}>Filters</h2>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button></header>
+        <header className="modal-head"><h2 id="filters-title" tabIndex={-1}>Your stops</h2>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close without changes"><X size={20} /></button></header>
 
-        <div className="field">
-          <span id="meal-label">Stop for a meal</span>
-          <div className="row tight" role="group" aria-labelledby="meal-label">
-            {MEALS.map((m) => {
-              const on = prefs.meals.includes(m.id);
-              return (
-                <button key={m.id} type="button" className={`pill ${on ? "on" : ""}`} aria-pressed={on} title={`Arrive at a food stop between ${m.window}`}
-                  onClick={() => set((p) => ({ meals: on ? p.meals.filter((x) => x !== m.id) : [...p.meals, m.id] }))}>{m.label}</button>
-              );
+        <section className="filter-q" aria-labelledby="q-kinds">
+          <h3 id="q-kinds">What kind of stops?</h3>
+          <p className="fine">Pick some and every plan uses only those. Pick none for a mix of everything.</p>
+          <div className="kind-tiles">
+            {INTERESTS.map((i) => {
+              const Icon = KIND_ICON[i.id], on = prefs.interests.includes(i.id);
+              return <button key={i.id} type="button" className={`kind-tile${on ? " on" : ""}`} aria-pressed={on} onClick={() => toggle(i.id)}>
+                <Icon size={22} aria-hidden /><span>{i.label}</span></button>;
             })}
           </div>
-        </div>
+        </section>
 
-        <div className="field">
-          <span id="interests-label">What draws you in?</span>
-          <div className="row tight" role="group" aria-labelledby="interests-label">
-            <button type="button" className={`pill ${prefs.interests.length === 0 ? "on" : ""}`} aria-pressed={prefs.interests.length === 0}
-              onClick={() => set({ interests: [] })}>Surprise me</button>
-            {INTERESTS.map((i) => (
-              <button key={i.id} type="button" className={`pill ${prefs.interests.includes(i.id) ? "on" : ""}`}
-                aria-pressed={prefs.interests.includes(i.id)} onClick={() => toggle(i.id)}>{i.label}</button>
-            ))}
+        <section className="filter-q" aria-labelledby="q-meal">
+          <h3 id="q-meal">Stop to eat?</h3>
+          <p className="fine">We add a restaurant you reach inside the meal time.</p>
+          <div className="row tight">
+            {MEALS.map((m) => {
+              const on = prefs.meals.includes(m.id);
+              return <button key={m.id} type="button" className={`pill meal-pill ${on ? "on" : ""}`} aria-pressed={on}
+                onClick={() => set((p) => ({ meals: on ? p.meals.filter((x) => x !== m.id) : [...p.meals, m.id] }))}>
+                <b>{m.label}</b><span className="fine">{m.window}</span></button>;
+            })}
           </div>
-        </div>
+        </section>
 
-        <div className="field">
-          <span>Places you want to visit</span>
+        <section className="filter-q" aria-labelledby="q-picks">
+          <h3 id="q-picks">Anywhere you must visit?</h3>
+          <p className="fine">These go into every plan when there's time.</p>
           <ExplorePlaces near={near} picks={prefs.picks} setPicks={(picks) => set({ picks })} />
-        </div>
+        </section>
 
-        <div className="field">
-          <span id="rating-label">Minimum rating</span>
-          <div className="row tight" role="radiogroup" aria-labelledby="rating-label">
-            {RATINGS.map((r) => (
-              <button key={r} type="button" role="radio" aria-checked={prefs.minRating === r} className={`pill ${prefs.minRating === r ? "on" : ""}`}
-                onClick={() => set({ minRating: r })}>{r > 0 && <Star size={12} aria-hidden className="star" />}{ratingLabel(r)}</button>
-            ))}
-          </div>
-        </div>
-        <div className="field">
-          <span id="price-label">Spending per stop</span>
-          <div className="row tight" role="radiogroup" aria-labelledby="price-label">
-            {PRICES.map((p) => (
-              <button key={String(p.id)} type="button" role="radio" aria-checked={prefs.maxPrice === p.id} aria-label={p.name}
-                className={`pill ${prefs.maxPrice === p.id ? "on" : ""}`} onClick={() => set({ maxPrice: p.id })}>{p.label}</button>
-            ))}
-          </div>
-        </div>
-        <div className="pref-rows">
+        <section className="filter-q" aria-labelledby="q-stops">
+          <h3 id="q-stops">How many stops? <b className="num stops-now">{prefs.maxStops ? `Up to ${prefs.maxStops}` : "As many as fit"}</b></h3>
+          <input type="range" min={0} max={6} step={1} value={prefs.maxStops ?? 0} aria-labelledby="q-stops"
+            aria-valuetext={prefs.maxStops ? `Up to ${prefs.maxStops} stops` : "As many as fit"}
+            onChange={(e) => set({ maxStops: Number(e.target.value) || null })} />
+          <div className="range-ticks fine" aria-hidden><span>Any</span>{[1, 2, 3, 4, 5, 6].map((n) => <span key={n}>{n}</span>)}</div>
+        </section>
+
+        <section className="filter-q" aria-labelledby="q-more">
+          <h3 id="q-more">Stricter</h3>
           <label className="pref-row">
-            <span>Number of stops</span>
-            <select value={prefs.maxStops ?? ""} onChange={(e) => set({ maxStops: e.target.value ? Number(e.target.value) : null })}>
-              <option value="">Auto · best fit</option>
-              {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>Up to {n}</option>)}
-            </select>
+            <span><b>Avoid chains</b><span className="fine">Only independent shops, cafés and restaurants. Temples and parks aren't affected.</span></span>
+            <input type="checkbox" role="switch" className="switch" checked={prefs.noChains} onChange={(e) => set({ noChains: e.target.checked })} />
           </label>
           <label className="pref-row">
-            <span>Rated places only</span>
-            <input type="checkbox" role="switch" className="switch" checked={prefs.ratedOnly} onChange={(e) => set({ ratedOnly: e.target.checked })} />
+            <span><b>Only places with known opening hours</b><span className="fine">So you never arrive at a closed door. Few small-town places list hours, so you'll get fewer stops.</span></span>
+            <input type="checkbox" role="switch" className="switch" checked={prefs.openOnly} onChange={(e) => set({ openOnly: e.target.checked })} />
           </label>
-        </div>
-        <p className="fine">Most places have no ratings yet; they're included but ranked below rated ones.</p>
-        <div className="row between filters-foot">
-          <button type="button" className="link" onClick={() => set({ ...DEFAULT_PREFS, mode: prefs.mode, depart: prefs.depart, time: prefs.time, budget: prefs.budget })}>Reset</button>
-          <button type="button" className="btn" onClick={() => { apply(prefs); onClose(); }}>Done</button>
+        </section>
+
+        <div className="filters-foot">
+          <p className="fine summary-line">{filterSummary(prefs)}</p>
+          <div className="row between">
+            <button type="button" className="link" onClick={() => set({ interests: DEFAULT_PREFS.interests, meals: [], picks: [], maxStops: null, openOnly: false, noChains: false })}>Clear all</button>
+            <button type="button" className="btn" onClick={() => { apply(prefs); onClose(); }}>Show plans</button>
+          </div>
         </div>
       </div>
     </div>

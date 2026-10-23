@@ -6,14 +6,14 @@ export interface Prefs {
   depart: "now" | "30" | "60" | "custom";
   time: string;                  // HH:MM, used when depart = custom
   budget: number | "auto";       // extra minutes, or auto (server: half the direct trip, 45 min-3 h)
-  interests: Interest[];         // empty = Surprise me (Top picks leads)
-  minRating: 0 | 3.5 | 4 | 4.5;
-  maxPrice: 0 | 1 | 2 | 3 | null;
+  interests: Interest[];         // only these kinds of stop; empty = any kind
   maxStops: number | null;       // null = Auto
-  ratedOnly: boolean;             // false = unrated places join too (ranked below rated ones)
-  picks: Pick[];                  // "Places you want to visit", sent as must_include
-  meals: Meal[];                  // "Stop for a meal?": a food stop arriving inside each meal's window
+  picks: Pick[];                  // must-visit places, sent as must_include
+  meals: Meal[];                  // a food stop arriving inside each meal's window
+  openOnly: boolean;              // only places whose opening hours we know (and that are open when you arrive)
+  noChains: boolean;              // independent shops, cafés and restaurants only
 }
+// ponytail: rating and price filters are gone until real data exists (OpenStreetMap has neither; 0 reviews so far)
 
 export interface Pick { id: number; name: string }
 
@@ -22,7 +22,7 @@ export const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2
 
 export const DEFAULT_PREFS: Prefs = {
   mode: "auto", depart: "now", time: hhmm(Math.max(nowMin(), 9 * 60)), budget: "auto",
-  interests: [], minRating: 4, maxPrice: null, maxStops: null, ratedOnly: false, picks: [], meals: [],
+  interests: [], maxStops: null, picks: [], meals: [], openOnly: false, noChains: false,
 };
 
 export const MAX_BUDGET = 240;
@@ -37,14 +37,10 @@ export const budgetLabel = (m: number | "auto") => m === "auto" ? "Auto" : m < 6
 export const MODES: { id: TravelMode; label: string }[] = [
   { id: "pedestrian", label: "Walking" }, { id: "auto", label: "Driving" }, { id: "bicycle", label: "Cycling" },
 ];
-export const INTERESTS: { id: Interest; label: string }[] = [
-  { id: "food", label: "Local food" }, { id: "culture", label: "Culture" }, { id: "nature", label: "Nature" },
-  { id: "cafes", label: "Cafés" }, { id: "shopping", label: "Shopping" }, { id: "landmarks", label: "Landmarks" },
-];
-export const RATINGS: Prefs["minRating"][] = [0, 3.5, 4, 4.5];
-export const PRICES: { id: Prefs["maxPrice"]; label: string; name: string }[] = [
-  { id: null, label: "Any", name: "Any budget" }, { id: 0, label: "Free", name: "Free only" },
-  { id: 1, label: "฿", name: "Up to ฿" }, { id: 2, label: "฿฿", name: "Up to ฿฿" }, { id: 3, label: "฿฿฿", name: "Up to ฿฿฿" },
+export const INTERESTS: { id: Interest; label: string; short: string }[] = [
+  { id: "culture", label: "Temples & culture", short: "temples" }, { id: "nature", label: "Nature & views", short: "nature" },
+  { id: "food", label: "Local food", short: "local food" }, { id: "cafes", label: "Cafés & desserts", short: "cafés" },
+  { id: "shopping", label: "Shops & OTOP", short: "shops" }, { id: "landmarks", label: "Landmarks", short: "landmarks" },
 ];
 export const DEPARTS: { id: Prefs["depart"]; label: string }[] = [
   { id: "now", label: "Leave now" }, { id: "30", label: "In 30 min" }, { id: "60", label: "In 1 hour" }, { id: "custom", label: "Pick a time" },
@@ -54,7 +50,6 @@ export const startMin = (p: Prefs) =>
   p.depart === "custom" ? Number(p.time.slice(0, 2)) * 60 + Number(p.time.slice(3, 5))
     : (nowMin() + (p.depart === "now" ? 0 : Number(p.depart))) % 1440;
 
-export const ratingLabel = (r: Prefs["minRating"]) => r === 0 ? "Any" : `${r.toFixed(1)}+`;
 export const departLabel = (p: Prefs) => p.depart === "custom" ? `at ${p.time}` : p.depart === "now" ? "now" : DEPARTS.find((d) => d.id === p.depart)!.label.toLowerCase();
 
 /** The request body: defaults are left out so the server applies its own. */
@@ -62,13 +57,24 @@ export function toRequest(p: Prefs, origin: LatLng, dest: LatLng): PlanRequest {
   return {
     origin, dest, start_min: startMin(p), budget_min: p.budget === "auto" ? "auto" : Math.min(p.budget, MAX_BUDGET), mode: p.mode,
     ...(p.interests.length ? { interests: p.interests } : {}),
-    ...(p.minRating !== 4 ? { min_rating: p.minRating } : {}),
-    ...(p.ratedOnly ? { include_unrated: false } : {}),
+    ...(p.openOnly ? { open_only: true } : {}),
+    ...(p.noChains ? { no_chains: true } : {}),
     ...(p.picks.length ? { must_include: p.picks.map((x) => x.id) } : {}),
     ...(p.meals.length ? { meals: p.meals } : {}),
     ...(p.maxStops != null ? { max_stops: p.maxStops } : {}),
-    ...(p.maxPrice != null ? { max_price: p.maxPrice } : {}),
   };
 }
 
 export interface Place { point: LatLng; name: string }
+
+/** The filters in one plain sentence, e.g. "Only temples and cafés · lunch stop · up to 3 stops · no chains". */
+export function filterSummary(p: Prefs): string {
+  const kinds = INTERESTS.filter((i) => p.interests.includes(i.id)).map((i) => i.short);
+  const parts = [kinds.length ? `Only ${kinds.length > 1 ? `${kinds.slice(0, -1).join(", ")} and ${kinds[kinds.length - 1]}` : kinds[0]}` : "Any kind of stop"];
+  if (p.meals.length) parts.push(`${p.meals.join(" and ")} stop`);
+  if (p.picks.length) parts.push(`${p.picks.length} must-visit`);
+  if (p.maxStops) parts.push(`up to ${p.maxStops} stop${p.maxStops === 1 ? "" : "s"}`);
+  if (p.noChains) parts.push("no chains");
+  if (p.openOnly) parts.push("known hours only");
+  return parts.join(" · ");
+}

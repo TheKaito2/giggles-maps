@@ -67,9 +67,12 @@ export function useDetour(onError: (m: string) => void) {
     const id = ++request.current;
     edit.current++; setEditing(false);   // an edit in flight belongs to the old trip
     setExclude([]); setChoice(null); setBump(0); setHidden([]); setResults({});
-    if (stage === "browse") return;
+    if (stage === "browse" || !origin || !dest) return;
     const ids: PresetId[] = ["relaxed", "quick", "day", ...(preset === "custom" ? ["custom" as const] : [])];
-    for (const k of ids) planPreset(k, id);
+    setResults(Object.fromEntries(ids.map((k) => [k, "loading"])));
+    // a short pause first: tapping several filter chips in a row sends one round of plans, not one per tap
+    const t = setTimeout(() => { for (const k of ids) planPreset(k, id); }, 400);
+    return () => clearTimeout(t);
   }, [origin, dest, prefs, stage === "browse"]); // eslint-disable-line react-hooks/exhaustive-deps
   const retry = (k: PresetId) => planPreset(k, request.current);
 

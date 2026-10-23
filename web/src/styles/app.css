@@ -792,3 +792,21 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .modal.filters { max-height: 90dvh; }
 .filters-foot { position: sticky; bottom: -20px; background: var(--card); padding: 10px 0 4px; }
 .preset .retry { color: var(--indigo); }
+
+/* ---------- filters ---------- */
+.filter-bar { display: grid; gap: 6px; }
+.filter-bar .pill { gap: 6px; }
+.summary-line { margin: 0; color: var(--ink-2); }
+.filter-q { display: grid; gap: 8px; padding-bottom: 14px; border-bottom: 2px solid var(--paper); }
+.filter-q h3 { margin: 0; font: 800 17px var(--font-display); display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.filter-q > p.fine { margin: -4px 0 2px; }
+.stops-now { font: 700 14px var(--font-body); color: var(--indigo); }
+.kind-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.kind-tile { display: grid; justify-items: center; gap: 6px; padding: 12px 6px; border-radius: 14px; border: 2px solid var(--line); background: var(--card);
+  color: var(--ink); font: 700 13px var(--font-body); text-align: center; }
+.kind-tile.on { border-color: var(--indigo); background: var(--indigo-soft); color: var(--indigo); }
+.meal-pill { display: grid; justify-items: start; gap: 0; padding: 8px 12px; }
+.filter-q input[type="range"] { width: 100%; accent-color: var(--indigo); }
+.range-ticks { display: flex; justify-content: space-between; padding: 0 2px; }
+.filter-q .pref-row > span { display: grid; gap: 2px; }
+.filters-foot { display: grid; gap: 8px; }
