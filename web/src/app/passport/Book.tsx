@@ -1,0 +1,171 @@
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { type PassportPhoto, type PassportStamp, photoUrls } from "../../lib/api";
+import type { AvatarLook } from "../avatar/parts";
+import Avatar from "../social/Avatar";
+import ProvinceMap from "./ProvinceMap";
+import ProvinceStamp from "./ProvinceStamp";
+import { REGIONS, regionOf, useProvinces } from "./useProvinces";
+
+export interface BookOwner {
+  nickname: string; colour: string; avatar?: AvatarLook | null; title: string | null; level: number; xp: number;
+  joined?: string | null; code?: string | null;
+}
+const STAMPS_PER_PAGE = 8, PLACES_PER_PAGE = 12, PHOTOS_PER_PAGE = 4;
+const TIER = { 3: "LANDMARK", 2: "WORTH A VISIT", 1: "EVERYDAY" } as const;
+const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+const chunk = <T,>(xs: T[], n: number) => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
+// machine-readable zone, passport style: letters, digits and "<" only, 30 characters a line
+const mrz = (s: string) => (s.toUpperCase().normalize("NFD").replace(/[^A-Z0-9]+/g, "<") + "<".repeat(30)).slice(0, 30);
+
+function Page({ n, children, className = "" }: { n?: number; children: ReactNode; className?: string }) {
+  return <div className={`page ${className}`}>{children}{n != null && <span className="page-no">{n}</span>}</div>;
+}
+
+/**
+ * The passport as a book you flip through: cover, ID page, Thailand map, the 77 province visa pages, place stamps,
+ * photos. Two pages side by side on wide screens, one page on phones. Buttons, arrow keys or swipe turn the pages.
+ */
+export default function Book({ owner, theme = "classic", frame = "none", stamps, photos, onClose }: {
+  owner: BookOwner; theme?: string; frame?: string; stamps: PassportStamp[]; photos: PassportPhoto[]; onClose: () => void;
+}) {
+  const features = useProvinces();
+  const [spread, setSpread] = useState(() => matchMedia("(min-width: 860px)").matches);
+  const [at, setAt] = useState(0);   // leaves turned
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const m = matchMedia("(min-width: 860px)");
+    const on = () => { setSpread(m.matches); setAt(0); };
+    m.addEventListener("change", on);
+    return () => m.removeEventListener("change", on);
+  }, []);
+  useEffect(() => { photoUrls(photos.slice(0, 48).map((p) => p.path)).then(setUrls).catch(() => undefined); }, [photos]);
+
+  const firstIn = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const s of stamps) if (s.province_id != null && (!m.has(s.province_id) || s.earned_at < m.get(s.province_id)!)) m.set(s.province_id, s.earned_at);
+    return m;
+  }, [stamps]);
+  const counts = useMemo(() => new Map([...firstIn.keys()].map((id) => [id, stamps.filter((s) => s.province_id === id).length])), [firstIn, stamps]);
+  const ordered = useMemo(() => [...features].sort((a, b) =>
+    REGIONS.indexOf(regionOf(a.properties.iso)) - REGIONS.indexOf(regionOf(b.properties.iso)) || a.properties.name_en.localeCompare(b.properties.name_en)), [features]);
+  const issued = owner.joined ?? stamps.at(-1)?.earned_at ?? new Date().toISOString();
+
+  const pages: ReactNode[] = [
+    <div key="cover" className={`page cover theme-${theme}`}>
+      <span className="cover-top">GIGGLES MAPS</span>
+      <svg viewBox="0 0 100 100" className="cover-emblem" aria-hidden>
+        <circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" strokeWidth="2.5" />
+        <circle cx="50" cy="50" r="37" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="2 3" />
+        <path d="M50 18 C36 18 27 28 27 41 C27 58 50 80 50 80 C50 80 73 58 73 41 C73 28 64 18 50 18 Z" fill="none" stroke="currentColor" strokeWidth="3" />
+        {[0, 60, 120, 180, 240, 300].map((r) => <ellipse key={r} cx="50" cy="35" rx="3.2" ry="7" fill="currentColor" transform={`rotate(${r} 50 41)`} />)}
+        <circle cx="50" cy="41" r="3.5" fill="currentColor" />
+      </svg>
+      <span className="cover-title">PASSPORT</span>
+      <span className="cover-th">หนังสือเดินทาง</span>
+      <span className="cover-name">{owner.nickname}</span>
+    </div>,
+    <Page key="inside" className="inside">
+      <p className="inside-head">This passport belongs to an explorer of Thailand.</p>
+      <p className="inside-th">หนังสือเดินทางเล่มนี้เป็นของนักสำรวจประเทศไทย</p>
+      <p className="inside-note">Stamps are earned in person: check in with a photo at a place, and its stamp lands here. One for every province, 77 in all.</p>
+      <div className="inside-count"><b className="num">{firstIn.size}</b><span>/ 77 provinces</span></div>
+    </Page>,
+    <Page key="id" n={1} className="id-page">
+      <div className="guilloche" aria-hidden />
+      <div className="id-head"><span>PASSPORT</span><span>หนังสือเดินทาง</span></div>
+      <div className="id-body">
+        <div className="id-photo"><Avatar name={owner.nickname} colour={owner.colour} avatar={owner.avatar} size={200} /></div>
+        <dl className="id-fields">
+          <div><dt>Type</dt><dd>P</dd></div><div><dt>Code</dt><dd>GIG</dd></div>
+          <div className="wide"><dt>Passport no.</dt><dd className="num">{owner.code ?? "PRIVATE"}</dd></div>
+          <div className="wide"><dt>Name / ชื่อ</dt><dd>{owner.nickname}</dd></div>
+          <div className="wide"><dt>Title</dt><dd>{owner.title ?? "Traveller"}</dd></div>
+          <div><dt>Level</dt><dd className="num">{owner.level}</dd></div><div><dt>XP</dt><dd className="num">{owner.xp}</dd></div>
+          <div className="wide"><dt>Date of issue</dt><dd className="num">{day(issued)}</dd></div>
+        </dl>
+      </div>
+      <div className="mrz num" aria-hidden>
+        <span>{`P<GIG${mrz(owner.nickname)}`.slice(0, 30)}</span>
+        <span>{mrz(`${owner.code ?? "0000000000"}<${owner.level}<${firstIn.size}<77`)}</span>
+      </div>
+    </Page>,
+    <Page key="map" n={2} className="map-page">
+      <h3 className="page-h">Provinces visited · จังหวัดที่ไป</h3>
+      <ProvinceMap counts={counts} selected={null} onSelect={() => undefined} />
+    </Page>,
+    ...chunk(ordered, STAMPS_PER_PAGE).map((list, i) => (
+      <Page key={`visa-${i}`} n={3 + i} className="visa">
+        <h3 className="page-h">VISAS · {regionOf(list[0].properties.iso).en.toUpperCase()} <span>{regionOf(list[0].properties.iso).th}</span></h3>
+        <div className="visa-grid">
+          {list.map((f) => <div key={f.id} className="visa-slot" style={{ translate: `${(f.id * 13) % 9 - 4}% ${(f.id * 7) % 9 - 4}%` }}>
+            <ProvinceStamp f={f} earnedAt={firstIn.get(f.id) ?? null} size={160} />
+          </div>)}
+        </div>
+      </Page>
+    )),
+  ];
+  const visaPages = Math.ceil(ordered.length / STAMPS_PER_PAGE);
+  chunk(stamps, PLACES_PER_PAGE).forEach((list, i) => pages.push(
+    <Page key={`places-${i}`} n={3 + visaPages + i} className="places">
+      <h3 className="page-h">ENTRIES · สถานที่</h3>
+      <ul className="entry-grid">
+        {list.map((s) => <li key={s.place_id} className={`entry tier-${s.tier}`} style={{ rotate: `${(s.place_id % 11) - 5}deg` }}>
+          <span className="entry-tier">{TIER[s.tier]}</span><b>{s.name}</b><span className="num">{day(s.earned_at)}</span>
+        </li>)}
+      </ul>
+    </Page>));
+  const placePages = Math.ceil(stamps.length / PLACES_PER_PAGE);
+  chunk(photos.slice(0, 48), PHOTOS_PER_PAGE).forEach((list, i) => pages.push(
+    <Page key={`photos-${i}`} n={3 + visaPages + placePages + i} className={`photos frame-${frame}`}>
+      <h3 className="page-h">MEMORIES · ความทรงจำ</h3>
+      <ul className="print-grid">
+        {list.map((p, j) => <li key={p.checkin_id} className="print" style={{ rotate: `${j % 2 ? 3 : -3}deg` }}>
+          {urls[p.path] ? <img src={urls[p.path]} alt={p.caption ?? `Photo at ${p.place}`} loading="lazy" /> : <div className="ph" />}
+          <span>{p.place}</span>
+        </li>)}
+      </ul>
+    </Page>));
+  if (pages.length % 2 === 0) pages.push(<Page key="notes" className="notes"><h3 className="page-h">NOTES</h3></Page>);
+  pages.push(<div key="back" className={`page cover back theme-${theme}`}><span className="cover-top">giggles-maps.pages.dev</span></div>);
+
+  const leaves = spread
+    ? chunk(pages, 2).map(([front, back]) => ({ front, back }))
+    : pages.map((front) => ({ front, back: null as ReactNode }));
+  const last = leaves.length - (spread ? 0 : 1);
+  const go = (d: number) => setAt((a) => Math.max(0, Math.min(last, a + d)));
+
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { if (e.key === "ArrowRight") go(1); else if (e.key === "ArrowLeft") go(-1); else if (e.key === "Escape") onClose(); };
+    addEventListener("keydown", key);
+    return () => removeEventListener("keydown", key);
+  });
+  const startX = useRef<number | null>(null);
+
+  const shift = spread ? (at === 0 ? "-25%" : at === leaves.length ? "25%" : "0%") : "0%";
+  const label = spread ? `${at} of ${leaves.length}` : `${at + 1} of ${leaves.length}`;
+  return (
+    <div className="book-overlay" role="dialog" aria-modal="true" aria-label={`${owner.nickname}'s passport`}>
+      <button type="button" className="icon-btn book-close" onClick={onClose} aria-label="Close passport"><X size={22} /></button>
+      <div className={`book ${spread ? "spread" : "single"}`} style={{ translate: shift }}
+        onPointerDown={(e) => { startX.current = e.clientX; }}
+        onPointerUp={(e) => { if (startX.current != null && Math.abs(e.clientX - startX.current) > 40) go(e.clientX < startX.current ? 1 : -1); startX.current = null; }}>
+        {leaves.map((l, i) => {
+          const turned = i < at;
+          return (
+            <div key={i} className={`leaf${turned ? " turned" : ""}`} style={{ zIndex: turned ? i : leaves.length - i }}
+              aria-hidden={spread ? !(i === at || i === at - 1) : i !== at}>
+              <div className="face front">{l.front}</div>
+              <div className="face back">{l.back ?? <div className="page blank" />}</div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="book-nav">
+        <button type="button" className="btn soft" onClick={() => go(-1)} disabled={at === 0} aria-label="Previous page"><ChevronLeft size={18} /></button>
+        <span className="num" aria-live="polite">{label}</span>
+        <button type="button" className="btn soft" onClick={() => go(1)} disabled={at >= last} aria-label="Next page"><ChevronRight size={18} /></button>
+      </div>
+    </div>
+  );
+}

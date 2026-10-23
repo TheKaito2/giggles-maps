@@ -153,6 +153,7 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
             </p>
             {result.stamp?.new_province && <p className="badge-earned">New province: {result.stamp.province}!</p>}
             {result.group_bonus && <p className="badge-earned">Group bonus: +50% XP and coins with your ride-along crew</p>}
+            {result.badges?.map((b) => <p key={b.slug} className="badge-earned">Badge unlocked: {b.name_en} {["", "I", "II", "III", "IV", "V"][b.tier]}</p>)}
             {result.reasons.filter((r) => r !== "already_stamped" || !result.stamp).map((r) => <p key={r} className="fine">
               {r === "level_locked" && result.required_level ? `Needs member level ${result.required_level}.` : REASON_TEXT[r] ?? r}
             </p>)}

@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { type ProvinceFeature, useProvinces } from "./useProvinces";
 
 type Ring = [number, number][];
-interface Feature { id: number; properties: { id: number; name_en: string; name_th: string }; geometry: { type: string; coordinates: Ring[][] | Ring[] } }
+type Feature = ProvinceFeature;
 
 // Thailand's bounding box; a plain equirectangular projection is fine at this size
 const W = 260, H = 460, LNG0 = 97.3, LNG1 = 105.7, LAT0 = 5.5, LAT1 = 20.6;
@@ -16,8 +16,7 @@ const path = (g: Feature["geometry"]) => {
 export default function ProvinceMap({ counts, selected, onSelect }: {
   counts: Map<number, number>; selected: number | null; onSelect: (id: number | null) => void;
 }) {
-  const [features, setFeatures] = useState<Feature[]>([]);
-  useEffect(() => { fetch("/provinces.geojson").then((r) => r.json()).then((fc) => setFeatures(fc.features)).catch(() => undefined); }, []);
+  const features = useProvinces();
   const visited = [...counts.values()].filter((n) => n > 0).length;
   const name = features.find((f) => f.id === selected)?.properties.name_en;
   return (

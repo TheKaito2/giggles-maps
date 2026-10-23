@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Coins } from "lucide-react";
+import { Check, Coins, Shirt } from "lucide-react";
 import { ApiError } from "../../lib/supabase";
 import { buyItem, equip, getShop, type Profile, type ShopItem, type ShopKind } from "../../lib/api";
 
@@ -22,7 +22,7 @@ function Preview({ item }: { item: ShopItem }) {
 }
 
 /** Cosmetics bought with earned coins (never real money). Plus includes the items marked Plus. */
-export default function Shop({ profile, coins, onChange }: { profile: Profile | null; coins: number; onChange: () => void }) {
+export default function Shop({ profile, coins, onChange, onAvatar }: { profile: Profile | null; coins: number; onChange: () => void; onAvatar: () => void }) {
   const [items, setItems] = useState<ShopItem[]>([]);
   const [msg, setMsg] = useState("");
   useEffect(() => { getShop().then(setItems).catch(() => setMsg("Couldn't load the shop.")); }, []);
@@ -46,6 +46,9 @@ export default function Shop({ profile, coins, onChange }: { profile: Profile | 
         {!profile?.member && <span className="fine">Coins unlock with membership</span>}
       </div>
       {msg && <p className="fine" role="status">{msg}</p>}
+      <button type="button" className="shop-avatar" onClick={onAvatar}>
+        <Shirt size={30} aria-hidden /><span><b>Avatar items</b><span className="fine">Crowns, ngob hats, Muay Thai gear and more: try them on in the avatar builder.</span></span>
+      </button>
       {KINDS.map(({ kind, title }) => (
         <section key={kind}>
           <h4 className="eyebrow">{title}</h4>

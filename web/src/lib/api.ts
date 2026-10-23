@@ -1,3 +1,4 @@
+import type { AvatarLook } from "../app/avatar/parts";
 import { ApiError, callFn, ensureSession, supabase } from "./supabase";
 
 export interface LatLng { lat: number; lng: number }
@@ -71,6 +72,7 @@ export interface CheckinResult {
   challenges?: { slug: string; title: string; title_th: string; xp: number; coins: number }[];                 // completed now
   coins?: number;   // members' coin balance
   group_bonus?: boolean;   // ride along: a trip-mate checked in here within the hour, +50%
+  badges?: Badge[];        // badge tiers reached by this check-in
 }
 
 // A place the user can check in at: a route stop, a "Near this spot" card, or a scanned sticker
@@ -140,8 +142,8 @@ export const setPhoto = async (checkinId: string, hidden: boolean, caption?: str
 export interface PassportStamp { place_id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3;
   province_id: number | null; event: string | null; earned_at: string; photo: string | null }
 export interface PassportPhoto { checkin_id: string; path: string; caption: string | null; place: string; province_id: number | null; at: string }
-export interface Challenge { slug: string; kind: "daily" | "weekly" | "province" | "collection"; title_en: string; title_th: string;
-  have: number; need: number; xp: number; coins: number; claimed: boolean }
+export interface Challenge { slug: string; kind: "daily" | "weekly" | "province" | "collection" | "friend"; title_en: string; title_th: string;
+  have: number; need: number; xp: number; coins: number; claimed: boolean; period?: string }
 export interface PassportData {
   profile: { xp: number; level: number; member: boolean; plus: boolean; coins: number } | null;
   stamps: PassportStamp[]; photos: PassportPhoto[]; challenges: Challenge[];
@@ -186,6 +188,7 @@ export interface Profile {
   theme: string; flair: string;   // what the passport header wears (from look)
   nickname: string | null; colour: string; friendCode: string; onLeaderboard: boolean;
   look: Look; title: string | null; owned: string[];   // owned = "kind:id" bought with coins
+  avatar: AvatarLook; joined: string | null; coins: number; provinces: number;
 }
 
 export async function getProfile(): Promise<Profile> {
@@ -199,6 +202,7 @@ export async function getProfile(): Promise<Profile> {
     theme: look.theme ?? "classic", flair: look.flair ?? "none",
     nickname: data?.nickname ?? null, colour: data?.colour ?? "marigold", friendCode: data?.friend_code ?? "",
     onLeaderboard: data?.on_leaderboard ?? true, look, title: data?.title ?? null, owned: data?.owned ?? [],
+    avatar: data?.avatar ?? {}, joined: data?.joined ?? null, coins: data?.coins ?? 0, provinces: data?.provinces ?? 0,
   };
 }
 
@@ -216,7 +220,8 @@ export const setMe = (p: { nickname?: string; colour?: string; onLeaderboard?: b
   rpc<void>("set_me", { p_nickname: p.nickname ?? null, p_colour: p.colour ?? null, p_on_leaderboard: p.onLeaderboard ?? null });
 
 export interface Card { id: string; nickname: string; colour: string; xp: number; level: number; stamps: number; provinces: number;
-  look: Look; title: string | null; rank?: number }
+  look: Look; title: string | null; rank?: number; avatar?: AvatarLook; joined?: string }
+export interface Who { id: string; nickname: string; colour: string; avatar: AvatarLook; level: number }
 export interface Social { friends: Card[]; incoming: Card[]; outgoing: Card[] }
 export const getSocial = () => rpc<Social>("social");
 export const addFriend = (code: string) => rpc<"friends" | "requested">("add_friend", { p_code: code });
@@ -236,7 +241,7 @@ export const joinTrip = (code: string) => rpc<Trip>("join_trip", { p_code: code 
 export const leaveTrip = () => rpc<void>("leave_trip");
 export const tripPing = (p: LatLng) => rpc<void>("trip_ping", { p_lat: p.lat, p_lng: p.lng });
 
-export type ShopKind = "theme" | "flair" | "map" | "frame" | "title";
+export type ShopKind = "theme" | "flair" | "map" | "frame" | "title" | "avatar";
 export interface ShopItem { kind: ShopKind; id: string; name_en: string; name_th: string; price: number; plus: boolean; sort: number }
 export async function getShop(): Promise<ShopItem[]> {
   const { data, error } = await supabase.from("shop_items").select("*").order("sort");
@@ -245,6 +250,29 @@ export async function getShop(): Promise<ShopItem[]> {
 }
 export const buyItem = (kind: ShopKind, id: string) => rpc<number>("buy_item", { p_kind: kind, p_id: id });
 export const equip = (kind: ShopKind, id: string) => rpc<Look>("equip", { p_kind: kind, p_id: id });
+
+export const setAvatar = (look: AvatarLook) => rpc<AvatarLook>("set_avatar", { p: look });
+
+export interface Badge { slug: string; name_en: string; name_th: string; icon: string; value: number; tier: number; goals: number[]; next: number }
+export interface ProfilePage extends Omit<Card, "rank"> { friend_code: string | null; photos: number; friends: number; rank: number | null; badges: Badge[] }
+export const getProfilePage = (id: string) => rpc<ProfilePage>("profile_of", { p_id: id });
+
+export type Reaction = "heart" | "fire" | "clap" | "wow";
+export interface FeedItem {
+  id: number; kind: "stamp" | "province" | "level" | "challenge" | "badge" | "nudge"; at: string; mine: boolean;
+  data: Record<string, unknown>; who: Who; to: Who | null;
+  place: { id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3 } | null;
+  province: { id: number; iso: string; name_en: string; name_th: string } | null;
+  photo: string | null; caption: string | null; reactions: Partial<Record<Reaction, number>>; my_reaction: Reaction | null;
+}
+export const getFeed = (scope: "all" | "friends" | "me" = "all") => rpc<FeedItem[]>("feed", { p_scope: scope });
+export const react = (id: number, emoji: Reaction | null) => rpc<void>("react", { p_activity: id, p_emoji: emoji });
+export const nudge = (friend: string) => rpc<void>("nudge", { p_friend: friend });
+
+export interface FriendQuest { partner: Who; week: string; me: number; them: number }
+export const getFriendQuest = () => rpc<FriendQuest | null>("friend_quest");
+export const setFriendQuest = (friend: string) => rpc<void>("set_friend_quest", { p_friend: friend });
+export const claimQuests = () => rpc<{ slug: string; title: string; xp: number; coins: number }[]>("claim_quests");
 
 export const SITE = "https://giggles-maps.pages.dev";
 // "?friend=CODE" (friend QR) and "?trip=CODE" (ride-along QR)
