@@ -117,12 +117,12 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
   );
   // this option is still planning or failed: keep the switcher so you're never stuck here
   if (!response || !plan) {
-    const r = d.results[d.preset];
+    const r = d.preset ? d.results[d.preset] : undefined;
     return (
       <div className="stack results">
         {presetBar}
         {r && typeof r === "object" && "error" in r
-          ? <p className="fine" role="status">{r.error} <button type="button" className="link" onClick={() => d.retry(d.preset)}>Try again</button></p>
+          ? <p className="fine" role="status">{r.error} <button type="button" className="link" onClick={() => d.preset && d.retry(d.preset)}>Try again</button></p>
           : <p className="fine" role="status">Planning your detour…</p>}
       </div>
     );

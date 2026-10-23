@@ -39,20 +39,19 @@ export function TripHead({ d, onBack, backLabel, onSearch }: { d: Detour; onBack
 export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => void }) {
   const [filters, setFilters] = useState(false);
   const n = filterCount(d.prefs);
+  // nothing is planned until you tap an option; one you already opened on this trip shows what it found
   const card = (id: PresetId, label: string, min: number | "auto", blurb: string) => {
     const r = d.results[id];
     const ready = r && typeof r === "object" && "route_id" in r ? r : null;
-    const plan = ready?.plans?.[0];
+    const stops = ready ? (ready.plans?.[0]?.stops ?? ready.stops) : null;
     return (
-      <button key={id} type="button" className={`preset${d.preset === id ? " on" : ""}`} aria-pressed={d.preset === id} disabled={!r || r === "loading"}
-        onClick={() => { if (ready) { d.setPreset(id); onPicked(); } else d.retry(id); }}>
+      <button key={id} type="button" className={`preset${d.preset === id ? " on" : ""}`} aria-pressed={d.preset === id}
+        onClick={() => { d.setPreset(id); onPicked(); }}>
         <span className="preset-top"><b>{label}</b><span className="num">{min === "auto" ? "Auto" : `+${budgetLabel(min)}`}</span></span>
-        {r === "loading" || !r ? <span className="preset-wait" role="status" aria-label="Planning"><i /><i /><i /></span>
-          : !ready ? <span className="fine">{(r as { error: string }).error} <b className="retry">Tap to retry</b></span>
-          : <>
-              <span className="thumbs" aria-hidden>{(plan?.stops ?? ready.stops).slice(0, 3).map((s) => <Thumb key={s.id} s={s} size={28} />)}</span>
-              <span className="fine">{(plan?.stops ?? ready.stops).length ? `${(plan?.stops ?? ready.stops).length} stop${(plan?.stops ?? ready.stops).length === 1 ? "" : "s"} · arrive ${arrive(d.prefs, ready)}` : "No stops fit"}</span>
-            </>}
+        {stops && <>
+          <span className="thumbs" aria-hidden>{stops.slice(0, 3).map((s) => <Thumb key={s.id} s={s} size={28} />)}</span>
+          <span className="fine">{stops.length ? `${stops.length} stop${stops.length === 1 ? "" : "s"} · arrive ${arrive(d.prefs, ready!)}` : "No stops fit"}</span>
+        </>}
         <span className="fine blurb">{blurb}</span>
       </button>
     );
@@ -77,11 +76,10 @@ export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => voi
       </div>
       <div className="presets">
         {PRESETS.map((p) => card(p.id, p.label, p.min, p.blurb))}
-        {d.preset === "custom" && card("custom", "Custom", d.prefs.budget, "Your own time")}
       </div>
       <div className="row between">
         <label className="custom-time fine">Other time
-          <select aria-label="Other amount of extra time" value="" onChange={(e) => e.target.value && d.pickCustom(e.target.value === "auto" ? "auto" : Number(e.target.value))}>
+          <select aria-label="Other amount of extra time" value="" onChange={(e) => { if (e.target.value) { d.pickCustom(e.target.value === "auto" ? "auto" : Number(e.target.value)); onPicked(); } }}>
             <option value="">Choose…</option>
             {BUDGETS.map((b) => <option key={String(b)} value={String(b)}>{b === "auto" ? "Auto (half the trip)" : `+${budgetLabel(b)}`}</option>)}
           </select>

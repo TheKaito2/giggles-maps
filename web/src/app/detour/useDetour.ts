@@ -3,8 +3,8 @@ import { ApiError } from "../../lib/supabase";
 import { choosePlan, planRoute, type RoutePlan } from "../../lib/api";
 import { DEFAULT_PREFS, type Place, type Prefs, toRequest } from "../prefs";
 
-// Detour flow, Google-Maps style: browse the map -> pick where to -> pick how much time (3 presets, planned in
-// parallel) -> results you can edit (remove, swap or add stops).
+// Detour flow, Google-Maps style: browse the map -> pick where to -> pick how much time (Quick, Relaxed or Day out;
+// nothing is planned until you tap one) -> results you can edit (remove, swap or add stops).
 export type Stage = "browse" | "choose" | "results";
 export const PRESETS = [
   { id: "quick", label: "Quick", min: 15, blurb: "A stop or two" },
@@ -26,7 +26,7 @@ export function useDetour(onError: (m: string) => void) {
   const [dest, setDest] = useState<Place | null>(null);
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [results, setResults] = useState<Partial<Record<PresetId, Result>>>({});
-  const [preset, setPreset] = useState<PresetId>("relaxed");
+  const [preset, setPreset] = useState<PresetId | null>(null);   // nothing picked until you tap one
   const [choice, setChoice] = useState<string | null>(null);   // theme of the plan card you picked
   const [exclude, setExclude] = useState<number[]>([]);
   const [editing, setEditing] = useState(false);
@@ -61,40 +61,44 @@ export function useDetour(onError: (m: string) => void) {
       .then((r) => { if (id === request.current) setResults((all) => ({ ...all, [k]: r })); })
       .catch((e) => { if (id === request.current) setResults((all) => ({ ...all, [k]: { error: errorText(e) } })); });
   };
-  // plan all three presets at once (Relaxed first), plus the custom one if it's picked; cards fill in as each returns
+  // a different trip drops every earlier plan; on the results screen the option you picked is planned again
   useEffect(() => {
-    if (stage === "browse" || !dest || !origin) return;
     const id = ++request.current;
     edit.current++; setEditing(false);   // an edit in flight belongs to the old trip
-    setExclude([]); setChoice(null); setBump(0); setHidden([]);
-    const ids: PresetId[] = ["relaxed", "quick", "day", ...(preset === "custom" ? ["custom" as const] : [])];
-    setResults(Object.fromEntries(ids.map((k) => [k, "loading"])));
-    for (const k of ids) planPreset(k, id);
+    setExclude([]); setChoice(null); setBump(0); setHidden([]); setResults({});
+    if (stage === "results" && preset) planPreset(preset, id);
   }, [origin, dest, prefs, stage === "browse"]); // eslint-disable-line react-hooks/exhaustive-deps
   const retry = (k: PresetId) => planPreset(k, request.current);
 
   const goTo = async (place: Place) => {
-    setDest(place); setStage("choose");
+    setDest(place); setStage("choose"); setPreset(null);
     if (!origin) {
       try { const here = await locate(); setOrigin((o) => o ?? here); } catch (e) { onError((e as Error).message); }   // a From typed meanwhile wins
     }
   };
-  // another preset shows its own plans as first planned; edits made to the last one don't carry over
-  const choosePreset = (id: PresetId) => { edit.current++; setPreset(id); setChoice(null); setExclude([]); setEditing(false); setBump(0); setHidden([]); };
-  const pickCustom = (min: number | "auto") => { set({ budget: min }); setPreset("custom"); };
+  // tapping an option plans it (once per trip: switching back shows it again); edits don't carry across options
+  const choosePreset = (id: PresetId) => {
+    edit.current++; setPreset(id); setChoice(null); setExclude([]); setEditing(false); setBump(0); setHidden([]);
+    const r = results[id];
+    if (!r || (typeof r === "object" && "error" in r)) planPreset(id, request.current);
+  };
+  // a new custom time changes the trip, and the effect above plans it; the same time again just picks it
+  const pickCustom = (min: number | "auto") => {
+    if (min === prefs.budget) choosePreset("custom"); else { set({ budget: min }); setPreset("custom"); }
+  };
   const close = () => {
     request.current++; edit.current++;
     setStage("browse"); setDest(null); setResults({}); setExclude([]); setChoice(null); setEditing(false); setHidden([]); setBump(0);
     setOrigin((o) => o?.name === "Your location" ? null : o);   // you'll have moved: locate again next time
   };
 
-  const current = results[preset];
+  const current = preset ? results[preset] : undefined;
   const response = current && typeof current === "object" && "route_id" in current ? current : null;
   const plan = response && choosePlan(response, choice);
 
   // edits re-plan the shown preset: kept stops stay in (must_include), removed ones stay out (exclude)
   const replan = async (keep: number[], out: number[], extra = bump, mustFit?: number, tries = 2): Promise<void> => {
-    if (!origin || !dest || !response) return;
+    if (!origin || !dest || !response || !preset) return;
     const id = ++edit.current;
     setEditing(true);
     try {
@@ -110,7 +114,7 @@ export function useDetour(onError: (m: string) => void) {
       if (mustFit != null && unfit.includes(mustFit) && tries > 0 && budget !== "auto" && budget < MAX_BUDGET) {
         return replan(keep, out, extra + 15, mustFit, tries - 1);
       }
-      setExclude(out); setBump(extra); setResults((all) => ({ ...all, [preset]: r })); setChoice(theme ?? null);
+      setExclude(out); setBump(extra); setResults((all) => ({ ...all, [preset!]: r })); setChoice(theme ?? null);
     } catch (e) { if (id === edit.current) onError(errorText(e)); }
     finally { if (id === edit.current) { setEditing(false); setHidden([]); } }
   };
