@@ -22,6 +22,7 @@ function line(it: FeedItem): string {
     case "level": return `${name} reached level ${d.level}`;
     case "challenge": return `${name} finished “${d.title}”`;
     case "badge": return `${name} earned ${d.name_en} ${["", "I", "II", "III", "IV", "V"][Number(d.tier)]}`;
+    case "fortune": return `${name} drew a ${d.rarity === "legendary" ? "Legendary" : "Epic"} Siam Si stick${d.item ? `: ${d.item}` : ""}`;
     case "nudge": return it.mine ? `You nudged ${it.to?.nickname}` : `${it.who.nickname} nudged you: time for a stamp!`;
   }
 }

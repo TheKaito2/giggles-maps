@@ -53,7 +53,7 @@ export default function Shop({ profile, coins, onChange, onAvatar }: { profile: 
         <section key={kind}>
           <h4 className="eyebrow">{title}</h4>
           <ul className="shop-grid">
-            {items.filter((i) => i.kind === kind).map((i) => {
+            {items.filter((i) => i.kind === kind && (!i.gacha_only || owns(i))).map((i) => {   // Siam Si items show once won
               const on = wearing(i), own = owns(i);
               return (
                 <li key={i.id} className={on ? "on" : ""}>
@@ -64,6 +64,7 @@ export default function Shop({ profile, coins, onChange, onAvatar }: { profile: 
                     {on ? <><Check size={14} aria-hidden /> On</> : own ? "Use" : <><Coins size={14} aria-hidden /> {i.price}</>}
                   </button>
                   {i.plus && !own && <span className="chip">Free with Plus</span>}
+                  {i.gacha_only && <span className="chip siamsi">Siam Si</span>}
                 </li>
               );
             })}

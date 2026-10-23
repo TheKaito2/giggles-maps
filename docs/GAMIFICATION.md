@@ -108,3 +108,20 @@ provinces N/77 and coins; tapping coins opens the Shop.
 - **Friends Quest** (weekly): pick one friend (`set_friend_quest`); 10 new stamps between you this week gives both
   +150 XP and +40 coins. Opening the Quests tab claims finished quests (`claim_quests`).
 - **Profile** (`profile_of`): yours or a friend's: avatar, title, joined date, stats, all-time rank, badges, passport.
+
+## Siam Si (เซียมซี) fortune sticks
+- Every first-visit (rewarded) check-in earns one shake, used in the check-in ceremony. Bonus shakes (kept up to 5):
+  +1 per finished quest, +1 for a new province, +1 per ride-along group stamp (at most 3 a day).
+- A shake gives a numbered stick (1-28; its fortune is in `web/src/app/fortune/fortunes.ts`) and a prize:
+
+| Rarity | Odds (at a landmark) | Prize |
+|---|---|---|
+| Common | 60% (45%) | 10-20 coins or +30 XP |
+| Rare | 30% (38%) | 40-60 coins, 24 h x1.5 stamp XP, or a shop item up to 150 coins you don't own |
+| Epic | 9% (14%) | 120 coins, 3 days x1.5 stamp XP, or a shop item 200-500 coins you don't own |
+| Legendary | 1% (3%) | A Siam Si-only item (titles Fortune's favourite / Siam Si master, Golden naga frame, Fortune flair, Red lacquer cover), else 500 coins |
+
+- Pity: the 10th shake in a row without a Rare is Rare or better; the 80th without a Legendary is Legendary.
+- Free and earned only: shakes can't be bought with money, coins or Plus. Odds are shown in the app. At most 30 shakes a day.
+- Coins from shakes count for members (like every coin); guests and free users keep them for when they join.
+- Server: `shake_fortune(p_checkin)` (migrations 049-050), odds in `fortune_rarity`, history in `fortune_pulls`.

@@ -1,3 +1,4 @@
+import Fortune from "./fortune/Fortune";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "../lib/supabase";
 import ShareCard from "./ShareCard";
@@ -22,6 +23,9 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [result, setResult] = useState<CheckinResult | null>(null);
+  // a first visit earns a Siam Si shake: the ceremony opens over the result, and can be reopened until it's used
+  const [fortuneOpen, setFortuneOpen] = useState(false);
+  const [shaken, setShaken] = useState(false);
   const [camOk, setCamOk] = useState(true);
   const [facing, setFacing] = useState<"environment" | "user">("environment");
   const [caption, setCaption] = useState("");
@@ -66,6 +70,7 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
       if (caption.trim() && r.status !== "rejected") await setPhoto(r.checkin_id, false, caption).catch(() => undefined);
       if (sharePublic && r.status !== "rejected") await setPublicPhoto(r.checkin_id, true).catch(() => undefined);
       setResult(r);
+      if (r.shake) setFortuneOpen(true);
       setStep("result");
       onDone(r);
     } catch (e) {
@@ -178,6 +183,7 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
             {billing && (
               <p className="fine biz">Business view: {billing}{result.billed_thb > 0 && <> (<span className="num">฿{result.billed_thb}</span>)</>}</p>
             )}
+            {result.shake && !shaken && !fortuneOpen && <button className="btn gold" onClick={() => setFortuneOpen(true)}>Shake your Siam Si stick</button>}
             <button className="btn" onClick={onClose}>Done</button>
           </div>
         )}
@@ -189,6 +195,7 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
           </div>
         )}
       </div>
+      {fortuneOpen && result && <Fortune checkin={result.checkin_id} onClose={() => setFortuneOpen(false)} onShaken={() => setShaken(true)} />}
     </div>
   );
 }

@@ -84,6 +84,28 @@ export interface CheckinResult {
   coins?: number;   // members' coin balance
   group_bonus?: boolean;   // ride along: a trip-mate checked in here within the hour, +50%
   badges?: Badge[];        // badge tiers reached by this check-in
+  shake?: boolean;         // a first visit: this check-in earns a Siam Si shake
+  fortune_tickets?: number;   // bonus shakes waiting
+}
+
+// ---------- Siam Si (เซียมซี) fortune sticks ----------
+export type Rarity = "common" | "rare" | "epic" | "legendary";
+export interface Shake {
+  stick: number; rarity: Rarity; prize: "coins" | "xp" | "boost" | "item";
+  coins: number; xp: number; boost_hours: number;
+  item_kind: ShopKind | null; item_id: string | null; item_en: string | null; item_th: string | null;
+  xp_boost_until: string | null; member: boolean; tickets: number;
+}
+/** Shake for a first-visit check-in (its id), or spend a bonus shake (no id). Error "nothing_to_shake" otherwise. */
+export const shakeFortune = (checkin?: string) => rpc<Shake>("shake_fortune", { p_checkin: checkin ?? null });
+export interface PastShake { id: number; stick: number; rarity: Rarity; prize_kind: Shake["prize"]; coins: number; xp: number;
+  boost_hours: number; item_kind: string | null; item_id: string | null; source: "checkin" | "bonus"; created_at: string }
+export async function shakeHistory(): Promise<PastShake[]> {
+  await ensureSession();
+  const { data, error } = await supabase.from("fortune_pulls").select("id, stick, rarity, prize_kind, coins, xp, boost_hours, item_kind, item_id, source, created_at")
+    .order("id", { ascending: false }).limit(20);
+  if (error) throw error;
+  return data as PastShake[];
 }
 
 // A place the user can check in at: a route stop, a "Near this spot" card, or a scanned sticker
@@ -204,6 +226,7 @@ export interface Profile {
   nickname: string | null; colour: string; friendCode: string; onLeaderboard: boolean;
   look: Look; title: string | null; owned: string[];   // owned = "kind:id" bought with coins
   avatar: AvatarLook; joined: string | null; coins: number; provinces: number; isAdmin: boolean;
+  fortuneTickets: number; xpBoostUntil: Date | null;   // Siam Si: bonus shakes waiting, x1.5 stamp XP until
 }
 
 export async function getProfile(): Promise<Profile> {
@@ -218,6 +241,7 @@ export async function getProfile(): Promise<Profile> {
     nickname: data?.nickname ?? null, colour: data?.colour ?? "marigold", friendCode: data?.friend_code ?? "",
     onLeaderboard: data?.on_leaderboard ?? true, look, title: data?.title ?? null, owned: data?.owned ?? [],
     avatar: data?.avatar ?? {}, joined: data?.joined ?? null, coins: data?.coins ?? 0, provinces: data?.provinces ?? 0, isAdmin: !!data?.is_admin,
+    fortuneTickets: data?.fortune_tickets ?? 0, xpBoostUntil: data?.xp_boost_until ? new Date(data.xp_boost_until) : null,
   };
 }
 
@@ -257,7 +281,8 @@ export const leaveTrip = () => rpc<void>("leave_trip");
 export const tripPing = (p: LatLng) => rpc<void>("trip_ping", { p_lat: p.lat, p_lng: p.lng });
 
 export type ShopKind = "theme" | "flair" | "map" | "frame" | "title" | "avatar";
-export interface ShopItem { kind: ShopKind; id: string; name_en: string; name_th: string; price: number; plus: boolean; sort: number }
+export interface ShopItem { kind: ShopKind; id: string; name_en: string; name_th: string; price: number; plus: boolean; sort: number;
+  gacha_only: boolean }   // Siam Si prizes: never sold
 export async function getShop(): Promise<ShopItem[]> {
   const { data, error } = await supabase.from("shop_items").select("*").order("sort");
   if (error) throw error;
@@ -274,7 +299,7 @@ export const getProfilePage = (id: string) => rpc<ProfilePage>("profile_of", { p
 
 export type Reaction = "heart" | "fire" | "clap" | "wow";
 export interface FeedItem {
-  id: number; kind: "stamp" | "province" | "level" | "challenge" | "badge" | "nudge"; at: string; mine: boolean;
+  id: number; kind: "stamp" | "province" | "level" | "challenge" | "badge" | "nudge" | "fortune"; at: string; mine: boolean;
   data: Record<string, unknown>; who: Who; to: Who | null;
   place: { id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3 } | null;
   province: { id: number; iso: string; name_en: string; name_th: string } | null;

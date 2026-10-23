@@ -1,3 +1,4 @@
+import SiamSi from "./fortune/SiamSi";
 import { useEffect, useState } from "react";
 import { ArrowLeft, BookOpen, Pencil, UserMinus, Zap } from "lucide-react";
 import { ApiError } from "../lib/supabase";
@@ -74,6 +75,8 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
           <span>{page.provinces} of 77 province stamps · {page.stamps} places</span></span>
         <span className="passport-card-word" aria-hidden>PASSPORT</span>
       </button>
+
+      {self && <SiamSi profile={profile} onChange={onChange} />}
 
       <h3>Achievements</h3>
       <Badges list={page.badges} />
