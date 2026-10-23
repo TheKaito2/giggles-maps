@@ -22,6 +22,9 @@ export interface RoutePlan {
   stops: RouteStop[]; geometry: [number, number][];
   base_geometry?: [number, number][];
   warnings?: string[];
+  member?: boolean; level?: number;
+  meals?: string[]; missed_meals?: string[];
+  plans?: { id: string; name: string; stops: RouteStop[]; geometry: [number, number][]; extra_min: number; total_min: number; meals: string[]; missed_meals: string[] }[];
 }
 
 export type Billing = "charged" | "no_qr" | "not_shown_on_route" | "repeat_visit_30d"

@@ -1,90 +1,101 @@
-# Thailand road routing and place coverage
+# Thailand routing integration (PR #1)
 
-## What changed
+## Integration with current main
 
-The public Valhalla route service can route Khon Kaen to Sakon Nakhon, but its matrix
-service rejects that trip (150 km driving / 30 km walking distance caps observed on
-23 October 2026). Previously a matrix failure switched both times and the map to
-straight-line estimates. A final geometry failure also silently drew straight lines.
+This branch includes membership v4 (`757d7b5`) and the themed/meal-aware engine
+(`8c9607d`). The routing migration is **20261023000012_thailand_route_corridor.sql**,
+after the membership and route-theme migrations already applied in production.
 
-`plan-route` now obtains the direct A -> B road route first. A PostGIS geography
-index shortlists places within a corridor along that road line. Each proposed detour
-is a complete road route ending at B, including stop dwell times and arrival hours.
-The selected route's own leg times produce its ETAs and total. No straight-line
-fallback is returned. A baseline routing failure returns 503 `routing_unavailable`.
-Candidate lookup/routing failures preserve the verified direct route with warnings.
+- `unlock_level` is computed server-side and passed to the corridor RPC, which
+  calls `place_open_to(p, p_level)`. Public POI search returns only `min_level = 0`.
+- Everyone can request up to 240 extra minutes. The response retains `member`,
+  `level`, `plus`, `plans`, `meals`, `missed_meals`, and each stop's membership metadata.
+- Shared `planner.ts`, `themes.ts` and `meals.ts` produce proposals for all five
+  themes. Theme boosts, category variety and quality govern selection; fees never do.
+  Top-level fields remain Top picks. A requested theme only reorders `plans`.
 
-Work is capped: six quality-ranked candidates and at most three stops, at most thirteen additional route requests, concurrency two, and a
-22-second candidate-search deadline (in-flight requests have an 8-second timeout).
-The baseline request is separate. This is a bounded heuristic, not an exhaustive
-search for every possible detour. The search corridor is capped at 20 km. Partner status, fees, and wallets never enter the ranking. Plus changes the budget
-limit only, consistent with monetization v3 (upstream `98db6b6`). Times are road-travel
-estimates, not a guarantee against traffic or unexpectedly long visits.
+## Road routing and fallback
 
-The web app accepts Thai/English POI searches, map pins, and `latitude, longitude`.
-It shows the direct road route dashed grey and the chosen detour in indigo.
-Search covers imported named POIs; it is not a full address/city geocoder.
-If destination/time/mode changes while a request is pending, its old response is discarded.
+The public Valhalla matrix rejected Khon Kaen -> Sakon Nakhon in testing, even
+though its route endpoint could supply detailed road geometry. The old fallback
+silently turned long trips into straight segments. The integrated approach is:
 
-## Nationwide seed
+1. Request the direct A -> B road route.
+2. Short trips (endpoints within 10 km) retain a 16-place matrix shortlist.
+   Intercity trips use a 22-place shortlist in a spatially indexed road corridor.
+   Each shortlist has a quota per nature/food/culture/shopping/other group.
+3. For intercity proposals, scale estimated travel by the known direct road time.
+   These estimates propose orders only; they never approve a road detour.
+4. Check complete road routes for proposed themes, including dwell, arrival hours
+   and meal waiting time. Trim discretionary stops before meals if the actual road
+   time exceeds the allowance. Lost meals appear in `missed_meals`.
+5. Share a route-response cache and seven additional route-call limit across all
+   themes, with a 24-second start deadline and 8-second request timeouts. Verification
+   is sequential; local matrix chunks run at most two at a time. The baseline call
+   and up to four local matrix calls (16 candidates) are separate from this cap.
+6. If a candidate route fails, keep the verified direct road route and warn.
+   If the baseline fails, only local pedestrian trips may use the estimate fallback.
+   Its line is dashed and labelled approximate, never presented as road directions.
+   Intercity/driving baseline failures return 503 `routing_unavailable`.
 
-`supabase/seed_thailand.sql` contains 5,070 named POIs: 3,181 attractions/viewpoints,
-499 museums, and 1,390 parks. Source: OpenStreetMap through an offline Overpass
-Thailand extract, OSM timestamp `2026-10-23T03:02:49Z`; attribution ODbL.
-Raw query (not called when a user plans a trip):
+Times remain estimates of future travel; traffic and actual visit durations vary.
+This is a bounded heuristic, not exhaustive optimization. The corridor radius is
+capped at 20 km. Configure `VALHALLA_URL` for a dedicated Thailand-capable routing
+service before relying on it for production availability; the public demo has
+fair-use limits. Requests carry `X-Client-Id: giggles-maps.pages.dev`.
 
-```overpass
-[out:json][timeout:120];
-area["ISO3166-1"="TH"]["admin_level"="2"]->.th;
-(nwr["tourism"~"^(museum|viewpoint|attraction)$"]["name"](area.th);
- nwr["leisure"="park"]["name"](area.th););
-out center tags;
-```
+## Nationwide seed and staged rollout
 
-The seed skips duplicate normalized name/category/rounded-coordinate records and
-does not overwrite existing OSM IDs, partners, QR codes, bids, or wallets.
-Close duplicates across coordinate rounding boundaries and alternate names may
-still need curation. Way positions are POI centers, not verified entrances; route
-snapping may fail at inaccessible places. OSM coverage varies, and national cafÃ©s,
-temples and every address are not included in this first extract. Existing local
-records remain. Ratings retain the existing schema's **4.2 placeholder**, not real
-reviews; opening hours remain unknown rather than being fabricated. National
-collection membership is not added by this seed.
+`supabase/seed_thailand.sql` has 5,070 named OSM places: 3,163 attractions/viewpoints,
+1,408 parks and 499 museums. National parks recognizable by tags or Thai/English
+names are categorized as parks with 90-minute dwell; waterfalls use 45-minute dwell.
+These are planning defaults, not verified visit-duration data. Other dwell defaults
+remain category-based. Real opening hours, entrance positions and reviews need curation.
+The existing schema's 4.2 rating is a placeholder, not an assertion of quality.
 
-To regenerate from an Overpass JSON snapshot (standard Python only):
+Source: offline OpenStreetMap/Overpass Thailand snapshot, OSM timestamp
+`2026-10-23T03:02:49Z`, ODbL attribution. The original query selected named
+`tourism=museum|viewpoint|attraction` and `leisure=park` features in the Thailand
+admin-level-2 area, using `out center tags`. It is never run for a user's trip.
+
+The importer skips existing OSM IDs and approximately deduplicates named node/way
+representations. It never overwrites partner, QR, wallet or billing records.
+Rounding boundaries, alternate names and way-center entrance positions need review.
+No new collection membership is added. Coverage is not a complete address database.
+
+Start with a reviewed region instead of applying every row immediately:
 
 ```sh
-python supabase/tools/import_thailand_places.py thailand-attractions.json --output thailand-places.sql
+python supabase/tools/import_thailand_places.py thailand-attractions.json --output region-places.sql --bbox 16.8 103.8 17.5 104.5
 ```
 
-For a larger [Geofabrik Thailand PBF](https://download.geofabrik.de/asia/thailand.html):
-install `osmium` and pass the PBF file instead. PBF parsing is optional and was not
-verified on this Windows host: application control blocked the native osmium DLL.
-JSON conversion, SQL escaping and deduplication are covered by Python tests.
-Do not put raw PBF files in Git. Relations are not imported by the PBF path.
+The box is an example rollout region around Sakon Nakhon, not an administrative
+boundary. Omit `--bbox` for the full national seed. Standard Python supports JSON.
+The optional Geofabrik PBF path requires `osmium`; it was not verified on this
+Windows host because application control blocked its native DLL. Raw extracts
+must stay outside Git. Relations are omitted by that optional PBF path.
 
-## Deployment handoff (Krist / backend owner)
+## Deployment handoff
 
-The live app does not change until this branch is reviewed and deployed.
+No production database/import/deployment was performed from this workspace.
 
-1. Apply migration `20261023000010_thailand_route_corridor.sql` to the shared
-   Supabase project, then review/apply `supabase/seed_thailand.sql` using the SQL
-   editor or an authenticated database connection (`psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/seed_thailand.sql`).
-2. Deploy the updated `plan-route` Edge Function. Keep its existing authentication.
-   The new corridor RPC is service-role only. POI search returns only public fields.
-3. Build/deploy the web app. API fields are additive, and the existing iOS DTO
-   accepts `routing: "valhalla"` and ignores the new optional fields.
-4. Confirm a +45 minute driving route Khon Kaen -> Sakon Nakhon follows roads,
-   still ends at the selected destination, and includes dwell within its budget.
-   Test Bangkok, Chiang Mai, Phuket, zero budget, empty coverage, and provider outages.
-5. Check the indexed corridor query with `EXPLAIN (ANALYZE, BUFFERS)` on the actual
-   database. PostGIS migration execution and query latency require a deployed DB;
-   they were not tested locally on this Windows host.
-
-For production reliability, set `VALHALLA_URL` to a dedicated Thailand-capable
-instance/service. The public demo has fair-use limits and is not an availability
-guarantee. The code identifies requests with `X-Client-Id`; coordinate data goes to
-the configured routing provider, as it did before.
+1. Review and merge PR #1 after approval; pull the merged `main`.
+2. In the existing Supabase project, preview pending migrations with
+   `supabase db push --dry-run`, then apply them with `supabase db push`.
+   Confirm membership 010 and route themes 011 precede corridor **012**.
+3. Review/apply a regional seed with the SQL Editor or authenticated `psql`:
+   `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f region-places.sql`.
+   Roll out `supabase/seed_thailand.sql` after regional verification. The seed is
+   separate from migrations and will not overwrite existing OSM IDs.
+4. Deploy `plan-route` with its existing authentication:
+   `supabase functions deploy plan-route --use-api`.
+5. Build/deploy web with the existing publishable config in `web/.env`:
+   `npm ci`, `npm run build`, then
+   `wrangler pages deploy dist --project-name giggles-maps --branch main`.
+6. Verify all themed plans, meals/early waiting, membership-gated places and public
+   search. Test Khon Kaen -> Sakon Nakhon (Drive, +45), Bangkok -> Chiang Mai,
+   short Sakon walks, zero budget, empty coverage and provider failures.
+   Check the corridor query with `EXPLAIN (ANALYZE, BUFFERS)` on PostGIS.
 
 ## Validation
 
@@ -94,9 +105,13 @@ python -m unittest discover -s supabase/tools -p 'test_*.py'
 cd web && npm ci && npm run build
 ```
 
-Nine routing regressions cover budget/dwell, destination preservation, quality-only
-ranking independent of fees, closed/overnight visits, bounded calls, and provider failures.
-Three importer tests cover classification, duplicate POIs, apostrophe-safe SQL,
-and JSON way centers. Live smoke testing uses the actual `/route` endpoint, not
-a straight-line route mock. No database migration/import or production deployment
-is implied by passing these local checks.
+Routing regressions cover complete-road duration/dwell, destination preservation,
+meal waits and trimming, the shared provider cap/cache, local-only estimate policy,
+theme scoring and provider failures. Import tests cover regional rollout, nature
+visit defaults, SQL escaping, duplicate POIs and JSON way centers. Edge TypeScript
+is checked with a local Deno environment declaration. Native Deno installation,
+PostGIS execution/performance and deployed end-to-end behavior remain unverified
+on this host. Live checks of the integrated helpers returned Khon Kaen -> Sakon Nakhon with
+a ~15-minute detour and 1,990 road points, and Bangkok -> Chiang Mai with 5,752
+road points (~564.88 driving minutes). These are provider/helper checks, not
+proof of deployed database/membership behavior; repeat end-to-end checks after rollout.

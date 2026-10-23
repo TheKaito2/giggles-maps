@@ -40,3 +40,53 @@ test("low-rated and closed stops are skipped; tiny budget adds nothing", () => {
   expect(ids(plan(120))).not.toContain(7);
   expect(plan(3).order).toHaveLength(0);
 });
+
+// ---- themes and meals ----
+import { mealsInTrip } from "./meals.ts";
+
+// a café and a park, each the same small detour off a 10-minute line, nothing else to pick from
+const pts2 = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 4, y: 2 }, { x: 6, y: 2 }];
+const travel2 = (a: number, b: number) => Math.abs(pts2[a].x - pts2[b].x) + Math.abs(pts2[a].y - pts2[b].y);
+const two: Stop[] = [
+  { idx: 2, id: 20, category: "cafe", rating: 4.2, dwellMin: 20 },
+  { idx: 3, id: 30, category: "park", rating: 4.2, dwellMin: 20 },
+];
+const firstPick = (theme: "food" | "nature", budgetMin = 25) =>
+  planDetour({ originIdx: 0, destIdx: 1, startMin: 600, budgetMin, stops: two, travelMin: travel2, theme }).order[0]?.id;
+
+test("a theme boosts its kind of stop when only one fits", () => {
+  expect(firstPick("food")).toBe(20);
+  expect(firstPick("nature")).toBe(30);
+});
+
+test("top_picks matches the plain planner", () => {
+  const plain = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 60, stops, travelMin });
+  const top = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 60, stops, travelMin, theme: "top_picks" });
+  expect(top.order.map((s) => s.id)).toEqual(plain.order.map((s) => s.id));
+});
+
+test("meals: only meals the trip actually overlaps", () => {
+  expect(mealsInTrip(11 * 60, 13 * 60)).toEqual(["lunch"]);
+  expect(mealsInTrip(6 * 60, 7 * 60 + 20)).toEqual([]);              // 20 min of breakfast: too little
+  expect(mealsInTrip(8 * 60, 18 * 60)).toEqual(["breakfast", "lunch", "dinner"]);
+});
+
+test("a lunch stop arrives inside the lunch window, even on a nature plan", () => {
+  const p = planDetour({ originIdx: 0, destIdx: 1, startMin: 11 * 60 + 20, budgetMin: 60, stops: two,
+                         travelMin: travel2, theme: "nature", meals: ["lunch"] });
+  const lunch = p.order.find((s) => p.mealOf.get(s.id) === "lunch");
+  expect(lunch?.id).toBe(20);
+  let t = 11 * 60 + 20, at = 0;
+  for (const s of p.order) { t += travel2(at, s.idx); if (s.id === 20) break; t += s.dwellMin; at = s.idx; }
+  t = Math.max(t, 11 * 60 + 30);   // early arrivals wait for lunch
+  expect(t).toBeGreaterThanOrEqual(11 * 60 + 30);
+  expect(t).toBeLessThanOrEqual(13 * 60 + 30);
+  expect(p.extraMin).toBeLessThanOrEqual(60);
+});
+
+test("a meal that can't fit is reported, not forced", () => {
+  const p = planDetour({ originIdx: 0, destIdx: 1, startMin: 9 * 60, budgetMin: 60, stops: two,
+                         travelMin: travel2, meals: ["dinner"] });
+  expect(p.missedMeals).toEqual(["dinner"]);
+  expect([...p.mealOf.values()]).not.toContain("dinner");
+});

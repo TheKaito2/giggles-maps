@@ -59,7 +59,7 @@ serve(async (req) => {
     if (data?.some((o) => o.name === file)) uploaded = selfiePath;
   }
 
-  const { data, error } = await db.rpc("record_checkin", {
+  const { data, error } = await db.rpc("record_checkin_v4", {  // v4: level gate + XP around the v3 rules
     p_user: user.id, p_place: placeId, p_lat: lat, p_lng: lng, p_accuracy: accuracy,
     p_selfie_path: uploaded, p_face_count: faceCount, p_qr: qr, p_client: clientRecord,
   });

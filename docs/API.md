@@ -1,7 +1,7 @@
 # Giggles Maps API (shared by web, iOS and Android)
 
 Base URL: `https://xrlxfvwrkowaybtkkrdl.supabase.co`
-Public key: the project's **publishable key** (`sb_publishable_…`, safe to ship in apps). Send it as `apikey` on every request.
+Public key: the project's **publishable key** (`sb_publishable_â€¦`, safe to ship in apps). Send it as `apikey` on every request.
 
 All Edge Functions take `POST` with a JSON body and the user's access token: `Authorization: Bearer <access_token>`.
 Errors come back as `{ "error": "<code>" }` with a 4xx/5xx status. Codes are stable; show your own text for them.
@@ -23,7 +23,8 @@ Redirect URLs allowed: `https://giggles-maps.pages.dev/**`, `http://localhost:51
 
 ## `plan-route`
 
-Plan a detour that fits the user's extra-time budget. Stops are ranked on quality only (monetization v3, `docs/MONETIZATION.md`).
+Plan a detour that fits the user's extra-time budget. Stops are ranked on quality only (`docs/MONETIZATION.md`).
+The engine returns several themed plans for the same trip (`plans`) and the user picks one; the top-level fields are always the **Top picks** plan, so older clients keep working.
 
 Request
 ```json
@@ -32,40 +33,54 @@ Request
   "dest":   { "lat": 17.16445, "lng": 104.15345 },
   "start_min": 600,
   "budget_min": 45,
-  "mode": "pedestrian"
+  "mode": "pedestrian",
+  "theme": "food"
 }
 ```
-- `start_min`: minutes after local midnight (0–1439). Used for opening hours.
-- `budget_min`: extra minutes the user accepts (0–240). Never exceeded.
+- `start_min`: minutes after local midnight (0â€“1439). Used for opening hours.
+- `budget_min`: extra minutes the user accepts (0â€“240). Never exceeded.
 - `mode`: `"pedestrian"` (default) or `"auto"`.
-- Coordinates must be inside Thailand (lat 5–21, lng 97–106).
+- `theme` (optional): `top_picks`, `nature`, `food`, `culture` or `shopping`. Only reorders `plans` so that one comes first; anything else is 400 `bad_theme`.
+- Coordinates must be inside Thailand (lat 5â€“21, lng 97â€“106).
 
 Response
 ```json
 {
   "route_id": "uuid", "routing": "valhalla", "mode": "pedestrian",
   "base_min": 21, "total_min": 66, "extra_min": 44, "budget_min": 45,
-  "plus": false, "max_budget_min": 120, "candidates_considered": 15,
-  "stops": [{ "id": 31, "name": "…", "name_th": "…", "category": "craft", "lat": 17.16, "lng": 104.14,
+  "plus": false, "member": false, "level": 0, "max_budget_min": 240, "candidates_considered": 15,
+  "stops": [{ "id": 31, "name": "â€¦", "name_th": "â€¦", "category": "craft", "lat": 17.16, "lng": 104.14,
               "is_partner": true, "is_demo": true, "rating": 4.2, "dwell_min": 20, "eta_min": 617,
+              "meal": null, "min_level": 0, "exclusive_kind": null, "perk_text": null,
               "nearby_partner": null }],
-  "geometry": [[104.14488, 17.17313], "…"]
+  "geometry": [[104.14488, 17.17313], "â€¦"],
+  "meals": ["lunch"], "missed_meals": [],
+  "plans": [{ "id": "top_picks", "name": "Top picks", "stops": ["â€¦same shape as stopsâ€¦"],
+              "geometry": ["â€¦"], "extra_min": 44, "total_min": 66, "meals": ["lunch"], "missed_meals": [] }]
 }
 ```
 - `routing: "estimate"` means the routing server was down and times are straight-line estimates.
 - `geometry` is `[lng, lat]` pairs (GeoJSON order) for the polyline.
 - Road-routing update: optional `base_geometry` contains the direct A -> B road line;
-  optional `warnings` contains `places_unavailable` or `some_detours_unavailable`.
-  Updated responses use road geometry only (`routing: "valhalla"`); the legacy
-  `estimate` response is retired. If the direct road route is unavailable, return
-  503 `routing_unavailable` with a retry/nearby-road-pin/travel-mode change.
-  See `THAILAND-ROUTING.md` for rollout. Road times remain travel estimates.
+  optional `warnings` can contain `estimated_local_walk`, `places_unavailable`,
+  `matrix_unavailable`, `some_detours_unavailable` or `detours_adjusted`.
+  Short trips retain matrix-based theme/meal planning. Intercity proposals use a
+  calibrated estimate matrix, then every displayed road detour is checked against
+  actual road leg times, dwell and meal waiting. If road routing is unavailable,
+  only local pedestrian trips (endpoints within 10 km) may return `routing: "estimate"`;
+  show their straight connections dashed and clearly labelled as approximate.
+  Other baseline routing failures return 503 `routing_unavailable` with a retry,
+  nearby-road-pin or travel-mode change. See `THAILAND-ROUTING.md` for rollout.
+
 - Stops are chosen by quality only (rating, variety, fit inside the budget). Paying never changes rank; there is no paid slot.
 - `is_partner: true` means the place is a signed-up shop that pays per verified visit. It can appear any number of times, only on merit. Show a **Partner** label (`Example partner` when `is_demo`) so users know the shop pays.
 - `nearby_partner` (on park/viewpoint/temple stops, max 2 per route): a "Near this spot" card `{id, name, category, lat, lng, distance_m, is_partner, is_demo}`. It is the best nearby place by quality (rating, then distance), signed up or not; the field name is kept from v2 so existing clients keep working. Show the Partner label only when the card's `is_partner` is true. Users can check in there too.
-- Giggles Plus users (`plus: true`) get `budget_min` up to 240; free users over 120 get 402 `plus_required`. Plus users see the same stops and cards as everyone.
+- `budget_min` goes up to 240 for everyone. Plus is cosmetic; members (`level` > 0) also get exclusive places their level opens (`min_level`, `exclusive_kind`, `perk_text`).
+- `plans`: one per theme, Top picks first (or the requested `theme` first). A themed plan with exactly the same stops as an earlier one is dropped, so there can be 1â€“5 plans. Themes and their Ã—2-boosted categories (`_shared/themes.ts`): Top picks (none), Nature lover (park, viewpoint), Food lover (cafe, food, market), Culture & temples (temple, museum, art), Shopping & crafts (craft, market). Other kinds can still appear.
+- Meals: when the trip window (start â†’ start + direct time + budget) overlaps breakfast 07:00â€“09:30, lunch 11:30â€“13:30 or dinner 17:30â€“20:00 by â‰¥ 30 min, the meal is in `meals` and every plan tries to place a cafe/food/market stop arriving inside that window; that stop has `meal: "lunch"` etc. Arriving early means waiting for the window (counted in the extra time). If nothing fits, the meal is in that plan's `missed_meals`.
+- Every stop and card in any plan counts as an impression, once per place per route.
 
-Errors: `not_signed_in` 401, `plus_required` 402, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_json` 400.
+Errors: `not_signed_in` 401, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_theme` / `bad_json` 400.
 
 ## `verify-checkin`
 
@@ -100,7 +115,7 @@ Response
 
 `qr_code` is the code under the counter QR sticker (also arrives via the sticker link `/app/?scan=<place_id>-<code>`). Example shops use `DEMO`.
 
-`billing` (what happened on the shop side): `charged` · `no_qr` · `not_shown_on_route` (not shown to this user in the last 3 h) · `repeat_visit_30d` · `wallet_empty` · `not_rewarded` · `not_partner`. A shop is charged only when the check-in is rewarded, the QR matches, the stop/card was shown to this user within 3 h, and it's the user's first billed visit there in 30 days.
+`billing` (what happened on the shop side): `charged` Â· `no_qr` Â· `not_shown_on_route` (not shown to this user in the last 3 h) Â· `repeat_visit_30d` Â· `wallet_empty` Â· `not_rewarded` Â· `not_partner`. A shop is charged only when the check-in is rewarded, the QR matches, the stop/card was shown to this user within 3 h, and it's the user's first billed visit there in 30 days.
 
 `spin`: free coupon spin after every rewarded check-in (never sold). 50% overall win chance among active coupons from signed-up shops with credit within 3 km; `odds` is this prize's chance. `null` when no coupons are available.
 
@@ -117,14 +132,14 @@ Body `{}`. Deletes the user's selfies, then the auth user (cascades check-ins, b
 | Body | Buys |
 |---|---|
 | `{ "kind": "credit", "shop_id": "uuid", "pack": 500 \| 1000 \| 3000 }` | Prepaid visit credit for a shop |
-| `{ "kind": "plus" }` | Giggles Plus for the signed-in user, ฿59 / 30 days (403 `sign_in_required` for guests) |
+| `{ "kind": "plus" }` | Giggles Plus for the signed-in user, à¸¿59 / 30 days (403 `sign_in_required` for guests) |
 
-→ `{ "url": "<Stripe Checkout URL>" }` (card + PromptPay, one-time, no auto-renew). Test keys only unless `STRIPE_LIVE=1`.
+â†’ `{ "url": "<Stripe Checkout URL>" }` (card + PromptPay, one-time, no auto-renew). Test keys only unless `STRIPE_LIVE=1`.
 **iOS/Android must not use this for Plus**: sell Plus through StoreKit / Google Play Billing (server receipt check not built yet).
 
 ## `stripe-webhook`
 
-Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`, then applies the payment once per Checkout session (`apply_payment`: credit → wallet, plus → `profiles.plus_until` +30 days) on `checkout.session.completed` (paid) or `checkout.session.async_payment_succeeded` (PromptPay).
+Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`, then applies the payment once per Checkout session (`apply_payment`: credit â†’ wallet, plus â†’ `profiles.plus_until` +30 days) on `checkout.session.completed` (paid) or `checkout.session.async_payment_succeeded` (PromptPay).
 
 ## Database functions (RPC)
 
@@ -148,6 +163,6 @@ No client can write to check-ins, billing, badges or wallets directly; only the 
 ## Nationwide POI search (road-routing update)
 
 `search_route_places(p_query)` is a public RPC returning up to 10 named POIs with
-`id`, `name`, `name_th`, `lat`, `lng`. Literal Thai/English queries are 2–100
+`id`, `name`, `name_th`, `lat`, `lng`. Literal Thai/English queries are 2â€“100
 characters. It searches the imported POI catalog, not every address. Any map pin
 or coordinate can still be used as the destination.

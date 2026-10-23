@@ -14,6 +14,8 @@ from pathlib import Path
 def category(tags):
     if tags.get("access") in ("private", "no") or tags.get("disused") == "yes":
         return None
+    if is_national_park(tags):
+        return "park"
     if tags.get("tourism") in ("museum", "aquarium"):
         return "museum"
     if tags.get("tourism") in ("viewpoint", "attraction") or tags.get("natural") in ("waterfall", "peak"):
@@ -39,9 +41,25 @@ DWELL = {"museum": 40, "viewpoint": 15, "art": 10, "park": 20,
          "temple": 20, "cafe": 25, "food": 35, "market": 25, "craft": 20}
 
 
+def is_national_park(tags):
+    names = " ".join(tags.get(k, "") for k in ("name", "name:en", "name:th")).casefold()
+    return (tags.get("boundary") == "national_park" or "national park" in names
+            or "อุทยานแห่งชาติ" in names)
+
+
+def dwell_minutes(tags, cat):
+    names = " ".join(tags.get(k, "") for k in ("name", "name:en", "name:th")).casefold()
+    if is_national_park(tags):
+        return 90
+    if tags.get("natural") == "waterfall" or "waterfall" in names or "น้ำตก" in names:
+        return 45
+    return DWELL[cat]
+
+
 class Exporter:
-    def __init__(self, output):
+    def __init__(self, output, bbox=None):
         self.output = output
+        self.bbox = bbox
         self.seen = set()
         self.rows = []
         self.counts = {}
@@ -51,6 +69,8 @@ class Exporter:
         name = (tags.get("name:en") or tags.get("name") or tags.get("name:th") or "").strip()
         if not cat or not name or not (5 <= lat <= 21 and 97 <= lng <= 106):
             return
+        if self.bbox and not (self.bbox[0] <= lat <= self.bbox[2] and self.bbox[1] <= lng <= self.bbox[3]):
+            return
         # Nodes and building outlines often describe the same named POI.
         normalized = re.sub(r"[\W_]+", "", unicodedata.normalize("NFKC", name).casefold())
         key = (normalized, cat, round(lat, 3), round(lng, 3))
@@ -59,7 +79,7 @@ class Exporter:
         self.seen.add(key)
         # Unknown OSM opening_hours are NOT guessed into daily hours.
         self.rows.append((f"{kind}/{osm_id}", name, tags.get("name:th"), cat,
-                          f"SRID=4326;POINT({lng} {lat})", DWELL[cat]))
+                          f"SRID=4326;POINT({lng} {lat})", dwell_minutes(tags, cat)))
         self.counts[cat] = self.counts.get(cat, 0) + 1
         if len(self.rows) >= 500:
             self.flush()
@@ -77,13 +97,13 @@ class Exporter:
         self.rows.clear()
 
 
-def export(source, destination):
+def export(source, destination, bbox=None):
     with destination.open("w", encoding="utf-8", newline="\n") as out:
         out.write("-- Thailand POIs: OpenStreetMap contributors, ODbL.\n")
         out.write("-- Source: " + ("Overpass Thailand snapshot" if source.suffix == ".json" else "Geofabrik Thailand extract") + "\n")
         out.write("-- Ratings use the schema's 4.2 placeholder, NOT verified reviews. Hours are unknown.\n")
         out.write("-- Review before applying. No partner, QR, coupon or billing data is imported.\nSET standard_conforming_strings = on;\nBEGIN;\n")
-        exporter = Exporter(out)
+        exporter = Exporter(out, bbox)
         if source.suffix == ".json":
             for obj in json.loads(source.read_text(encoding="utf-8"))["elements"]:
                 point = obj.get("center", obj)
@@ -115,7 +135,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--bbox", type=float, nargs=4, metavar=("MIN_LAT", "MIN_LNG", "MAX_LAT", "MAX_LNG"), help="Limit initial rollout to a region")
     args = parser.parse_args()
     if args.output.exists():
         parser.error("output already exists; choose a new path")
-    print(json.dumps(export(args.source, args.output), ensure_ascii=False))
+    if args.bbox and not (5 <= args.bbox[0] <= args.bbox[2] <= 21 and 97 <= args.bbox[1] <= args.bbox[3] <= 106):
+        parser.error("bbox must be an ordered Thailand latitude/longitude box")
+    print(json.dumps(export(args.source, args.output, args.bbox), ensure_ascii=False))

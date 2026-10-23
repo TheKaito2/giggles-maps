@@ -2,9 +2,11 @@ import { admin, HttpError, json, requireUser, serve } from "../_shared/http.ts";
 
 // What can be bought on the web (Stripe). iOS/Android sell Plus through StoreKit / Play Billing instead.
 //   credit  : prepaid visit credit for a shop (each verified visit deducts the shop's bid)
-//   plus    : Giggles Plus for a user, 30 days (longer extra-time limit, cosmetic badges)
+//   plus       : Giggles Plus for a user, 30 days (cosmetic only: themes, flair, share cards, monthly stamp)
+//   membership : one-time membership for a user (levels + exclusive places), never renews
 const CREDIT_PACKS = [500, 1000, 3000];
 const PLUS_THB = 59;
+const MEMBERSHIP_THB = 349;
 
 serve(async (req) => {
   const user = await requireUser(req);
@@ -13,14 +15,20 @@ serve(async (req) => {
   if (!/^(sk|rk)_test_/.test(key) && Deno.env.get("STRIPE_LIVE") !== "1") throw new HttpError(503, "live_payments_disabled");
 
   const body = await req.json().catch(() => { throw new HttpError(400, "bad_json"); });
-  const kind = ["credit", "plus"].includes(body.kind) ? body.kind : "credit";
+  const kind = ["credit", "plus", "membership"].includes(body.kind) ? body.kind : "credit";
   const site = Deno.env.get("SITE_URL") ?? "https://giggles-maps.pages.dev";
 
   let amount: number, name: string, back: string;
   const meta: Record<string, string> = { kind };
-  if (kind === "plus") {
-    if (user.is_anonymous) throw new HttpError(403, "sign_in_required"); // Plus must survive a reinstall
-    amount = PLUS_THB; name = "Giggles Plus, 30 days"; back = `${site}/app/`;
+  if (kind === "plus" || kind === "membership") {
+    if (user.is_anonymous) throw new HttpError(403, "sign_in_required"); // must survive a reinstall
+    if (kind === "membership") {
+      const { data: p } = await admin().from("profiles").select("member_since").eq("id", user.id).maybeSingle();
+      if (p?.member_since) throw new HttpError(409, "already_member");
+    }
+    amount = kind === "plus" ? PLUS_THB : MEMBERSHIP_THB;
+    name = kind === "plus" ? "Giggles Plus, 30 days" : "Giggles Maps membership (one-time)";
+    back = `${site}/app/`;
     meta.user_id = user.id;
   } else {
     const shopId = typeof body.shop_id === "string" ? body.shop_id : "";

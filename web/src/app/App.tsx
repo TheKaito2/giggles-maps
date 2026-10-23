@@ -10,8 +10,7 @@ import { resumeSignIn } from "../lib/auth";
 // Real places from the seed: Phu Phan Museum -> Wat Phra That Choeng Chum
 const DEFAULT_ORIGIN: LatLng = { lat: 17.17313, lng: 104.14488 };
 const DEFAULT_DEST: LatLng = { lat: 17.16445, lng: 104.15345 };
-const FREE_MAX = 120;
-const PLUS_MAX = 240;
+const MAX_BUDGET = 240;
 
 const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(Math.round(m) % 60).padStart(2, "0")}`;
@@ -33,7 +32,7 @@ export default function App() {
   const [selected, setSelected] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [plusUntil, setPlusUntil] = useState<Date | null>(null);
-  const maxBudget = plusUntil ? PLUS_MAX : FREE_MAX;
+  const maxBudget = MAX_BUDGET;
   const routeRequest = useRef(0);
   useEffect(() => { routeRequest.current++; setBusy(false); }, [origin, dest, start, budget, mode, maxBudget]);
 
@@ -78,7 +77,6 @@ export default function App() {
       if (requestId !== routeRequest.current) return;
       const code = e instanceof ApiError ? e.code : "";
       setError(code === "routing_unavailable" ? "Couldn't find a road route. Try a nearby road pin, check Walk/Drive, or retry shortly."
-        : code === "plus_required" ? `More than +${FREE_MAX} min needs Giggles Plus.`
         : code.startsWith("bad_") ? "Pick a start and destination inside Thailand." : "Couldn't plan the route. Try again in a moment.");
     } finally { if (requestId === routeRequest.current) setBusy(false); }
   };
@@ -100,7 +98,7 @@ export default function App() {
 
       <main className="layout">
         <MapView origin={origin} dest={dest} stops={plan?.stops ?? []} geometry={plan?.geometry ?? []}
-          baseGeometry={plan?.base_geometry} picking={picking} onPick={onPick} onSelectStop={onSelectStop} />
+          baseGeometry={plan?.base_geometry} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop} />
 
         <section className="panel" aria-live="polite">
           {picking && <p className="hint">Tap the map to set your {picking === "origin" ? "start" : "destination"}.</p>}
@@ -142,7 +140,7 @@ export default function App() {
                 <span>Extra time I'm OK with: <strong className="num">+{Math.min(budget, maxBudget)} min</strong></span>
                 <input id="budget" type="range" min={0} max={maxBudget} step={5} value={Math.min(budget, maxBudget)}
                   onChange={(e) => { setBudget(Number(e.target.value)); setPlan(null); }} />
-                {!plusUntil && <span className="fine">Up to +{FREE_MAX} min. Giggles Plus goes to +{PLUS_MAX}.</span>}
+                <span className="fine">Up to +{MAX_BUDGET} min for everyone.</span>
               </label>
 
               <button className="btn gold big" onClick={submit} disabled={busy || !origin || !dest}>
@@ -155,11 +153,11 @@ export default function App() {
                   <div className="summary">
                     <div><span className="num big-num">+{plan.extra_min}</span><span className="fine"> of +{plan.budget_min} min used</span></div>
                     <div className="fine">{plan.stops.length} stop{plan.stops.length === 1 ? "" : "s"} · trip {plan.total_min} min instead of {plan.base_min}</div>
-                    {plan.routing === "estimate" && <div className="fine">Times are estimates (routing service busy).</div>}
-                    {plan.stops.length > 0 && <div className="fine">Dashed grey: direct road route · Indigo: your detour. Both end at your destination.</div>}
-                    {!!plan.warnings?.length && <div className="fine" role="status">Some detours could not be checked. Showing the road route we could verify; retry to check more stops.</div>}
+                    {plan.routing === "estimate" && <div className="fine" role="status">Routing is unavailable. The dashed line is an approximate walking connection, not road directions. Times and your allowance are checked using estimates.</div>}
+                    {plan.stops.length > 0 && !!plan.base_geometry?.length && <div className="fine">Dashed grey: direct road route · Indigo: your detour. Both end at your destination.</div>}
+                    {plan.warnings?.some((w) => w !== "estimated_local_walk") && <div className="fine" role="status">Some stops were adjusted or couldn't be checked. Retry to explore more detours.</div>}
                   </div>
-                  {plan.stops.length === 0 && <p className="fine">Showing your direct road route. No available stops fit +{plan.budget_min} min; place coverage varies by area.</p>}
+                  {plan.stops.length === 0 && <p className="fine">No available stops fit +{plan.budget_min} min; place coverage varies by area.</p>}
                   <ol className="stops">
                     {plan.stops.map((s, i) => (
                       <li key={s.id} id={`stop-${s.id}`} className="stop-item">

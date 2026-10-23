@@ -3,10 +3,25 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from import_thailand_places import Exporter, category, export
+from import_thailand_places import Exporter, category, dwell_minutes, export
 
 
 class ImportTests(unittest.TestCase):
+    def test_nature_visits_are_not_fifteen_minute_viewpoints(self):
+        park = {"tourism": "attraction", "name:en": "Obluang National Park"}
+        waterfall = {"tourism": "attraction", "name:th": "น้ำตกตัวอย่าง"}
+        self.assertEqual(category(park), "park")
+        self.assertEqual(dwell_minutes(park, "park"), 90)
+        self.assertEqual(dwell_minutes(waterfall, "viewpoint"), 45)
+
+    def test_region_filter_limits_initial_rollout(self):
+        output = io.StringIO()
+        exporter = Exporter(output, (13, 100, 14, 101))
+        tags = {"tourism": "museum", "name": "Museum"}
+        exporter.add("node", 1, tags, 13.75, 100.5)
+        exporter.add("node", 2, tags, 18.8, 99)
+        self.assertEqual(exporter.counts, {"museum": 1})
+
     def test_only_relevant_public_places(self):
         self.assertIsNone(category({"amenity": "cafe", "access": "private"}))
         self.assertIsNone(category({"tourism": "hotel"}))
