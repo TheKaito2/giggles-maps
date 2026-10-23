@@ -3,8 +3,8 @@ import { ApiError } from "../../lib/supabase";
 import { choosePlan, planRoute, type RoutePlan } from "../../lib/api";
 import { DEFAULT_PREFS, type Place, type Prefs, toRequest } from "../prefs";
 
-// Detour flow, Google-Maps style: browse the map -> pick where to -> pick how much time (Quick, Relaxed or Day out;
-// nothing is planned until you tap one) -> results you can edit (remove, swap or add stops).
+// Detour flow, Google-Maps style: browse the map -> pick where to -> pick how much time (Quick, Relaxed and Day out
+// are planned in parallel; none is picked until you tap one) -> results you can edit (remove, swap or add stops).
 export type Stage = "browse" | "choose" | "results";
 export const PRESETS = [
   { id: "quick", label: "Quick", min: 15, blurb: "A stop or two" },
@@ -61,12 +61,15 @@ export function useDetour(onError: (m: string) => void) {
       .then((r) => { if (id === request.current) setResults((all) => ({ ...all, [k]: r })); })
       .catch((e) => { if (id === request.current) setResults((all) => ({ ...all, [k]: { error: errorText(e) } })); });
   };
-  // a different trip drops every earlier plan; on the results screen the option you picked is planned again
+  // a new trip plans all three options at once (Relaxed first), plus a custom time if that's the one picked;
+  // the cards fill in as each returns
   useEffect(() => {
     const id = ++request.current;
     edit.current++; setEditing(false);   // an edit in flight belongs to the old trip
     setExclude([]); setChoice(null); setBump(0); setHidden([]); setResults({});
-    if (stage === "results" && preset) planPreset(preset, id);
+    if (stage === "browse") return;
+    const ids: PresetId[] = ["relaxed", "quick", "day", ...(preset === "custom" ? ["custom" as const] : [])];
+    for (const k of ids) planPreset(k, id);
   }, [origin, dest, prefs, stage === "browse"]); // eslint-disable-line react-hooks/exhaustive-deps
   const retry = (k: PresetId) => planPreset(k, request.current);
 
@@ -76,7 +79,7 @@ export function useDetour(onError: (m: string) => void) {
       try { const here = await locate(); setOrigin((o) => o ?? here); } catch (e) { onError((e as Error).message); }   // a From typed meanwhile wins
     }
   };
-  // tapping an option plans it (once per trip: switching back shows it again); edits don't carry across options
+  // tapping an option shows its plans (planning it again only if it failed); edits don't carry across options
   const choosePreset = (id: PresetId) => {
     edit.current++; setPreset(id); setChoice(null); setExclude([]); setEditing(false); setBump(0); setHidden([]);
     const r = results[id];

@@ -39,7 +39,7 @@ export function TripHead({ d, onBack, backLabel, onSearch }: { d: Detour; onBack
 export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => void }) {
   const [filters, setFilters] = useState(false);
   const n = filterCount(d.prefs);
-  // nothing is planned until you tap an option; one you already opened on this trip shows what it found
+  // all three are planned as soon as you pick where to; none is highlighted until you tap one
   const card = (id: PresetId, label: string, min: number | "auto", blurb: string) => {
     const r = d.results[id];
     const ready = r && typeof r === "object" && "route_id" in r ? r : null;
@@ -48,10 +48,12 @@ export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => voi
       <button key={id} type="button" className={`preset${d.preset === id ? " on" : ""}`} aria-pressed={d.preset === id}
         onClick={() => { d.setPreset(id); onPicked(); }}>
         <span className="preset-top"><b>{label}</b><span className="num">{min === "auto" ? "Auto" : `+${budgetLabel(min)}`}</span></span>
-        {stops && <>
-          <span className="thumbs" aria-hidden>{stops.slice(0, 3).map((s) => <Thumb key={s.id} s={s} size={28} />)}</span>
-          <span className="fine">{stops.length ? `${stops.length} stop${stops.length === 1 ? "" : "s"} · arrive ${arrive(d.prefs, ready!)}` : "No stops fit"}</span>
-        </>}
+        {r === "loading" ? <span className="preset-wait" role="status" aria-label="Planning"><i /><i /><i /></span>
+          : r && !ready ? <span className="fine">{(r as { error: string }).error} <b className="retry">Tap to retry</b></span>
+          : stops && <>
+              <span className="thumbs" aria-hidden>{stops.slice(0, 3).map((s) => <Thumb key={s.id} s={s} size={28} />)}</span>
+              <span className="fine">{stops.length ? `${stops.length} stop${stops.length === 1 ? "" : "s"} · arrive ${arrive(d.prefs, ready!)}` : "No stops fit"}</span>
+            </>}
         <span className="fine blurb">{blurb}</span>
       </button>
     );
