@@ -122,7 +122,7 @@ export async function searchPlaces(query: string, near?: LatLng | null, kind?: K
   return ((data ?? []) as Omit<FoundPlace, "source">[]).map((p) => ({ ...p, source: "giggles" }));
 }
 
-// Photon (photon.komoot.io): free OpenStreetMap search, fair use. Called on Search/Enter only, never per keystroke.
+// Photon (photon.komoot.io): free OpenStreetMap search, fair use: 3+ letters, after a 300 ms pause, the previous request cancelled.
 const THAILAND_BBOX = "97.3,5.6,105.7,20.5";
 export async function searchAddresses(query: string, near?: LatLng | null, signal?: AbortSignal): Promise<FoundPlace[]> {
   const params = new URLSearchParams({ q: query, limit: "5", bbox: THAILAND_BBOX });

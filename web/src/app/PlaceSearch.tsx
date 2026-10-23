@@ -18,7 +18,7 @@ function ResultIcon({ p }: { p: FoundPlace }) {
 }
 
 // Start/destination field, Google-style: our places AND addresses (Photon, OpenStreetMap search) preview as you type.
-// Photon asks for fair use: 3+ characters, a 400 ms pause, and the previous request is cancelled.
+// Photon asks for fair use: 3+ characters, a 300 ms pause, and the previous request is cancelled.
 export default function PlaceSearch({ label, value, pin, near, onPick, actions, footer }: {
   label: string; value: string; pin: ReactNode; near?: LatLng | null;
   onPick: (point: LatLng, name: string) => void; actions?: ReactNode;
@@ -32,21 +32,33 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions, 
   const request = useRef(0);
   useEffect(() => setQuery(value), [value]);
 
+  // Search as you type, like every map app: each letter asks again, and an answer shows as soon as it's newer than
+  // the one on screen (waiting for the very latest showed nothing while you kept typing). Earlier answers are cached,
+  // so backspacing is instant.
+  const shown = useRef({ places: 0, addresses: 0 });
+  const cache = useRef(new Map<string, FoundPlace[]>());
   useEffect(() => {
     const text = query.trim();
     if (!open || text.length < 2 || text === value) { request.current++; setPlaces([]); setAddresses([]); return; }   // drop late replies
     const coords = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/.exec(text);
     if (coords) { setPlaces([]); setAddresses([]); return; }
     const id = ++request.current;
+    const key = `${text.toLowerCase()}|${near?.lat?.toFixed(2)},${near?.lng?.toFixed(2)}`;
+    const hit = cache.current.get(key);
+    if (hit) { shown.current.places = id; setPlaces(hit); setMessage(""); }
     const abort = new AbortController();
-    const t1 = setTimeout(() => {
-      searchPlaces(text, near).then((r) => { if (id === request.current) { setPlaces(r.slice(0, 6)); setMessage(""); } })
-        .catch(() => { if (id === request.current) setMessage("Search is unavailable. Pick on the map instead."); });
-    }, 250);
+    const t1 = hit ? undefined : setTimeout(() => {
+      searchPlaces(text, near).then((r) => {
+        cache.current.set(key, r.slice(0, 6));
+        if (id > shown.current.places && id <= request.current) { shown.current.places = id; setPlaces(r.slice(0, 6)); setMessage(""); }
+      }).catch(() => { if (id === request.current) setMessage("Search is unavailable. Pick on the map instead."); });
+    }, 100);
+    // addresses (Photon, fair use): 3+ letters, a short pause, the previous request cancelled
     const t2 = text.length >= 3 ? setTimeout(() => {
-      searchAddresses(text, near, abort.signal).then((r) => { if (id === request.current) setAddresses(r.slice(0, 4)); })
-        .catch(() => undefined);   // cancelled or Photon down: places still show
-    }, 400) : undefined;
+      searchAddresses(text, near, abort.signal).then((r) => {
+        if (id > shown.current.addresses && id <= request.current) { shown.current.addresses = id; setAddresses(r.slice(0, 4)); }
+      }).catch(() => undefined);   // cancelled or Photon down: places still show
+    }, 300) : undefined;
     return () => { clearTimeout(t1); clearTimeout(t2); abort.abort(); };
   }, [query, open, near?.lat, near?.lng, value]); // eslint-disable-line react-hooks/exhaustive-deps -- near by value: a GPS fix is a new object
 
