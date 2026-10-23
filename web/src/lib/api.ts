@@ -20,6 +20,7 @@ export interface RouteStop {
   nearby_partner: NearbyPartner | null;
   min_level?: number; exclusive_kind?: ExclusiveKind | null; perk_text?: string | null;
   meal?: Meal | null; // engine v2: this stop covers a meal
+  meal_late?: boolean; // the restaurant for that meal, outside the usual meal hours (the route couldn't reach them)
   picked?: boolean;   // the user asked for this place (must_include)
   tier?: 1 | 2 | 3;   // 3 = landmark (must-go), 2 = worth a visit, 1 = everyday
 }

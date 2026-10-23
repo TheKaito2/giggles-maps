@@ -45,7 +45,7 @@ export default function Results({ response, plan, choice, setChoice, selected, o
       )}
       {current && current.missed_meals.length > 0 && (
         <p className="fine" role="status">
-          No food stop fits {current.missed_meals.map((m) => `${MEAL_NAME[m].toLowerCase()} (${MEALS.find((x) => x.id === m)!.window})`).join(", ")} in
+          No restaurant fits {current.missed_meals.map((m) => `${MEAL_NAME[m].toLowerCase()} (${MEALS.find((x) => x.id === m)!.window})`).join(", ")} in
           this plan. Try leaving closer to that time or allowing more extra time.
         </p>
       )}
@@ -87,7 +87,7 @@ export default function Results({ response, plan, choice, setChoice, selected, o
                   <span className="chip price">{s.price_level == null ? "Price not listed" : PRICE[s.price_level]}</span>
                   {s.tier === 3 && <span className="chip landmark">Landmark</span>}
                   {s.picked && <span className="chip picked">You picked this</span>}
-                  {s.meal && <span className="chip meal">{MEAL_NAME[s.meal]}</span>}
+                  {s.meal && <span className="chip meal">{s.meal_late ? `Late ${MEAL_NAME[s.meal].toLowerCase()}` : MEAL_NAME[s.meal]}</span>}
                   {s.is_partner && <span className="chip partner" title={PARTNER_TIP}>{s.is_demo ? "Example partner" : "Partner"}</span>}
                   {!!s.min_level && s.exclusive_kind && <span className="chip exclusive">{KIND_NAME[s.exclusive_kind]} · Level {s.min_level}</span>}
                 </div>

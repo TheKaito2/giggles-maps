@@ -5,7 +5,7 @@
 // Phase 0 places the stops the user picked (must_include), then meal stops; phase 1 fills the rest;
 // greedy insertion + 2-opt, fine for ~25 candidates.
 
-import { inMealWindow, type Meal, MEAL_CATEGORIES, MEAL_WINDOWS } from "./meals.ts";
+import { inMealWindow, type Meal, MEAL_PLACES, MEAL_WINDOWS } from "./meals.ts";
 import { type Theme, type Tier, themeWeight } from "./themes.ts";
 
 export interface Stop {
@@ -40,7 +40,8 @@ export interface Plan {
   baseMin: number;      // origin -> destination with no stops
   totalMin: number;
   extraMin: number;
-  mealOf: Map<number, Meal>;   // stop id -> meal it covers
+  mealOf: Map<number, Meal>;   // stop id -> meal it covers, arriving inside the meal window
+  lateMeals: Map<number, Meal>;  // meal stops the route can't reach in the window: the best time the route allows
   missedMeals: Meal[];
   requiredIds: number[];
   unfitRequired: number[];     // picked places that don't fit the budget, hours or stop cap
@@ -128,21 +129,27 @@ export function planDetour(input: PlanInput): Plan {
     if (ins) order = ins.order; else unfitRequired.push(id);
   }
 
-  // phase 0b: one food stop per meal asked for, in time order
+  // phase 0b: one restaurant per meal asked for, in time order. Inside the meal window if the route can reach it;
+  // otherwise (window already passed, or the wait wouldn't fit) still a restaurant, at the best time the route allows
   const missedMeals: Meal[] = [];
+  const lateMeals = new Map<number, Meal>();
   for (const meal of [...meals].sort((a, b) => MEAL_WINDOWS[a][0] - MEAL_WINDOWS[b][0])) {
     if (order.length >= maxStops) { missedMeals.push(meal); continue; }
-    let pick: { order: Stop[]; ratio: number; s: Stop } | null = null;
-    for (const s of eligible) {
-      if (!MEAL_CATEGORIES.has(s.category) || order.includes(s) || weight(s.category, s.tier) === 0) continue;
-      const trial = new Map(mealOf).set(s.id, meal);
-      const ins = bestInsert(order, s, trial);
-      if (!ins) continue;
-      const ratio = score(s, order, ins.added);
-      if (!pick || ratio > pick.ratio) pick = { order: ins.order, ratio, s };
-    }
+    const pickMeal = (inWindow: boolean) => {
+      let pick: { order: Stop[]; ratio: number; s: Stop } | null = null;
+      for (const s of input.stops) {   // restaurants skip the rating floor: unrated is normal for them
+        if (!MEAL_PLACES[meal].has(s.category) || order.includes(s) || weight(s.category, s.tier) === 0) continue;
+        const ins = bestInsert(order, s, inWindow ? new Map(mealOf).set(s.id, meal) : mealOf);
+        if (!ins) continue;
+        const ratio = score(s, order, ins.added);
+        if (!pick || ratio > pick.ratio) pick = { order: ins.order, ratio, s };
+      }
+      return pick;
+    };
+    const onTime = pickMeal(true);
+    const pick = onTime ?? pickMeal(false);
     if (!pick) { missedMeals.push(meal); continue; }
-    mealOf.set(pick.s.id, meal);
+    if (onTime) mealOf.set(pick.s.id, meal); else lateMeals.set(pick.s.id, meal);
     order = pick.order;
   }
 
@@ -161,5 +168,5 @@ export function planDetour(input: PlanInput): Plan {
   }
 
   const totalMin = duration(order);
-  return { order, baseMin, totalMin, extraMin: totalMin - baseMin, mealOf, missedMeals, requiredIds, unfitRequired };
+  return { order, baseMin, totalMin, extraMin: totalMin - baseMin, mealOf, lateMeals, missedMeals, requiredIds, unfitRequired };
 }

@@ -49,7 +49,7 @@ import { mealsInTrip } from "./meals.ts";
 const pts2 = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 4, y: 2 }, { x: 6, y: 2 }];
 const travel2 = (a: number, b: number) => Math.abs(pts2[a].x - pts2[b].x) + Math.abs(pts2[a].y - pts2[b].y);
 const two: Stop[] = [
-  { idx: 2, id: 20, category: "cafe", rating: 4.2, dwellMin: 20 },
+  { idx: 2, id: 20, category: "food", rating: 4.2, dwellMin: 20 },
   { idx: 3, id: 30, category: "park", rating: 4.2, dwellMin: 20 },
 ];
 const firstPick = (theme: "food" | "nature", budgetMin = 25) =>
@@ -85,11 +85,23 @@ test("a lunch stop arrives inside the lunch window, even on a nature plan", () =
   expect(p.extraMin).toBeLessThanOrEqual(60);
 });
 
-test("a meal that can't fit is reported, not forced", () => {
+test("a meal the route can't reach in its window still gets a restaurant, at the best time", () => {
   const p = planDetour({ originIdx: 0, destIdx: 1, startMin: 9 * 60, budgetMin: 60, stops: two,
                          travelMin: travel2, meals: ["dinner"] });
-  expect(p.missedMeals).toEqual(["dinner"]);
-  expect([...p.mealOf.values()]).not.toContain("dinner");
+  expect([...p.mealOf.values()]).not.toContain("dinner");      // not in the dinner window...
+  expect([...p.lateMeals.values()]).toEqual(["dinner"]);       // ...but a restaurant is still on the route
+  expect(p.missedMeals).toEqual([]);
+  expect(p.extraMin).toBeLessThanOrEqual(60);
+});
+
+test("a meal stop is a restaurant, not a cafe; reported only when no restaurant fits the budget", () => {
+  const withCafe: Stop[] = [...two, { idx: 3, id: 31, category: "cafe", rating: 5, dwellMin: 10 }];
+  const p = planDetour({ originIdx: 0, destIdx: 1, startMin: 11 * 60 + 25, budgetMin: 60, stops: withCafe,
+                         travelMin: travel2, meals: ["lunch"] });
+  expect(p.order.find((s) => p.mealOf.get(s.id) === "lunch")?.category).toBe("food");
+  const none = planDetour({ originIdx: 0, destIdx: 1, startMin: 11 * 60 + 25, budgetMin: 10, stops: withCafe,
+                            travelMin: travel2, meals: ["lunch"] });
+  expect(none.missedMeals).toEqual(["lunch"]);
 });
 
 test("your mix boosts the kinds your interests cover, like a theme does", () => {

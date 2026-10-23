@@ -59,7 +59,8 @@ export async function verifyRoadPlan(input: {
   let order = [...input.plan.order], adjusted = false, routeErrors = 0;
   // the stop to give up first: the last one that isn't a meal or a place the user picked
   const dropIndex = () => {
-    const discretionary = order.map((s, i) => !input.plan.mealOf.has(s.id) && !input.plan.requiredIds.includes(s.id) ? i : -1)
+    const discretionary = order.map((s, i) => !input.plan.mealOf.has(s.id) && !input.plan.lateMeals.has(s.id)
+      && !input.plan.requiredIds.includes(s.id) ? i : -1)
       .filter((i) => i >= 0);
     return discretionary.at(-1) ?? order.length - 1;
   };
@@ -74,8 +75,9 @@ export async function verifyRoadPlan(input: {
     const clock = scheduleStops(order, road.legMin, input.startMin, input.plan.mealOf);
     if (clock.failed < 0 && clock.totalMin - input.baseline.travelMin <= input.budgetMin + 1e-7) {
       const mealOf = new Map([...input.plan.mealOf].filter(([id]) => order.some((s) => s.id === id)));
-      const lostMeals = [...input.plan.mealOf].filter(([id]) => !order.some((s) => s.id === id)).map(([, meal]) => meal);
-      return { plan: { ...input.plan, order, mealOf,
+      const lostMeals = [...input.plan.mealOf, ...input.plan.lateMeals].filter(([id]) => !order.some((s) => s.id === id)).map(([, meal]) => meal);
+      const lateMeals = new Map([...input.plan.lateMeals].filter(([id]) => order.some((s) => s.id === id)));
+      return { plan: { ...input.plan, order, mealOf, lateMeals,
         baseMin: input.baseline.travelMin, totalMin: clock.totalMin,
         extraMin: Math.max(0, clock.totalMin - input.baseline.travelMin),
         missedMeals: [...new Set([...input.plan.missedMeals, ...lostMeals])],

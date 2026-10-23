@@ -86,6 +86,7 @@ serve(async (req) => {
   if (autoBudget) {
     const direct = baseline?.travelMin ?? estimateMinutes([origin, dest], mode)[0][1];
     budgetMin = Math.min(180, Math.max(45, Math.round(direct / 2 / 15) * 15));
+    budgetMin = Math.min(MAX_BUDGET, budgetMin + 35 * meals.length);   // room to actually sit down and eat
   }
   const maxCandidates = shortTrip ? 16 : MAX_CANDIDATES;
   const { data: cands, error } = baseline
@@ -93,10 +94,11 @@ serve(async (req) => {
       p_geometry: baseline.geometry,
       p_radius_m: Math.min(20000, budgetMin * METERS_PER_MIN[mode] / 2),
       p_budget_min: budgetMin, p_level: level, p_max_n: maxCandidates, p_per_group: shortTrip ? 4 : 5, ...filters,
+      p_meal_slots: meals.length ? 4 : 0,   // nearest restaurants always make the shortlist when a meal is asked for
     })
     : await db.rpc("detour_candidates", {
       o_lat: origin.lat, o_lng: origin.lng, d_lat: dest.lat, d_lng: dest.lng,
-      extra_m: budgetMin * 80, max_n: 16, p_level: level, p_per_group: 4, ...filters,
+      extra_m: budgetMin * 80, max_n: 16, p_level: level, p_per_group: 4, ...filters, p_meal_slots: meals.length ? 4 : 0,
     });
   if (error) { console.error("candidate lookup failed", error); warnings.push("places_unavailable"); }
   // the start and destination themselves aren't detours: drop places within 150 m of either end
@@ -209,8 +211,9 @@ serve(async (req) => {
     let t = startMin, at = 0;
     const ordered = plan.order.map((s, index) => {
       t += matrix[at][s.idx];
-      const meal: Meal | null = plan.mealOf.get(s.id) ?? null;
-      if (meal) t = Math.max(t, MEAL_WINDOWS[meal][0]);
+      const late = plan.lateMeals.get(s.id) ?? null;   // a restaurant for this meal, outside its usual hours
+      const meal: Meal | null = plan.mealOf.get(s.id) ?? late;
+      if (meal && !late) t = Math.max(t, MEAL_WINDOWS[meal][0]);
       const c = byId.get(s.id)!;
       const eta = etaMin![index];
       t += s.dwellMin;
@@ -220,7 +223,7 @@ serve(async (req) => {
         id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng,
         is_partner: c.is_partner, is_demo: c.is_demo,
         rating: c.rating == null ? null : Number(c.rating), price_level: c.price_level, tier: c.tier ?? 2,
-        dwell_min: c.dwell_min, eta_min: eta, meal, picked: mustInclude.includes(c.id),
+        dwell_min: c.dwell_min, eta_min: eta, meal, meal_late: !!late, picked: mustInclude.includes(c.id),
         // exclusive places only reach a route when the member's level opens them
         min_level: c.min_level, exclusive_kind: c.exclusive_kind, perk_text: c.perk_text,
         // field name kept for existing clients; the card is any nearby place, picked by quality
