@@ -103,5 +103,14 @@ class ImportTests(unittest.TestCase):
             self.assertIn("COMMIT;", sql)
 
 
+
+class ChainStores(unittest.TestCase):
+    def test_chain_stores_are_not_local(self):
+        from import_thailand_places import is_chain
+        for name in ("Mini Big C", "Big C", "Big C Samrong", "Lotus's go fresh", "Tesco Lotus", "7-Eleven", "Villa Market", "Tops"):
+            self.assertTrue(is_chain({"name": name}), name)
+        for name in ("Big Chedi", "Lotus Pond", "Tree Tops Dining", "Red Lotus Lake"):
+            self.assertFalse(is_chain({"name": name}), name)
+
 if __name__ == "__main__":
     unittest.main()

@@ -208,3 +208,20 @@ export function planDetour(input: PlanInput): Plan {
   const totalMin = duration(order);
   return { order, baseMin, totalMin, extraMin: totalMin - baseMin, mealOf, lateMeals, missedMeals, requiredIds, unfitRequired };
 }
+
+/**
+ * Minutes a stop adds to a route: the cheapest place to slot point `idx` into `order` (matrix indexes, origin and
+ * destination excluded), plus time spent there. With idx already in `order`, what removing it would save.
+ */
+export function insertionCost(order: number[], idx: number, travelMin: (a: number, b: number) => number,
+  dwellMin: number, originIdx = 0, destIdx = 1): number {
+  const at = order.indexOf(idx);
+  if (at >= 0) {
+    const prev = at === 0 ? originIdx : order[at - 1], next = at === order.length - 1 ? destIdx : order[at + 1];
+    return travelMin(prev, idx) + travelMin(idx, next) - travelMin(prev, next) + dwellMin;
+  }
+  const path = [originIdx, ...order, destIdx];
+  let best = Infinity;
+  for (let i = 0; i < path.length - 1; i++) best = Math.min(best, travelMin(path[i], idx) + travelMin(idx, path[i + 1]) - travelMin(path[i], path[i + 1]));
+  return best + dwellMin;
+}

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { planDetour, type Stop } from "./planner.ts";
+import { planDetour, type Stop, insertionCost } from "./planner.ts";
 import { mixWeight } from "./themes.ts";
 
 // grid world: travel minutes = manhattan distance between points
@@ -215,4 +215,13 @@ test("a plan makes room for one local stop when it fits, and never breaks the bu
   expect(roomy.extraMin).toBeLessThanOrEqual(60);
   const tight = lPlan(18, 1);   // only one stop fits: the landmark may win, and that's fine
   expect(tight.extraMin).toBeLessThanOrEqual(18);
+});
+
+test("insertionCost: cheapest slot plus dwell, and the saving for a stop already in the route", () => {
+  // points on a line: 0 origin at km 0, 1 dest at km 10, 2 at km 5 on the way, 3 at km 5 but 2 km off the road
+  const pos: Record<number, [number, number]> = { 0: [0, 0], 1: [10, 0], 2: [5, 0], 3: [5, 2] };
+  const tm = (a: number, b: number) => Math.hypot(pos[a][0] - pos[b][0], pos[a][1] - pos[b][1]);
+  expect(insertionCost([], 2, tm, 10)).toBeCloseTo(10);          // on the way: no extra road
+  expect(insertionCost([2], 3, tm, 0)).toBeCloseTo(2 + Math.hypot(5, 2) - 5);   // next to stop 2, either side
+  expect(insertionCost([2, 3], 3, tm, 15)).toBeCloseTo(Math.hypot(0, 2) + Math.hypot(5, 2) - 5 + 15);
 });

@@ -1,6 +1,6 @@
 import { admin, HttpError, json, num, requireUser, serve } from "../_shared/http.ts";
 import { type Meal, MEAL_WINDOWS } from "../_shared/meals.ts";
-import { type Plan, planDetour, type Stop } from "../_shared/planner.ts";
+import { insertionCost, type Plan, planDetour, type Stop } from "../_shared/planner.ts";
 import { isInterest, mixWeight, type Tier, THEMES, toTheme } from "../_shared/themes.ts";
 import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan } from "../_shared/road-detour.ts";
 import { createRouter, estimateMinutes, haversineM, type LatLng, matrixMinutes, METERS_PER_MIN, type Mode, type RoadRoute } from "../_shared/valhalla.ts";
@@ -57,11 +57,15 @@ serve(async (req) => {
   const meals: Meal[] = body.meals ?? [];
   if (!Array.isArray(meals) || meals.length > 3 || !meals.every((m) => m in MEAL_WINDOWS)) throw new HttpError(400, "bad_meals");
   const filters = { p_min_rating: minRating, p_unrated: includeUnrated, p_max_price: maxPrice };
-  // places the user picked to visit (up to 3); they go into every plan when they fit
-  const mustInclude: number[] = body.must_include ?? [];
-  if (!Array.isArray(mustInclude) || mustInclude.length > 3 || !mustInclude.every((id) => Number.isInteger(id) && id > 0)) {
-    throw new HttpError(400, "bad_must_include");
-  }
+  // places the user picked or added from "along your route" (up to 6); they go into every plan when they fit
+  const ids = (v: unknown, max: number, code: string): number[] => {
+    if (v == null) return [];
+    if (!Array.isArray(v) || v.length > max || !v.every((id) => Number.isSafeInteger(id) && id > 0)) throw new HttpError(400, code);
+    return v;
+  };
+  // stops the user removed or swapped out: never offered again in this plan
+  const exclude = new Set(ids(body.exclude, 30, "bad_exclude"));
+  const mustInclude = ids(body.must_include, 6, "bad_must_include").filter((id) => !exclude.has(id));
 
   const db = admin();
   const { data: profile } = await db.from("profiles").select("plus_until, member_since").eq("id", user.id).maybeSingle();
@@ -98,17 +102,18 @@ serve(async (req) => {
     ? await db.rpc("route_detour_candidates", {
       p_geometry: baseline.geometry,
       p_radius_m: Math.min(20000, budgetMin * METERS_PER_MIN[mode] / 2),
-      p_budget_min: budgetMin, p_level: level, p_max_n: maxCandidates, p_per_group: shortTrip ? 4 : 5, ...filters,
+      // over-fetch by the excluded count so removed stops don't eat the shortlist (they're dropped below)
+      p_budget_min: budgetMin, p_level: level, p_max_n: maxCandidates + exclude.size, p_per_group: (shortTrip ? 4 : 5) + Math.min(exclude.size, 3), ...filters,
       p_meal_slots: meals.length ? 4 : 0,   // nearest restaurants always make the shortlist when a meal is asked for
       p_segments: SEGMENTS(),
     })
     : await db.rpc("detour_candidates", {
       o_lat: origin.lat, o_lng: origin.lng, d_lat: dest.lat, d_lng: dest.lng,
-      extra_m: budgetMin * 80, max_n: 16, p_level: level, p_per_group: 4, ...filters, p_meal_slots: meals.length ? 4 : 0,
+      extra_m: budgetMin * 80, max_n: 16 + exclude.size, p_level: level, p_per_group: 4 + Math.min(exclude.size, 3), ...filters, p_meal_slots: meals.length ? 4 : 0,
     });
   if (error) { console.error("candidate lookup failed", error); warnings.push("places_unavailable"); }
   // the start and destination themselves aren't detours: drop places within 150 m of either end
-  const candidates = ((cands ?? []) as Candidate[]).filter((c) => haversineM(c, origin) > 150 && haversineM(c, dest) > 150);
+  const candidates = ((cands ?? []) as Candidate[]).filter((c) => !exclude.has(c.id) && haversineM(c, origin) > 150 && haversineM(c, dest) > 150);
   if (mustInclude.length) {
     const { data: picked, error: pErr } = await db.rpc("places_by_ids", { p_ids: mustInclude, p_level: level });
     if (pErr) throw pErr;
@@ -136,6 +141,18 @@ serve(async (req) => {
     matrix = matrix.map((row) => row.map((minutes) => minutes * scale));
   }
   const routing = baseline ? "valhalla" : "estimate";
+
+  // one photo per place for the cards (Wikimedia or the owner's), first one wins
+  const photoOf = new Map<number, string>();
+  if (candidates.length) {
+    const { data: photos, error: phErr } = await db.from("place_photos").select("place_id, url, source").in("place_id", candidates.map((c) => c.id)).order("id");
+    if (phErr) console.error("photos failed", phErr);
+    // owner photos are storage paths in the public shop-photos bucket; Wikimedia ones are full URLs
+    const storage = `${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/`;
+    for (const ph of (photos ?? []) as { place_id: number; url: string; source: string }[]) {
+      if (!photoOf.has(ph.place_id)) photoOf.set(ph.place_id, ph.source === "owner" ? storage + ph.url : ph.url);
+    }
+  }
 
   const stops: Stop[] = candidates.map((c, i) => ({
     idx: i + 2, id: c.id, category: c.category, rating: c.rating == null ? null : Number(c.rating), tier: c.tier ?? 2, dwellMin: c.dwell_min,
@@ -205,7 +222,7 @@ serve(async (req) => {
         nearCache.set(c.id, (data ?? []) as NearPlace[]);
       }
       const best = nearCache.get(c.id)!.find((p) =>
-        !CARD_CATEGORIES.has(p.category) && !inRoute.has(p.id) && ![...cards.values()].some((x) => x.id === p.id));
+        !CARD_CATEGORIES.has(p.category) && !inRoute.has(p.id) && !exclude.has(p.id) && ![...cards.values()].some((x) => x.id === p.id));
       if (best) cards.set(s.id, best);
     }
     return cards;
@@ -230,6 +247,9 @@ serve(async (req) => {
         is_partner: c.is_partner, is_demo: c.is_demo,
         rating: c.rating == null ? null : Number(c.rating), price_level: c.price_level, tier: c.tier ?? 2,
         dwell_min: c.dwell_min, eta_min: eta, meal, meal_late: !!late, picked: mustInclude.includes(c.id),
+        // about how many minutes this stop adds (road detour + time there): what removing it would save
+        extra_min: ((x) => Number.isFinite(x) ? Math.round(x) : null)(insertionCost(plan.order.map((o) => o.idx), s.idx, travelMin, s.dwellMin)),
+        photo: photoOf.get(c.id) ?? null,
         local: !!c.local, otop: !!c.otop, community: !!c.community,
         // exclusive places only reach a route when the member's level opens them
         min_level: c.min_level, exclusive_kind: c.exclusive_kind, perk_text: c.perk_text,
@@ -242,7 +262,17 @@ serve(async (req) => {
       };
     });
 
-    return { ordered, cards, geometry };
+    // "add along your route": the shortlist places this plan left out, cheapest first
+    const inPlan = new Set(plan.order.map((x) => x.id));
+    const along = stops.filter((st) => !inPlan.has(st.id)).map((st) => {
+      const c = byId.get(st.id)!;
+      return { id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng, tier: c.tier ?? 2,
+        rating: c.rating == null ? null : Number(c.rating), local: !!c.local, otop: !!c.otop, community: !!c.community,
+        photo: photoOf.get(c.id) ?? null,
+        extra_min: Math.round(insertionCost(plan.order.map((x) => x.idx), st.idx, travelMin, st.dwellMin)) };
+    }).filter((a) => Number.isFinite(a.extra_min)).sort((a, b) => a.extra_min - b.extra_min).slice(0, 30);
+
+    return { ordered, cards, geometry, along };
   };
 
   const built = await Promise.all(themed.map(build));
@@ -284,7 +314,7 @@ serve(async (req) => {
     warnings: [...new Set(warnings)],
     meals, missed_meals: plan.missedMeals, unfit_required: plan.unfitRequired,
     plans: themed.map((t, i) => ({
-      id: t.id, name: t.name, stops: built[i].ordered, geometry: built[i].geometry,
+      id: t.id, name: t.name, stops: built[i].ordered, geometry: built[i].geometry, along: built[i].along,
       extra_min: Math.round(t.plan.extraMin), total_min: Math.round(t.plan.totalMin), ...split(t),
       meals, missed_meals: t.plan.missedMeals, unfit_required: t.plan.unfitRequired,
     })),

@@ -47,7 +47,10 @@ Request
   - `interests`: up to 6 of `food`, `cafes`, `culture`, `nature`, `shopping`, `landmarks`. Adds a **Your mix** plan (`id: "mix"`) first, boosting (×2) every kind of stop the picks cover. Empty or omitted = no mix plan ("Surprise me"). 400 `bad_interests`.
   - `min_rating`: `0`, `3.5`, `4` (default) or `4.5`. 400 `bad_min_rating`.
   - `include_unrated`: default **true**: unrated places (`rating: null`, most of the OpenStreetMap import) join routes, scored below rated ones (as 3.5/5). `false` = rated places only.
-  - `must_include`: up to 3 place ids the user picked (from `search_places`). They go into every plan when they fit the budget, opening hours and `max_stops`, even below the rating floor; the rest are listed in each plan's `unfit_required`. Stops have `picked: true`. 400 `bad_must_include`.
+  - `must_include`: up to 6 place ids the user picked or added (from `search_places` or a plan's `along`). They go into every plan when they fit the budget, opening hours and `max_stops`, even below the rating floor; the rest are listed in each plan's `unfit_required`. Stops have `picked: true`. 400 `bad_must_include`.
+  - `exclude`: up to 30 place ids never to use (stops the user removed or swapped out). 400 `bad_exclude`.
+  - Editing a plan, the way the web app does it: remove = `must_include` the other current stops + `exclude` the removed one; swap = the same (the planner picks the best replacement); add = `must_include` the current stops + the new place, with more `budget_min` when it doesn't fit. Send `theme` to keep the plan you were on first.
+  - Each stop has `extra_min` (about how many minutes it adds: road detour + time there; null if unknown) and `photo` (a URL or null). Each plan has `along`: up to 30 shortlist places it left out, cheapest first, `{ id, name, name_th, category, lat, lng, tier, rating, local, otop, community, photo, extra_min }` (an estimate: "about +X min").
   - `max_stops`: 1–6 stops per plan; omitted = no cap. Meal stops count. 400 `bad_max_stops`.
   - `max_price`: 0 (free) to 3 (฿฿฿). Drops places whose **known** price is higher; places with no listed price stay. 400 `bad_max_price`.
 - `theme` (optional): `top_picks` (Landmarks), `nature` or `scenic` (Scenic), `culture` (Culture & heritage), `local` (Local gems), `food` or `shopping`. Only reorders `plans` so that one comes first; anything else is 400 `bad_theme`.
@@ -90,7 +93,7 @@ Response
 - Each stop has `tier`: 3 = landmark (must-go: Wikipedia/Wikidata-linked, national parks, heritage, waterfalls, named peaks), 2 = worth a visit, 1 = everyday (cafes, food, crafts). Shown as a Landmark chip for tier 3.
 - Each stop has `rating` (number, or `null` = unrated) and `price_level` (0 free, 1–3 = ฿–฿฿฿, `null` = not listed).
 
-Errors: `not_signed_in` 401, `routing_unavailable` 503, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_mode` / `bad_theme` / `bad_interests` / `bad_min_rating` / `bad_max_stops` / `bad_max_price` / `bad_must_include` / `bad_meals` / `bad_json` 400.
+Errors: `not_signed_in` 401, `routing_unavailable` 503, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_mode` / `bad_theme` / `bad_interests` / `bad_min_rating` / `bad_max_stops` / `bad_max_price` / `bad_must_include` / `bad_exclude` / `bad_meals` / `bad_json` 400.
 
 ## `verify-checkin`
 

@@ -51,12 +51,15 @@ CHAINS = ("cafe amazon", "café amazon", "amazon cafe", "amazon", "inthanin", "p
           "wine connection", "suki teenoi", "the coffee club", "delicafe", "rabika", "pearly tea", "mixue", "dairy queen",
           "mingmitr", "chao doi", "coffee world", "mister donut", "guss damn good", "zen restaurant", "kfc", "mcdonald",
           "burger king", "the pizza company", "pizza company", "chester", "bar b q plaza", "sizzler", "shabushi", "oishi",
-          "after you", "texas chicken", "subway", "dunkin", "au bon pain", "auntie anne", "sukishi", "sushiro", "jollibee")
+          "after you", "texas chicken", "subway", "dunkin", "au bon pain", "auntie anne", "sukishi", "sushiro", "jollibee",
+          # supermarkets and convenience stores ("big c " with the space: "Big Chedi" is a temple)
+          "big c ", "bigc", "mini big c", "lotus's", "tesco lotus", "7-eleven", "seven eleven", "familymart", "family mart",
+          "villa market", "tops ", "makro", "lawson")
 
 
 def is_chain(tags):
     name = (tags.get("name:en") or tags.get("name") or "").casefold().strip()
-    return bool(tags.get("brand") or tags.get("brand:wikidata")) or name == "mk" or name.startswith(CHAINS)
+    return bool(tags.get("brand") or tags.get("brand:wikidata")) or name in ("mk", "big c", "tops") or name.startswith(CHAINS)
 
 
 OTOP_WORDS = ("otop", "โอทอป")
