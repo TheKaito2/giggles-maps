@@ -472,16 +472,6 @@
         }
       }
     },
-    "Giggles Plus: no partner stops on your routes.": {
-      "localizations": {
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Giggles Plus: ไม่มีจุดแวะพาร์ทเนอร์ในเส้นทางของคุณ"
-          }
-        }
-      }
-    },
     "I agree, continue": {
       "localizations": {
         "th": {
@@ -1098,6 +1088,386 @@
           "stringUnit": {
             "state": "translated",
             "value": "รอตรวจ"
+          }
+        }
+      }
+    },
+    "Account": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บัญชี"
+          }
+        }
+      }
+    },
+    "Active until %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใช้งานได้ถึง %@"
+          }
+        }
+      }
+    },
+    "Apple account": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บัญชี Apple"
+          }
+        }
+      }
+    },
+    "Check in to collect your stamp.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เช็คอินเพื่อรับตราประทับ"
+          }
+        }
+      }
+    },
+    "Continue with Google": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ดำเนินการต่อด้วย Google"
+          }
+        }
+      }
+    },
+    "Couldn't open that sticker": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิดสติกเกอร์นี้ไม่ได้"
+          }
+        }
+      }
+    },
+    "Email": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อีเมล"
+          }
+        }
+      }
+    },
+    "Email me a sign-in code": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ส่งรหัสเข้าสู่ระบบทางอีเมล"
+          }
+        }
+      }
+    },
+    "End trip": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จบทริป"
+          }
+        }
+      }
+    },
+    "Enter a valid email address.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กรอกอีเมลให้ถูกต้อง"
+          }
+        }
+      }
+    },
+    "Enter the 6-digit code we sent to %@.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กรอกรหัส 6 หลักที่เราส่งไปที่ %@"
+          }
+        }
+      }
+    },
+    "Get Plus": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สมัคร Plus"
+          }
+        }
+      }
+    },
+    "Giggles Plus": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giggles Plus"
+          }
+        }
+      }
+    },
+    "Manage subscription": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จัดการการสมัคร"
+          }
+        }
+      }
+    },
+    "No active Plus subscription found for this Apple ID.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่พบการสมัคร Plus ที่ใช้งานอยู่สำหรับ Apple ID นี้"
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตกลง"
+          }
+        }
+      }
+    },
+    "Restore purchases": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กู้คืนการซื้อ"
+          }
+        }
+      }
+    },
+    "Scan a shop's QR sticker": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สแกนสติกเกอร์ QR ของร้าน"
+          }
+        }
+      }
+    },
+    "Scan the shop's QR sticker": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สแกนสติกเกอร์ QR ของร้าน"
+          }
+        }
+      }
+    },
+    "Sign in above first, so Plus stays with your account.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เข้าสู่ระบบด้านบนก่อน เพื่อให้ Plus อยู่กับบัญชีของคุณ"
+          }
+        }
+      }
+    },
+    "Sign out": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ออกจากระบบ"
+          }
+        }
+      }
+    },
+    "Sign-in didn't work. Try again.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เข้าสู่ระบบไม่สำเร็จ ลองอีกครั้ง"
+          }
+        }
+      }
+    },
+    "Signed in": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เข้าสู่ระบบแล้ว"
+          }
+        }
+      }
+    },
+    "Start trip": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เริ่มทริป"
+          }
+        }
+      }
+    },
+    "This sticker isn't linked to a place any more.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สติกเกอร์นี้ไม่ได้เชื่อมกับสถานที่แล้ว"
+          }
+        }
+      }
+    },
+    "Trip running: next stop on your Lock Screen, and a nudge when you reach each stop.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทริปกำลังดำเนินอยู่: จุดแวะถัดไปแสดงบนหน้าจอล็อก และมีแจ้งเตือนเมื่อถึงแต่ละจุด"
+          }
+        }
+      }
+    },
+    "Use another email": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใช้อีเมลอื่น"
+          }
+        }
+      }
+    },
+    "Verify code": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยืนยันรหัส"
+          }
+        }
+      }
+    },
+    "With": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ด้วย"
+          }
+        }
+      }
+    },
+    "You're a guest. Sign in to keep your stamps, coupons and Plus on every device.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คุณใช้งานแบบผู้เยี่ยมชม เข้าสู่ระบบเพื่อเก็บตราประทับ คูปอง และ Plus ไว้ทุกเครื่อง"
+          }
+        }
+      }
+    },
+    "You're at %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คุณมาถึง %@ แล้ว"
+          }
+        }
+      }
+    },
+    "your destination": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปลายทาง"
+          }
+        }
+      }
+    },
+    "Privacy policy": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นโยบายความเป็นส่วนตัว"
+          }
+        }
+      }
+    },
+    "not billed: not a partner shop": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่เก็บเงิน: ไม่ใช่ร้านพาร์ทเนอร์"
+          }
+        }
+      }
+    },
+    "Giggles Plus: plan detours up to 240 extra minutes.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giggles Plus: วางแผนทางแวะได้ถึง 240 นาที"
+          }
+        }
+      }
+    },
+    "Detours up to 240 extra minutes, and Plus badges.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทางแวะได้ถึง 240 นาที และเหรียญ Plus"
+          }
+        }
+      }
+    },
+    "Plan detours up to 240 extra minutes, and collect Plus badges.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วางแผนทางแวะได้ถึง 240 นาที และสะสมเหรียญ Plus"
+          }
+        }
+      }
+    },
+    "Longer detours for longer days out.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทางแวะที่ยาวขึ้นสำหรับวันเที่ยวที่ยาวขึ้น"
           }
         }
       }

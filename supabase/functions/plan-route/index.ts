@@ -5,9 +5,12 @@ import { createRouter, type LatLng, type Mode, type RoadRoute } from "../_shared
 interface Candidate {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
   open_min: number | null; close_min: number | null; dwell_min: number; rating: number;
-  paid: boolean; bid_thb: number; progress: number; is_demo: boolean;
+  is_partner: boolean; is_demo: boolean; progress: number;
 }
-interface NearPartner { id: number; name: string; category: string; lat: number; lng: number; bid_thb: number; dist_m: number; is_demo: boolean }
+interface NearPlace {
+  id: number; name: string; category: string; lat: number; lng: number; rating: number;
+  is_partner: boolean; dist_m: number; is_demo: boolean;
+}
 
 const FREE_MAX_BUDGET = 120;
 const PLUS_MAX_BUDGET = 240;
@@ -36,9 +39,8 @@ serve(async (req) => {
 
   const routeRoad = createRouter(Deno.env.get("VALHALLA_URL") ?? "https://valhalla1.openstreetmap.de");
   let baseline: RoadRoute;
-  try {
-    baseline = await routeRoad([origin, dest], mode);
-  } catch (error) {
+  try { baseline = await routeRoad([origin, dest], mode); }
+  catch (error) {
     console.error("baseline routing failed", error);
     throw new HttpError(503, "routing_unavailable");
   }
@@ -47,30 +49,27 @@ serve(async (req) => {
     ? await db.rpc("route_detour_candidates", {
       p_geometry: baseline.geometry,
       p_radius_m: Math.min(20000, budgetMin * (mode === "auto" ? 500 : 80) / 2),
-      p_budget_min: budgetMin, p_allow_paid: !plus,
+      p_budget_min: budgetMin,
     }) : { data: [], error: null };
   if (error) { console.error("candidate lookup failed", error); warnings.push("places_unavailable"); }
   const candidates = (cands ?? []) as Candidate[];
-  const plan = await planRoadDetour({
-    origin, dest, mode, startMin, budgetMin, baseline, candidates, allowPaid: !plus, route: routeRoad,
-  });
+  const plan = await planRoadDetour({ origin, dest, mode, startMin, budgetMin, baseline, candidates, route: routeRoad });
   if (plan.failures) warnings.push("some_detours_unavailable");
   const routing = "valhalla";
 
-  // "Near this spot" cards: best nearby funded partner (relevance x bid) under nature/temple stops
+  // "Near this spot" cards under nature/temple stops: the best nearby place by quality (rating, then
+  // distance), signed up or not. Another park/temple isn't a card; that would be a stop of its own.
   const inRoute = new Set(plan.order.map((s) => s.id));
-  const cards = new Map<number, NearPartner>();
-  if (!plus) {
-    for (const s of plan.order) {
-      if (cards.size >= MAX_CARDS) break;
-      const c = candidates.find((x) => x.id === s.id)!;
-      if (!CARD_CATEGORIES.has(c.category)) continue;
-      const { data } = await db.rpc("partners_near", { p_lat: c.lat, p_lng: c.lng, p_radius_m: 400 });
-      const best = ((data ?? []) as NearPartner[])
-        .filter((p) => !inRoute.has(p.id) && ![...cards.values()].some((x) => x.id === p.id))
-        .sort((a, b) => b.bid_thb / (1 + b.dist_m / 100) - a.bid_thb / (1 + a.dist_m / 100))[0];
-      if (best) cards.set(s.id, best);
-    }
+  const cards = new Map<number, NearPlace>();
+  for (const s of plan.order) {
+    if (cards.size >= MAX_CARDS) break;
+    const c = candidates.find((x) => x.id === s.id)!;
+    if (!CARD_CATEGORIES.has(c.category)) continue;
+    const { data, error: nErr } = await db.rpc("places_near", { p_lat: c.lat, p_lng: c.lng, p_radius_m: 400 });
+    if (nErr) { console.error("nearby places unavailable", nErr); warnings.push("places_unavailable"); continue; }
+    const best = ((data ?? []) as NearPlace[]).find((p) =>
+      !CARD_CATEGORIES.has(p.category) && !inRoute.has(p.id) && ![...cards.values()].some((x) => x.id === p.id));
+    if (best) cards.set(s.id, best);
   }
 
   // ETA per stop for the UI
@@ -80,11 +79,12 @@ serve(async (req) => {
     const card = cards.get(s.id);
     return {
       id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng,
-      is_partner: s.paid, is_demo: c.is_demo,
+      is_partner: c.is_partner, is_demo: c.is_demo,
       rating: Number(c.rating), dwell_min: c.dwell_min, eta_min: eta,
+      // field name kept for existing clients; the card is any nearby place, picked by quality
       nearby_partner: card
         ? { id: card.id, name: card.name, category: card.category, lat: card.lat, lng: card.lng,
-            distance_m: Math.round(card.dist_m), is_demo: card.is_demo }
+            distance_m: Math.round(card.dist_m), is_partner: card.is_partner, is_demo: card.is_demo }
         : null,
     };
   });
@@ -100,10 +100,8 @@ serve(async (req) => {
 
   // impressions: every stop and card shown; the 3 h billing window starts here
   const shown = [
-    ...ordered.map((s, i) => ({ route_id: route.id, user_id: user.id, place_id: s.id, position: i,
-      kind: s.is_partner ? "partner" : "stop", bid_thb: s.is_partner ? Number(plan.order.find((p) => p.id === s.id)!.bid_thb) : 0 })),
-    ...[...cards.values()].map((c) => ({ route_id: route.id, user_id: user.id, place_id: c.id, position: null,
-      kind: "card", bid_thb: Number(c.bid_thb) })),
+    ...ordered.map((s, i) => ({ route_id: route.id, user_id: user.id, place_id: s.id, position: i, kind: "stop" })),
+    ...[...cards.values()].map((c) => ({ route_id: route.id, user_id: user.id, place_id: c.id, position: null, kind: "card" })),
   ];
   if (shown.length) {
     const { error: sErr } = await db.from("route_stops").insert(shown);
@@ -116,6 +114,6 @@ serve(async (req) => {
     extra_min: Math.round(plan.extraMin), budget_min: budgetMin,
     max_budget_min: plus ? PLUS_MAX_BUDGET : FREE_MAX_BUDGET,
     candidates_considered: candidates.length,
-    stops: ordered, geometry, base_geometry: baseline.geometry, warnings,
+    stops: ordered, geometry, base_geometry: baseline.geometry, warnings: [...new Set(warnings)],
   });
 });

@@ -427,3 +427,6 @@ verify_jwt = false
 
 [functions.purge-selfies]
 verify_jwt = false
+
+[functions.apple-notifications]
+verify_jwt = false

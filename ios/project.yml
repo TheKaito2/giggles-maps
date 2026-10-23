@@ -23,12 +23,16 @@ targets:
       - path: GigglesMaps
         excludes:
           - "*.xcconfig"
+          - "*.storekit"
+      - Shared
     configFiles:
       Debug: GigglesMaps/Config.xcconfig
       Release: GigglesMaps/Config.xcconfig
     dependencies:
       - package: Supabase
         product: Supabase
+      - target: GigglesWidgets
+        embed: true
     info:
       path: GigglesMaps/Info.plist
       properties:
@@ -42,6 +46,12 @@ targets:
         NSCameraUsageDescription: Giggles Maps takes one selfie when you check in at a stop. We only check that a face is in the photo.
         NSPhotoLibraryUsageDescription: Pick a selfie from your photos when the camera isn't available.
         NSLocationWhenInUseUsageDescription: Your location sets the start of your route and confirms you're at a stop when you check in.
+        NSLocationAlwaysAndWhenInUseUsageDescription: During a trip, Giggles Maps tells you when you reach a stop, even with the phone in your pocket.
+        NSSupportsLiveActivities: true
+        UIBackgroundModes: [location]
+        CFBundleURLTypes:
+          - CFBundleURLName: com.kristpaul.gigglesmaps.auth
+            CFBundleURLSchemes: [giggles]
         SupabaseHost: $(SUPABASE_HOST)
         SupabaseKey: $(SUPABASE_KEY)
         UISupportedInterfaceOrientations~iphone:
@@ -49,10 +59,30 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kristpaul.gigglesmaps
+        CODE_SIGN_ENTITLEMENTS: GigglesMaps/GigglesMaps.entitlements
+  GigglesWidgets:
+    type: app-extension
+    platform: iOS
+    sources: [GigglesWidgets, Shared]
+    info:
+      path: GigglesWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Giggles Maps
+        CFBundleShortVersionString: "0.1"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kristpaul.gigglesmaps.widgets
+        CODE_SIGN_ENTITLEMENTS: GigglesWidgets/GigglesWidgets.entitlements
   GigglesMapsTests:
     type: bundle.unit-test
     platform: iOS
-    sources: [GigglesMapsTests]
+    sources:
+      - GigglesMapsTests
+      - path: GigglesMaps/GigglesPlus.storekit
+        buildPhase: resources
     dependencies:
       - target: GigglesMaps
     settings:
@@ -64,5 +94,7 @@ schemes:
       targets:
         GigglesMaps: all
         GigglesMapsTests: [test]
+    run:
+      storeKitConfiguration: GigglesMaps/GigglesPlus.storekit
     test:
       targets: [GigglesMapsTests]

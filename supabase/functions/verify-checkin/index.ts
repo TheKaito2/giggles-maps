@@ -1,4 +1,24 @@
+import { verifyAssertion } from "jsr:@bradford-tech/supabase-integrity-attest@0.9.1/assertion";
 import { admin, HttpError, json, num, requireUser, serve } from "../_shared/http.ts";
+
+// iOS App Attest: the app signs "<place_id>|<lat>|<lng>|<selfie_path>" with its registered key.
+// Logged as client.attest_ok only (not enforced yet), so dev and Simulator builds keep working.
+async function checkAttest(db: ReturnType<typeof admin>, userId: string, raw: string | null, data: string): Promise<boolean | null> {
+  if (!raw) return null;
+  try {
+    const { key_id, assertion } = JSON.parse(raw);
+    const { data: key } = await db.from("app_attest_keys").select("public_key_pem, sign_count")
+      .eq("key_id", key_id).eq("user_id", userId).maybeSingle();
+    if (!key) return false;
+    const { signCount } = await verifyAssertion({ appId: "97BS2K8UQ2.com.kristpaul.gigglesmaps" }, assertion,
+      new TextEncoder().encode(data), key.public_key_pem, key.sign_count);
+    await db.from("app_attest_keys").update({ sign_count: signCount }).eq("key_id", key_id);
+    return true;
+  } catch (e) {
+    console.error("attest", e);
+    return false;
+  }
+}
 
 serve(async (req) => {
   const user = await requireUser(req);
@@ -22,6 +42,9 @@ serve(async (req) => {
   };
 
   const db = admin();
+  const attestOk = client.platform === "ios"
+    ? await checkAttest(db, user.id, client.attest, `${placeId}|${lat}|${lng}|${selfiePath ?? ""}`) : null;
+  const clientRecord = { ...client, attest: null, attest_ok: attestOk };   // keep the verdict, not the blob
   // Demo mode lets people outside Sakon Nakhon try check-in with simulated GPS.
   // It can never bill a real shop: away from example places the QR is dropped, so billing says no_qr.
   if (client.demo) {
@@ -38,7 +61,7 @@ serve(async (req) => {
 
   const { data, error } = await db.rpc("record_checkin", {
     p_user: user.id, p_place: placeId, p_lat: lat, p_lng: lng, p_accuracy: accuracy,
-    p_selfie_path: uploaded, p_face_count: faceCount, p_qr: qr, p_client: client,
+    p_selfie_path: uploaded, p_face_count: faceCount, p_qr: qr, p_client: clientRecord,
   });
   if (error?.code === "P0002") throw new HttpError(404, "place_not_found");
   if (error) throw error;

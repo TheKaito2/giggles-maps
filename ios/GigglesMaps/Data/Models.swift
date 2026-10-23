@@ -43,13 +43,47 @@ struct RouteStop: Decodable, Identifiable, Equatable, Sendable {
     }
 }
 
+/// Anything the user can check in at: a route stop, a "Near this spot" card, or a scanned shop sticker.
+struct CheckinTarget: Decodable, Identifiable, Equatable, Sendable {
+    let id: Int
+    let name: String
+    let lat: Double
+    let lng: Double
+    let isPartner: Bool
+    let isDemo: Bool
+    var qrCode: String? = nil      // pre-filled from a scanned sticker
+    enum CodingKeys: String, CodingKey { case id, name, lat, lng, isPartner = "is_partner", isDemo = "is_demo" }
+
+    init(id: Int, name: String, lat: Double, lng: Double, isPartner: Bool, isDemo: Bool, qrCode: String? = nil) {
+        (self.id, self.name, self.lat, self.lng, self.isPartner, self.isDemo, self.qrCode) = (id, name, lat, lng, isPartner, isDemo, qrCode)
+    }
+    init(_ stop: RouteStop) { self.init(id: stop.id, name: stop.name, lat: stop.lat, lng: stop.lng, isPartner: stop.isPartner, isDemo: stop.isDemo) }
+    init(_ card: NearbyPartner) { self.init(id: card.id, name: card.name, lat: card.lat, lng: card.lng, isPartner: card.isPartner ?? true, isDemo: card.isDemo) }
+}
+
+/// A shop's counter sticker: https://giggles-maps.pages.dev/app/?scan=<place_id>-<code>
+struct ShopScan: Equatable, Sendable {
+    let placeId: Int
+    let code: String
+
+    init?(_ url: URL) {
+        guard let value = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "scan" })?.value,
+              let match = value.wholeMatch(of: /(\d+)-([A-Za-z0-9]{2,16})/), let id = Int(match.1) else { return nil }
+        placeId = id
+        code = String(match.2).uppercased()
+    }
+}
+
 struct NearbyPartner: Decodable, Equatable, Sendable {
     let id: Int
     let name: String
     let category: String
+    let lat: Double
+    let lng: Double
     let distanceM: Int
+    let isPartner: Bool?     // v3: the card can be any good nearby place; label only real partners
     let isDemo: Bool
-    enum CodingKeys: String, CodingKey { case id, name, category, distanceM = "distance_m", isDemo = "is_demo" }
+    enum CodingKeys: String, CodingKey { case id, name, category, lat, lng, distanceM = "distance_m", isPartner = "is_partner", isDemo = "is_demo" }
 }
 
 struct RoutePlan: Decodable, Sendable {
@@ -201,6 +235,7 @@ enum Copy {
         case "not_shown_on_route": String(localized: "not billed: stop wasn't on your route in the last 3 hours")
         case "repeat_visit_30d": String(localized: "not billed: repeat visit within 30 days")
         case "wallet_empty": String(localized: "not billed: shop credit empty")
+        case "not_partner": String(localized: "not billed: not a partner shop")
         default: String(localized: "not billed")
         }
     }

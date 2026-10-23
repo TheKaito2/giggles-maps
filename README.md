@@ -1,6 +1,6 @@
 # Giggles Maps
 
-Tell it where you're going and how much extra time you're OK with. It fills that time with the best local stops in Sakon Nakhon (at most one paid Partner stop), and you check in with a selfie to collect stamps. Shops pay only for verified visits.
+Tell it where you're going and how much extra time you're OK with. It fills that time with the best local stops in Sakon Nakhon (ranked on quality only; paying never moves a shop up), and you check in with a selfie to collect stamps. Shops pay only for verified visits.
 
 - Live: https://giggles-maps.pages.dev (landing) · `/app/` (web app) · `/shop/` (shop dashboard)
 - Docs: [architecture](docs/ARCHITECTURE.md) · [API contract](docs/API.md) · [iOS vs Android](docs/PLATFORMS.md) · [Android roadmap](docs/ANDROID-ROADMAP.md) · [monetization plan](docs/MONETIZATION.md)

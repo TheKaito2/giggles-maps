@@ -14,12 +14,11 @@ The selected route's own leg times produce its ETAs and total. No straight-line
 fallback is returned. A baseline routing failure returns 503 `routing_unavailable`.
 Candidate lookup/routing failures preserve the verified direct route with warnings.
 
-Work is capped: six free candidates, two paid candidates, at most two free stops and
-one paid stop, at most thirteen additional route requests, concurrency two, and a
+Work is capped: six quality-ranked candidates and at most three stops, at most thirteen additional route requests, concurrency two, and a
 22-second candidate-search deadline (in-flight requests have an 8-second timeout).
 The baseline request is separate. This is a bounded heuristic, not an exhaustive
-search for every possible detour. The search corridor is capped at 20 km. Paid
-stops cannot remove free stops; Plus has no paid stops. Times are road-travel
+search for every possible detour. The search corridor is capped at 20 km. Partner status, fees, and wallets never enter the ranking. Plus changes the budget
+limit only, consistent with monetization v3 (upstream `98db6b6`). Times are road-travel
 estimates, not a guarantee against traffic or unexpectedly long visits.
 
 The web app accepts Thai/English POI searches, map pins, and `latitude, longitude`.
@@ -46,7 +45,7 @@ The seed skips duplicate normalized name/category/rounded-coordinate records and
 does not overwrite existing OSM IDs, partners, QR codes, bids, or wallets.
 Close duplicates across coordinate rounding boundaries and alternate names may
 still need curation. Way positions are POI centers, not verified entrances; route
-snapping may fail at inaccessible places. OSM coverage varies, and national cafés,
+snapping may fail at inaccessible places. OSM coverage varies, and national cafÃ©s,
 temples and every address are not included in this first extract. Existing local
 records remain. Ratings retain the existing schema's **4.2 placeholder**, not real
 reviews; opening hours remain unknown rather than being fabricated. National
@@ -68,7 +67,7 @@ Do not put raw PBF files in Git. Relations are not imported by the PBF path.
 
 The live app does not change until this branch is reviewed and deployed.
 
-1. Apply migration `20261023000007_thailand_route_corridor.sql` to the shared
+1. Apply migration `20261023000010_thailand_route_corridor.sql` to the shared
    Supabase project, then review/apply `supabase/seed_thailand.sql` using the SQL
    editor or an authenticated database connection (`psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/seed_thailand.sql`).
 2. Deploy the updated `plan-route` Edge Function. Keep its existing authentication.
@@ -95,8 +94,8 @@ python -m unittest discover -s supabase/tools -p 'test_*.py'
 cd web && npm ci && npm run build
 ```
 
-Nine routing regressions cover budget/dwell, destination preservation, free/paid
-priority, Plus, closed/overnight visits, bounded calls, and provider failures.
+Nine routing regressions cover budget/dwell, destination preservation, quality-only
+ranking independent of fees, closed/overnight visits, bounded calls, and provider failures.
 Three importer tests cover classification, duplicate POIs, apostrophe-safe SQL,
 and JSON way centers. Live smoke testing uses the actual `/route` endpoint, not
 a straight-line route mock. No database migration/import or production deployment

@@ -1,8 +1,6 @@
-// Giggles Maps detour planner. The route is never for sale:
-//   phase 1 = free stops chosen on quality (rating x variety) per added minute
-//   phase 2 = at most ONE paid Partner stop, only in the minutes left over,
-//             chosen by relevance x bid (relevance = quality x closeness to the route)
-// Constraints for both: total extra time <= budget, every stop open on arrival, rating >= floor.
+// Giggles Maps detour planner. The route is never for sale: stops are chosen on quality
+// (rating x variety) per added minute. The planner doesn't know which places pay.
+// Constraints: total extra time <= budget, every stop open on arrival, rating >= floor.
 // Greedy insertion + 2-opt; fine for the <=16 candidates the DB prefilter returns.
 
 export interface Stop {
@@ -11,8 +9,6 @@ export interface Stop {
   category: string;
   rating: number;
   dwellMin: number;
-  paid: boolean;        // funded, live partner competing for the single paid slot
-  bidThb: number;
   openMin?: number | null;   // minutes after midnight
   closeMin?: number | null;
 }
@@ -25,12 +21,10 @@ export interface PlanInput {
   stops: Stop[];
   travelMin: (from: number, to: number) => number;
   minRating?: number;
-  allowPaid?: boolean;  // false for Giggles Plus users
 }
 
 export interface Plan {
   order: Stop[];        // chosen stops in visiting order
-  partner: Stop | null; // the paid slot, if any (also inside order)
   baseMin: number;      // origin -> destination with no stops
   totalMin: number;
   extraMin: number;
@@ -39,7 +33,7 @@ export interface Plan {
 const quality = (s: Stop) => s.rating / 5;
 
 export function planDetour(input: PlanInput): Plan {
-  const { originIdx, destIdx, startMin, budgetMin, travelMin, minRating = 4.0, allowPaid = true } = input;
+  const { originIdx, destIdx, startMin, budgetMin, travelMin, minRating = 4.0 } = input;
   const eligible = input.stops.filter((s) => s.rating >= minRating);
 
   const duration = (order: Stop[]): number => {
@@ -90,12 +84,12 @@ export function planDetour(input: PlanInput): Plan {
     return best;
   };
 
-  // phase 1: quality route from free stops; repeated categories count half (variety)
+  // quality route; repeated categories count half (variety)
   let order: Stop[] = [];
   for (;;) {
     let pick: { order: Stop[]; ratio: number } | null = null;
     for (const s of eligible) {
-      if (s.paid || order.includes(s)) continue;
+      if (order.includes(s)) continue;
       const ins = bestInsert(order, s);
       if (!ins) continue;
       const variety = order.some((o) => o.category === s.category) ? 0.5 : 1;
@@ -106,22 +100,6 @@ export function planDetour(input: PlanInput): Plan {
     order = twoOpt(pick.order);
   }
 
-  // phase 2: one paid slot in the leftover minutes; never removes a phase-1 stop
-  let partner: Stop | null = null;
-  if (allowPaid) {
-    let pick: { order: Stop[]; score: number; s: Stop } | null = null;
-    for (const s of eligible) {
-      if (!s.paid || s.bidThb <= 0) continue;
-      const ins = bestInsert(order, s);
-      if (!ins) continue;
-      // a partner right on the route beats a far one: penalise extra travel, not the visit itself
-      const relevance = quality(s) / (1 + Math.max(ins.added - s.dwellMin, 0) / 10);
-      const score = relevance * s.bidThb;
-      if (!pick || score > pick.score) pick = { order: ins.order, score, s };
-    }
-    if (pick) { order = twoOpt(pick.order); partner = pick.s; }
-  }
-
   const totalMin = duration(order);
-  return { order, partner, baseMin, totalMin, extraMin: totalMin - baseMin };
+  return { order, baseMin, totalMin, extraMin: totalMin - baseMin };
 }

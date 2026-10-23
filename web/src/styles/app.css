@@ -120,7 +120,6 @@ html, body, #root { height: 100%; }
   border: 1px dashed var(--marigold); border-radius: 12px; font-size: 14px; }
 .near-label { font: 600 11px var(--font-data); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
 .near-name { font-weight: 600; overflow-wrap: anywhere; }
-.upsell { justify-self: start; }
 
 .spin { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: var(--indigo-soft); width: 100%; }
 .spin.won { background: var(--marigold-soft); box-shadow: inset 0 0 0 2px var(--marigold); }

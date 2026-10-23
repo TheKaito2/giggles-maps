@@ -1,0 +1,63 @@
+{
+  "identifier": "6F0B2A51",
+  "nonRenewingSubscriptions": [],
+  "products": [],
+  "settings": {
+    "_applicationInternalID": "6740000000",
+    "_developerTeamID": "97BS2K8UQ2",
+    "_failTransactionsEnabled": false,
+    "_locale": "en_US",
+    "_storefront": "USA",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [
+    {
+      "id": "21500001",
+      "localizations": [],
+      "name": "Giggles Plus",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "59",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "6740000001",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Detours up to 240 extra minutes and Plus badges.",
+              "displayName": "Giggles Plus",
+              "locale": "en_US"
+            },
+            {
+              "description": "ทางแวะได้ถึง 240 นาที และเหรียญ Plus",
+              "displayName": "Giggles Plus",
+              "locale": "th"
+            }
+          ],
+          "productID": "com.kristpaul.gigglesmaps.plus.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Giggles Plus Monthly",
+          "subscriptionGroupID": "21500001",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
+        }
+      ]
+    }
+  ],
+  "version": {
+    "major": 4,
+    "minor": 0
+  },
+  "appPolicies": {
+    "eula": "",
+    "policies": [
+      {
+        "locale": "en_US",
+        "policyText": "",
+        "policyURL": ""
+      }
+    ]
+  }
+}

@@ -5,17 +5,17 @@ import { createRouter, decodePolyline6, type LatLng, type RoadRoute } from "./va
 
 const origin = { lat: 16.44, lng: 102.83 }, dest = { lat: 17.16, lng: 104.15 };
 const baseline: RoadRoute = { geometry: [[102.83, 16.44], [103, 16.5], [104.15, 17.16]], legMin: [200], travelMin: 200 };
-const stop = (id: number, paid = false): RoadStop => ({
+const stop = (id: number, partner = false): RoadStop & { is_partner: boolean; bid_thb: number } => ({
   id, lat: 16.5 + id / 100, lng: 103 + id / 100, rating: 4.5, category: `category-${id}`,
-  dwell_min: 10, paid, bid_thb: paid ? 12 : 0, progress: id / 10, open_min: null, close_min: null,
+  dwell_min: 10, is_partner: partner, bid_thb: partner ? 12 : 0, progress: id / 10, open_min: null, close_min: null,
 });
 const mockRoute = async (points: LatLng[]): Promise<RoadRoute> => ({
   geometry: points.map((p) => [p.lng, p.lat]),
   travelMin: 200 + (points.length - 2) * 4,
   legMin: Array(points.length - 1).fill((200 + (points.length - 2) * 4) / (points.length - 1)),
 });
-const run = (candidates: RoadStop[], budgetMin = 45, allowPaid = true, route = mockRoute) =>
-  planRoadDetour({ origin, dest, mode: "auto", startMin: 600, budgetMin, baseline, candidates, allowPaid, route });
+const run = (candidates: RoadStop[], budgetMin = 45, route = mockRoute) =>
+  planRoadDetour({ origin, dest, mode: "auto", startMin: 600, budgetMin, baseline, candidates, route });
 
 test("zero budget and empty coverage preserve the real direct road route", async () => {
   for (const p of [await run([stop(1)], 0), await run([])]) {
@@ -28,15 +28,14 @@ test("keeps the actual destination and includes dwell in the hard budget", async
   assert.deepEqual(p.road.geometry.at(-1), [dest.lng, dest.lat]);
   assert.equal(p.totalMin, p.road.travelMin + 20);
 });
-test("free choices survive paid competition; Plus has no paid slots", async () => {
-  const candidates = [stop(1), stop(2), stop(3, true), stop(4, true)];
-  const free = await run(candidates, 60, false), ads = await run(candidates, 60);
-  for (const s of free.order) assert.ok(ads.order.some((p) => p.id === s.id));
-  assert.equal(free.order.filter((s) => s.paid).length, 0);
-  assert.ok(ads.order.filter((s) => s.paid).length <= 1);
+test("partner status and fees never affect quality ranking", async () => {
+  const candidates = [stop(1), stop(2), stop(3), stop(4)];
+  const a = await run(candidates, 60);
+  const b = await run(candidates.map((s) => ({ ...s, is_partner: true, bid_thb: 99999 })), 60);
+  assert.deepEqual(a.order.map((s) => s.id), b.order.map((s) => s.id));
 });
 test("candidate provider outages preserve verified geometry, never a straight-line estimate", async () => {
-  const p = await run([stop(1)], 45, true, async () => { throw Error("timeout"); });
+  const p = await run([stop(1)], 45, async () => { throw Error("timeout"); });
   assert.equal(p.failures, 1); assert.deepEqual(p.road, baseline); assert.equal(p.order.length, 0);
 });
 test("over-budget candidates and closed visits are rejected", async () => {
@@ -51,7 +50,7 @@ test("overnight visits and multi-day arrivals use local clock hours", () => {
 });
 test("provider work and concurrency stay bounded with large candidate input", async () => {
   let active = 0, peak = 0;
-  const p = await run(Array.from({ length: 1000 }, (_, i) => stop(i + 1, i > 499)), 120, true, async (points) => {
+  const p = await run(Array.from({ length: 1000 }, (_, i) => stop(i + 1, i > 499)), 120, async (points) => {
     active++; peak = Math.max(peak, active); await new Promise((resolve) => setTimeout(resolve, 1)); active--;
     return mockRoute(points);
   });

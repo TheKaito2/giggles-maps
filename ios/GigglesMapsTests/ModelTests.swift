@@ -11,6 +11,11 @@ final class ModelTests: XCTestCase {
         // geometry is [lng, lat]: Sakon Nakhon is around lat 17, lng 104
         XCTAssertEqual(plan.line[0].latitude, 17.1, accuracy: 0.2)
         XCTAssertEqual(plan.line[0].longitude, 104.1, accuracy: 0.2)
+        // v3: "Near this spot" cards can be non-partners, and must not be labelled Partner
+        let cards = plan.stops.compactMap(\.nearbyPartner)
+        XCTAssertFalse(cards.isEmpty)
+        XCTAssertTrue(cards.contains { $0.isPartner == false })
+        XCTAssertFalse(CheckinTarget(cards.first { $0.isPartner == false }!).isPartner)
     }
 
     func testRequestUsesSnakeCaseKeys() throws {
