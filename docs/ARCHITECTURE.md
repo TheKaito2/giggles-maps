@@ -30,12 +30,12 @@ Giggles Maps fills the extra time a traveller allows on a trip with local stops 
 
 ## Algorithms
 
-**1. Candidate prefilter (SQL `detour_candidates`).** A stop is possible only if `d(origin,stop) + d(stop,dest) ≤ d(origin,dest) + budget × speed` (an ellipse). Returns the top 15 by `effective_bid × p_checkin`, where a partner whose wallet can't cover its bid drops to 0.
+**1. Candidate prefilter (SQL `detour_candidates`).** A stop is possible only if `d(origin,stop) + d(stop,dest) ≤ d(origin,dest) + budget × speed` (an ellipse). Returns the top 16 by rating (ties: smallest detour first). Partner status and bids are not used.
 
 **2. Detour planner (`_shared/planner.ts`).** One Valhalla time matrix for origin, destination and candidates, then:
-- Phase 1, paid stops: greedy insertion choosing the stop and position with the highest `expected_value / added_minutes`, subject to total extra time ≤ budget, arrival within opening hours, rating ≥ 4.0. After each insertion a 2-opt pass shortens the order.
-- Phase 2, free stops fill whatever budget is left, by rating per added minute.
-- `expected_value = bid × p_checkin × rating / 5` (ad-rank style: bid × conversion × quality).
+- Greedy insertion choosing the stop and position with the highest `quality × variety / added_minutes` (quality = rating / 5; a repeated category counts half), subject to total extra time ≤ budget, arrival within opening hours, rating ≥ 4.0. After each insertion a 2-opt pass shortens the order.
+- The planner never sees whether a place pays (monetization v3: no paid placement).
+- "Near this spot" cards (`places_near`): under park/viewpoint/temple stops, the best place within 400 m by rating then distance, signed up or not.
 
 **3. Conversion estimate (`place_stats` view).** `p_checkin = (verified_visits + 0.3·10) / (impressions + 10)`: Bayesian average with prior 0.3. Every stop shown on a route is an impression (`route_stops`).
 
@@ -53,7 +53,7 @@ Giggles Maps fills the extra time a traveller allows on a trip with local stops 
 - No face recognition or embeddings anywhere.
 - In-app account deletion (`delete-account`), App Store 5.1.1(v).
 - Sign in with Apple must ship on iOS once Google/LINE login exists (4.8).
-- Paid stops are always labelled Partner.
+- Places that pay per visit are always labelled Partner; paying never changes rank.
 
 ## Seed data
 

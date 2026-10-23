@@ -39,14 +39,14 @@ Status key: ✅ backend ready · 🟡 backend partly ready · 🔴 backend not b
 
 ## P2: monetization rebuild and extras (wait for backend 🔴)
 
-The monetization backend is **live** (see `docs/MONETIZATION.md`, `docs/API.md`). Plus via Play Billing still needs a server-side receipt check before launch.
+Monetization v3 (no paid placement; see `docs/MONETIZATION.md`, `docs/API.md`). Plus via Play Billing still needs a server-side receipt check before launch.
 
 | Rank | Feature | Backend |
 |---|---|---|
 | 18 | Counter QR scan at partner stops (ML Kit barcode scanner + code entry fallback; sticker link `/app/?scan=<id>-<code>`) | ✅ |
-| 19 | Quality-first route with max 1 Partner stop + "Near this spot" partner cards under nature/temple stops | ✅ |
+| 19 | Quality-only route (Partner label on any signed-up shop) + "Near this spot" cards under nature/temple stops (Partner label only when the card's `is_partner`) | ✅ |
 | 20 | Free coupon spin after a rewarded check-in, with odds shown + coupon wallet in Passport | ✅ |
-| 21 | **Giggles Plus** subscription (no Partner stops or cards, bigger extra-time limit, cosmetic badges, offline maps later) via Google Play Billing | 🟡 routing ready; Play receipt check not built |
+| 21 | **Giggles Plus** subscription (bigger extra-time limit, cosmetic badges, offline maps later) via Google Play Billing | 🟡 routing ready; Play receipt check not built |
 | 22 | LINE login | 🔴 |
 | 23 | Home-screen widget (Glance): badge count / nearest stop | ✅ |
 | 24 | Push notifications (FCM): new badge, trail updates | 🔴 |

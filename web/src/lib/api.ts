@@ -2,13 +2,16 @@ import { callFn, ensureSession, supabase } from "./supabase";
 
 export interface LatLng { lat: number; lng: number }
 
+// "Near this spot" card: the best nearby place by quality, signed up or not (field name kept from v2)
 export interface NearbyPartner {
-  id: number; name: string; category: string; lat: number; lng: number; distance_m: number; is_demo: boolean;
+  id: number; name: string; category: string; lat: number; lng: number; distance_m: number;
+  is_partner: boolean; is_demo: boolean;
 }
 
 export interface RouteStop {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
-  is_partner: boolean; is_demo: boolean; rating: number; dwell_min: number; eta_min: number;
+  is_partner: boolean; // signed-up shop that pays per verified visit; never affects ranking
+  is_demo: boolean; rating: number; dwell_min: number; eta_min: number;
   nearby_partner: NearbyPartner | null;
 }
 
@@ -19,7 +22,7 @@ export interface RoutePlan {
   stops: RouteStop[]; geometry: [number, number][];
 }
 
-export type Billing = "charged" | "starter_plan" | "no_qr" | "not_shown_on_route" | "repeat_visit_30d"
+export type Billing = "charged" | "no_qr" | "not_shown_on_route" | "repeat_visit_30d"
   | "wallet_empty" | "not_rewarded" | "not_partner";
 
 export interface Spin { won: boolean; odds: number; title?: string; place?: string; code?: string }
@@ -51,7 +54,7 @@ export const verifyCheckin = (p: {
 }) => callFn<CheckinResult>("verify-checkin", p);
 
 // Stripe Checkout (web only). Returns the hosted payment page URL.
-export const startCheckout = (p: { kind: "plus" } | { kind: "starter"; shop_id: string } | { kind: "credit"; shop_id: string; pack: number }) =>
+export const startCheckout = (p: { kind: "plus" } | { kind: "credit"; shop_id: string; pack: number }) =>
   callFn<{ url: string }>("stripe-checkout", p);
 
 export async function getPlusUntil(): Promise<Date | null> {
@@ -80,7 +83,6 @@ export const REASON_TEXT: Record<string, string> = {
 // what happened on the shop's side (shown as "Business view" for the demo)
 export const BILLING_TEXT: Partial<Record<Billing, string>> = {
   charged: "The shop paid its bid for this verified visit.",
-  starter_plan: "The shop is on the Starter plan, so this visit costs it nothing extra.",
   no_qr: "No counter code, so the shop isn't charged.",
   not_shown_on_route: "This shop wasn't on your route in the last 3 hours, so it isn't charged.",
   repeat_visit_30d: "Already counted for this shop in the last 30 days, so it isn't charged again.",

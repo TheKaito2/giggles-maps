@@ -2,10 +2,8 @@ import { admin, HttpError, json, requireUser, serve } from "../_shared/http.ts";
 
 // What can be bought on the web (Stripe). iOS/Android sell Plus through StoreKit / Play Billing instead.
 //   credit  : prepaid visit credit for a shop (each verified visit deducts the shop's bid)
-//   starter : shop Starter plan, flat ฿299 for 30 days, no per-visit charges
-//   plus    : Giggles Plus for a user, 30 days (no Partner stops or cards, longer extra-time limit)
+//   plus    : Giggles Plus for a user, 30 days (longer extra-time limit, cosmetic badges)
 const CREDIT_PACKS = [500, 1000, 3000];
-const STARTER_THB = 299;
 const PLUS_THB = 59;
 
 serve(async (req) => {
@@ -15,7 +13,7 @@ serve(async (req) => {
   if (!/^(sk|rk)_test_/.test(key) && Deno.env.get("STRIPE_LIVE") !== "1") throw new HttpError(503, "live_payments_disabled");
 
   const body = await req.json().catch(() => { throw new HttpError(400, "bad_json"); });
-  const kind = ["credit", "starter", "plus"].includes(body.kind) ? body.kind : "credit";
+  const kind = ["credit", "plus"].includes(body.kind) ? body.kind : "credit";
   const site = Deno.env.get("SITE_URL") ?? "https://giggles-maps.pages.dev";
 
   let amount: number, name: string, back: string;
@@ -28,12 +26,9 @@ serve(async (req) => {
     const shopId = typeof body.shop_id === "string" ? body.shop_id : "";
     const { data: shop } = await admin().from("shops").select("id, name, owner_id, is_demo").eq("id", shopId).maybeSingle();
     if (!shop || (shop.owner_id !== user.id && !shop.is_demo)) throw new HttpError(403, "not_your_shop");
-    if (kind === "starter") { amount = STARTER_THB; name = `Starter plan, 30 days — ${shop.name}`; }
-    else {
-      amount = Number(body.pack);
-      if (!CREDIT_PACKS.includes(amount)) throw new HttpError(400, "bad_pack");
-      name = `Visit credit ฿${amount} — ${shop.name}`;
-    }
+    amount = Number(body.pack);
+    if (!CREDIT_PACKS.includes(amount)) throw new HttpError(400, "bad_pack");
+    name = `Visit credit ฿${amount} — ${shop.name}`;
     back = `${site}/shop/`;
     meta.shop_id = shop.id;
   }

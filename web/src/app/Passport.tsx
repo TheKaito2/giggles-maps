@@ -82,7 +82,6 @@ export default function Passport({ refreshKey, plusUntil }: { refreshKey: number
           {plusUntil ? <span className="chip">Active until {fmtDate(plusUntil)}</span> : <span className="num price-tag">฿{PLUS_THB} / 30 days</span>}
         </div>
         <ul className="fine plus-list">
-          <li>No Partner stops or "Near this spot" cards on your routes</li>
           <li>Extra time up to +240 min (free: +120)</li>
           <li>Plus-only cosmetic badges · offline maps coming soon</li>
         </ul>

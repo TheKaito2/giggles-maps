@@ -10,15 +10,13 @@ interface PlaceStat {
   id: number; name: string; bid_thb: number; qr_code: string | null; last_qr_scan_at: string | null;
   impressions_30d: number; card_impressions_30d: number; visits_30d: number;
 }
-interface Overview { plan: "payg" | "starter"; plan_until: string | null; wallet_thb: number; places: PlaceStat[] }
+interface Overview { wallet_thb: number; places: PlaceStat[] }
 interface Visit { id: number; amount_thb: number; created_at: string; status: "charged" | "disputed"; places: { name: string } | null }
 
 const PACKS = [500, 1000, 3000];
-const STARTER_THB = 299;
 const SITE = "https://giggles-maps.pages.dev";
 const DAY = 86400_000;
 const fmt = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-const fmtDay = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
 function Sticker({ place }: { place: PlaceStat }) {
   const [src, setSrc] = useState("");
@@ -31,7 +29,7 @@ function Sticker({ place }: { place: PlaceStat }) {
         <b>Check in with Giggles Maps</b>
         <span className="num sticker-code">{place.qr_code}</span>
         <span className="fine">Print and stick it at your counter. Visitors scan it to check in.</span>
-        <span className="fine">{place.last_qr_scan_at ? `Last scan ${fmt(place.last_qr_scan_at)}` : "Not scanned yet. Without scans you stop getting routed traffic after 14 days."}</span>
+        <span className="fine">{place.last_qr_scan_at ? `Last scan ${fmt(place.last_qr_scan_at)}` : "Not scanned yet. Visits only count when travellers scan it."}</span>
       </figcaption>
     </figure>
   );
@@ -75,7 +73,6 @@ export default function Shop() {
   useEffect(() => { load().catch(() => setMsg("Couldn't load this shop.")); }, [load]);
 
   const shop = shops.find((s) => s.id === shopId);
-  const starterActive = overview?.plan === "starter" && !!overview.plan_until && new Date(overview.plan_until) > new Date();
   const totals = (overview?.places ?? []).reduce((t, p) => ({
     shown: t.shown + p.impressions_30d, cards: t.cards + p.card_impressions_30d, visits: t.visits + p.visits_30d,
   }), { shown: 0, cards: 0, visits: 0 });
@@ -119,30 +116,23 @@ export default function Shop() {
         <section className="tiles" aria-label="Last 30 days">
           <div className="tile"><span className="fine">Shown on routes (30 days)</span><b className="num">{totals.shown}</b><span className="fine num">{totals.cards} as "Near this spot" cards</span></div>
           <div className="tile"><span className="fine">Verified visits (30 days)</span><b className="num">{totals.visits}</b></div>
-          <div className="tile"><span className="fine">Plan</span><b>{starterActive ? "Starter" : "Pay per visit"}</b>
-            <span className="fine">{starterActive ? `until ${fmtDay(overview!.plan_until!)}` : `bid ฿${overview?.places[0]?.bid_thb ?? 0} per visit`}</span></div>
+          <div className="tile"><span className="fine">Price per visit</span><b className="num">฿{overview?.places[0]?.bid_thb ?? 0}</b>
+            <span className="fine">only for verified visits</span></div>
           <div className="tile"><span className="fine">Credit left</span><b className="num">฿{Number(overview?.wallet_thb ?? 0).toLocaleString()}</b><span className="fine num">฿{spent.toLocaleString()} spent</span></div>
         </section>
 
         <section className="stack">
           <h2>How you pay</h2>
           <div className="plans">
-            <article className={`plan ${!starterActive ? "current" : ""}`}>
+            <article className="plan current">
               <h3>Pay per visit</h3>
               <p className="fine">Prepaid credit. Your bid is taken only for a verified visit: counter QR scan + GPS within 60 m + selfie, from someone shown your shop in the last 3 hours, once per person per 30 days.</p>
               <div className="row">
                 {PACKS.map((p) => <button key={p} className="btn gold" onClick={() => pay({ kind: "credit", shop_id: shopId, pack: p })} disabled={!shopId}>Add <span className="num">฿{p.toLocaleString()}</span></button>)}
               </div>
             </article>
-            <article className={`plan ${starterActive ? "current" : ""}`}>
-              <h3>Starter <span className="num">฿{STARTER_THB} / 30 days</span></h3>
-              <p className="fine">Flat price, no per-visit charges. Same verification rules, so visits still show up here.</p>
-              <button className="btn" onClick={() => pay({ kind: "starter", shop_id: shopId })} disabled={!shopId}>
-                {starterActive ? "Add 30 more days" : "Switch to Starter"}
-              </button>
-            </article>
           </div>
-          <p className="fine">Card or PromptPay via Stripe. The route is never for sale: at most one Partner stop per route, only in the traveller's spare minutes, chosen by how close you are to the route × your bid.</p>
+          <p className="fine">Card or PromptPay via Stripe. No monthly fee: no visits, no charge. The route is never for sale: travellers see your shop only when it ranks on quality, the same as places that don't pay. Signing up gets you this dashboard, your counter sticker, deals in the free coupon spin and, soon, bookings.</p>
           {msg && <p className="notice" role="status">{msg}</p>}
         </section>
 

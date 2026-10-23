@@ -15,7 +15,7 @@ const PLUS_MAX = 240;
 const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(Math.round(m) % 60).padStart(2, "0")}`;
 const CATEGORY: Record<string, string> = { cafe: "Café", food: "Food", craft: "Craft shop", temple: "Temple", park: "Park", museum: "Museum", market: "Market", viewpoint: "Viewpoint", art: "Art" };
-const PARTNER_TIP = "This shop pays Giggles Maps when you visit. It only gets your spare minutes and never replaces a better free stop.";
+const PARTNER_TIP = "This shop pays Giggles Maps when you visit. It's ranked like every other place; paying never moves it up.";
 
 export default function App() {
   const [tab, setTab] = useState<"plan" | "passport">("plan");
@@ -80,8 +80,6 @@ export default function App() {
     setSelected(id);
     document.getElementById(`stop-${id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, []);
-
-  const hasAds = !!plan && plan.stops.some((s) => s.is_partner || s.nearby_partner);
 
   return (
     <div className="shell">
@@ -172,17 +170,14 @@ export default function App() {
                             <span className="near-label">Near this spot</span>
                             <span className="near-name">{s.nearby_partner.name}</span>
                             <span className="fine num">{s.nearby_partner.distance_m} m</span>
-                            <span className="chip partner" title={PARTNER_TIP}>{s.nearby_partner.is_demo ? "Example partner" : "Partner"}</span>
-                            <button className="link" onClick={() => setCheckin({ target: { ...s.nearby_partner!, is_partner: true } })}>Check in</button>
+                            {s.nearby_partner.is_partner && <span className="chip partner" title={PARTNER_TIP}>{s.nearby_partner.is_demo ? "Example partner" : "Partner"}</span>}
+                            <button className="link" onClick={() => setCheckin({ target: s.nearby_partner! })}>Check in</button>
                           </div>
                         )}
                       </li>
                     ))}
                   </ol>
-                  <p className="fine">Stops are picked for quality first. At most one Partner stop, and only in your spare minutes.</p>
-                  {hasAds && !plusUntil && (
-                    <button className="link upsell" onClick={() => setTab("passport")}>Hide Partner stops with Giggles Plus</button>
-                  )}
+                  <p className="fine">Stops are picked on quality only. Partner shops rank like everyone else.</p>
                 </div>
               )}
             </div>
