@@ -5,8 +5,18 @@ export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
 );
 
+// Once per page load: a stored session can belong to a user the server deleted (account deleted elsewhere,
+// demo reset). Every call and sign-in would then fail with "User from sub claim in JWT does not exist", so drop it.
+const dropDeletedUser = (async () => {
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) return;
+  const { error } = await supabase.auth.getUser();
+  if (error?.code === "user_not_found" || /sub claim/i.test(error?.message ?? "")) await supabase.auth.signOut({ scope: "local" });
+})().catch(() => { /* offline: keep the session */ });
+
 // Anyone can try the app instantly: sign in anonymously, upgrade to email later.
 export async function ensureSession(): Promise<Session> {
+  await dropDeletedUser;
   const { data } = await supabase.auth.getSession();
   if (data.session) return data.session;
   const { data: anon, error } = await supabase.auth.signInAnonymously();

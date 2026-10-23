@@ -12,9 +12,20 @@ enum Backend {
                               options: .init(auth: .init(redirectToURL: Account.redirect, emitLocalSessionAsInitialSession: true)))
     }()
 
+    /// Once per launch: a stored session can belong to a user the server deleted (account deleted elsewhere, demo
+    /// reset). Every call and every sign-in would then fail with "User from sub claim in JWT does not exist", so drop it.
+    private static let dropDeletedUser = Task {
+        guard client.auth.currentUser != nil else { return }
+        do { _ = try await client.auth.user() }
+        catch let error as AuthError where error.errorCode == .userNotFound || "\(error)".contains("sub claim") {
+            try? await client.auth.signOut(scope: .local)
+        } catch { /* offline or a server hiccup: keep the session */ }
+    }
+
     /// Anyone can try the app instantly with an anonymous account.
     @discardableResult
     static func ensureSession() async throws -> UUID {
+        await dropDeletedUser.value
         if let user = client.auth.currentUser { return user.id }
         return try await client.auth.signInAnonymously().user.id
     }
