@@ -23,20 +23,39 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.1</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.kristpaul.gigglesmaps.auth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>giggles</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Giggles Maps takes one selfie when you check in at a stop. We only check that a face is in the photo.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>During a trip, Giggles Maps tells you when you reach a stop, even with the phone in your pocket.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Your location sets the start of your route and confirms you're at a stop when you check in.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Pick a selfie from your photos when the camera isn't available.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>SupabaseHost</key>
 	<string>$(SUPABASE_HOST)</string>
 	<key>SupabaseKey</key>
 	<string>$(SUPABASE_KEY)</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations~iphone</key>

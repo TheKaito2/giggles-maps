@@ -1,0 +1,10 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["97BS2K8UQ2.com.kristpaul.gigglesmaps"],
+        "components": [{ "/": "/app/*", "?": { "scan": "*" }, "comment": "shop QR sticker opens check-in" }]
+      }
+    ]
+  }
+}

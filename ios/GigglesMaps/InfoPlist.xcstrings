@@ -41,6 +41,16 @@
           }
         }
       }
+    },
+    "NSLocationAlwaysAndWhenInUseUsageDescription": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ระหว่างทริป Giggles Maps จะแจ้งเมื่อคุณถึงจุดแวะ แม้โทรศัพท์อยู่ในกระเป๋า"
+          }
+        }
+      }
     }
   }
 }

@@ -8,7 +8,8 @@ enum Backend {
         let info = Bundle.main.infoDictionary
         let host = info?["SupabaseHost"] as? String ?? ""
         let key = info?["SupabaseKey"] as? String ?? ""
-        return SupabaseClient(supabaseURL: URL(string: "https://\(host)")!, supabaseKey: key)
+        return SupabaseClient(supabaseURL: URL(string: "https://\(host)")!, supabaseKey: key,
+                              options: .init(auth: .init(redirectToURL: Account.redirect, emitLocalSessionAsInitialSession: true)))
     }()
 
     /// Anyone can try the app instantly with an anonymous account.
@@ -33,9 +34,31 @@ enum Backend {
         try await call("verify-checkin", request)
     }
 
+    /// Resolves a scanned sticker to the place it belongs to (public RPC; the code itself is checked at check-in).
+    static func place(for scan: ShopScan) async throws -> CheckinTarget {
+        var place = try await place(id: scan.placeId)
+        place.qrCode = scan.code
+        return place
+    }
+
+    static func place(id: Int) async throws -> CheckinTarget {
+        try await ensureSession()
+        let rows: [CheckinTarget] = try await client.rpc("place_for_checkin", params: ["p_id": id]).execute().value
+        guard let place = rows.first else { throw APIError(code: "place_not_found") }
+        return place
+    }
+
+    static func applePlus(jws: String) async throws {
+        struct Out: Decodable { let plus_until: String? }
+        let _: Out = try await call("apple-plus", ["jws": jws])
+    }
+
     static func deleteAccount() async throws {
         try await ensureSession()
-        try await client.functions.invoke("delete-account", options: FunctionInvokeOptions(body: [String: String]()))
+        // an Apple account confirms once more, for a fresh code the server uses to revoke Apple's token
+        let viaApple = client.auth.currentUser?.identities?.contains { $0.provider == "apple" } ?? false
+        let code = viaApple ? try await AppleReauth.authorizationCode() : ""
+        try await client.functions.invoke("delete-account", options: FunctionInvokeOptions(body: ["apple_authorization_code": code]))
         try? await client.auth.signOut()
     }
 
@@ -68,6 +91,7 @@ struct APIError: LocalizedError {
         case "demo_only_at_example_places": String(localized: "Simulated location only works at example partner places.")
         case let c where c.hasPrefix("bad_"): String(localized: "Pick a start and destination inside Thailand.")
         case "not_signed_in": String(localized: "Your session ended. Close and reopen the app.")
+        case "place_not_found": String(localized: "This sticker isn't linked to a place any more.")
         default: String(localized: "Something went wrong. Try again in a moment.")
         }
     }

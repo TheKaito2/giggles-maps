@@ -5,9 +5,12 @@ struct PlanView: View {
     @State private var model = PlanModel()
     @State private var camera: MapCameraPosition = .region(MKCoordinateRegion(
         center: .init(latitude: 17.163, longitude: 104.149), latitudinalMeters: 4200, longitudinalMeters: 4200))
-    @State private var checkinStop: RouteStop?
+    @Binding var checkinTarget: CheckinTarget?
     @State private var selected: Int?
     var onCheckedIn: () -> Void = {}
+    var onScan: (URL) -> Void = { _ in }
+    @State private var showScanner = false
+    @State private var trip = TripModel.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,8 +23,18 @@ struct PlanView: View {
             .background(Theme.card)
         }
         .background(Theme.paper)
-        .sheet(item: $checkinStop) { stop in
-            CheckInView(stop: stop, onDone: onCheckedIn)
+        .fullScreenCover(isPresented: $showScanner) {
+            ZStack(alignment: .topTrailing) {
+                QRScanner { url in showScanner = false; onScan(url) }.ignoresSafeArea()
+                Button("Close") { showScanner = false }
+                    .padding(10).background(.thinMaterial, in: Capsule()).padding()
+            }
+        }
+        .sheet(item: $checkinTarget) { target in
+            CheckInView(stop: target, onDone: {
+                onCheckedIn()
+                Task { await trip.checkedIn(placeId: target.id) }
+            })
                 .presentationDetents([.large])
         }
     }
@@ -59,6 +72,12 @@ struct PlanView: View {
 
     private var panel: some View {
         VStack(alignment: .leading, spacing: 14) {
+            if QRScanner.isAvailable {
+                Button { showScanner = true } label: {
+                    Label("Scan a shop's QR sticker", systemImage: "qrcode.viewfinder").font(.subheadline.weight(.semibold))
+                }
+                .tint(Theme.indigo)
+            }
             pointRow(label: "Start", pin: Pin(text: "A", color: Theme.good)) {
                 Button("Set on map") { model.picking = .origin }
                 Button("Use my location") { Task { await model.useMyLocation() } }
@@ -149,7 +168,7 @@ struct PlanView: View {
                     if stop.isPartner { Chip(text: stop.isDemo ? String(localized: "Example partner") : String(localized: "Partner"), partner: true).fixedSize() }
                 }
                 Spacer(minLength: 0)
-                Button("Check in") { checkinStop = stop }
+                Button("Check in") { checkinTarget = CheckinTarget(stop) }
                     .font(.subheadline.weight(.semibold))
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .background(Theme.indigo, in: Capsule()).foregroundStyle(Theme.onIndigo)
@@ -167,10 +186,21 @@ struct PlanView: View {
                     }
                     Spacer(minLength: 0)
                     Chip(text: card.isDemo ? String(localized: "Example partner") : String(localized: "Partner"), partner: true)
+                    Button("Check in") { checkinTarget = CheckinTarget(card) }.font(.footnote.weight(.semibold))
                 }
                 .padding(.horizontal, 12).padding(.vertical, 8)
                 .background(Theme.marigoldSoft.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
                 .padding(.leading, 42)
+            }
+        }
+        if !plan.stops.isEmpty {
+            if trip.running {
+                Button("End trip", role: .destructive) { Task { await trip.end() } }.frame(maxWidth: .infinity)
+                Text("Trip running: next stop on your Lock Screen, and a nudge when you reach each stop.")
+                    .font(.footnote).foregroundStyle(Theme.ink2)
+            } else {
+                Button("Start trip") { Task { await trip.start(plan, destination: String(localized: "your destination")) } }
+                    .buttonStyle(PrimaryButtonStyle())
             }
         }
         if plan.plus == true {

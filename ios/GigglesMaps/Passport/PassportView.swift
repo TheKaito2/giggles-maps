@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 struct PassportView: View {
     var refreshKey: Int
@@ -55,6 +56,9 @@ struct PassportView: View {
                     }
                 }
 
+                AccountSection()
+                PlusSection(refreshKey: refreshKey)
+
                 Section {
                     if confirmDelete {
                         Text("This deletes your account, check-ins, badges and selfies. It can't be undone.").font(.footnote)
@@ -64,6 +68,7 @@ struct PassportView: View {
                         Button("Delete my account", role: .destructive) { confirmDelete = true }
                     }
                     if let message { Text(message).font(.footnote).foregroundStyle(Theme.ink2) }
+                    Link("Privacy policy", destination: URL(string: "https://giggles-maps.pages.dev/privacy")!).font(.footnote)
                 }
             }
             .navigationTitle("Your passport")
@@ -79,6 +84,12 @@ struct PassportView: View {
             recent = p.checkins
             visited = Set(p.checkins.filter(\.rewarded).map(\.placeId))
             badges = p.badges
+            // home-screen widget: stamps + the unfinished trail closest to done
+            let best = p.collections.filter { !p.badges.contains($0.id) }
+                .max { $0.progress(visited: visited) * 100 / $0.requiredCount < $1.progress(visited: visited) * 100 / $1.requiredCount }
+            PassportSnapshot(stamps: visited.count, trailName: best?.name, trailHave: best?.progress(visited: visited) ?? 0,
+                             trailNeed: best?.requiredCount ?? 0).save()
+            WidgetCenter.shared.reloadAllTimelines()
         } catch {
             message = String(localized: "Couldn't load your passport. Check your connection.")
         }

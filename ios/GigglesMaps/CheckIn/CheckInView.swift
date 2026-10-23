@@ -2,7 +2,7 @@ import PhotosUI
 import SwiftUI
 
 struct CheckInView: View {
-    let stop: RouteStop
+    let stop: CheckinTarget
     var onDone: () -> Void = {}
 
     private enum Step { case consent, capture, working(String), result(CheckinResult), failed(String) }
@@ -11,6 +11,7 @@ struct CheckInView: View {
     @State private var step: Step = .capture
     @State private var demo = false
     @State private var qrCode = ""
+    @State private var showScanner = false
     @State private var showCamera = false
     @State private var photo: PhotosPickerItem?
     @Environment(\.dismiss) private var dismiss
@@ -24,7 +25,17 @@ struct CheckInView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
-        .onAppear { if !consented { step = .consent } }
+        .onAppear {
+            if !consented { step = .consent }
+            if let code = stop.qrCode { qrCode = code }
+        }
+        .sheet(isPresented: $showScanner) {
+            QRScanner { url in
+                if let scan = ShopScan(url), scan.placeId == stop.id { qrCode = scan.code }
+                showScanner = false
+            }
+            .ignoresSafeArea()
+        }
         .fullScreenCover(isPresented: $showCamera) {
             SelfieCamera { image in Task { await submit(image) } }.ignoresSafeArea()
         }
@@ -53,9 +64,15 @@ struct CheckInView: View {
         case .capture:
             if stop.isPartner {
                 VStack(alignment: .leading, spacing: 4) {
-                    TextField("Counter code (under the QR sticker)", text: $qrCode)
-                        .textInputAutocapitalization(.characters).autocorrectionDisabled()
-                        .padding(10).background(Theme.indigoSoft, in: RoundedRectangle(cornerRadius: 10))
+                    HStack {
+                        TextField("Counter code (under the QR sticker)", text: $qrCode)
+                            .textInputAutocapitalization(.characters).autocorrectionDisabled()
+                        if QRScanner.isAvailable {
+                            Button { showScanner = true } label: { Image(systemName: "qrcode.viewfinder").font(.title3) }
+                                .accessibilityLabel("Scan the shop's QR sticker")
+                        }
+                    }
+                    .padding(10).background(Theme.indigoSoft, in: RoundedRectangle(cornerRadius: 10))
                     Text(stop.isDemo ? "Example shops use the code DEMO." : "Ask the counter or scan the sticker with your camera.")
                         .font(.footnote).foregroundStyle(Theme.ink2)
                 }
@@ -113,10 +130,11 @@ struct CheckInView: View {
             let path = try await Backend.uploadSelfie(jpeg)
 
             step = .working(String(localized: "Checking…"))
+            let attest = await AppAttest.assertion(placeId: stop.id, lat: lat, lng: lng, selfiePath: path)
             let result = try await Backend.verifyCheckin(CheckinRequest(
                 placeId: stop.id, lat: lat, lng: lng, accuracyM: accuracy, selfiePath: path, faceCount: faces,
                 qrCode: qrCode.isEmpty ? nil : qrCode,
-                client: CheckinClient(isMock: isMock, attest: nil, demo: demo)))
+                client: CheckinClient(isMock: isMock, attest: attest, demo: demo)))
             step = .result(result)
             onDone()
         } catch {
