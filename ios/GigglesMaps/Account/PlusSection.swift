@@ -45,10 +45,10 @@ struct PlusSection: View {
             if let until {
                 Label("Active until \(until.formatted(date: .abbreviated, time: .omitted))", systemImage: "checkmark.seal.fill")
                     .foregroundStyle(Theme.good)
-                Text("No partner stops or cards on your routes, and up to 240 extra minutes.").font(.footnote).foregroundStyle(Theme.ink2)
+                Text("Detours up to 240 extra minutes, and Plus badges.").font(.footnote).foregroundStyle(Theme.ink2)
                 Button("Manage subscription") { Task { await manage() } }
             } else {
-                Text("No partner stops or cards on your routes, up to 240 extra minutes, and Plus badges.")
+                Text("Plan detours up to 240 extra minutes, and collect Plus badges.")
                     .font(.footnote).foregroundStyle(Theme.ink2)
                 if account.isGuest {
                     Text("Sign in above first, so Plus stays with your account.").font(.footnote).foregroundStyle(Theme.ink2)
@@ -64,7 +64,7 @@ struct PlusSection: View {
             SubscriptionStoreView(productIDs: [Plus.productID]) {
                 VStack(spacing: 8) {
                     Text("Giggles Plus").font(Theme.display(30)).foregroundStyle(Theme.indigo)
-                    Text("Routes with only the places you'd pick yourself.").multilineTextAlignment(.center)
+                    Text("Longer detours for longer days out.").multilineTextAlignment(.center)
                 }
                 .padding()
             }

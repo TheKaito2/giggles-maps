@@ -24,14 +24,14 @@ Got 30 spare minutes? Spend them somewhere local.
 Tell Giggles Maps where you're going and how much extra time you're happy to add. It fills that time with Sakon Nakhon's indigo cloth shops, cafés, temples and parks, with real walking or driving times, and it never goes over your limit.
 
 • Set your extra time, from 0 to 2 hours
-• Routes picked for quality and variety; at most one partner stop, always labelled
+• Routes picked for quality and variety; partner shops are always labelled
 • Check in with a selfie at each stop to stamp your passport
 • Collect trails: Temple Trail, Café Hopper, Indigo & Silk, City Explorer
 • Free coupon spin after a check-in, with the odds shown
 • Trip mode: next stop on your Lock Screen and a nudge when you arrive
 • Scan a shop's QR sticker to check in instantly
 
-Giggles Plus removes partner stops and lets you plan detours up to 4 hours.
+Giggles Plus lets you plan detours up to 4 hours and adds Plus badges.
 
 Selfies only check that a face is in the photo; no face recognition. They are private and deleted after 30 days.
 
@@ -42,14 +42,14 @@ Selfies only check that a face is in the photo; no face recognition. They are pr
 บอก Giggles Maps ว่าจะไปไหนและเพิ่มเวลาได้เท่าไร แอปจะเติมเวลานั้นด้วยร้านผ้าคราม คาเฟ่ วัด และสวนในสกลนคร พร้อมเวลาเดินหรือขับรถจริง และไม่เกินเวลาที่คุณตั้งไว้
 
 • ตั้งเวลาเพิ่มได้ 0 ถึง 2 ชั่วโมง
-• เส้นทางเลือกจากคุณภาพและความหลากหลาย มีจุดแวะพาร์ทเนอร์ไม่เกินหนึ่งจุด และติดป้ายชัดเจน
+• เส้นทางเลือกจากคุณภาพและความหลากหลาย ร้านพาร์ทเนอร์ติดป้ายชัดเจนเสมอ
 • เซลฟี่เช็คอินที่แต่ละจุดเพื่อรับตราประทับในพาสปอร์ต
 • สะสมเส้นทาง: วัด คาเฟ่ ผ้าครามและไหม และสำรวจเมือง
 • หมุนคูปองฟรีหลังเช็คอิน แสดงโอกาสชัดเจน
 • โหมดทริป: จุดแวะถัดไปบนหน้าจอล็อก และแจ้งเตือนเมื่อถึง
 • สแกนสติกเกอร์ QR ของร้านเพื่อเช็คอินทันที
 
-Giggles Plus ไม่มีจุดแวะพาร์ทเนอร์ และวางแผนทางแวะได้ถึง 4 ชั่วโมง
+Giggles Plus วางแผนทางแวะได้ถึง 4 ชั่วโมง และได้เหรียญ Plus
 
 ## Keywords (100)
 

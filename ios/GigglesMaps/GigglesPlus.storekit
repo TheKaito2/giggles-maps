@@ -26,12 +26,12 @@
           "introductoryOffer": null,
           "localizations": [
             {
-              "description": "No partner stops, longer detours, Plus badges.",
+              "description": "Detours up to 240 extra minutes and Plus badges.",
               "displayName": "Giggles Plus",
               "locale": "en_US"
             },
             {
-              "description": "ไม่มีจุดแวะพาร์ทเนอร์ ทางแวะยาวขึ้น และเหรียญ Plus",
+              "description": "ทางแวะได้ถึง 240 นาที และเหรียญ Plus",
               "displayName": "Giggles Plus",
               "locale": "th"
             }

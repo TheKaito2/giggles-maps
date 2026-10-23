@@ -472,16 +472,6 @@
         }
       }
     },
-    "Giggles Plus: no partner stops on your routes.": {
-      "localizations": {
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Giggles Plus: ไม่มีจุดแวะพาร์ทเนอร์ในเส้นทางของคุณ"
-          }
-        }
-      }
-    },
     "I agree, continue": {
       "localizations": {
         "th": {
@@ -1252,26 +1242,6 @@
         }
       }
     },
-    "No partner stops or cards on your routes, and up to 240 extra minutes.": {
-      "localizations": {
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ไม่มีจุดแวะหรือการ์ดพาร์ทเนอร์ในเส้นทาง และเพิ่มเวลาได้ถึง 240 นาที"
-          }
-        }
-      }
-    },
-    "No partner stops or cards on your routes, up to 240 extra minutes, and Plus badges.": {
-      "localizations": {
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ไม่มีจุดแวะหรือการ์ดพาร์ทเนอร์ในเส้นทาง เพิ่มเวลาได้ถึง 240 นาที และเหรียญ Plus"
-          }
-        }
-      }
-    },
     "OK": {
       "localizations": {
         "th": {
@@ -1288,16 +1258,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "กู้คืนการซื้อ"
-          }
-        }
-      }
-    },
-    "Routes with only the places you'd pick yourself.": {
-      "localizations": {
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "เส้นทางที่มีแต่ที่ที่คุณอยากแวะเอง"
           }
         }
       }
@@ -1458,6 +1418,56 @@
           "stringUnit": {
             "state": "translated",
             "value": "นโยบายความเป็นส่วนตัว"
+          }
+        }
+      }
+    },
+    "not billed: not a partner shop": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่เก็บเงิน: ไม่ใช่ร้านพาร์ทเนอร์"
+          }
+        }
+      }
+    },
+    "Giggles Plus: plan detours up to 240 extra minutes.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giggles Plus: วางแผนทางแวะได้ถึง 240 นาที"
+          }
+        }
+      }
+    },
+    "Detours up to 240 extra minutes, and Plus badges.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทางแวะได้ถึง 240 นาที และเหรียญ Plus"
+          }
+        }
+      }
+    },
+    "Plan detours up to 240 extra minutes, and collect Plus badges.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วางแผนทางแวะได้ถึง 240 นาที และสะสมเหรียญ Plus"
+          }
+        }
+      }
+    },
+    "Longer detours for longer days out.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทางแวะที่ยาวขึ้นสำหรับวันเที่ยวที่ยาวขึ้น"
           }
         }
       }

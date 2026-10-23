@@ -179,13 +179,15 @@ struct PlanView: View {
 
             if let card = stop.nearbyPartner {
                 HStack(spacing: 8) {
-                    Image(systemName: "cup.and.saucer").foregroundStyle(Theme.marigold)
+                    Image(systemName: "mappin.and.ellipse").foregroundStyle(Theme.marigold)
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Near this spot: \(card.name)").font(.subheadline.weight(.semibold))
                         Text("\(Copy.category(card.category)) · \(card.distanceM) m away").font(.footnote).foregroundStyle(Theme.ink2)
                     }
                     Spacer(minLength: 0)
-                    Chip(text: card.isDemo ? String(localized: "Example partner") : String(localized: "Partner"), partner: true)
+                    if card.isPartner ?? true {
+                        Chip(text: card.isDemo ? String(localized: "Example partner") : String(localized: "Partner"), partner: true)
+                    }
                     Button("Check in") { checkinTarget = CheckinTarget(card) }.font(.footnote.weight(.semibold))
                 }
                 .padding(.horizontal, 12).padding(.vertical, 8)
@@ -204,7 +206,7 @@ struct PlanView: View {
             }
         }
         if plan.plus == true {
-            Text("Giggles Plus: no partner stops on your routes.").font(.footnote).foregroundStyle(Theme.ink2)
+            Text("Giggles Plus: plan detours up to 240 extra minutes.").font(.footnote).foregroundStyle(Theme.ink2)
         }
 
         if let thb = plan.expectedThb, thb > 0 {
