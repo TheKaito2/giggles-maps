@@ -41,7 +41,7 @@ Request
 }
 ```
 - `start_min`: minutes after local midnight (0–1439). Used for opening hours.
-- `budget_min`: extra minutes the user accepts (0–240). Never exceeded.
+- `budget_min`: extra minutes the user accepts (0–240), or `"auto"`: half the direct trip time, rounded to 15 min, between 45 min and 3 h (the response's `budget_min` is the chosen value and `budget_auto: true`). Never exceeded.
 - `mode`: `"pedestrian"` (default), `"bicycle"` or `"auto"`; anything else is 400 `bad_mode`.
 - Planner preferences (all optional; omitted = the defaults below):
   - `interests`: up to 6 of `food`, `cafes`, `culture`, `nature`, `shopping`, `landmarks`. Adds a **Your mix** plan (`id: "mix"`) first, boosting (×2) every kind of stop the picks cover. Empty or omitted = no mix plan ("Surprise me"). 400 `bad_interests`.

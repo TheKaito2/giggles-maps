@@ -44,6 +44,7 @@ export interface RoutePlan {
   meals?: Meal[]; missed_meals?: Meal[];
   plans?: ThemedPlan[]; // top-level fields = Top picks
   road_extra_min?: number; stop_min?: number; wait_min?: number;
+  budget_auto?: boolean;   // budget_min was picked by the server ("auto")
 }
 
 /** The trip with the picked themed plan swapped in (first plan when none is picked). */
@@ -74,7 +75,7 @@ export type TravelMode = "pedestrian" | "bicycle" | "auto";
 export type Interest = "food" | "cafes" | "culture" | "nature" | "shopping" | "landmarks";
 
 export interface PlanRequest {
-  origin: LatLng; dest: LatLng; start_min: number; budget_min: number; mode: TravelMode;
+  origin: LatLng; dest: LatLng; start_min: number; budget_min: number | "auto"; mode: TravelMode;   // auto = half the direct trip, 45 min-3 h
   interests?: Interest[];       // builds the "Your mix" plan, shown first
   min_rating?: 0 | 3.5 | 4 | 4.5;
   include_unrated?: boolean;

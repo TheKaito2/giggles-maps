@@ -5,7 +5,7 @@ export interface Prefs {
   mode: TravelMode;
   depart: "now" | "30" | "60" | "custom";
   time: string;                  // HH:MM, used when depart = custom
-  budget: number;                // extra minutes
+  budget: number | "auto";       // extra minutes, or auto (server: half the direct trip, 45 min-3 h)
   interests: Interest[];         // empty = Surprise me (Top picks leads)
   minRating: 0 | 3.5 | 4 | 4.5;
   maxPrice: 0 | 1 | 2 | 3 | null;
@@ -21,7 +21,7 @@ export const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d
 export const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(Math.round(m) % 60).padStart(2, "0")}`;
 
 export const DEFAULT_PREFS: Prefs = {
-  mode: "pedestrian", depart: "now", time: hhmm(Math.max(nowMin(), 9 * 60)), budget: 45,
+  mode: "pedestrian", depart: "now", time: hhmm(Math.max(nowMin(), 9 * 60)), budget: "auto",
   interests: [], minRating: 4, maxPrice: null, maxStops: null, ratedOnly: false, picks: [], meals: [],
 };
 
@@ -31,8 +31,8 @@ export const MEALS: { id: Meal; label: string; window: string }[] = [
   { id: "lunch", label: "Lunch", window: "11:30–13:30" },
   { id: "dinner", label: "Dinner", window: "17:30–20:00" },
 ];
-export const BUDGETS = [15, 30, 45, 60, 90, 120, 180, 240];
-export const budgetLabel = (m: number) => m < 60 ? `${m} min` : `${m / 60} h`;
+export const BUDGETS: (number | "auto")[] = ["auto", 15, 30, 45, 60, 90, 120, 180, 240];
+export const budgetLabel = (m: number | "auto") => m === "auto" ? "Auto" : m < 60 ? `${m} min` : `${m / 60} h`;
 
 export const MODES: { id: TravelMode; label: string }[] = [
   { id: "pedestrian", label: "Walking" }, { id: "auto", label: "Driving" }, { id: "bicycle", label: "Cycling" },
@@ -60,7 +60,7 @@ export const departLabel = (p: Prefs) => p.depart === "custom" ? `at ${p.time}` 
 /** The request body: defaults are left out so the server applies its own. */
 export function toRequest(p: Prefs, origin: LatLng, dest: LatLng): PlanRequest {
   return {
-    origin, dest, start_min: startMin(p), budget_min: Math.min(p.budget, MAX_BUDGET), mode: p.mode,
+    origin, dest, start_min: startMin(p), budget_min: p.budget === "auto" ? "auto" : Math.min(p.budget, MAX_BUDGET), mode: p.mode,
     ...(p.interests.length ? { interests: p.interests } : {}),
     ...(p.minRating !== 4 ? { min_rating: p.minRating } : {}),
     ...(p.ratedOnly ? { include_unrated: false } : {}),

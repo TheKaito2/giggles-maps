@@ -87,7 +87,7 @@ export default function App() {
     document.getElementById(`stop-${id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, []);
 
-  const tripLine = `+${budgetLabel(prefs.budget)} · ${MODES.find((m) => m.id === prefs.mode)!.label.toLowerCase()} · leaves ${departLabel(prefs)}`
+  const tripLine = `${prefs.budget === "auto" ? (plan ? `+${budgetLabel(plan.budget_min)} (auto)` : "auto extra time") : `+${budgetLabel(prefs.budget)}`} · ${MODES.find((m) => m.id === prefs.mode)!.label.toLowerCase()} · leaves ${departLabel(prefs)}`
     + (prefs.meals.length ? ` · ${prefs.meals.join(" & ")}` : "");
   const showResults = view === "results" && response && plan;
   return (

@@ -68,7 +68,9 @@ serve(async (req) => {
   // members unlock exclusive places up to their level; everyone else sees level 0 (no exclusives)
   const { data: level, error: lErr } = await db.rpc("unlock_level", { p_user: user.id });
   if (lErr) throw lErr;
-  const budgetMin = num(body.budget_min, 0, MAX_BUDGET, "bad_budget_min");
+  // "auto": half the direct trip, set once the direct route time is known (below)
+  const autoBudget = body.budget_min === "auto";
+  let budgetMin = autoBudget ? 0 : num(body.budget_min, 0, MAX_BUDGET, "bad_budget_min");
 
   const warnings: string[] = [];
   const shortTrip = haversineM(origin, dest) <= 10000;
@@ -80,6 +82,10 @@ serve(async (req) => {
     console.error("baseline routing failed", error);
     if (!localWalkingFallback) throw new HttpError(503, "routing_unavailable");
     warnings.push("estimated_local_walk");
+  }
+  if (autoBudget) {
+    const direct = baseline?.travelMin ?? estimateMinutes([origin, dest], mode)[0][1];
+    budgetMin = Math.min(180, Math.max(45, Math.round(direct / 2 / 15) * 15));
   }
   const maxCandidates = shortTrip ? 16 : MAX_CANDIDATES;
   const { data: cands, error } = baseline
@@ -261,7 +267,7 @@ serve(async (req) => {
   return json({
     route_id: route.id, routing, mode, plus, member, level,
     base_min: Math.round(plan.baseMin), total_min: Math.round(plan.totalMin),
-    extra_min: Math.round(plan.extraMin), budget_min: budgetMin, ...split(themed[topIdx]),
+    extra_min: Math.round(plan.extraMin), budget_min: budgetMin, budget_auto: autoBudget, ...split(themed[topIdx]),
     max_budget_min: MAX_BUDGET,
     candidates_considered: candidates.length,
     stops: ordered, geometry, base_geometry: baseline?.geometry ?? [],

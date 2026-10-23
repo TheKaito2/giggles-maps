@@ -58,10 +58,10 @@ export default function Planner({ prefs, set, origin, dest, setOrigin, setDest, 
       </div>
 
       <div className="field">
-        <span id="extra-label">Extra time <b className="budget-now">+{budgetLabel(prefs.budget)}</b> <span className="fine">road + time at stops</span></span>
+        <span id="extra-label">Extra time <b className="budget-now">{prefs.budget === "auto" ? "Auto" : `+${budgetLabel(prefs.budget)}`}</b> <span className="fine">{prefs.budget === "auto" ? "about half your direct trip" : "road + time at stops"}</span></span>
         <div className="chips-scroll" role="radiogroup" aria-labelledby="extra-label">
           {BUDGETS.map((m) => (
-            <button key={m} type="button" role="radio" aria-checked={prefs.budget === m} className={`pill ${prefs.budget === m ? "on" : ""}`}
+            <button key={String(m)} type="button" role="radio" aria-checked={prefs.budget === m} className={`pill ${prefs.budget === m ? "on" : ""}`}
               onClick={() => set({ budget: m })}>{budgetLabel(m)}</button>
           ))}
         </div>

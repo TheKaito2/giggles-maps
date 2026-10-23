@@ -51,7 +51,7 @@ export default function Results({ response, plan, choice, setChoice, selected, o
       )}
 
       <div className="summary">
-        <div><span className="num big-num">+{plan.extra_min}</span><span className="fine"> of +{plan.budget_min} min used</span></div>
+        <div><span className="num big-num">+{plan.extra_min}</span><span className="fine"> of +{plan.budget_min} min used{plan.budget_auto && " (auto)"}</span></div>
         {plan.road_extra_min != null && plan.stops.length > 0 && (
           <dl className="time-split">
             <div><dt>More on the road</dt><dd className="num">+{plan.road_extra_min} min</dd></div>
