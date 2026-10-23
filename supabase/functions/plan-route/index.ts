@@ -128,7 +128,7 @@ serve(async (req) => {
 
   // one plan per theme from the same shortlist + matrix; drop themed plans identical to an earlier one
   const seen = new Set<string>();
-  const themed: { id: string; name: string; plan: Plan; geometry?: [number, number][]; etaMin?: number[] }[] = [];
+  const themed: { id: string; name: string; plan: Plan; geometry?: [number, number][]; etaMin?: number[]; travelMin?: number }[] = [];
   // "Your mix" (the user's interest chips) leads; the five themed plans follow as alternatives
   const variants = [
     ...(interests.length ? [{ id: "mix", name: "Your mix", weight: mixWeight(interests) }] : []),
@@ -150,7 +150,7 @@ serve(async (req) => {
     if (baseline) {
       const verified = await verifyRoadPlan({ plan: t.plan, origin, dest, candidates, mode,
         baseline, startMin, budgetMin, route: verification.route });
-      t.plan = verified.plan; t.geometry = verified.geometry; t.etaMin = verified.etaMin;
+      t.plan = verified.plan; t.geometry = verified.geometry; t.etaMin = verified.etaMin; t.travelMin = verified.travelMin;
       if (verified.failed) warnings.push("some_detours_unavailable");
       else if (verified.adjusted) warnings.push("detours_adjusted");
     } else {
@@ -158,6 +158,7 @@ serve(async (req) => {
       for (const s of t.plan.order) { legs.push(matrix[at][s.idx]); at = s.idx; }
       legs.push(matrix[at][1]);
       t.etaMin = scheduleStops(t.plan.order, legs, startMin, t.plan.mealOf).etaMin;
+      t.travelMin = legs.reduce((a, b) => a + b, 0);
       t.geometry = [origin, ...t.plan.order.map((s) => candidates[s.idx - 2]), dest].map((p) => [p.lng, p.lat]);
     }
     const key = t.plan.order.map((s) => s.id).join(",");
@@ -223,6 +224,12 @@ serve(async (req) => {
   };
 
   const built = await Promise.all(themed.map(build));
+  // where the extra time goes: more time on the road, time at the stops, and waiting for a meal window to open
+  const split = (t: typeof themed[number]) => {
+    const travel = t.travelMin ?? t.plan.totalMin, stopMin = t.plan.order.reduce((a, s) => a + s.dwellMin, 0);
+    return { road_extra_min: Math.max(0, Math.round(travel - t.plan.baseMin)), stop_min: stopMin,
+             wait_min: Math.max(0, Math.round(t.plan.totalMin - travel - stopMin)) };
+  };
   const topIdx = themed.findIndex((t) => t.id === "top_picks");
   const plan = themed[topIdx].plan;
   const { ordered, geometry } = built[topIdx];
@@ -248,7 +255,7 @@ serve(async (req) => {
   return json({
     route_id: route.id, routing, mode, plus, member, level,
     base_min: Math.round(plan.baseMin), total_min: Math.round(plan.totalMin),
-    extra_min: Math.round(plan.extraMin), budget_min: budgetMin,
+    extra_min: Math.round(plan.extraMin), budget_min: budgetMin, ...split(themed[topIdx]),
     max_budget_min: MAX_BUDGET,
     candidates_considered: candidates.length,
     stops: ordered, geometry, base_geometry: baseline?.geometry ?? [],
@@ -256,7 +263,7 @@ serve(async (req) => {
     meals, missed_meals: plan.missedMeals, unfit_required: plan.unfitRequired,
     plans: themed.map((t, i) => ({
       id: t.id, name: t.name, stops: built[i].ordered, geometry: built[i].geometry,
-      extra_min: Math.round(t.plan.extraMin), total_min: Math.round(t.plan.totalMin),
+      extra_min: Math.round(t.plan.extraMin), total_min: Math.round(t.plan.totalMin), ...split(t),
       meals, missed_meals: t.plan.missedMeals, unfit_required: t.plan.unfitRequired,
     })),
   });

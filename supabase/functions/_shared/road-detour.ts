@@ -72,7 +72,7 @@ export async function verifyRoadPlan(input: {
         extraMin: Math.max(0, clock.totalMin - input.baseline.travelMin),
         missedMeals: [...new Set([...input.plan.missedMeals, ...lostMeals])],
         unfitRequired: input.plan.requiredIds.filter((id) => !order.some((s) => s.id === id)) },
-        geometry: road.geometry, etaMin: clock.etaMin, adjusted, failed };
+        geometry: road.geometry, etaMin: clock.etaMin, travelMin: road.legMin.reduce((a, b) => a + b, 0), adjusted, failed };
     }
     if (!order.length) throw new Error("invalid_baseline_route");
     // Preserve meals while trimming discretionary stops to fit the actual road duration.

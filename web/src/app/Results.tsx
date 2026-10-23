@@ -49,6 +49,14 @@ export default function Results({ response, plan, choice, setChoice, selected, o
 
       <div className="summary">
         <div><span className="num big-num">+{plan.extra_min}</span><span className="fine"> of +{plan.budget_min} min used</span></div>
+        {plan.road_extra_min != null && plan.stops.length > 0 && (
+          <dl className="time-split">
+            <div><dt>More on the road</dt><dd className="num">+{plan.road_extra_min} min</dd></div>
+            <div><dt>At {plan.stops.length} stop{plan.stops.length === 1 ? "" : "s"}</dt>
+              <dd className="num">{plan.stop_min} min <span className="fine">(avg {Math.round(plan.stop_min! / plan.stops.length)})</span></dd></div>
+            {!!plan.wait_min && <div><dt>Waiting for a meal time</dt><dd className="num">{plan.wait_min} min</dd></div>}
+          </dl>
+        )}
         <div className="fine">{plan.stops.length} stop{plan.stops.length === 1 ? "" : "s"} · trip {plan.total_min} min instead of {plan.base_min}</div>
         {plan.routing === "estimate" && <div className="fine" role="status">Routing is unavailable. The dashed line is an approximate walking connection, not road directions. Times and your allowance are checked using estimates.</div>}
         {plan.stops.length > 0 && !!plan.base_geometry?.length && <div className="fine">Dashed grey: direct road route · Indigo: your detour. Both end at your destination.</div>}
