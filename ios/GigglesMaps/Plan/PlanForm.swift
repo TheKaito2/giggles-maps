@@ -5,6 +5,7 @@ import SwiftUI
 /// Every control maps to a plan-route field; nothing here is decoration.
 struct PlanForm: View {
     @Bindable var model: PlanModel
+    @State private var searching: PlanModel.Picking?
 
     private static let quickTimes = [15, 30, 45, 60]
     private static let ratings: [Double] = [0, 3.5, 4, 4.5]
@@ -13,8 +14,16 @@ struct PlanForm: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             journey
+                .sheet(item: $searching) { which in
+                    LocationSearchSheet(title: which == .origin ? "Start" : "Destination",
+                                        near: which == .origin ? model.dest : model.origin) { point, name in
+                        if which == .origin { (model.origin, model.originName) = (point, name) }
+                        else { (model.dest, model.destName) = (point, name) }
+                    }
+                }
             time
             interests
+            explore
             preferences
             summary
         }
@@ -24,12 +33,14 @@ struct PlanForm: View {
 
     private var journey: some View {
         section("Your journey", icon: "mappin.circle") {
-            pointRow(label: "Start", pin: Pin(text: "A", color: Theme.good), set: model.origin != nil) {
-                Button("Set on map") { model.picking = .origin }
-                Button("Use my location") { Task { await model.useMyLocation() } }
+            pointRow(label: "Start", name: model.originName, pin: Pin(text: "A", color: Theme.good)) {
+                Button("Search") { searching = .origin }
+                Button("Map") { model.picking = .origin }
+                Button("My location") { Task { await model.useMyLocation() } }
             }
-            pointRow(label: "Destination", pin: Pin(text: "B", color: Theme.stamp), set: model.dest != nil) {
-                Button("Set on map") { model.picking = .dest }
+            pointRow(label: "Destination", name: model.destName, pin: Pin(text: "B", color: Theme.stamp)) {
+                Button("Search") { searching = .dest }
+                Button("Map") { model.picking = .dest }
             }
             label("Travel by")
             Picker("Travel by", selection: $model.mode) {
@@ -79,6 +90,10 @@ struct PlanForm: View {
         }
     }
 
+    private var explore: some View {
+        section("Places you want to visit", icon: "safari") { ExplorePlaces(model: model) }
+    }
+
     private var preferences: some View {
         section("Make it your kind of detour", icon: "slider.horizontal.3") {
             label("Minimum rating")
@@ -103,8 +118,8 @@ struct PlanForm: View {
                 }
                 .tint(Theme.indigo)
             }
-            Toggle("Include places without ratings", isOn: $model.includeUnrated).tint(Theme.indigo)
-            Text("Higher rating filters may leave out newer local discoveries. Places with no listed price stay in.")
+            Toggle("Rated places only", isOn: $model.ratedOnly).tint(Theme.indigo)
+            Text("Most places don't have ratings yet; they're included but ranked below rated ones. Places with no listed price stay in.")
                 .font(.seed(.footnote)).foregroundStyle(Theme.ink2)
         }
     }
@@ -115,6 +130,9 @@ struct PlanForm: View {
                 Text("Your little adventure").font(.seed(.title3))
                 Spacer()
                 Image(systemName: "sparkles").foregroundStyle(Theme.ink2)
+            }
+            if !model.picks.isEmpty {
+                fact("Must visit", model.picks.map(\.name).formatted(.list(type: .and)))
             }
             HStack {
                 Text("Room for discovery").font(.seed(.subheadline)).foregroundStyle(Theme.ink2)
@@ -130,7 +148,7 @@ struct PlanForm: View {
             fact("Spending", model.maxPrice.map { Copy.price($0) } ?? String(localized: "Any budget"))
             fact("Stops", model.maxStops.map { String(localized: "Up to \($0)") } ?? String(localized: "Auto · best fit"))
             FlowTags(tags: (model.interests.isEmpty ? [String(localized: "Surprise me")] : Interest.allCases.filter(model.interests.contains).map(Copy.interest))
-                     + (model.includeUnrated ? [String(localized: "Unrated places too")] : []))
+                     + (model.ratedOnly ? [String(localized: "Rated places only")] : []))
             Button {
                 Task { await model.submit() }
             } label: {
@@ -168,15 +186,15 @@ struct PlanForm: View {
         Text(text).font(.seed(.subheadline, .bold)).foregroundStyle(Theme.ink2)
     }
 
-    private func pointRow<Actions: View>(label: LocalizedStringKey, pin: Pin, set: Bool, @ViewBuilder actions: () -> Actions) -> some View {
-        HStack(spacing: 12) {
+    private func pointRow<Actions: View>(label: LocalizedStringKey, name: String, pin: Pin, @ViewBuilder actions: () -> Actions) -> some View {
+        HStack(alignment: .top, spacing: 12) {
             pin
             VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.seed(.headline))
+                Text(label).font(.seed(.footnote, .bold)).foregroundStyle(Theme.ink2)
+                Text(name).font(.seed(.headline)).lineLimit(2)
                 HStack(spacing: 14) { actions() }.font(.seed(.subheadline, .bold)).tint(Theme.indigo)
             }
             Spacer(minLength: 0)
-            if set { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.good).accessibilityLabel("Set") }
         }
     }
 

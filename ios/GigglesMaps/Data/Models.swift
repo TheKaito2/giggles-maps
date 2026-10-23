@@ -13,6 +13,28 @@ struct LatLng: Codable, Equatable, Sendable {
 
 enum TravelMode: String, Codable, Sendable, CaseIterable { case pedestrian, auto, bicycle }
 
+/// A search hit from our own places (search_places).
+struct FoundPlace: Decodable, Identifiable, Hashable, Sendable {
+    let id: Int
+    let name: String
+    let nameTh: String?
+    let category: String
+    let lat: Double
+    let lng: Double
+    let rating: Double?
+    let distanceM: Double?
+    var point: LatLng { LatLng(lat: lat, lng: lng) }
+    enum CodingKeys: String, CodingKey {
+        case id, name, category, lat, lng, rating, nameTh = "name_th", distanceM = "distance_m"
+    }
+}
+
+/// A place the user picked to visit, sent as must_include.
+struct PickedPlace: Hashable, Sendable { let id: Int; let name: String }
+
+/// Kinds for "Places you want to visit" (search_places p_kind).
+enum PlaceKind: String, CaseIterable, Sendable { case food, cafes, culture, nature, shopping }
+
 /// "What draws you in?" chips; the server boosts the kinds of stop each covers in a "Your mix" plan.
 enum Interest: String, Codable, Sendable, CaseIterable { case food, culture, nature, cafes, shopping, landmarks }
 
@@ -28,8 +50,9 @@ struct PlanRequest: Encodable, Sendable {
     var includeUnrated: Bool? = nil
     var maxStops: Int? = nil
     var maxPrice: Int? = nil
+    var mustInclude: [Int]? = nil   // up to 3 places the user picked
     enum CodingKeys: String, CodingKey {
-        case origin, dest, mode, interests, startMin = "start_min", budgetMin = "budget_min"
+        case origin, dest, mode, interests, startMin = "start_min", budgetMin = "budget_min", mustInclude = "must_include"
         case minRating = "min_rating", includeUnrated = "include_unrated", maxStops = "max_stops", maxPrice = "max_price"
     }
 }
@@ -45,6 +68,7 @@ struct RouteStop: Decodable, Identifiable, Equatable, Sendable {
     let isDemo: Bool
     let rating: Double?          // nil = unrated
     let priceLevel: Int?         // 0 free, 1-3 = ฿-฿฿฿, nil = not listed
+    let picked: Bool?            // the user asked for this place
     let dwellMin: Int
     let etaMin: Int
     let nearbyPartner: NearbyPartner?   // "Near this spot" card under nature/temple stops
@@ -56,7 +80,7 @@ struct RouteStop: Decodable, Identifiable, Equatable, Sendable {
     enum CodingKeys: String, CodingKey {
         case id, name, category, lat, lng, rating, meal
         case nameTh = "name_th", isPartner = "is_partner", isDemo = "is_demo"
-        case dwellMin = "dwell_min", etaMin = "eta_min", nearbyPartner = "nearby_partner", priceLevel = "price_level"
+        case dwellMin = "dwell_min", etaMin = "eta_min", nearbyPartner = "nearby_partner", priceLevel = "price_level", picked
         case minLevel = "min_level", exclusiveKind = "exclusive_kind", perkText = "perk_text"
     }
 }
@@ -148,8 +172,10 @@ struct ThemedPlan: Decodable, Identifiable, Sendable {
     let extraMin: Int
     let totalMin: Int
     let missedMeals: [String]
+    let unfitRequired: [Int]?    // picked places that didn't fit this plan
     enum CodingKeys: String, CodingKey {
         case id, name, stops, geometry, extraMin = "extra_min", totalMin = "total_min", missedMeals = "missed_meals"
+        case unfitRequired = "unfit_required"
     }
 }
 
@@ -283,6 +309,19 @@ enum Copy {
         case .shopping: String(localized: "Shopping")
         case .landmarks: String(localized: "Landmarks")
         }
+    }
+    static func kind(_ kind: PlaceKind) -> String {
+        switch kind {
+        case .food: String(localized: "Food")
+        case .cafes: String(localized: "Cafés")
+        case .culture: String(localized: "Culture")
+        case .nature: String(localized: "Nature")
+        case .shopping: String(localized: "Shopping")
+        }
+    }
+    static func distance(_ meters: Double) -> String {
+        meters < 1000 ? String(localized: "\(Int(meters.rounded())) m")
+            : String(localized: "\((meters / 1000).formatted(.number.precision(.fractionLength(meters < 10_000 ? 1 : 0)))) km")
     }
     /// 0 free, 1-3 baht signs; nil = the place has no listed price
     static func price(_ level: Int?) -> String {

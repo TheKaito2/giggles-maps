@@ -2561,6 +2561,326 @@
           }
         }
       }
+    },
+    "Cancel": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยกเลิก"
+          }
+        }
+      }
+    },
+    "Rated places only": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เฉพาะที่มีคะแนน"
+          }
+        }
+      }
+    },
+    "Places you want to visit": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สถานที่ที่อยากไป"
+          }
+        }
+      }
+    },
+    "Added": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เพิ่มแล้ว"
+          }
+        }
+      }
+    },
+    "Giggles places": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สถานที่ใน Giggles"
+          }
+        }
+      }
+    },
+    "All": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทั้งหมด"
+          }
+        }
+      }
+    },
+    "Most places don't have ratings yet; they're included but ranked below rated ones. Places with no listed price stay in.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สถานที่ส่วนใหญ่ยังไม่มีคะแนน จึงรวมไว้แต่จัดอันดับต่ำกว่าที่มีคะแนน สถานที่ที่ไม่ระบุราคายังคงแสดงอยู่"
+          }
+        }
+      }
+    },
+    "Search": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ค้นหา"
+          }
+        }
+      }
+    },
+    "Searching…": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังค้นหา…"
+          }
+        }
+      }
+    },
+    "Addresses (Apple Maps)": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ที่อยู่ (Apple Maps)"
+          }
+        }
+      }
+    },
+    "Add": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เพิ่ม"
+          }
+        }
+      }
+    },
+    "Up to 3 places. They go into every plan when they fit your time and opening hours.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สูงสุด 3 แห่ง จะอยู่ในทุกแผนเมื่อเวลาและเวลาเปิดทำการลงตัว"
+          }
+        }
+      }
+    },
+    "Phu Phan Museum": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "พิพิธภัณฑ์ภูพาน"
+          }
+        }
+      }
+    },
+    "Couldn't find that address.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่พบที่อยู่นี้"
+          }
+        }
+      }
+    },
+    "Pin on the map": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หมุดบนแผนที่"
+          }
+        }
+      }
+    },
+    "You picked this": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คุณเลือกที่นี่"
+          }
+        }
+      }
+    },
+    "Must visit": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ต้องแวะ"
+          }
+        }
+      }
+    },
+    "Type a name (e.g. waterfall, วัด) or pick a kind.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "พิมพ์ชื่อ (เช่น น้ำตก วัด) หรือเลือกประเภท"
+          }
+        }
+      }
+    },
+    "Remove %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลบ %@"
+          }
+        }
+      }
+    },
+    "No places match that name nearby.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่พบสถานที่ชื่อนี้ใกล้ๆ"
+          }
+        }
+      }
+    },
+    "%lld m": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ม."
+          }
+        }
+      }
+    },
+    "My location": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตำแหน่งของฉัน"
+          }
+        }
+      }
+    },
+    "%@ km": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ กม."
+          }
+        }
+      }
+    },
+    "Search places, e.g. waterfall, cafe, วัด": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ค้นหาสถานที่ เช่น น้ำตก คาเฟ่ วัด"
+          }
+        }
+      }
+    },
+    "Search is unavailable right now. Try again in a moment.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ค้นหาไม่ได้ในขณะนี้ ลองใหม่อีกครั้ง"
+          }
+        }
+      }
+    },
+    "Couldn't fit %@ (too far, closed then, or over your stop limit). Try more time.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่สามารถใส่ %@ ได้ (ไกลเกินไป ปิดในเวลานั้น หรือเกินจำนวนจุดแวะ) ลองเพิ่มเวลา"
+          }
+        }
+      }
+    },
+    "Map": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แผนที่"
+          }
+        }
+      }
+    },
+    "Place or address": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สถานที่หรือที่อยู่"
+          }
+        }
+      }
+    },
+    "Couldn't find that address. Try another name or set a pin on the map.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่พบที่อยู่นี้ ลองชื่ออื่นหรือปักหมุดบนแผนที่"
+          }
+        }
+      }
+    },
+    "Wat Phra That Choeng Chum": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วัดพระธาตุเชิงชุม"
+          }
+        }
+      }
+    },
+    "a place you picked": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สถานที่ที่คุณเลือก"
+          }
+        }
+      }
+    },
+    "None of that kind within 30 km of your start.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่มีประเภทนี้ในระยะ 30 กม. จากจุดเริ่ม"
+          }
+        }
+      }
     }
   }
 }

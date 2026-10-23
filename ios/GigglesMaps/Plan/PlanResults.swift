@@ -36,6 +36,11 @@ struct PlanResults: View {
                         .accessibilityAddTraits(on ? .isSelected : [])
                     }
             }
+            if let unfit = plans.first(where: { $0.id == model.choice })?.unfitRequired, !unfit.isEmpty {
+                let names = unfit.map { id in model.picks.first { $0.id == id }?.name ?? String(localized: "a place you picked") }
+                Text("Couldn't fit \(names.formatted(.list(type: .and))) (too far, closed then, or over your stop limit). Try more time.")
+                    .font(.seed(.footnote)).foregroundStyle(Theme.bad)
+            }
             if let missed = plans.first(where: { $0.id == model.choice })?.missedMeals, !missed.isEmpty {
                 Text("No food stop fits \(missed.map { Copy.meal($0) }.joined(separator: ", ")) on this plan.")
                     .font(.footnote).foregroundStyle(Theme.ink2)
@@ -77,6 +82,7 @@ struct PlanResults: View {
                     HStack(spacing: 6) {
                         Chip(text: stop.rating.map { "★ \($0.formatted(.number.precision(.fractionLength(1))))" } ?? String(localized: "Unrated")).fixedSize()
                         Chip(text: Copy.price(stop.priceLevel)).fixedSize()
+                        if stop.picked == true { Chip(text: String(localized: "You picked this"), partner: true).fixedSize() }
                         if let meal = stop.meal { Chip(text: Copy.meal(meal)).fixedSize() }
                     }
                     if stop.isPartner { Chip(text: stop.isDemo ? String(localized: "Example partner") : String(localized: "Partner"), partner: true).fixedSize() }

@@ -52,6 +52,16 @@ enum Backend {
         return place
     }
 
+    /// Our own places by name or kind, nearest first when `near` is given. Members-only places never appear.
+    static func searchPlaces(_ query: String, near: LatLng?, kind: PlaceKind? = nil) async throws -> [FoundPlace] {
+        try await ensureSession()
+        struct Params: Encodable, Sendable {
+            let p_query: String; let p_lat: Double?; let p_lng: Double?; let p_kind: String?; let p_limit: Int
+        }
+        return try await client.rpc("search_places", params: Params(p_query: query, p_lat: near?.lat, p_lng: near?.lng,
+                                                                     p_kind: kind?.rawValue, p_limit: 12)).execute().value
+    }
+
     static func place(id: Int) async throws -> CheckinTarget {
         try await ensureSession()
         let rows: [CheckinTarget] = try await client.rpc("place_for_checkin", params: ["p_id": id]).execute().value

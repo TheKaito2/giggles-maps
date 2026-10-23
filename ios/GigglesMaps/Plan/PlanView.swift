@@ -70,6 +70,8 @@ struct PlanView: View {
         }
         .onChange(of: model.plan?.routeId) { fitRoute() }
         .onChange(of: model.choice) { fitRoute() }
+        .onChange(of: model.origin) { fitRoute() }   // a searched start or destination may be far away
+        .onChange(of: model.dest) { fitRoute() }
     }
 
     private var panel: some View {
@@ -92,8 +94,8 @@ struct PlanView: View {
     }
 
     private func fitRoute() {
-        guard let plan = model.shown else { return }
-        let points = plan.line.isEmpty ? [model.origin, model.dest].compactMap { $0?.coordinate } : plan.line
+        let line = model.shown?.line ?? []
+        let points = line.isEmpty ? [model.origin, model.dest].compactMap { $0?.coordinate } : line
         guard let first = points.first else { return }
         var rect = MKMapRect(origin: MKMapPoint(first), size: .init(width: 0, height: 0))
         for p in points { rect = rect.union(MKMapRect(origin: MKMapPoint(p), size: .init(width: 0, height: 0))) }
