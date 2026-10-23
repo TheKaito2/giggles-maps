@@ -24,6 +24,12 @@ export async function ensureSession(): Promise<Session> {
   return anon.session;
 }
 
+// Signing out leaves no session, and screens wait for a user: start a fresh guest right away.
+// Deferred: calling auth methods inside an auth callback deadlocks supabase-js.
+supabase.auth.onAuthStateChange((event) => {
+  if (event === "SIGNED_OUT") setTimeout(() => { ensureSession().catch((e) => console.error("guest session", e)); }, 0);
+});
+
 // Edge Function call with friendly error codes
 export async function callFn<T>(name: string, body: object): Promise<T> {
   await ensureSession();

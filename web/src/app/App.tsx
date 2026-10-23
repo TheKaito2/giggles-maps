@@ -7,7 +7,7 @@ import CheckIn from "./CheckIn";
 import Planner from "./Planner";
 import Results from "./Results";
 import { budgetLabel, DEFAULT_PREFS, departLabel, MODES, type Place, type Prefs, toRequest } from "./prefs";
-import { resumeSignIn } from "../lib/auth";
+import { resumeSignIn, useUser } from "../lib/auth";
 import { useStops } from "./useStops";
 import Nickname from "./social/Nickname";
 import RideAlong, { useTrip } from "./social/RideAlong";
@@ -77,7 +77,9 @@ export default function App() {
   const set = (patch: Partial<Prefs> | ((p: Prefs) => Partial<Prefs>)) =>
     setPrefs((p) => ({ ...p, ...(typeof patch === "function" ? patch(p) : patch) }));
 
-  useEffect(() => { getProfile().then(setProfile).catch(() => setProfile(null)); }, [refreshKey]);
+  const user = useUser();
+  // reload on sign-in and sign-out too: the profile belongs to whoever is signed in now
+  useEffect(() => { getProfile().then(setProfile).catch(() => setProfile(null)); }, [refreshKey, user?.id]);
   const nearby = useStops(refreshKey);
   const zoneStop = nearby.inZone[0];
   const trip = useTrip(nearby.here, nearby.start, refreshKey);
