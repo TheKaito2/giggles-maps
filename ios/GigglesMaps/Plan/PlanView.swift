@@ -14,13 +14,14 @@ struct PlanView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            map.frame(maxHeight: .infinity)
+            map.frame(height: 260)
             ScrollViewReader { proxy in
                 ScrollView { panel.padding(16) }
                     .onChange(of: selected) { _, id in withAnimation { proxy.scrollTo(id, anchor: .center) } }
+                    .onChange(of: model.plan?.routeId) { _, id in if id != nil { withAnimation { proxy.scrollTo("results", anchor: .top) } } }
             }
-            .frame(maxHeight: .infinity)
-            .background(Theme.card)
+            .background(LinearGradient(colors: [Theme.indigoSoft.opacity(0.6), Theme.paper, Theme.marigoldSoft.opacity(0.35)],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing))
         }
         .background(Theme.paper)
         .fullScreenCover(isPresented: $showScanner) {
@@ -72,187 +73,21 @@ struct PlanView: View {
     }
 
     private var panel: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Label("Sakon Nakhon, Thailand", systemImage: "mappin").font(.seed(.footnote)).foregroundStyle(Theme.ink2)
+                Text("Plan your detour").font(Theme.display(32)).foregroundStyle(Theme.indigo).accessibilityAddTraits(.isHeader)
+                Text("Discover something worth the extra time.").font(.seed(.subheadline)).foregroundStyle(Theme.ink2)
+            }
             if QRScanner.isAvailable {
                 Button { showScanner = true } label: {
-                    Label("Scan a shop's QR sticker", systemImage: "qrcode.viewfinder").font(.subheadline.weight(.semibold))
+                    Label("Scan a shop's QR sticker", systemImage: "qrcode.viewfinder").font(.seed(.subheadline, .bold))
                 }
                 .tint(Theme.indigo)
             }
-            pointRow(label: "Start", pin: Pin(text: "A", color: Theme.good)) {
-                Button("Set on map") { model.picking = .origin }
-                Button("Use my location") { Task { await model.useMyLocation() } }
-            }
-            pointRow(label: "Destination", pin: Pin(text: "B", color: Theme.stamp)) {
-                Button("Set on map") { model.picking = .dest }
-            }
-
-            HStack(alignment: .bottom, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Leaving at").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ink2)
-                    DatePicker("Leaving at", selection: $model.leaveAt, displayedComponents: .hourAndMinute).labelsHidden()
-                }
-                Spacer()
-                Picker("Getting there by", selection: $model.mode) {
-                    Text("Walk").tag(TravelMode.pedestrian)
-                    Text("Drive").tag(TravelMode.auto)
-                }
-                .pickerStyle(.segmented).frame(maxWidth: 170)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Extra time I'm OK with:").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ink2)
-                    Text("+\(Int(model.budget)) min").font(Theme.data)
-                }
-                Slider(value: $model.budget, in: 0...Double(model.plan?.maxBudgetMin ?? 240), step: 5).tint(Theme.marigold)
-                    .accessibilityLabel("Extra time I'm OK with")
-                    .accessibilityValue("\(Int(model.budget)) minutes")
-            }
-
-            Button {
-                Task { await model.submit() }
-            } label: {
-                Text(model.busy ? "Finding detours…" : "Find my detours")
-            }
-            .buttonStyle(PrimaryButtonStyle(gold: true))
-            .disabled(model.busy || model.origin == nil || model.dest == nil)
-
-            if let error = model.error {
-                Text(error).foregroundStyle(Theme.bad).font(.subheadline.weight(.semibold))
-            }
-
-            if let plans = model.plan?.plans, plans.count > 1 { planPicker(plans) }
-            if let plan = model.shown { results(plan) }
-        }
-    }
-
-    private func planPicker(_ plans: [ThemedPlan]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Pick a plan").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ink2)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(plans) { p in
-                        let on = model.choice == p.id
-                        Button { model.choice = p.id } label: {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(Copy.plan(p.id, fallback: p.name)).font(.subheadline.weight(.semibold))
-                                Text("\(p.stops.count) stops · +\(p.extraMin) min").font(.caption.monospaced())
-                            }
-                            .padding(.horizontal, 12).padding(.vertical, 8)
-                            .background(on ? Theme.indigo : Theme.indigoSoft, in: RoundedRectangle(cornerRadius: 12))
-                            .foregroundStyle(on ? Theme.onIndigo : Theme.indigo)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityAddTraits(on ? .isSelected : [])
-                    }
-                }
-            }
-            if let missed = plans.first(where: { $0.id == model.choice })?.missedMeals, !missed.isEmpty {
-                Text("No food stop fits \(missed.map { Copy.meal($0) }.joined(separator: ", ")) on this plan.")
-                    .font(.footnote).foregroundStyle(Theme.ink2)
-            }
-        }
-    }
-
-    private func pointRow<Actions: View>(label: LocalizedStringKey, pin: Pin, @ViewBuilder actions: () -> Actions) -> some View {
-        HStack(spacing: 12) {
-            pin
-            Text(label).font(.headline).frame(width: 96, alignment: .leading)
-            HStack(spacing: 14) { actions() }.font(.subheadline.weight(.semibold)).tint(Theme.indigo)
-            Spacer(minLength: 0)
-        }
-    }
-
-    @ViewBuilder
-    private func results(_ plan: RoutePlan) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("+\(plan.extraMin)").font(.system(size: 30, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.indigo)
-                Text("of +\(plan.budgetMin) min used").font(.footnote).foregroundStyle(Theme.ink2)
-            }
-            Text("\(plan.stops.count) stops · trip \(plan.totalMin) min instead of \(plan.baseMin)").font(.footnote).foregroundStyle(Theme.ink2)
-            if plan.routing == "estimate" {
-                Text("Times are estimates (routing service busy).").font(.footnote).foregroundStyle(Theme.ink2)
-            }
-        }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.indigoSoft, in: RoundedRectangle(cornerRadius: 14))
-
-        if plan.stops.isEmpty {
-            Text("Nothing fits in +\(plan.budgetMin) min. Give yourself a bit more time.").font(.footnote).foregroundStyle(Theme.ink2)
-        }
-
-        ForEach(Array(plan.stops.enumerated()), id: \.element.id) { i, stop in
-            HStack(spacing: 12) {
-                Pin(text: "\(i + 1)", color: stop.isPartner ? Theme.marigold : Theme.indigo, textColor: stop.isPartner ? .black : Theme.onIndigo)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(stop.name).font(.headline)
-                    if let th = stop.nameTh, th != stop.name { Text(th).font(.footnote).foregroundStyle(Theme.ink2) }
-                    HStack(spacing: 8) {
-                        Text(Copy.hhmm(stop.etaMin)).font(.footnote.monospaced())
-                        Text(Copy.category(stop.category))
-                        Text("\(stop.dwellMin) min")
-                    }
-                    .font(.footnote).foregroundStyle(Theme.ink2).lineLimit(1)
-                    if let meal = stop.meal { Chip(text: Copy.meal(meal)).fixedSize() }
-                    if stop.isPartner { Chip(text: stop.isDemo ? String(localized: "Example partner") : String(localized: "Partner"), partner: true).fixedSize() }
-                    if let lvl = stop.minLevel, lvl > 0 {
-                        HStack(spacing: 6) {
-                            Chip(text: Levels.kindName(stop.exclusiveKind)).fixedSize()
-                            Chip(text: String(localized: "Level \(lvl)")).fixedSize()
-                        }
-                        if let perk = stop.perkText { Text(perk).font(.footnote).foregroundStyle(Theme.ink2) }
-                    }
-                }
-                Spacer(minLength: 0)
-                Button("Check in") { checkinTarget = CheckinTarget(stop) }
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(Theme.indigo, in: Capsule()).foregroundStyle(Theme.onIndigo)
-            }
-            .padding(12)
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(selected == stop.id ? Theme.indigo : Color.secondary.opacity(0.25), lineWidth: selected == stop.id ? 2 : 1))
-            .id(stop.id)
-
-            if let card = stop.nearbyPartner {
-                HStack(spacing: 8) {
-                    Image(systemName: "mappin.and.ellipse").foregroundStyle(Theme.marigold)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Near this spot: \(card.name)").font(.subheadline.weight(.semibold))
-                        if let lvl = card.minLevel, lvl > 0 {
-                            Text("\(Levels.kindName(card.exclusiveKind)) · Level \(lvl)").font(.caption.weight(.semibold)).foregroundStyle(Theme.marigold)
-                        }
-                        Text("\(Copy.category(card.category)) · \(card.distanceM) m away").font(.footnote).foregroundStyle(Theme.ink2)
-                    }
-                    Spacer(minLength: 0)
-                    if card.isPartner ?? true {
-                        Chip(text: card.isDemo ? String(localized: "Example partner") : String(localized: "Partner"), partner: true)
-                    }
-                    Button("Check in") { checkinTarget = CheckinTarget(card) }.font(.footnote.weight(.semibold))
-                }
-                .padding(.horizontal, 12).padding(.vertical, 8)
-                .background(Theme.marigoldSoft.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
-                .padding(.leading, 42)
-            }
-        }
-        if !plan.stops.isEmpty {
-            if trip.running {
-                Button("End trip", role: .destructive) { Task { await trip.end() } }.frame(maxWidth: .infinity)
-                Text("Trip running: next stop on your Lock Screen, and a nudge when you reach each stop.")
-                    .font(.footnote).foregroundStyle(Theme.ink2)
-            } else {
-                Button("Start trip") { Task { await trip.start(plan, destination: String(localized: "your destination")) } }
-                    .buttonStyle(PrimaryButtonStyle())
-            }
-        }
-
-
-        if let thb = plan.expectedThb, thb > 0 {
-            Text("Business view: partners on this route pay about ฿\(thb, specifier: "%.2f") in expected visit fees.")
-                .font(.footnote).foregroundStyle(Theme.ink2)
-                .padding(.leading, 10)
-                .overlay(alignment: .leading) { Rectangle().fill(Theme.marigold).frame(width: 3) }
+            // results sit above the form once there are some, so they're what you see after Find
+            PlanResults(model: model, checkinTarget: $checkinTarget, selected: selected, trip: trip).id("results")
+            PlanForm(model: model)
         }
     }
 

@@ -43,6 +43,8 @@ targets:
         CFBundleVersion: "1"
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
+        UIUserInterfaceStyle: Light   # always the light theme (white cards, like the planner mockup)
+        UIAppFonts: [LINESeedSansTH_A_Rg.ttf, LINESeedSansTH_A_Bd.ttf, LINESeedSansTH_A_XBd.ttf, LINESeedSansTH_A_He.ttf]
         NSCameraUsageDescription: Giggles Maps takes one selfie when you check in at a stop. We only check that a face is in the photo.
         NSPhotoLibraryUsageDescription: Pick a selfie from your photos when the camera isn't available.
         NSLocationWhenInUseUsageDescription: Your location sets the start of your route and confirms you're at a stop when you check in.

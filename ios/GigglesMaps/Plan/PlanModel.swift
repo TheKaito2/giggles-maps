@@ -14,6 +14,17 @@ final class PlanModel {
     var leaveAt: Date = PlanModel.defaultLeave() { didSet { plan = nil } }
     var budget: Double = 45 { didSet { plan = nil } }
     var mode: TravelMode = .pedestrian { didSet { plan = nil } }
+    // "What draws you in?" and "Make it your kind of detour"; any change drops the old plan, like the trip fields
+    var interests: Set<Interest> = [] { didSet { plan = nil } }
+    var minRating: Double = 4 { didSet { plan = nil } }       // 0 = any
+    var maxPrice: Int? { didSet { plan = nil } }              // nil = any
+    var maxStops: Int? { didSet { plan = nil } }              // nil = auto
+    var includeUnrated = false { didSet { plan = nil } }
+
+    func reset() {
+        (budget, mode, interests, minRating, maxPrice, maxStops, includeUnrated) = (45, .pedestrian, [], 4, nil, nil, false)
+        leaveAt = Self.defaultLeave()
+    }
 
     var plan: RoutePlan? { didSet { choice = plan?.plans?.first?.id } }
     var choice: String?          // the themed plan the user picked
@@ -42,9 +53,11 @@ final class PlanModel {
         defer { busy = false }
         let parts = Calendar.current.dateComponents([.hour, .minute], from: leaveAt)
         do {
-            plan = try await Backend.planRoute(PlanRequest(origin: origin, dest: dest,
-                                                           startMin: (parts.hour ?? 0) * 60 + (parts.minute ?? 0),
-                                                           budgetMin: Int(budget), mode: mode))
+            plan = try await Backend.planRoute(PlanRequest(
+                origin: origin, dest: dest, startMin: (parts.hour ?? 0) * 60 + (parts.minute ?? 0), budgetMin: Int(budget), mode: mode,
+                interests: interests.isEmpty ? nil : Interest.allCases.filter(interests.contains),
+                minRating: minRating == 4 ? nil : minRating, includeUnrated: includeUnrated ? true : nil,
+                maxStops: maxStops, maxPrice: maxPrice))
         } catch {
             self.error = (error as? APIError)?.errorDescription ?? String(localized: "Couldn't plan the route. Try again in a moment.")
         }

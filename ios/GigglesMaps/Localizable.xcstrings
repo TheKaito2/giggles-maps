@@ -2051,6 +2051,516 @@
           }
         }
       }
+    },
+    "1 hour": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 ชั่วโมง"
+          }
+        }
+      }
+    },
+    "Any": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทั้งหมด"
+          }
+        }
+      }
+    },
+    "Any budget": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่จำกัดงบ"
+          }
+        }
+      }
+    },
+    "Auto · best fit": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อัตโนมัติ · พอดีที่สุด"
+          }
+        }
+      }
+    },
+    "Cafés": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คาเฟ่"
+          }
+        }
+      }
+    },
+    "Choose more than one": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกได้มากกว่าหนึ่ง"
+          }
+        }
+      }
+    },
+    "Culture": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วัฒนธรรม"
+          }
+        }
+      }
+    },
+    "Cycling": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปั่นจักรยาน"
+          }
+        }
+      }
+    },
+    "Depart": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ออกเดินทาง"
+          }
+        }
+      }
+    },
+    "Discover something worth the extra time.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ค้นพบสิ่งที่คุ้มค่ากับเวลาที่เพิ่มขึ้น"
+          }
+        }
+      }
+    },
+    "Driving": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ขับรถ"
+          }
+        }
+      }
+    },
+    "Extra time": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เวลาเพิ่ม"
+          }
+        }
+      }
+    },
+    "Find my detour": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หาทางแวะให้ฉัน"
+          }
+        }
+      }
+    },
+    "Finding your detour…": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังหาทางแวะ…"
+          }
+        }
+      }
+    },
+    "Free": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ฟรี"
+          }
+        }
+      }
+    },
+    "Getting around": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การเดินทาง"
+          }
+        }
+      }
+    },
+    "Heading out": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ออกเดินทาง"
+          }
+        }
+      }
+    },
+    "Higher rating filters may leave out newer local discoveries. Places with no listed price stay in.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การกรองคะแนนสูงอาจตัดร้านใหม่ในท้องถิ่นออกไป สถานที่ที่ไม่ระบุราคายังคงแสดงอยู่"
+          }
+        }
+      }
+    },
+    "How much extra time do you have?": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คุณมีเวลาเพิ่มเท่าไร"
+          }
+        }
+      }
+    },
+    "Include places without ratings": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รวมสถานที่ที่ยังไม่มีคะแนน"
+          }
+        }
+      }
+    },
+    "Includes extra travel and time spent at your stops.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รวมเวลาเดินทางเพิ่มและเวลาที่ใช้ในแต่ละจุดแวะ"
+          }
+        }
+      }
+    },
+    "Landmarks": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แลนด์มาร์ก"
+          }
+        }
+      }
+    },
+    "Local food": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อาหารท้องถิ่น"
+          }
+        }
+      }
+    },
+    "Make it your kind of detour": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปรับทางแวะให้เป็นแบบของคุณ"
+          }
+        }
+      }
+    },
+    "Minimum rating": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คะแนนขั้นต่ำ"
+          }
+        }
+      }
+    },
+    "Nature": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ธรรมชาติ"
+          }
+        }
+      }
+    },
+    "Number of stops": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จำนวนจุดแวะ"
+          }
+        }
+      }
+    },
+    "Plan your detour": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วางแผนทางแวะ"
+          }
+        }
+      }
+    },
+    "Price not listed": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่ระบุราคา"
+          }
+        }
+      }
+    },
+    "Reset preferences": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รีเซ็ตการตั้งค่า"
+          }
+        }
+      }
+    },
+    "Room for discovery": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เวลาสำหรับการค้นพบ"
+          }
+        }
+      }
+    },
+    "Sakon Nakhon, Thailand": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สกลนคร ประเทศไทย"
+          }
+        }
+      }
+    },
+    "Set": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตั้งแล้ว"
+          }
+        }
+      }
+    },
+    "Shopping": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ช้อปปิ้ง"
+          }
+        }
+      }
+    },
+    "Spending": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "งบประมาณ"
+          }
+        }
+      }
+    },
+    "Spending per stop": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "งบต่อจุดแวะ"
+          }
+        }
+      }
+    },
+    "Stops": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จุดแวะ"
+          }
+        }
+      }
+    },
+    "Surprise me": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เซอร์ไพรส์ฉัน"
+          }
+        }
+      }
+    },
+    "Time for discovery": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เวลาสำหรับการค้นพบ"
+          }
+        }
+      }
+    },
+    "Travel by": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เดินทางโดย"
+          }
+        }
+      }
+    },
+    "Unrated": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยังไม่มีคะแนน"
+          }
+        }
+      }
+    },
+    "Unrated places too": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รวมที่ยังไม่มีคะแนน"
+          }
+        }
+      }
+    },
+    "Up to %lld": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่เกิน %lld"
+          }
+        }
+      }
+    },
+    "Walking": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เดิน"
+          }
+        }
+      }
+    },
+    "What draws you in?": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อะไรที่ดึงดูดคุณ"
+          }
+        }
+      }
+    },
+    "Your journey": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การเดินทางของคุณ"
+          }
+        }
+      }
+    },
+    "Your little adventure": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การผจญภัยเล็กๆ ของคุณ"
+          }
+        }
+      }
+    },
+    "Your mix": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แบบของคุณ"
+          }
+        }
+      }
+    },
+    "^[%lld stop](inflect: true) · +%lld min": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld จุด · +%2$lld นาที"
+          }
+        }
+      }
+    },
+    "^[%lld stop](inflect: true) · trip %lld min instead of %lld": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld จุด · ทั้งทริป %2$lld นาที แทน %3$lld นาที"
+          }
+        }
+      }
+    },
+    "min": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นาที"
+          }
+        }
+      }
     }
   }
 }

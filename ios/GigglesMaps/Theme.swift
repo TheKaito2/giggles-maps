@@ -15,7 +15,7 @@ enum Theme {
     static let card = dynamic(light: 0xFFFFFF, dark: 0x181C38)
     static let ink2 = dynamic(light: 0x4A5078, dark: 0xA9AED0)
 
-    static func display(_ size: CGFloat) -> Font { .system(size: size, weight: .bold, design: .rounded) }
+    static func display(_ size: CGFloat) -> Font { .seed(size: size, .heavy) }
     static let data = Font.system(.body, design: .monospaced).weight(.semibold)
 
     private static func dynamic(light: UInt32, dark: UInt32) -> Color {
@@ -31,7 +31,7 @@ struct Chip: View {
     var partner = false
     var body: some View {
         Text(text)
-            .font(.caption.weight(.semibold))
+            .font(.seed(.caption, .bold))
             .padding(.horizontal, 9).padding(.vertical, 2)
             .background(partner ? Theme.marigoldSoft : Theme.indigoSoft, in: Capsule())
             .overlay { if partner { Capsule().stroke(Theme.marigold, lineWidth: 1) } }
@@ -58,7 +58,7 @@ struct PrimaryButtonStyle: ButtonStyle {
     var gold = false
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.headline)
+            .font(.seed(.headline))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
             .background(gold ? Theme.marigold : Theme.indigo, in: Capsule())

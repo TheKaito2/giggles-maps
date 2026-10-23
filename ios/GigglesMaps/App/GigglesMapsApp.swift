@@ -22,6 +22,8 @@ struct GigglesMapsApp: App {
     @State private var checkinTarget: CheckinTarget?
     @State private var scanError: String?
     private let purchases = Store.listen()   // renewals and refunds while the app runs
+
+    init() { SeedAppearance.apply() }
     private let relay: NotificationRelay = {
         let relay = NotificationRelay()
         UNUserNotificationCenter.current().delegate = relay
@@ -39,6 +41,7 @@ struct GigglesMapsApp: App {
                 }
             }
             .tint(Theme.indigo)
+            .font(.seed(.body))   // LINE Seed is the default for every Text that doesn't set its own font
             .task { try? await Backend.ensureSession() }   // start a guest session early; calls retry it anyway
             // a shop's QR sticker opened from the Camera app (universal link) lands here too
             .onOpenURL { open($0) }

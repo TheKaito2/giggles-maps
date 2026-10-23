@@ -11,7 +11,10 @@ struct LatLng: Codable, Equatable, Sendable {
     init(_ c: CLLocationCoordinate2D) { lat = c.latitude; lng = c.longitude }
 }
 
-enum TravelMode: String, Codable, Sendable { case pedestrian, auto }
+enum TravelMode: String, Codable, Sendable, CaseIterable { case pedestrian, auto, bicycle }
+
+/// "What draws you in?" chips; the server boosts the kinds of stop each covers in a "Your mix" plan.
+enum Interest: String, Codable, Sendable, CaseIterable { case food, culture, nature, cafes, shopping, landmarks }
 
 struct PlanRequest: Encodable, Sendable {
     var origin: LatLng
@@ -19,7 +22,16 @@ struct PlanRequest: Encodable, Sendable {
     var startMin: Int
     var budgetMin: Int
     var mode: TravelMode
-    enum CodingKeys: String, CodingKey { case origin, dest, mode, startMin = "start_min", budgetMin = "budget_min" }
+    // planner preferences: nil = the server's default, so they're left out of the request
+    var interests: [Interest]? = nil
+    var minRating: Double? = nil
+    var includeUnrated: Bool? = nil
+    var maxStops: Int? = nil
+    var maxPrice: Int? = nil
+    enum CodingKeys: String, CodingKey {
+        case origin, dest, mode, interests, startMin = "start_min", budgetMin = "budget_min"
+        case minRating = "min_rating", includeUnrated = "include_unrated", maxStops = "max_stops", maxPrice = "max_price"
+    }
 }
 
 struct RouteStop: Decodable, Identifiable, Equatable, Sendable {
@@ -31,7 +43,8 @@ struct RouteStop: Decodable, Identifiable, Equatable, Sendable {
     let lng: Double
     let isPartner: Bool          // a signed-up shop (ranking never depends on it)
     let isDemo: Bool
-    let rating: Double
+    let rating: Double?          // nil = unrated
+    let priceLevel: Int?         // 0 free, 1-3 = ฿-฿฿฿, nil = not listed
     let dwellMin: Int
     let etaMin: Int
     let nearbyPartner: NearbyPartner?   // "Near this spot" card under nature/temple stops
@@ -43,7 +56,7 @@ struct RouteStop: Decodable, Identifiable, Equatable, Sendable {
     enum CodingKeys: String, CodingKey {
         case id, name, category, lat, lng, rating, meal
         case nameTh = "name_th", isPartner = "is_partner", isDemo = "is_demo"
-        case dwellMin = "dwell_min", etaMin = "eta_min", nearbyPartner = "nearby_partner"
+        case dwellMin = "dwell_min", etaMin = "eta_min", nearbyPartner = "nearby_partner", priceLevel = "price_level"
         case minLevel = "min_level", exclusiveKind = "exclusive_kind", perkText = "perk_text"
     }
 }
@@ -254,6 +267,28 @@ enum Copy {
         }
     }
 
+    static func mode(_ mode: TravelMode) -> String {
+        switch mode {
+        case .pedestrian: String(localized: "Walking")
+        case .auto: String(localized: "Driving")
+        case .bicycle: String(localized: "Cycling")
+        }
+    }
+    static func interest(_ interest: Interest) -> String {
+        switch interest {
+        case .food: String(localized: "Local food")
+        case .culture: String(localized: "Culture")
+        case .nature: String(localized: "Nature")
+        case .cafes: String(localized: "Cafés")
+        case .shopping: String(localized: "Shopping")
+        case .landmarks: String(localized: "Landmarks")
+        }
+    }
+    /// 0 free, 1-3 baht signs; nil = the place has no listed price
+    static func price(_ level: Int?) -> String {
+        guard let level else { return String(localized: "Price not listed") }
+        return level == 0 ? String(localized: "Free") : String(repeating: "฿", count: level)
+    }
     static func meal(_ code: String) -> String {
         switch code {
         case "breakfast": String(localized: "Breakfast")
@@ -265,6 +300,7 @@ enum Copy {
     /// themed plan names; the server's English name is the fallback for themes added later
     static func plan(_ id: String, fallback: String) -> String {
         switch id {
+        case "mix": String(localized: "Your mix")
         case "top_picks": String(localized: "Top picks")
         case "nature": String(localized: "Nature lover")
         case "food": String(localized: "Food lover")
