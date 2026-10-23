@@ -36,7 +36,8 @@ export function useTrip(here: LatLng | null, startWatching: () => void, refreshK
     setError("");
     return p.then((t) => { setTrip(t ?? null); pinged.current = 0; if (t) startWatching(); })
       .catch((e) => setError(e instanceof ApiError && e.code === "trip_not_found" ? "That trip has ended or the code is wrong."
-        : e instanceof ApiError && e.code === "trip_full" ? "That trip is full (20 people)." : "Couldn't do that. Try again."));
+        : e instanceof ApiError && e.code === "trip_full" ? "That trip is full (20 people)."
+        : e instanceof ApiError && e.code === "bad_name" ? "Trip names can't contain < or >." : "Couldn't do that. Try again."));
   };
   return {
     trip, error,
@@ -62,9 +63,9 @@ export default function RideAlong({ trip: t, profile }: { trip: TripState; profi
         <button className="btn" type="submit"><Car size={16} aria-hidden /> Start a trip</button>
       </form>
       <form className="row add-friend" onSubmit={(e) => { e.preventDefault(); t.join(code); }}>
-        <input className="text-in code-in" value={code} maxLength={6} placeholder="Trip code" aria-label="Trip code" autoCapitalize="characters"
+        <input className="text-in code-in" value={code} maxLength={10} placeholder="Trip code" aria-label="Trip code" autoCapitalize="characters"
           onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />
-        <button className="btn soft" type="submit" disabled={code.length !== 6}>Join</button>
+        <button className="btn soft" type="submit" disabled={code.length < 6}>Join</button>
       </form>
       {t.error && <p className="error" role="alert">{t.error}</p>}
       <p className="fine">Your location is shared only with people on the trip, only while it runs (12 hours at most), and deleted when it ends.</p>

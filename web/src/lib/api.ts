@@ -249,7 +249,7 @@ export const equip = (kind: ShopKind, id: string) => rpc<Look>("equip", { p_kind
 export const SITE = "https://giggles-maps.pages.dev";
 // "?friend=CODE" (friend QR) and "?trip=CODE" (ride-along QR)
 export const readCodeParam = (name: "friend" | "trip") => {
-  const m = /^[A-Za-z0-9]{6,8}$/.exec(new URLSearchParams(location.search).get(name) ?? "");
+  const m = /^[A-Za-z0-9]{6,10}$/.exec(new URLSearchParams(location.search).get(name) ?? "");
   return m ? m[0].toUpperCase() : null;
 };
 
