@@ -1,13 +1,14 @@
 import { useRef, useState } from "react";
+import { MapPin } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import type { LatLng } from "../lib/api";
 
 interface Place extends LatLng { id: number; name: string; name_th: string | null }
 
-export default function PlaceSearch({ label, point, onPick }: {
-  label: string; point: LatLng | null; onPick: (point: LatLng) => void;
+export default function PlaceSearch({ label, initial = "", tone = "start", onPick }: {
+  label: string; initial?: string; tone?: "start" | "end"; onPick: (point: LatLng, name: string) => void;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initial);
   const [results, setResults] = useState<Place[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -21,7 +22,7 @@ export default function PlaceSearch({ label, point, onPick }: {
     if (coords) {
       const lat = Number(coords[1]), lng = Number(coords[2]);
       if (lat < 5 || lat > 21 || lng < 97 || lng > 106) { setMessage("Choose a point inside Thailand."); return; }
-      onPick({ lat, lng }); setMessage("Location selected."); return;
+      onPick({ lat, lng }, `${lat.toFixed(4)}, ${lng.toFixed(4)}`); setMessage("Location selected."); return;
     }
     if (text.length < 2) { setMessage("Enter at least 2 characters, or latitude, longitude."); return; }
     setBusy(true);
@@ -36,17 +37,17 @@ export default function PlaceSearch({ label, point, onPick }: {
   };
   return <div className="place-search">
     <label className="field">
-      <span>{label} place or latitude, longitude</span>
+      <span>{label}</span>
+      <span className={`input-icon ${tone}`}><MapPin size={16} aria-hidden />
       <input value={query} maxLength={100} placeholder="ชื่อสถานที่ / place / 13.7563, 100.5018"
         onChange={(e) => { request.current++; setBusy(false); setResults([]); setMessage(""); setQuery(e.target.value); }}
-        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void search(); } }} />
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void search(); } }} /></span>
     </label>
-    <button type="button" className="btn small" disabled={busy} onClick={search}>{busy ? "Searching…" : "Search"}</button>
-    {point && <span className="fine num">{point.lat.toFixed(5)}, {point.lng.toFixed(5)}</span>}
+    <button type="button" className="btn small soft" disabled={busy} onClick={search}>{busy ? "Searching…" : "Search"}</button>
     {message && <p className="fine" role="status">{message}</p>}
     {!!results.length && <ul className="place-results" aria-label={`${label} search results`}>
       {results.map((p) => <li key={p.id}><button type="button" className="link" onClick={() => {
-        request.current++; onPick({ lat: p.lat, lng: p.lng }); setQuery(p.name); setResults([]); setMessage("Location selected.");
+        request.current++; onPick({ lat: p.lat, lng: p.lng }, p.name); setQuery(p.name); setResults([]); setMessage("Location selected.");
       }}>{p.name}{p.name_th && p.name_th !== p.name ? ` · ${p.name_th}` : ""}<span className="fine"> · {p.lat.toFixed(3)}, {p.lng.toFixed(3)}</span></button></li>)}
     </ul>}
   </div>;

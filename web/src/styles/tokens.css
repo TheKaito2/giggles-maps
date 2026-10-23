@@ -1,3 +1,9 @@
+/* LINE Seed Sans TH (LY Corporation, SIL OFL 1.1, licence in /fonts): OneShot's typeface, for Thai and English */
+@font-face { font-family: "LINE Seed Sans TH"; src: url("/fonts/LINESeedSansTH_A_Rg.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "LINE Seed Sans TH"; src: url("/fonts/LINESeedSansTH_A_Bd.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "LINE Seed Sans TH"; src: url("/fonts/LINESeedSansTH_A_XBd.ttf") format("truetype"); font-weight: 800; font-display: swap; }
+@font-face { font-family: "LINE Seed Sans TH"; src: url("/fonts/LINESeedSansTH_A_He.ttf") format("truetype"); font-weight: 900; font-display: swap; }
+
 /* Giggles Maps tokens. Direction: travel passport meets Sakon Nakhon indigo (kram) cloth.
    Indigo ink for structure, marigold for money/partner, stamp red for badges. */
 :root {
@@ -16,8 +22,8 @@
   --bad: #b3261e;
   --shadow: 0 1px 2px rgb(22 27 61 / 0.06), 0 6px 20px rgb(22 27 61 / 0.08);
 
-  --font-display: "Mali", "Anuphan", system-ui, sans-serif;
-  --font-body: "Anuphan", "Noto Sans Thai", system-ui, sans-serif;
+  --font-display: "Mali", "LINE Seed Sans TH", system-ui, sans-serif;
+  --font-body: "LINE Seed Sans TH", "Anuphan", "Noto Sans Thai", system-ui, sans-serif;
   --font-data: "IBM Plex Mono", ui-monospace, Menlo, monospace;
   --radius: 14px;
 }
@@ -42,6 +48,7 @@
 html, body { margin: 0; }
 body { background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
 h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h2, h3 { font-family: var(--font-body); font-weight: 700; }
 p { margin: 0; }
 a { color: var(--indigo); text-underline-offset: 3px; }
 button { font: inherit; cursor: pointer; }

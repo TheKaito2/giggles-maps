@@ -15,7 +15,8 @@ export type ExclusiveKind = "gem" | "perk" | "event";
 export interface RouteStop {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
   is_partner: boolean; // signed-up shop that pays per verified visit; never affects ranking
-  is_demo: boolean; rating: number; dwell_min: number; eta_min: number;
+  is_demo: boolean; rating: number | null; dwell_min: number; eta_min: number;
+  price_level?: number | null; // 0 free, 1-3 = ฿-฿฿฿, null = not listed
   nearby_partner: NearbyPartner | null;
   min_level?: number; exclusive_kind?: ExclusiveKind | null; perk_text?: string | null;
   meal?: Meal | null; // engine v2: this stop covers a meal
@@ -63,8 +64,19 @@ export interface CheckinResult {
 // A place the user can check in at: a route stop, a "Near this spot" card, or a scanned sticker
 export interface CheckinTarget { id: number; name: string; lat: number; lng: number; is_partner: boolean; is_demo: boolean }
 
-export const planRoute = (p: { origin: LatLng; dest: LatLng; start_min: number; budget_min: number; mode: "pedestrian" | "auto" }) =>
-  callFn<RoutePlan>("plan-route", p);
+export type TravelMode = "pedestrian" | "bicycle" | "auto";
+export type Interest = "food" | "cafes" | "culture" | "nature" | "shopping" | "landmarks";
+
+export interface PlanRequest {
+  origin: LatLng; dest: LatLng; start_min: number; budget_min: number; mode: TravelMode;
+  interests?: Interest[];       // builds the "Your mix" plan, shown first
+  min_rating?: 0 | 3.5 | 4 | 4.5;
+  include_unrated?: boolean;
+  max_stops?: number;           // 1-6; omitted = Auto
+  max_price?: 0 | 1 | 2 | 3;    // omitted = Any
+}
+
+export const planRoute = (p: PlanRequest) => callFn<RoutePlan>("plan-route", p);
 
 export async function uploadSelfie(blob: Blob): Promise<string> {
   const session = await ensureSession();
