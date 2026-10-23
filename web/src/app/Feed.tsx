@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Award, Bell, PartyPopper, Trophy, Zap } from "lucide-react";
-import { type Card, type FeedItem, getFeed, getSocial, photoUrls, type Profile, react, type Reaction } from "../lib/api";
+import { type Card, type FeedItem, getFeed, getSocial, getSpotlight, photoUrls, type Profile, react, type Reaction, type Spotlight } from "../lib/api";
 import Avatar from "./social/Avatar";
 import ProvinceStamp from "./passport/ProvinceStamp";
 import { useProvinces } from "./passport/useProvinces";
@@ -64,9 +64,17 @@ function Item({ it, url, onReact }: { it: FeedItem; url?: string; onReact: (r: R
 }
 
 /** Feed tab (Duolingo "Friend updates"): stamps, provinces, level-ups, quests, badges and nudges from you and your friends. */
-export default function Feed({ profile, refreshKey, openFriend, goProfile }: {
-  profile: Profile | null; refreshKey: number; openFriend: (id: string) => void; goProfile: () => void;
+export default function Feed({ profile, refreshKey, openFriend, goProfile, openPlace }: {
+  profile: Profile | null; refreshKey: number; openFriend: (id: string) => void; goProfile: () => void; openPlace: (id: number) => void;
 }) {
+  const [spot, setSpot] = useState<Spotlight | null>(null);
+  // this week's local spotlight: where you are if location is already allowed, else Sakon Nakhon
+  useEffect(() => {
+    const get = (lat: number, lng: number) => getSpotlight({ lat, lng }).then(setSpot).catch(() => undefined);
+    navigator.permissions?.query({ name: "geolocation" }).then((st) => st.state === "granted"
+      ? navigator.geolocation.getCurrentPosition((p) => get(p.coords.latitude, p.coords.longitude), () => get(17.163, 104.149))
+      : get(17.163, 104.149)).catch(() => get(17.163, 104.149));
+  }, []);
   const [scope, setScope] = useState<"all" | "friends" | "me">("all");
   const [items, setItems] = useState<FeedItem[] | null>(null);
   const [friends, setFriends] = useState<Card[]>([]);
@@ -97,6 +105,11 @@ export default function Feed({ profile, refreshKey, openFriend, goProfile }: {
         {friends.map((f) => <li key={f.id}><button type="button" className="friend-chip" onClick={() => openFriend(f.id)}>
           <Avatar name={f.nickname} colour={f.colour} avatar={f.avatar} size={56} /><span>{f.nickname}</span></button></li>)}
       </ul>
+      {spot && <button type="button" className="spotlight" onClick={() => openPlace(spot.id)}>
+        {spot.photo ? <img src={spot.photo} alt="" /> : <span className="spotlight-ph" aria-hidden>★</span>}
+        <span className="person-main"><span className="eyebrow">Local spotlight{spot.province ? ` · ${spot.province}` : ""}</span>
+          <b>{spot.name}</b><span className="fine">{spot.otop ? "OTOP producer" : "Community enterprise"}{spot.visits ? ` · ${spot.visits} visits this week` : ""}</span></span>
+      </button>}
       <div className="seg" role="tablist" aria-label="Show">
         {(["all", "friends", "me"] as const).map((s) => <button key={s} type="button" role="tab" aria-selected={scope === s} className={scope === s ? "on" : ""}
           onClick={() => setScope(s)}>{s === "all" ? "All" : s === "friends" ? "Friends" : "Me"}</button>)}

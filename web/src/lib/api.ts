@@ -23,6 +23,7 @@ export interface RouteStop {
   meal?: Meal | null; // engine v2: this stop covers a meal
   meal_late?: boolean; // the restaurant for that meal, outside the usual meal hours (the route couldn't reach them)
   picked?: boolean;   // the user asked for this place (must_include)
+  local?: boolean; otop?: boolean; community?: boolean;   // local first: independent / OTOP / community enterprise
   tier?: 1 | 2 | 3;   // 3 = landmark (must-go), 2 = worth a visit, 1 = everyday
 }
 
@@ -307,13 +308,58 @@ export const updateList = (list: string, p: { name?: string; shared?: boolean; r
   rpc<void>("update_list", { p_list: list, p_name: p.name ?? null, p_shared: p.shared ?? null, p_delete: p.remove ?? false });
 
 export type EditPayload = Partial<{ name: string; name_th: string; kind: string; opening_hours: string; phone: string; website: string;
-  closed: boolean; lat: number; lng: number }>;
+  closed: boolean; lat: number; lng: number; otop: boolean; community: boolean; otop_stars: number }>;
 export const suggestEdit = (place: number | null, payload: EditPayload, here?: LatLng) =>
   rpc<void>("suggest_edit", { p_place: place, p_payload: payload, p_here_lat: here?.lat ?? null, p_here_lng: here?.lng ?? null });
 export interface PendingEdit { id: number; place_id: number | null; payload: EditPayload; at: string; who: Who;
   place: { name: string; kind: string | null; opening_hours: string | null; phone: string | null; website: string | null } | null }
 export const getAdminEdits = () => rpc<PendingEdit[]>("admin_edits");
 export const reviewEdit = (id: number, approve: boolean) => rpc<void>("review_edit", { p_edit: id, p_approve: approve });
+
+// ---------- local first: owners, products, nominations ----------
+export interface OwnedPlace {
+  id: number; name: string; kind: string | null; shop_id: string; opening_hours: string | null; phone: string | null;
+  website: string | null; description: string | null; otop: boolean; otop_stars: number | null; community: boolean;
+  verified: boolean; qr_code: string | null;
+  products: { id: number; name: string; price: number | null; photo: string | null }[]; photos: { id: number; url: string }[];
+}
+export const getMyPlaces = () => rpc<OwnedPlace[]>("my_places");
+export const claimShop = (place: number) => rpc<string>("claim_shop", { p_place: place });
+export const addShop = (name: string, kind: string, at: LatLng, here: LatLng) =>
+  rpc<number>("add_shop", { p_name: name, p_kind: kind, p_lat: at.lat, p_lng: at.lng, p_here_lat: here.lat, p_here_lng: here.lng });
+export const updateMyPlace = (place: number, payload: Record<string, string | number | boolean | null>) =>
+  rpc<void>("update_my_place", { p_place: place, p_payload: payload });
+export const saveProduct = (place: number, id: number | null, name: string, price: number | null, photo: string | null) =>
+  rpc<void>("save_product", { p_place: place, p_id: id, p_name: name, p_price: price, p_photo: photo });
+export const deleteProduct = (place: number, id: number) => rpc<void>("delete_product", { p_place: place, p_id: id });
+export const addOwnerPhoto = (place: number, path: string) => rpc<void>("add_owner_photo", { p_place: place, p_path: path });
+export const deleteOwnerPhoto = (place: number, id: number) => rpc<void>("delete_owner_photo", { p_place: place, p_photo: id });
+/** Upload to the public shop-photos bucket under your own folder; returns the storage path. */
+export async function uploadShopPhoto(file: Blob): Promise<string> {
+  const s = await ensureSession();
+  const path = `${s.user.id}/${Date.now()}.jpg`;
+  const { error } = await supabase.storage.from("shop-photos").upload(path, file, { contentType: file.type || "image/jpeg" });
+  if (error) throw new Error("Photo upload failed. Try again.");
+  return path;
+}
+/** Public URL for a shop photo path ("<uid>/..." or "shop-photos/<uid>/..."). */
+export const shopPhotoUrl = (path: string) => supabase.storage.from("shop-photos").getPublicUrl(path.replace(/^shop-photos\//, "")).data.publicUrl;
+
+export interface PlaceExtras { description: string | null; otop_stars: number | null; verified: boolean; claimed: boolean;
+  products: { id: number; name: string; price: number | null; photo: string | null }[] }
+export const getPlaceExtras = (id: number) => rpc<PlaceExtras | null>("place_extras", { p_id: id });
+
+export interface Nomination { id: number; name: string; kind: string; otop: boolean; community: boolean; lat: number; lng: number;
+  distance_m: number; confirms: number; mine: boolean; confirmed: boolean }
+export const nominate = (p: { name: string; kind: string; otop: boolean; community: boolean; photo: string; at: LatLng }) =>
+  rpc<number>("nominate", { p_name: p.name, p_kind: p.kind, p_otop: p.otop, p_community: p.community, p_photo: p.photo, p_lat: p.at.lat, p_lng: p.at.lng });
+export const nominationsNear = (at: LatLng) => rpc<Nomination[]>("nominations_near", { p_lat: at.lat, p_lng: at.lng });
+export const confirmNomination = (id: number, at: LatLng) => rpc<"confirmed" | "live">("confirm_nomination", { p_id: id, p_lat: at.lat, p_lng: at.lng });
+export interface Spotlight { id: number; name: string; name_th: string | null; kind: string | null; otop: boolean; community: boolean;
+  province: string | null; photo: string | null; visits: number }
+export const getSpotlight = (at: LatLng) => rpc<Spotlight | null>("local_spotlight", { p_lat: at.lat, p_lng: at.lng });
+export interface LocalStat { province: string; local_visits_30d: number; new_shops_30d: number; nominations_30d: number; local_stop_share_pct: number | null }
+export const getLocalStats = () => rpc<LocalStat[]>("local_stats");
 
 export const SITE = "https://giggles-maps.pages.dev";
 // "?friend=CODE" (friend QR) and "?trip=CODE" (ride-along QR)

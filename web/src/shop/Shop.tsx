@@ -4,6 +4,7 @@ import { ApiError, ensureSession, supabase } from "../lib/supabase";
 import { startCheckout } from "../lib/api";
 import { isGuest, resumeSignIn, useUser } from "../lib/auth";
 import SignIn from "../app/SignIn";
+import MyListing from "./MyListing";
 
 interface ShopRow { id: string; name: string; is_demo: boolean; owner_id: string | null }
 interface PlaceStat {
@@ -111,6 +112,7 @@ export default function Shop() {
             </select>
           </label>
         </div>
+        <MyListing signedIn={!isGuest(user)} />
         {shop?.is_demo && <p className="fine notice">Example shop for the demo. This business hasn't signed up; numbers come from test check-ins.</p>}
 
         <section className="tiles" aria-label="Last 30 days">
@@ -178,8 +180,8 @@ export default function Shop() {
         <section className="stack">
           <h2>Your account</h2>
           {isGuest(user)
-            ? <SignIn why="Sign in to manage your own shop. Shop sign-up opens after the pilot; until then we add pilot shops by hand." />
-            : <p className="fine">Signed in as <b>{user?.email}</b>. Shops you own appear in the list above once we link them to this account.</p>}
+            ? <SignIn why="Sign in to claim or add your shop and manage it here. Free for every local business." />
+            : <p className="fine">Signed in as <b>{user?.email}</b>. Shops you claim or add appear above.</p>}
         </section>
       </main>
     </div>

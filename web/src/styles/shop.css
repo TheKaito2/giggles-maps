@@ -27,3 +27,13 @@ tr:last-child td { border-bottom: 0; }
 .sticker .fine { color: #4a5078; }
 .sticker-code { font-size: 20px; letter-spacing: .15em; font-weight: 600; }
 td .row { flex-wrap: nowrap; }
+
+/* free listing for local shops */
+.my-listing .glass, .listing { padding: 16px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); display: grid; gap: 10px; }
+.listing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.listing-grid .wide { grid-column: 1 / -1; }
+.listing-grid textarea { width: 100%; }
+.product-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.product-grid li { display: grid; gap: 4px; }
+.product-grid img, .product-grid .ph { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; background: var(--indigo-soft); }
+.price-in { max-width: 110px; }

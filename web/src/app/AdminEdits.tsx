@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
-import { getAdminEdits, type PendingEdit, reviewEdit } from "../lib/api";
+import { getAdminEdits, getLocalStats, type LocalStat, type PendingEdit, reviewEdit } from "../lib/api";
 
 /** Admin only: suggested edits and missing places waiting for review. Approving applies it and pays the author 50 XP. */
 export default function AdminEdits() {
   const [edits, setEdits] = useState<PendingEdit[] | null>(null);
+  const [stats, setStats] = useState<LocalStat[] | null>(null);
+  useEffect(() => { getLocalStats().then(setStats).catch(() => setStats(null)); }, []);
   const load = () => getAdminEdits().then(setEdits).catch(() => setEdits([]));
   useEffect(() => { load(); }, []);
   if (!edits) return null;
@@ -26,6 +28,15 @@ export default function AdminEdits() {
           </div>
         </article>
       ))}
+      {stats && <>
+        <h3>Local first, last 30 days</h3>
+        <div className="table-wrap"><table className="stats">
+          <thead><tr><th>Province</th><th>OTOP/community visits</th><th>New shops</th><th>Nominations</th><th>Local share of stops</th></tr></thead>
+          <tbody>{stats.filter((r) => r.local_visits_30d || r.new_shops_30d || r.nominations_30d || r.local_stop_share_pct != null).map((r) => <tr key={r.province}>
+            <td>{r.province}</td><td className="num">{r.local_visits_30d}</td><td className="num">{r.new_shops_30d}</td><td className="num">{r.nominations_30d}</td>
+            <td className="num">{r.local_stop_share_pct == null ? "–" : `${r.local_stop_share_pct}%`}</td></tr>)}</tbody>
+        </table></div>
+      </>}
     </section>
   );
 }

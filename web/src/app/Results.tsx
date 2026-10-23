@@ -87,6 +87,8 @@ export default function Results({ response, plan, choice, setChoice, selected, o
                   <span className="chip price">{s.price_level == null ? "Price not listed" : PRICE[s.price_level]}</span>
                   {s.tier === 3 && <span className="chip landmark">Landmark</span>}
                   {s.picked && <span className="chip picked">You picked this</span>}
+                  {(s.otop || s.community) ? <span className="chip otop">{s.otop ? "OTOP" : "Community enterprise"}</span>
+                    : s.local && <span className="chip">Local</span>}
                   {s.meal && <span className="chip meal">{s.meal_late ? `Late ${MEAL_NAME[s.meal].toLowerCase()}` : MEAL_NAME[s.meal]}</span>}
                   {s.is_partner && <span className="chip partner" title={PARTNER_TIP}>{s.is_demo ? "Example partner" : "Partner"}</span>}
                   {!!s.min_level && s.exclusive_kind && <span className="chip exclusive">{KIND_NAME[s.exclusive_kind]} · Level {s.min_level}</span>}

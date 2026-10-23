@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Bookmark, BookmarkCheck, Camera, Clock, Flag, Globe, MapPin, Navigation, Pencil, Phone, Share2, Star, X } from "lucide-react";
 import { ApiError } from "../lib/supabase";
-import { createList, deleteReview, getMyLists, getPlacePage, type PlacePage, photoUrls, reportReview, type SavedList, savePlace,
-  SITE, suggestEdit, writeReview } from "../lib/api";
+import { createList, deleteReview, getMyLists, getPlaceExtras, getPlacePage, type PlaceExtras, type PlacePage, photoUrls, reportReview,
+  type SavedList, savePlace, shopPhotoUrl, SITE, suggestEdit, writeReview } from "../lib/api";
 import { GROUPS, kindOf } from "./kinds";
 import { openNow } from "./hours";
 import Avatar from "./social/Avatar";
@@ -69,6 +69,7 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
   id: number; onClose: () => void; onDirections: (p: PlacePage) => void; onCheckin: (p: PlacePage) => void;
 }) {
   const [page, setPage] = useState<PlacePage | null>(null);
+  const [extras, setExtras] = useState<PlaceExtras | null>(null);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [menu, setMenu] = useState<"save" | "edit" | null>(null);
   const [rating, setRating] = useState(0);
@@ -79,7 +80,10 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
     const mine = p?.reviews.find((r) => r.mine);
     if (mine) { setRating(mine.rating); setBody(mine.body ?? ""); }
   }).catch(() => setMsg("Couldn't load this place."));
-  useEffect(() => { setPage(null); setMenu(null); setMsg(""); setRating(0); setBody(""); load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setPage(null); setExtras(null); setMenu(null); setMsg(""); setRating(0); setBody(""); load();
+    getPlaceExtras(id).then(setExtras).catch(() => undefined);
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const paths = (page?.photos ?? []).map((p) => p.path).filter((p): p is string => !!p);
     if (paths.length) photoUrls(paths).then(setUrls).catch(() => undefined);
@@ -104,9 +108,9 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
       {page.photos.length > 0 && (
         <ul className="photo-strip" aria-label="Photos">
           {page.photos.map((ph, i) => {
-            const src = ph.url ?? (ph.path ? urls[ph.path] : undefined);
+            const src = ph.url?.startsWith("shop-photos/") ? shopPhotoUrl(ph.url) : ph.url ?? (ph.path ? urls[ph.path] : undefined);
             return <li key={i}>{src ? <img src={src} alt={`${page.name} photo ${i + 1}`} loading="lazy" /> : <div className="ph" />}
-              <span className="photo-credit">{ph.source === "wikimedia" ? `${ph.credit} · ${ph.licence} · Wikimedia` : `by ${ph.credit}`}</span></li>;
+              <span className="photo-credit">{ph.source === "wikimedia" ? `${ph.credit} · ${ph.licence} · Wikimedia` : ph.source === "owner" ? "From the owner" : `by ${ph.credit}`}</span></li>;
           })}
         </ul>
       )}
@@ -122,7 +126,8 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
           </span>
           <span className="row tight">
             {page.tier === 3 && <span className="chip landmark">Landmark</span>}
-            {page.otop && <span className="chip otop">OTOP</span>}
+            {page.otop && <span className="chip otop">OTOP{extras?.otop_stars ? ` ${"★".repeat(extras.otop_stars)}` : ""}</span>}
+            {extras?.verified && <span className="chip">Verified shop</span>}
             {page.community && <span className="chip otop">Community enterprise</span>}
             {page.local && !page.otop && <span className="chip">Local</span>}
             {page.stamped && <span className="chip">Stamped</span>}
@@ -140,6 +145,18 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
       {menu === "save" && <SaveMenu page={page} onClose={() => setMenu(null)} onChange={load} />}
       {msg && <p className="fine" role="status">{msg}</p>}
 
+      {extras?.description && <p className="place-about">{extras.description}</p>}
+      {(page.otop || page.community) && <p className="local-note">{page.community
+        ? "A community enterprise: your visit supports local makers directly."
+        : "An OTOP producer (One Tambon One Product): local products made in this subdistrict."}</p>}
+      {extras && extras.products.length > 0 && (
+        <section aria-label="Products">
+          <h4 className="eyebrow">Products</h4>
+          <ul className="product-strip">{extras.products.map((pr) => <li key={pr.id}>
+            {pr.photo ? <img src={shopPhotoUrl(pr.photo)} alt={pr.name} loading="lazy" /> : <div className="ph" />}
+            <b>{pr.name}</b>{pr.price != null && <span className="num fine">฿{pr.price}</span>}</li>)}</ul>
+        </section>
+      )}
       <ul className="place-info">
         {page.opening_hours && <li><Clock size={16} aria-hidden />
           <span>{open === true ? <b className="open">Open now</b> : open === false ? <b className="closed">Closed now</b> : null} <span className="fine">{page.opening_hours}</span></span></li>}
@@ -182,7 +199,10 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
         ))}
       </section>
 
-      <button type="button" className="link" onClick={() => setMenu(menu === "edit" ? null : "edit")}><Pencil size={14} aria-hidden /> Suggest an edit</button>
+      <div className="row">
+        <button type="button" className="link" onClick={() => setMenu(menu === "edit" ? null : "edit")}><Pencil size={14} aria-hidden /> Suggest an edit</button>
+        {extras && !extras.claimed && page.detour && <a className="link" href={`/shop/?claim=${page.id}`}>Own this place? Claim it free</a>}
+      </div>
       {menu === "edit" && <EditForm page={page} onDone={(m) => { setMsg(m); setMenu(null); }} />}
     </aside>
   );

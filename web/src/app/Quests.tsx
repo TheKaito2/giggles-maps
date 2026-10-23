@@ -4,6 +4,7 @@ import { ApiError } from "../lib/supabase";
 import { type Challenge, claimQuests, type FriendQuest, getFriendQuest, getPassport, getSocial, nudge, type Profile, setFriendQuest,
   type Card } from "../lib/api";
 import Avatar from "./social/Avatar";
+import VerifyLocal from "./VerifyLocal";
 
 const GROUPS: { kind: Challenge["kind"]; title: string; resets?: "day" | "week" }[] = [
   { kind: "daily", title: "Daily quests", resets: "day" }, { kind: "weekly", title: "Weekly quests", resets: "week" },
@@ -71,6 +72,7 @@ export default function Quests({ profile, refreshKey, onChange }: { profile: Pro
       {opened.length > 0 && <p className="hint chest-pop" role="status">Chest opened: {opened.join(", ")}</p>}
       {msg && <p className="fine" role="status">{msg}</p>}
 
+      <VerifyLocal />
       <section className="friend-quest glass">
         <div className="row between"><h3><Users size={18} aria-hidden /> Friends Quest</h3>{<span className="chip"><Clock size={12} aria-hidden /> {left("week")}</span>}</div>
         {fq === undefined ? <p className="fine">Loading…</p> : fq ? <>
