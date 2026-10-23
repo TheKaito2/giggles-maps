@@ -9,10 +9,15 @@ struct PassportView: View {
     @State private var badges: Set<Int> = []
     @State private var confirmDelete = false
     @State private var message: String?
+    @State private var profile: Profile?
+    @State private var exclusives: [ExclusivePlace] = []
 
     var body: some View {
         NavigationStack {
             List {
+                LevelCard(profile: profile, onPurchased: { Task { await load() } })
+                    .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
+
                 Section("Trails") {
                     ForEach(collections) { c in
                         VStack(alignment: .leading, spacing: 6) {
@@ -56,8 +61,10 @@ struct PassportView: View {
                     }
                 }
 
+                ExclusiveSection(places: exclusives)
+
                 AccountSection()
-                PlusSection(refreshKey: refreshKey)
+                PlusSection(profile: profile, onChange: { Task { await load() } })
 
                 Section {
                     if confirmDelete {
@@ -79,7 +86,11 @@ struct PassportView: View {
 
     private func load() async {
         do {
+            async let me = Backend.profile()
+            async let ex = Backend.exclusives()
             let p = try await Backend.passport()
+            profile = try? await me
+            exclusives = (try? await ex) ?? []
             collections = p.collections
             recent = p.checkins
             visited = Set(p.checkins.filter(\.rewarded).map(\.placeId))
@@ -98,7 +109,7 @@ struct PassportView: View {
     private func deleteAccount() async {
         do {
             try await Backend.deleteAccount()
-            recent = []; visited = []; badges = []
+            recent = []; visited = []; badges = []; profile = nil; exclusives = []
             message = String(localized: "Account deleted. A fresh guest passport starts next time you plan a route.")
         } catch {
             message = String(localized: "Couldn't delete the account. Try again.")

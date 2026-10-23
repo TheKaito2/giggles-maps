@@ -1232,16 +1232,6 @@
         }
       }
     },
-    "No active Plus subscription found for this Apple ID.": {
-      "localizations": {
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ไม่พบการสมัคร Plus ที่ใช้งานอยู่สำหรับ Apple ID นี้"
-          }
-        }
-      }
-    },
     "OK": {
       "localizations": {
         "th": {
@@ -1432,42 +1422,522 @@
         }
       }
     },
-    "Giggles Plus: plan detours up to 240 extra minutes.": {
+    "%@ · Level %lld": {
       "localizations": {
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "Giggles Plus: วางแผนทางแวะได้ถึง 240 นาที"
+            "value": "%1$@ · เลเวล %2$lld"
           }
         }
       }
     },
-    "Detours up to 240 extra minutes, and Plus badges.": {
+    "%lld XP": {
       "localizations": {
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "ทางแวะได้ถึง 240 นาที และเหรียญ Plus"
+            "value": "%lld XP"
           }
         }
       }
     },
-    "Plan detours up to 240 extra minutes, and collect Plus badges.": {
+    "%lld XP to level %lld": {
       "localizations": {
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "วางแผนทางแวะได้ถึง 240 นาที และสะสมเหรียญ Plus"
+            "value": "อีก %1$lld XP ถึงเลเวล %2$lld"
           }
         }
       }
     },
-    "Longer detours for longer days out.": {
+    "+%lld XP": {
       "localizations": {
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "ทางแวะที่ยาวขึ้นสำหรับวันเที่ยวที่ยาวขึ้น"
+            "value": "+%lld XP"
+          }
+        }
+      }
+    },
+    "Become a member": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สมัครสมาชิก"
+          }
+        }
+      }
+    },
+    "Become a member to unlock your level, hidden gems, member perks and events. One payment, yours for good.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สมัครสมาชิกเพื่อปลดล็อกเลเวล ที่ลับ สิทธิพิเศษสมาชิก และอีเวนต์ จ่ายครั้งเดียว ใช้ได้ตลอด"
+          }
+        }
+      }
+    },
+    "Classic": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คลาสสิก"
+          }
+        }
+      }
+    },
+    "Couldn't save that. Try again.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บันทึกไม่สำเร็จ ลองอีกครั้ง"
+          }
+        }
+      }
+    },
+    "Design": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ดีไซน์"
+          }
+        }
+      }
+    },
+    "Event": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อีเวนต์"
+          }
+        }
+      }
+    },
+    "Events and limited spots from level 6": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อีเวนต์และที่จำกัดเวลา ตั้งแต่เลเวล 6"
+          }
+        }
+      }
+    },
+    "Example": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตัวอย่าง"
+          }
+        }
+      }
+    },
+    "Exclusive": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "พิเศษ"
+          }
+        }
+      }
+    },
+    "Exclusive places": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สถานที่พิเศษ"
+          }
+        }
+      }
+    },
+    "Giggles Maps membership": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สมาชิก Giggles Maps"
+          }
+        }
+      }
+    },
+    "Guest explorer": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นักสำรวจรับเชิญ"
+          }
+        }
+      }
+    },
+    "Hidden gem": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ที่ลับ"
+          }
+        }
+      }
+    },
+    "Hidden gems from level 2": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ที่ลับ ตั้งแต่เลเวล 2"
+          }
+        }
+      }
+    },
+    "Indigo": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คราม"
+          }
+        }
+      }
+    },
+    "Indigo cloth": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ผ้าคราม"
+          }
+        }
+      }
+    },
+    "Level %lld": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลเวล %lld"
+          }
+        }
+      }
+    },
+    "Level %lld banked: become a member to unlock it": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สะสมถึงเลเวล %lld แล้ว สมัครสมาชิกเพื่อปลดล็อก"
+          }
+        }
+      }
+    },
+    "Level %lld explorer": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นักสำรวจเลเวล %lld"
+          }
+        }
+      }
+    },
+    "Level %lld, locked": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลเวล %lld ล็อกอยู่"
+          }
+        }
+      }
+    },
+    "Level up! Level %lld": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลเวลอัป! เลเวล %lld"
+          }
+        }
+      }
+    },
+    "Lotus": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บัว"
+          }
+        }
+      }
+    },
+    "Make your passport yours: 6 cover themes, a coloured name with a badge, 3 premium share-card designs, and a new stamp every month. Looks only: every place and route stays free.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แต่งพาสปอร์ตในแบบคุณ: ธีมปก 6 แบบ ชื่อสีพร้อมตรา การ์ดแชร์พิเศษ 3 แบบ และตราประทับใหม่ทุกเดือน แค่เรื่องความสวย ทุกสถานที่และเส้นทางยังฟรีเหมือนเดิม"
+          }
+        }
+      }
+    },
+    "Marigold": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ดาวเรือง"
+          }
+        }
+      }
+    },
+    "Member": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สมาชิก"
+          }
+        }
+      }
+    },
+    "Member perk": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สิทธิพิเศษสมาชิก"
+          }
+        }
+      }
+    },
+    "Member perks at shops from level 4": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สิทธิพิเศษที่ร้าน ตั้งแต่เลเวล 4"
+          }
+        }
+      }
+    },
+    "Monthly stamps": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตราประทับรายเดือน"
+          }
+        }
+      }
+    },
+    "Name flair": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สีชื่อ"
+          }
+        }
+      }
+    },
+    "Needs member level %lld.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ต้องเป็นสมาชิกเลเวล %lld"
+          }
+        }
+      }
+    },
+    "Night market": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตลาดกลางคืน"
+          }
+        }
+      }
+    },
+    "Night neon": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นีออนยามค่ำ"
+          }
+        }
+      }
+    },
+    "None": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่มี"
+          }
+        }
+      }
+    },
+    "One-time purchase. No subscription.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ซื้อครั้งเดียว ไม่ใช่การสมัครรายเดือน"
+          }
+        }
+      }
+    },
+    "Passport theme": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ธีมพาสปอร์ต"
+          }
+        }
+      }
+    },
+    "Plus stamp %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตราประทับ Plus %@"
+          }
+        }
+      }
+    },
+    "Postcard": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "โปสการ์ด"
+          }
+        }
+      }
+    },
+    "Premium designs come with Giggles Plus.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ดีไซน์พิเศษมากับ Giggles Plus"
+          }
+        }
+      }
+    },
+    "Rain": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ฝน"
+          }
+        }
+      }
+    },
+    "Share": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แชร์"
+          }
+        }
+      }
+    },
+    "Sign in below first, so your membership stays with your account.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เข้าสู่ระบบด้านล่างก่อน เพื่อให้สมาชิกภาพอยู่กับบัญชีของคุณ"
+          }
+        }
+      }
+    },
+    "Sparkle": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ประกาย"
+          }
+        }
+      }
+    },
+    "Stamped at %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ประทับที่ %@"
+          }
+        }
+      }
+    },
+    "Temple gold": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทองวัด"
+          }
+        }
+      }
+    },
+    "Themes, flair and share cards for your passport.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ธีม สีชื่อ และการ์ดแชร์สำหรับพาสปอร์ตของคุณ"
+          }
+        }
+      }
+    },
+    "This place opens at a higher member level.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ที่นี่เปิดให้สมาชิกเลเวลสูงกว่านี้"
+          }
+        }
+      }
+    },
+    "Top level": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลเวลสูงสุด"
+          }
+        }
+      }
+    },
+    "Your level unlocks right away (you've banked %lld XP)": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลเวลของคุณปลดล็อกทันที (สะสมไว้แล้ว %lld XP)"
           }
         }
       }

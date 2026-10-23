@@ -1,7 +1,28 @@
 {
   "identifier": "6F0B2A51",
   "nonRenewingSubscriptions": [],
-  "products": [],
+  "products": [
+    {
+      "displayPrice": "349",
+      "familyShareable": false,
+      "internalID": "6740000002",
+      "localizations": [
+        {
+          "description": "Unlock your level, hidden gems, member perks and events. One-time.",
+          "displayName": "Giggles Maps membership",
+          "locale": "en_US"
+        },
+        {
+          "description": "ปลดล็อกเลเวล ที่ลับ สิทธิพิเศษสมาชิก และอีเวนต์ จ่ายครั้งเดียว",
+          "displayName": "สมาชิก Giggles Maps",
+          "locale": "th"
+        }
+      ],
+      "productID": "com.kristpaul.gigglesmaps.membership",
+      "referenceName": "Membership (one-time)",
+      "type": "NonConsumable"
+    }
+  ],
   "settings": {
     "_applicationInternalID": "6740000000",
     "_developerTeamID": "97BS2K8UQ2",
@@ -26,12 +47,12 @@
           "introductoryOffer": null,
           "localizations": [
             {
-              "description": "Detours up to 240 extra minutes and Plus badges.",
+              "description": "Passport themes, name flair, premium share cards, monthly stamps.",
               "displayName": "Giggles Plus",
               "locale": "en_US"
             },
             {
-              "description": "ทางแวะได้ถึง 240 นาที และเหรียญ Plus",
+              "description": "ธีมพาสปอร์ต สีชื่อ การ์ดแชร์พิเศษ และตราประทับรายเดือน",
               "displayName": "Giggles Plus",
               "locale": "th"
             }

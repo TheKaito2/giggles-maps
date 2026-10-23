@@ -11,6 +11,7 @@ struct CheckInView: View {
     @State private var step: Step = .capture
     @State private var demo = false
     @State private var qrCode = ""
+    @State private var hasPlus = false
     @State private var showScanner = false
     @State private var showCamera = false
     @State private var photo: PhotosPickerItem?
@@ -25,6 +26,7 @@ struct CheckInView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
+        .task { hasPlus = (try? await Backend.profile())?.hasPlus ?? false }
         .onAppear {
             if !consented { step = .consent }
             if let code = stop.qrCode { qrCode = code }
@@ -99,7 +101,20 @@ struct CheckInView: View {
             Text(r.headline).font(Theme.display(24))
                 .foregroundStyle(r.status == "approved" ? Theme.good : r.status == "review" ? Theme.marigold : Theme.bad)
             ForEach(r.reasons, id: \.self) { Text(Copy.reason($0)).font(.footnote).foregroundStyle(Theme.ink2) }
+            if let need = r.requiredLevel { Text("Needs member level \(need).").font(.footnote).foregroundStyle(Theme.ink2) }
             ForEach(r.newBadges ?? [], id: \.slug) { Text("New badge: \($0.name)").font(.headline).foregroundStyle(Theme.stamp) }
+            if let gained = r.xpGained, gained > 0 {
+                HStack(spacing: 8) {
+                    Text("+\(gained) XP").font(Theme.data).foregroundStyle(Theme.marigold)
+                    if r.levelUp == true, let level = r.level {
+                        Text(r.member == true ? "Level up! Level \(level)" : "Level \(level) banked: become a member to unlock it")
+                            .font(.headline).foregroundStyle(Theme.indigo)
+                    }
+                }
+            }
+            if r.status == "approved" && r.rewarded {
+                ShareCardPicker(place: stop.name, level: r.member == true ? r.level : nil, hasPlus: hasPlus)
+            }
             if let spin = r.spin { SpinView(spin: spin) }
             if let billing = r.billing {
                 Text("Business view: \(Copy.billing(billing))\(r.billedThb.map { $0 > 0 ? " (฿\(Int($0)))" : "" } ?? "").")

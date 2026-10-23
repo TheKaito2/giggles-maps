@@ -29,17 +29,21 @@ struct RouteStop: Decodable, Identifiable, Equatable, Sendable {
     let category: String
     let lat: Double
     let lng: Double
-    let isPartner: Bool          // the route's single paid slot
+    let isPartner: Bool          // a signed-up shop (ranking never depends on it)
     let isDemo: Bool
     let rating: Double
     let dwellMin: Int
     let etaMin: Int
-    let nearbyPartner: NearbyPartner?   // "Near this spot" ad card, shown under nature/temple stops
+    let nearbyPartner: NearbyPartner?   // "Near this spot" card under nature/temple stops
+    let minLevel: Int?           // v4: > 0 = exclusive place, only on routes once a member reaches this level
+    let exclusiveKind: String?   // gem | perk | event
+    let perkText: String?
     var coordinate: CLLocationCoordinate2D { .init(latitude: lat, longitude: lng) }
     enum CodingKeys: String, CodingKey {
         case id, name, category, lat, lng, rating
         case nameTh = "name_th", isPartner = "is_partner", isDemo = "is_demo"
         case dwellMin = "dwell_min", etaMin = "eta_min", nearbyPartner = "nearby_partner"
+        case minLevel = "min_level", exclusiveKind = "exclusive_kind", perkText = "perk_text"
     }
 }
 
@@ -83,7 +87,12 @@ struct NearbyPartner: Decodable, Equatable, Sendable {
     let distanceM: Int
     let isPartner: Bool?     // v3: the card can be any good nearby place; label only real partners
     let isDemo: Bool
-    enum CodingKeys: String, CodingKey { case id, name, category, lat, lng, distanceM = "distance_m", isPartner = "is_partner", isDemo = "is_demo" }
+    let minLevel: Int?
+    let exclusiveKind: String?
+    enum CodingKeys: String, CodingKey {
+        case id, name, category, lat, lng, distanceM = "distance_m", isPartner = "is_partner", isDemo = "is_demo"
+        case minLevel = "min_level", exclusiveKind = "exclusive_kind"
+    }
 }
 
 struct RoutePlan: Decodable, Sendable {
@@ -94,15 +103,17 @@ struct RoutePlan: Decodable, Sendable {
     let extraMin: Int
     let budgetMin: Int
     let expectedThb: Double?
-    let plus: Bool?              // Giggles Plus: no partner stop or cards
-    let maxBudgetMin: Int?       // 120 free, 240 with Plus
+    let plus: Bool?              // Giggles Plus (cosmetic only since v4)
+    let member: Bool?            // one-time membership: levels + exclusive places
+    let level: Int?              // the level that unlocks places (0 for non-members)
+    let maxBudgetMin: Int?       // 240 for everyone
     let stops: [RouteStop]
     let geometry: [[Double]]   // [lng, lat] pairs
     var line: [CLLocationCoordinate2D] { geometry.compactMap { $0.count == 2 ? .init(latitude: $0[1], longitude: $0[0]) : nil } }
     enum CodingKeys: String, CodingKey {
         case routing, stops, geometry
         case routeId = "route_id", baseMin = "base_min", totalMin = "total_min", extraMin = "extra_min"
-        case budgetMin = "budget_min", expectedThb = "expected_thb", plus, maxBudgetMin = "max_budget_min"
+        case budgetMin = "budget_min", expectedThb = "expected_thb", plus, member, level, maxBudgetMin = "max_budget_min"
     }
 }
 
@@ -138,11 +149,18 @@ struct CheckinResult: Decodable, Sendable {
     let billedThb: Double?      // optional fields tolerate the monetization rebuild
     let distanceM: Double?
     let newBadges: [Badge]?
-    let billing: String?        // charged | starter_plan | no_qr | not_shown_on_route | repeat_visit_30d | wallet_empty | not_rewarded
+    let billing: String?        // charged | no_qr | not_shown_on_route | repeat_visit_30d | wallet_empty | not_rewarded | not_partner
     let spin: Spin?
+    let xpGained: Int?          // v4: XP from this check-in (everyone earns XP; levels unlock for members)
+    let xp: Int?
+    let level: Int?
+    let levelUp: Bool?
+    let member: Bool?
+    let requiredLevel: Int?     // with reason level_locked
     enum CodingKeys: String, CodingKey {
-        case status, reasons, rewarded, billing, spin
+        case status, reasons, rewarded, billing, spin, xp, level, member
         case billedThb = "billed_thb", distanceM = "distance_m", newBadges = "new_badges"
+        case xpGained = "xp_gained", levelUp = "level_up", requiredLevel = "required_level"
     }
 
     /// free coupon spin after a rewarded check-in (never sold; odds always shown)
@@ -208,6 +226,7 @@ enum Copy {
         case "speed_jump": String(localized: "You moved faster than a car since your last check-in.")
         case "low_accuracy": String(localized: "GPS was too rough (over 50 m). A person will review it.")
         case "already_rewarded_today": String(localized: "Already stamped here today. Come back tomorrow.")
+        case "level_locked": String(localized: "This place opens at a higher member level.")
         default: code
         }
     }
@@ -242,5 +261,59 @@ enum Copy {
 
     static func hhmm(_ minutes: Int) -> String {
         String(format: "%02d:%02d", (minutes / 60) % 24, minutes % 60)
+    }
+}
+
+// MARK: membership + levels (v4)
+
+/// Mirrors SQL level_for(xp): L1 0, L2 300, L3 800, L4 1500, L5 2500, L6 4000, L7 6000, L8 8500, L9 11500, L10 15000.
+enum Levels {
+    static let thresholds = [0, 300, 800, 1500, 2500, 4000, 6000, 8500, 11500, 15000]
+
+    static func level(for xp: Int) -> Int { thresholds.lastIndex { xp >= $0 }.map { $0 + 1 } ?? 1 }
+
+    /// XP into the current level and the size of the step to the next one (nil at the top level).
+    static func progress(_ xp: Int) -> (into: Int, span: Int?) {
+        let lvl = level(for: xp)
+        let floor = thresholds[lvl - 1]
+        return lvl < thresholds.count ? (xp - floor, thresholds[lvl] - floor) : (xp - floor, nil)
+    }
+
+    static func kindName(_ kind: String?) -> String {
+        switch kind {
+        case "gem": String(localized: "Hidden gem")
+        case "perk": String(localized: "Member perk")
+        case "event": String(localized: "Event")
+        default: String(localized: "Exclusive")
+        }
+    }
+}
+
+struct Profile: Decodable, Sendable {
+    struct Cosmetics: Decodable, Sendable { let theme: String?; let flair: String? }
+    let memberSince: Date?
+    let xp: Int
+    let plusUntil: Date?
+    let cosmetics: Cosmetics?
+    var isMember: Bool { memberSince != nil }
+    var hasPlus: Bool { (plusUntil ?? .distantPast) > .now }
+    enum CodingKeys: String, CodingKey { case xp, cosmetics, memberSince = "member_since", plusUntil = "plus_until" }
+}
+
+/// One exclusive place from rpc my_exclusives; locked ones come without location or perk text.
+struct ExclusivePlace: Decodable, Identifiable, Sendable {
+    let id: Int
+    let name: String
+    let category: String
+    let exclusiveKind: String
+    let minLevel: Int
+    let unlocked: Bool
+    let lat: Double?
+    let lng: Double?
+    let perkText: String?
+    let isDemo: Bool
+    enum CodingKeys: String, CodingKey {
+        case id, name, category, unlocked, lat, lng
+        case exclusiveKind = "exclusive_kind", minLevel = "min_level", perkText = "perk_text", isDemo = "is_demo"
     }
 }

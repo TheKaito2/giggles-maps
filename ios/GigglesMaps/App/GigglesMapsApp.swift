@@ -21,7 +21,7 @@ struct GigglesMapsApp: App {
     @State private var refreshKey = 0
     @State private var checkinTarget: CheckinTarget?
     @State private var scanError: String?
-    private let purchases = Plus.listen()   // renewals and refunds while the app runs
+    private let purchases = Store.listen()   // renewals and refunds while the app runs
     private let relay: NotificationRelay = {
         let relay = NotificationRelay()
         UNUserNotificationCenter.current().delegate = relay

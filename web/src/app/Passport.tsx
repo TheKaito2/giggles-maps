@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import { ApiError, callFn, ensureSession, supabase } from "../lib/supabase";
-import { startCheckout } from "../lib/api";
+import { type ExclusivePlace, getExclusives, getMonthlyStamps, KIND_NAME, levelFor, levelProgress, type Profile, setCosmetics, startCheckout } from "../lib/api";
 import { isGuest, useUser } from "../lib/auth";
 import SignIn from "./SignIn";
 
@@ -8,9 +8,15 @@ interface Collection { id: number; slug: string; name: string; description: stri
 interface CouponWin { id: number; code: string; created_at: string; redeemed_at: string | null; coupons: { title: string; places: { name: string } | null } | null }
 
 const PLUS_THB = 59;
+const MEMBER_THB = 349;
+// ids match the whitelist in public.set_cosmetics
+const THEMES: Record<string, string> = { classic: "Classic", indigo: "Indigo cloth", lotus: "Lotus", "night-market": "Night market", "temple-gold": "Temple gold", rain: "Rainy season" };
+const FLAIRS: Record<string, string> = { none: "None", marigold: "Marigold", indigo: "Indigo", lotus: "Lotus", sparkle: "Sparkle" };
+const monthName = (m: string) => new Date(`${m}T00:00:00+07:00`).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
 const fmtDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
-export default function Passport({ refreshKey, plusUntil }: { refreshKey: number; plusUntil: Date | null }) {
+export default function Passport({ refreshKey, profile, onChange }: { refreshKey: number; profile: Profile | null; onChange: () => void }) {
+  const plusUntil = profile?.plusUntil ?? null;
   const user = useUser();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [visited, setVisited] = useState<Set<number>>(new Set());
@@ -19,8 +25,19 @@ export default function Passport({ refreshKey, plusUntil }: { refreshKey: number
   const [coupons, setCoupons] = useState<CouponWin[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [msg, setMsg] = useState("");
-  const [plusMsg, setPlusMsg] = useState(() =>
-    new URLSearchParams(location.search).get("paid") === "success" ? "Payment received. Plus switches on in a few seconds (PromptPay can take a minute)." : "");
+  const [plusMsg, setPlusMsg] = useState("");
+  const [memberMsg, setMemberMsg] = useState("");
+  const [exclusives, setExclusives] = useState<ExclusivePlace[]>([]);
+  const [stamps, setStamps] = useState<string[]>([]);
+
+  const [paidMsg] = useState(() => new URLSearchParams(location.search).get("paid") === "success"
+    ? "Payment received. It switches on in a few seconds (PromptPay can take a minute)." : "");
+  // back from Stripe: the webhook switches it on a few seconds later, so reload the profile once
+  useEffect(() => {
+    if (!paidMsg) return;
+    const t = setTimeout(onChange, 5000);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     (async () => {
@@ -37,18 +54,26 @@ export default function Passport({ refreshKey, plusUntil }: { refreshKey: number
       setRecent(rows.slice(0, 8));
       setBadges(new Set((b.data ?? []).map((r) => r.collection_id as number)));
       setCoupons((w.data ?? []) as unknown as CouponWin[]);
+      setExclusives(await getExclusives());
+      setStamps(await getMonthlyStamps());
     })().catch(() => setMsg("Couldn't load your passport. Check your connection."));
-  }, [refreshKey, user?.id]);
+  }, [refreshKey, user?.id, !!plusUntil]);
 
-  const buyPlus = async () => {
-    setPlusMsg("");
+  const buy = async (kind: "plus" | "membership", say: (m: string) => void) => {
+    say("");
     try {
-      location.href = (await startCheckout({ kind: "plus" })).url;
+      location.href = (await startCheckout({ kind })).url;
     } catch (e) {
       const code = e instanceof ApiError ? e.code : "";
-      setPlusMsg(code === "sign_in_required" ? "Sign in first so Plus stays with your account."
+      say(code === "sign_in_required" ? "Sign in first so it stays with your account."
+        : code === "already_member" ? "You're already a member."
         : code === "payments_not_configured" ? "Payments aren't switched on yet." : "Couldn't start checkout. Try again.");
     }
+  };
+
+  const saveLook = async (p: { p_theme?: string; p_flair?: string }) => {
+    setPlusMsg("");
+    try { await setCosmetics(p); onChange(); } catch { setPlusMsg("Couldn't save that. Try again."); }
   };
 
   const deleteAccount = async () => {
@@ -62,10 +87,39 @@ export default function Passport({ refreshKey, plusUntil }: { refreshKey: number
   };
 
   const guest = isGuest(user);
+  const xp = profile?.xp ?? 0;
+  const level = levelFor(xp);
+  const { into, span } = levelProgress(xp);
+  const member = profile?.member ?? false;
+  const name = user?.email?.split("@")[0] ?? "Guest explorer";
 
   return (
     <div className="stack passport">
       <h2>Your passport</h2>
+      {paidMsg && <p className="fine" role="status">{paidMsg}</p>}
+
+      <section className={`level-card theme-${profile?.theme ?? "classic"}`} aria-label="Level">
+        <div className="level-top">
+          <div className={`level-ring ${member ? "" : "locked"}`} style={{ "--p": span ? into / span : 1 } as CSSProperties}
+            aria-label={member ? `Level ${level}` : `Level ${level}, locked`}>
+            <span><small>LV</small>{level}</span>
+          </div>
+          <div className="level-info">
+            <b className={`flair flair-${profile?.flair ?? "none"}`}>{name}</b>
+            <span className="num">{xp} XP</span>
+            {span ? <><progress value={into} max={span} /><span className="fine">{span - into} XP to level {level + 1}</span></>
+              : <span className="fine">Top level</span>}
+          </div>
+        </div>
+        {member
+          ? <span className="chip">Member</span>
+          : <>
+              <p className="fine">Become a member to unlock your level: hidden gems from level 2, member perks from level 4, events from level 6. One payment of <span className="num">฿{MEMBER_THB}</span>, yours for good. You keep earning XP either way.</p>
+              {guest ? <p className="fine">Sign in below first, so your membership stays with your account.</p>
+                : <button className="btn gold" onClick={() => buy("membership", setMemberMsg)}>Become a member · ฿{MEMBER_THB}</button>}
+            </>}
+        {memberMsg && <p className="fine" role="status">{memberMsg}</p>}
+      </section>
 
       <section className="account" aria-label="Account">
         {guest
@@ -81,17 +135,52 @@ export default function Passport({ refreshKey, plusUntil }: { refreshKey: number
           <h3>Giggles Plus</h3>
           {plusUntil ? <span className="chip">Active until {fmtDate(plusUntil)}</span> : <span className="num price-tag">฿{PLUS_THB} / 30 days</span>}
         </div>
-        <ul className="fine plus-list">
-          <li>Extra time up to +240 min (free: +120)</li>
-          <li>Plus-only cosmetic badges · offline maps coming soon</li>
-        </ul>
-        {!plusUntil && (guest
-          ? <p className="fine">Sign in above to get Plus.</p>
-          : <button className="btn gold" onClick={buyPlus}>Get Plus · ฿{PLUS_THB}</button>)}
-        {plusUntil && <button className="link" onClick={buyPlus}>Add another 30 days</button>}
+        {plusUntil
+          ? <>
+              <label className="field">
+                <span>Passport theme</span>
+                <select value={profile?.theme} onChange={(e) => saveLook({ p_theme: e.target.value })}>
+                  {Object.entries(THEMES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                </select>
+              </label>
+              <label className="field">
+                <span>Name flair</span>
+                <select value={profile?.flair} onChange={(e) => saveLook({ p_flair: e.target.value })}>
+                  {Object.entries(FLAIRS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                </select>
+              </label>
+              <div className="field">
+                <span>Monthly stamps</span>
+                <div className="month-stamps">{stamps.map((m) => <span key={m} className="month-stamp">{monthName(m)}</span>)}</div>
+              </div>
+              <button className="link" onClick={() => buy("plus", setPlusMsg)}>Add another 30 days</button>
+            </>
+          : <>
+              <p className="fine">Make your passport yours: 6 cover themes, a coloured name, 3 premium share-card designs and a new stamp every month. Looks only: every place and route stays free.</p>
+              {guest ? <p className="fine">Sign in above to get Plus.</p>
+                : <button className="btn gold" onClick={() => buy("plus", setPlusMsg)}>Get Plus · ฿{PLUS_THB}</button>}
+            </>}
         {plusMsg && <p className="fine" role="status">{plusMsg}</p>}
         <p className="fine">Card or PromptPay. No auto-renew.</p>
       </section>
+
+      {exclusives.length > 0 && <>
+        <h3>Exclusive places</h3>
+        <ul className="exclusives">{exclusives.map((p) => (
+          <li key={p.id} className={p.unlocked ? "" : "locked"}>
+            <div>
+              <b>{p.name}</b>
+              <div className="row">
+                <span className="chip exclusive">{KIND_NAME[p.exclusive_kind]}</span>
+                <span className="chip exclusive">Level {p.min_level}</span>
+                {!p.unlocked && <span className="chip">Locked</span>}
+                {p.is_demo && <span className="chip">Example</span>}
+              </div>
+              {p.unlocked && p.perk_text && <p className="fine">{p.perk_text}</p>}
+            </div>
+          </li>
+        ))}</ul>
+      </>}
 
       <div className="collections">
         {collections.map((c) => {

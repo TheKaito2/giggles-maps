@@ -1,98 +1,113 @@
 import StoreKit
 import SwiftUI
 
-/// Giggles Plus on iOS: Apple's auto-renewing subscription. The server turns Plus on after verifying the signed
-/// transaction (Edge Function apple-plus); `profiles.plus_until` is what the route planner reads.
-enum Plus {
-    static let productID = "com.kristpaul.gigglesmaps.plus.monthly"
-
-    static func until() async -> Date? {
-        guard let id = try? await Backend.ensureSession() else { return nil }
-        struct Row: Decodable { let plus_until: Date? }
-        let row: Row? = try? await Backend.client.from("profiles").select("plus_until").eq("id", value: id).single().execute().value
-        return row?.plus_until.flatMap { $0 > .now ? $0 : nil }
-    }
-
-    /// Sends one verified transaction to the server, then finishes it with Apple.
-    static func deliver(_ result: VerificationResult<StoreKit.Transaction>) async {
-        guard case .verified(let tx) = result, tx.productID == productID else { return }
-        do {
-            try await Backend.applePlus(jws: result.jwsRepresentation)
-            await tx.finish()
-        } catch {
-            print("Plus delivery failed, will retry on next launch:", error)   // unfinished transactions come back
-        }
-    }
-
-    /// Renewals, purchases made on another device and refunds arrive here while the app runs.
-    static func listen() -> Task<Void, Never> {
-        Task.detached {
-            for await result in StoreKit.Transaction.unfinished { await deliver(result) }
-            for await result in StoreKit.Transaction.updates { await deliver(result) }
-        }
-    }
-}
-
+/// Giggles Plus is cosmetic only (v4): passport themes, name flair, premium share cards and a monthly stamp.
+/// Nothing about places, routes or check-ins depends on it.
 struct PlusSection: View {
-    var refreshKey: Int
+    let profile: Profile?
+    var onChange: () -> Void = {}
     @State private var account = Account.shared
-    @State private var until: Date?
+    @State private var stamps: [Date] = []
     @State private var showStore = false
     @State private var message: String?
 
+    private var hasPlus: Bool { profile?.hasPlus ?? false }
+
     var body: some View {
         Section("Giggles Plus") {
-            if let until {
+            if hasPlus, let until = profile?.plusUntil {
                 Label("Active until \(until.formatted(date: .abbreviated, time: .omitted))", systemImage: "checkmark.seal.fill")
                     .foregroundStyle(Theme.good)
-                Text("Detours up to 240 extra minutes, and Plus badges.").font(.footnote).foregroundStyle(Theme.ink2)
+
+                Picker("Passport theme", selection: themeBinding) {
+                    ForEach(PassportTheme.allCases) { Text($0.name).tag($0) }
+                }
+                Picker("Name flair", selection: flairBinding) {
+                    ForEach(Flair.allCases) { Text($0.name).tag($0) }
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Monthly stamps").font(.subheadline.weight(.semibold))
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(stamps, id: \.self) { MonthStamp(month: $0) }
+                        }
+                    }
+                }
                 Button("Manage subscription") { Task { await manage() } }
             } else {
-                Text("Plan detours up to 240 extra minutes, and collect Plus badges.")
+                Text("Make your passport yours: 6 cover themes, a coloured name with a badge, 3 premium share-card designs, and a new stamp every month. Looks only: every place and route stays free.")
                     .font(.footnote).foregroundStyle(Theme.ink2)
                 if account.isGuest {
                     Text("Sign in above first, so Plus stays with your account.").font(.footnote).foregroundStyle(Theme.ink2)
                 } else {
                     Button("Get Plus") { showStore = true }.buttonStyle(PrimaryButtonStyle(gold: true))
-                    Button("Restore purchases") { Task { await restore() } }.font(.footnote)
                 }
             }
-            if let message { Text(message).font(.footnote).foregroundStyle(Theme.ink2) }
+            if !account.isGuest {
+                Button("Restore purchases") { Task { await Store.restore(); onChange() } }.font(.footnote)
+            }
+            if let message { Text(message).font(.footnote).foregroundStyle(Theme.bad) }
         }
-        .task(id: "\(refreshKey)-\(account.userId?.uuidString ?? "")") { until = await Plus.until() }
+        .task(id: profile?.plusUntil) { stamps = (try? await Backend.monthlyStamps()) ?? [] }
         .sheet(isPresented: $showStore) {
-            SubscriptionStoreView(productIDs: [Plus.productID]) {
+            SubscriptionStoreView(productIDs: [Store.plusID]) {
                 VStack(spacing: 8) {
                     Text("Giggles Plus").font(Theme.display(30)).foregroundStyle(Theme.indigo)
-                    Text("Longer detours for longer days out.").multilineTextAlignment(.center)
+                    Text("Themes, flair and share cards for your passport.").multilineTextAlignment(.center)
                 }
                 .padding()
             }
             .storeButton(.visible, for: .restorePurchases)
-            .inAppPurchaseOptions { _ in
-                account.userId.map { [.appAccountToken($0)] } ?? []
-            }
+            .inAppPurchaseOptions { _ in account.userId.map { [.appAccountToken($0)] } ?? [] }
             .onInAppPurchaseCompletion { _, result in
                 if case .success(.success(let verification)) = result {
-                    await Plus.deliver(verification)
-                    until = await Plus.until()
+                    await Store.deliver(verification)
                     showStore = false
+                    onChange()
                 }
             }
         }
     }
 
-    private func restore() async {
+    private var themeBinding: Binding<PassportTheme> {
+        Binding(get: { PassportTheme(rawValue: profile?.cosmetics?.theme ?? "") ?? .classic },
+                set: { new in save { try await Backend.setCosmetics(theme: new.rawValue) } })
+    }
+
+    private var flairBinding: Binding<Flair> {
+        Binding(get: { Flair(rawValue: profile?.cosmetics?.flair ?? "") ?? .none },
+                set: { new in save { try await Backend.setCosmetics(flair: new.rawValue) } })
+    }
+
+    private func save(_ work: @escaping () async throws -> Void) {
         message = nil
-        try? await AppStore.sync()
-        for await result in StoreKit.Transaction.currentEntitlements { await Plus.deliver(result) }
-        until = await Plus.until()
-        if until == nil { message = String(localized: "No active Plus subscription found for this Apple ID.") }
+        Task {
+            do { try await work(); onChange() }
+            catch { message = String(localized: "Couldn't save that. Try again.") }
+        }
     }
 
     private func manage() async {
         guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene else { return }
         try? await AppStore.showManageSubscriptions(in: scene)
-        until = await Plus.until()
+        onChange()
+    }
+}
+
+/// A Plus monthly stamp: the month in a round ink stamp, colour changes with the month.
+struct MonthStamp: View {
+    let month: Date
+    var body: some View {
+        let hue = Double(Calendar.current.component(.month, from: month)) / 12
+        VStack(spacing: 0) {
+            Text(month.formatted(.dateTime.month(.abbreviated))).font(.caption.weight(.bold)).textCase(.uppercase)
+            Text(month.formatted(.dateTime.year())).font(.caption2.monospaced())
+        }
+        .foregroundStyle(Color(hue: hue, saturation: 0.7, brightness: 0.7))
+        .frame(width: 58, height: 58)
+        .overlay(Circle().stroke(Color(hue: hue, saturation: 0.7, brightness: 0.7), style: StrokeStyle(lineWidth: 3, dash: [4, 2])))
+        .rotationEffect(.degrees(-8))
+        .accessibilityLabel("Plus stamp \(month.formatted(.dateTime.month(.wide).year()))")
     }
 }

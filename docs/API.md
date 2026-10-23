@@ -89,8 +89,10 @@ Response
 { "checkin_id": "uuid", "status": "approved", "reasons": [], "rewarded": true,
   "billed_thb": 15, "billing": "charged", "qr_ok": true, "distance_m": 2.7,
   "new_badges": [{ "slug": "indigo-and-silk", "name": "Indigo & Silk" }],
-  "spin": { "won": true, "title": "Free cookie with any drink (example)", "place": "Fika Cafe", "code": "0F9707EA", "odds": 0.31 } }
+  "spin": { "won": true, "title": "Free cookie with any drink (example)", "place": "Fika Cafe", "code": "0F9707EA", "odds": 0.31 },
+  "xp_gained": 250, "xp": 1600, "level": 4, "level_up": true, "member": true }
 ```
+- `xp_gained` / `xp` / `level` / `level_up`: everyone earns XP (+100 rewarded check-in, +50 partner shop, +100 first visit to a new category). `level` is from XP; it only unlocks places when `member` is true. For a non-member, say "Level N banked: become a member to unlock it".
 
 | Rule | Result | Reason code |
 |---|---|---|
@@ -101,6 +103,7 @@ Response
 | Faster than 150 km/h since last check-in (24 h) | rejected | `speed_jump` |
 | GPS accuracy over 50 m | review | `low_accuracy` |
 | Already rewarded here today (Bangkok time) | approved, no stamp | `already_rewarded_today` |
+| Exclusive place above the user's unlock level (or event outside its window) | rejected, nothing recorded; response has `required_level` | `level_locked` |
 
 `qr_code` is the code under the counter QR sticker (also arrives via the sticker link `/app/?scan=<place_id>-<code>`). Example shops use `DEMO`.
 
@@ -121,14 +124,24 @@ Body `{}`. Deletes the user's selfies, then the auth user (cascades check-ins, b
 | Body | Buys |
 |---|---|
 | `{ "kind": "credit", "shop_id": "uuid", "pack": 500 \| 1000 \| 3000 }` | Prepaid visit credit for a shop |
-| `{ "kind": "plus" }` | Giggles Plus for the signed-in user, ฿59 / 30 days (403 `sign_in_required` for guests) |
+| `{ "kind": "plus" }` | Giggles Plus (cosmetic) for the signed-in user, ฿59 / 30 days (403 `sign_in_required` for guests) |
+| `{ "kind": "membership" }` | One-time membership, ฿349 (403 `sign_in_required` for guests, 409 `already_member`) |
 
 → `{ "url": "<Stripe Checkout URL>" }` (card + PromptPay, one-time, no auto-renew). Test keys only unless `STRIPE_LIVE=1`.
-**iOS/Android must not use this for Plus**: sell Plus through StoreKit / Google Play Billing (server receipt check not built yet).
+**iOS/Android must not use this**: sell membership and Plus through StoreKit / Google Play Billing.
+
+## `apple-plus` (iOS)
+
+Body `{ "jws": "<StoreKit 2 signed transaction>" }` after every purchase, restore and `Transaction.updates` item. Buy with `appAccountToken` = the Supabase user id. The server verifies Apple's signature, then:
+- `com.kristpaul.gigglesmaps.membership` → `{ "member_since": "…" }`
+- `com.kristpaul.gigglesmaps.plus.monthly` → `{ "plus_until": "…" }`
+
+Errors: `sign_in_required` 403 (guests), `invalid_transaction` 400, `bought_by_another_account` 403, `purchase_on_another_account` / `subscription_on_another_account` 409, `wrong_product` 400.
+`apple-notifications` receives App Store Server Notifications V2 (renewals, refunds, revokes) with no user JWT.
 
 ## `stripe-webhook`
 
-Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`, then applies the payment once per Checkout session (`apply_payment`: credit → wallet, plus → `profiles.plus_until` +30 days) on `checkout.session.completed` (paid) or `checkout.session.async_payment_succeeded` (PromptPay).
+Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`, then applies the payment once per Checkout session (`apply_payment`: credit → wallet, plus → `profiles.plus_until` +30 days, membership → `profiles.member_since`) on `checkout.session.completed` (paid) or `checkout.session.async_payment_succeeded` (PromptPay).
 
 ## Database functions (RPC)
 
@@ -137,14 +150,17 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
 | `place_for_checkin(p_id)` | anyone | `{id, name, lat, lng, is_partner, is_demo}` for a QR deep link |
 | `shop_overview(p_shop)` | shop owner / demo shop | wallet, per place: bid, QR code, last scan, impressions and visits (30 days) |
 | `dispute_visit(p_visit, p_reason)` | shop owner / demo shop | refunds a charged visit within 7 days |
+| `my_exclusives()` | signed in | every exclusive place: `{id, name, category, exclusive_kind, min_level, unlocked, lat, lng, perk_text, event_starts, event_ends, is_demo}`; `lat`/`lng`/`perk_text` are null while locked |
+| `set_cosmetics(p_theme, p_flair)` | Plus only (`plus_required`) | saves `profiles.cosmetics`; pass null to keep a field. Themes `classic indigo lotus night-market temple-gold rain`, flairs `none marigold indigo lotus sparkle` (`bad_theme` / `bad_flair`) |
+| `claim_monthly_stamp()` | signed in | this month's Plus stamp (date), or null without Plus. Read stamps from `plus_stamps` |
 
 ## Direct table reads (RLS)
 
 | Table | Who can read |
 |---|---|
 | `places` (all columns except `qr_code`), `collections`, `collection_places`, active `coupons` | everyone |
-| `profiles` (incl. `plus_until`), `coupon_wins` | own rows |
-| `checkins`, `user_badges`, `routes`, `route_stops`, `profiles` | own rows |
+| `profiles` (`member_since`, `xp`, `plus_until`, `cosmetics`), `coupon_wins`, `plus_stamps` | own rows |
+| `checkins`, `user_badges`, `routes`, `route_stops` | own rows |
 | `shops`, `billable_visits` (no `user_id`), `payments` | shop owner (or payer), or anyone for demo shops |
 
-No client can write to check-ins, billing, badges or wallets directly; only the functions above can.
+No client can write to profiles, check-ins, billing, badges or wallets directly; only the functions above can.
