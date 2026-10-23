@@ -2,7 +2,8 @@
 // (rating x variety x trip theme) per added minute. The planner doesn't know which places pay.
 // Constraints: total extra time <= budget, every stop open on arrival, rating >= floor (unrated only if allowed),
 // meal stops arrive inside their meal window, and at most maxStops stops.
-// Phase 0 places meal stops, phase 1 fills the rest; greedy insertion + 2-opt, fine for ~22 candidates.
+// Phase 0 places the stops the user picked (must_include), then meal stops; phase 1 fills the rest;
+// greedy insertion + 2-opt, fine for ~25 candidates.
 
 import { inMealWindow, type Meal, MEAL_CATEGORIES, MEAL_WINDOWS } from "./meals.ts";
 import { type Theme, themeWeight } from "./themes.ts";
@@ -29,6 +30,7 @@ export interface PlanInput {
   maxStops?: number;    // default no cap; meal stops count
   theme?: Theme;        // default top_picks (no boost)
   weight?: (category: string) => number;   // overrides theme, e.g. the user's own mix of interests
+  requiredIds?: number[];   // places the user picked; go in first, skip the rating floor, count toward maxStops
   meals?: Meal[];       // meals the trip should cover, from mealsInTrip()
 }
 
@@ -39,6 +41,8 @@ export interface Plan {
   extraMin: number;
   mealOf: Map<number, Meal>;   // stop id -> meal it covers
   missedMeals: Meal[];
+  requiredIds: number[];
+  unfitRequired: number[];     // picked places that don't fit the budget, hours or stop cap
 }
 
 const UNRATED = 3.5;   // unrated places score like a middling rating, below the 4.0 default floor
@@ -110,8 +114,17 @@ export function planDetour(input: PlanInput): Plan {
     return (quality(s) * weight(s.category) * variety) / Math.max(added, 1);
   };
 
-  // phase 0: one food stop per meal the trip runs through, in time order
+  // phase 0a: the places the user picked, each at its cheapest feasible position
   let order: Stop[] = [];
+  const requiredIds = input.requiredIds ?? [];
+  const unfitRequired: number[] = [];
+  for (const id of requiredIds) {
+    const s = input.stops.find((x) => x.id === id);
+    const ins = s && order.length < maxStops ? bestInsert(order, s) : null;
+    if (ins) order = ins.order; else unfitRequired.push(id);
+  }
+
+  // phase 0b: one food stop per meal the trip runs through, in time order
   const missedMeals: Meal[] = [];
   for (const meal of [...meals].sort((a, b) => MEAL_WINDOWS[a][0] - MEAL_WINDOWS[b][0])) {
     if (order.length >= maxStops) { missedMeals.push(meal); continue; }
@@ -144,5 +157,5 @@ export function planDetour(input: PlanInput): Plan {
   }
 
   const totalMin = duration(order);
-  return { order, baseMin, totalMin, extraMin: totalMin - baseMin, mealOf, missedMeals };
+  return { order, baseMin, totalMin, extraMin: totalMin - baseMin, mealOf, missedMeals, requiredIds, unfitRequired };
 }

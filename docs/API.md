@@ -36,7 +36,8 @@ Request
   "mode": "pedestrian",
   "theme": "food",
   "interests": ["cafes", "culture"],
-  "min_rating": 4, "include_unrated": false, "max_stops": 3, "max_price": 1
+  "min_rating": 4, "include_unrated": true, "max_stops": 3, "max_price": 1,
+  "must_include": [37420]
 }
 ```
 - `start_min`: minutes after local midnight (0–1439). Used for opening hours.
@@ -45,7 +46,8 @@ Request
 - Planner preferences (all optional; omitted = the defaults below):
   - `interests`: up to 6 of `food`, `cafes`, `culture`, `nature`, `shopping`, `landmarks`. Adds a **Your mix** plan (`id: "mix"`) first, boosting (×2) every kind of stop the picks cover. Empty or omitted = no mix plan ("Surprise me"). 400 `bad_interests`.
   - `min_rating`: `0`, `3.5`, `4` (default) or `4.5`. 400 `bad_min_rating`.
-  - `include_unrated`: `true` lets unrated places (`rating: null`, e.g. the OpenStreetMap seed) join routes. Default false.
+  - `include_unrated`: default **true**: unrated places (`rating: null`, most of the OpenStreetMap import) join routes, scored below rated ones (as 3.5/5). `false` = rated places only.
+  - `must_include`: up to 3 place ids the user picked (from `search_places`). They go into every plan when they fit the budget, opening hours and `max_stops`, even below the rating floor; the rest are listed in each plan's `unfit_required`. Stops have `picked: true`. 400 `bad_must_include`.
   - `max_stops`: 1–6 stops per plan; omitted = no cap. Meal stops count. 400 `bad_max_stops`.
   - `max_price`: 0 (free) to 3 (฿฿฿). Drops places whose **known** price is higher; places with no listed price stay. 400 `bad_max_price`.
 - `theme` (optional): `top_picks`, `nature`, `food`, `culture` or `shopping`. Only reorders `plans` so that one comes first; anything else is 400 `bad_theme`.
@@ -86,7 +88,7 @@ Response
 
 - Each stop has `rating` (number, or `null` = unrated) and `price_level` (0 free, 1–3 = ฿–฿฿฿, `null` = not listed).
 
-Errors: `not_signed_in` 401, `routing_unavailable` 503, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_mode` / `bad_theme` / `bad_interests` / `bad_min_rating` / `bad_max_stops` / `bad_max_price` / `bad_json` 400.
+Errors: `not_signed_in` 401, `routing_unavailable` 503, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_mode` / `bad_theme` / `bad_interests` / `bad_min_rating` / `bad_max_stops` / `bad_max_price` / `bad_must_include` / `bad_json` 400.
 
 ## `verify-checkin`
 
@@ -159,6 +161,14 @@ Errors: `sign_in_required` 403 (guests), `invalid_transaction` 400, `bought_by_a
 ## `stripe-webhook`
 
 Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`, then applies the payment once per Checkout session (`apply_payment`: credit → wallet, plus → `profiles.plus_until` +30 days, membership → `profiles.member_since`) on `checkout.session.completed` (paid) or `checkout.session.async_payment_succeeded` (PromptPay).
+
+## Search (`search_places` RPC)
+
+`rpc("search_places", { p_query, p_lat?, p_lng?, p_kind?, p_limit? })`: our places by name (Thai or English, substring), nearest first when `p_lat`/`p_lng` are given.
+- `p_kind`: `food` (food, market), `cafes`, `culture` (temple, museum, art), `nature` (park, viewpoint), `shopping` (craft, market).
+- `p_query` may be empty when a kind and a point are given ("cafés near me", within 30 km).
+- Returns `id, name, name_th, category, lat, lng, rating, price_level, distance_m`. Members-only places never appear.
+- Clients fall back to an address geocoder for things we don't have: Apple MapKit search on iOS, Photon (`photon.komoot.io`, OpenStreetMap, fair use: query on Search/Enter only) on web. Android: Photon or Google's on-device Places is fine for addresses; pass the chosen coordinates as `origin`/`dest`.
 
 ## Database functions (RPC)
 

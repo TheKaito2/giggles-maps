@@ -40,6 +40,8 @@ Giggles Maps fills the extra time a traveller allows on a trip with local stops 
 - The planner never sees whether a place pays (monetization v3: no paid placement).
 - "Near this spot" cards (`places_near`): under park/viewpoint/temple stops, the best place within 400 m by rating then distance, signed up or not.
 
+**Search.** `search_places` (SQL, trigram index on Thai + English names) finds our ~49k places by name or kind, nearest first. Places the user picks are sent as `must_include` and inserted before meals (planner phase 0a); they skip the rating floor but never the budget, opening hours or stop cap. Addresses we don't hold come from Apple MapKit search (iOS) or Photon (web), both free and OpenStreetMap/Apple based, never Google.
+
 **3. Conversion estimate (`place_stats` view).** `p_checkin = (verified_visits + 0.3·10) / (impressions + 10)`: Bayesian average with prior 0.3. Every stop shown on a route is an impression (`route_stops`).
 
 **4. Check-in verification (SQL `record_checkin`).** Distance ≤ 60 m, face present, selfie exists, not mock GPS, speed since last check-in ≤ 150 km/h, accuracy ≤ 50 m (else review), one reward per place per Bangkok day. Billing, wallet debit (row-locked) and badge awards run in the same transaction.

@@ -118,3 +118,21 @@ test("unrated places only join when allowed, and the rating floor is the user's"
   const strict = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 120, stops, travelMin, minRating: 4.5 });
   expect(strict.order.every((s) => (s.rating ?? 0) >= 4.5)).toBe(true);
 });
+
+test("a picked place goes in even below the rating floor, inside the budget", () => {
+  // stop 6 is rated 3.2: the planner would never choose it, but the user picked it
+  const p = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 30, stops, travelMin, requiredIds: [6] });
+  expect(p.order.map((s) => s.id)).toContain(6);
+  expect(p.unfitRequired).toEqual([]);
+  expect(p.extraMin).toBeLessThanOrEqual(30);
+});
+
+test("a picked place that can't fit is reported, never forced over budget or the stop cap", () => {
+  const far = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 10, stops, travelMin, requiredIds: [5] });
+  expect(far.order.map((s) => s.id)).not.toContain(5);
+  expect(far.unfitRequired).toEqual([5]);
+  expect(far.extraMin).toBeLessThanOrEqual(10);
+  const capped = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 120, stops, travelMin, requiredIds: [2, 3], maxStops: 1 });
+  expect(capped.order.map((s) => s.id)).toEqual([2]);
+  expect(capped.unfitRequired).toEqual([3]);
+});

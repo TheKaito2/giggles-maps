@@ -7,7 +7,7 @@ import { createRouter, decodePolyline6, type RoadRoute } from "./valhalla.ts";
 const origin = { lat: 16.44, lng: 102.83 }, dest = { lat: 17.16, lng: 104.15 };
 const baseline: RoadRoute = { geometry: [[102.83, 16.44], [103, 16.5], [104.15, 17.16]], legMin: [20], travelMin: 20 };
 const stop = (id: number, category = "park"): Stop => ({ idx: id + 1, id, category, rating: 4.5, dwellMin: 10 });
-const proposal = (order: Stop[]): Plan => ({ order, baseMin: 20, totalMin: 20, extraMin: 0, mealOf: new Map(), missedMeals: [] });
+const proposal = (order: Stop[]): Plan => ({ order, baseMin: 20, totalMin: 20, extraMin: 0, mealOf: new Map(), missedMeals: [], requiredIds: [], unfitRequired: [] });
 const candidates = [{ lat: 16.5, lng: 103 }, { lat: 16.6, lng: 103.2 }];
 const run = (plan: Plan, route: (points: typeof origin[]) => Promise<RoadRoute>, budgetMin = 45) =>
   verifyRoadPlan({ plan, route, origin, dest, candidates, mode: "auto", baseline, startMin: 700, budgetMin });

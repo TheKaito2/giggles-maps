@@ -43,12 +43,18 @@ serve(async (req) => {
   if (!Array.isArray(interests) || interests.length > 6 || !interests.every(isInterest)) throw new HttpError(400, "bad_interests");
   const minRating = body.min_rating ?? 4;
   if (!MIN_RATINGS.has(minRating)) throw new HttpError(400, "bad_min_rating");
-  const includeUnrated = body.include_unrated === true;
+  // most of Thailand is unrated OpenStreetMap data: unrated places join by default (scored below rated ones)
+  const includeUnrated = body.include_unrated !== false;
   const maxStops = body.max_stops == null ? undefined : num(body.max_stops, 1, 6, "bad_max_stops");
   if (maxStops != null && !Number.isInteger(maxStops)) throw new HttpError(400, "bad_max_stops");
   const maxPrice = body.max_price == null ? null : num(body.max_price, 0, 3, "bad_max_price");
   if (maxPrice != null && !Number.isInteger(maxPrice)) throw new HttpError(400, "bad_max_price");
   const filters = { p_min_rating: minRating, p_unrated: includeUnrated, p_max_price: maxPrice };
+  // places the user picked to visit (up to 3); they go into every plan when they fit
+  const mustInclude: number[] = body.must_include ?? [];
+  if (!Array.isArray(mustInclude) || mustInclude.length > 3 || !mustInclude.every((id) => Number.isInteger(id) && id > 0)) {
+    throw new HttpError(400, "bad_must_include");
+  }
 
   const db = admin();
   const { data: profile } = await db.from("profiles").select("plus_until, member_since").eq("id", user.id).maybeSingle();
@@ -82,7 +88,19 @@ serve(async (req) => {
       extra_m: budgetMin * 80, max_n: 16, p_level: level, p_per_group: 4, ...filters,
     });
   if (error) { console.error("candidate lookup failed", error); warnings.push("places_unavailable"); }
-  const candidates = (cands ?? []) as Candidate[];
+  // the start and destination themselves aren't detours: drop places within 150 m of either end
+  const candidates = ((cands ?? []) as Candidate[]).filter((c) => haversineM(c, origin) > 150 && haversineM(c, dest) > 150);
+  if (mustInclude.length) {
+    const { data: picked, error: pErr } = await db.rpc("places_by_ids", { p_ids: mustInclude, p_level: level });
+    if (pErr) throw pErr;
+    // a pick that can't fit even in a straight line stays out of the matrix (a far point can break the routing call);
+    // the planner then reports it in unfit_required
+    const reach = budgetMin * METERS_PER_MIN[mode], direct = haversineM(origin, dest);
+    for (const p of (picked ?? []) as Candidate[]) {
+      if (candidates.some((c) => c.id === p.id)) continue;
+      if (haversineM(origin, p) + haversineM(p, dest) - direct <= reach) candidates.push(p);
+    }
+  }
   const points: LatLng[] = [origin, dest, ...candidates.map((c) => ({ lat: c.lat, lng: c.lng }))];
   let matrix = estimateMinutes(points, mode);
   if (baseline && shortTrip) {
@@ -116,7 +134,7 @@ serve(async (req) => {
     ...(interests.length ? [{ id: "mix", name: "Your mix", weight: mixWeight(interests) }] : []),
     ...THEMES.map((t) => ({ id: t.id, name: t.name, theme: t.id })),
   ];
-  const prefs = { minRating, allowUnrated: includeUnrated, maxStops };
+  const prefs = { minRating, allowUnrated: includeUnrated, maxStops, requiredIds: mustInclude };
   for (const t of variants) {
     const plan = planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin, stops, travelMin, meals, ...prefs,
                               theme: "theme" in t ? t.theme : undefined, weight: "weight" in t ? t.weight : undefined });
@@ -189,7 +207,7 @@ serve(async (req) => {
         id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng,
         is_partner: c.is_partner, is_demo: c.is_demo,
         rating: c.rating == null ? null : Number(c.rating), price_level: c.price_level,
-        dwell_min: c.dwell_min, eta_min: eta, meal,
+        dwell_min: c.dwell_min, eta_min: eta, meal, picked: mustInclude.includes(c.id),
         // exclusive places only reach a route when the member's level opens them
         min_level: c.min_level, exclusive_kind: c.exclusive_kind, perk_text: c.perk_text,
         // field name kept for existing clients; the card is any nearby place, picked by quality
@@ -235,11 +253,11 @@ serve(async (req) => {
     candidates_considered: candidates.length,
     stops: ordered, geometry, base_geometry: baseline?.geometry ?? [],
     warnings: [...new Set(warnings)],
-    meals, missed_meals: plan.missedMeals,
+    meals, missed_meals: plan.missedMeals, unfit_required: plan.unfitRequired,
     plans: themed.map((t, i) => ({
       id: t.id, name: t.name, stops: built[i].ordered, geometry: built[i].geometry,
       extra_min: Math.round(t.plan.extraMin), total_min: Math.round(t.plan.totalMin),
-      meals, missed_meals: t.plan.missedMeals,
+      meals, missed_meals: t.plan.missedMeals, unfit_required: t.plan.unfitRequired,
     })),
   });
 });

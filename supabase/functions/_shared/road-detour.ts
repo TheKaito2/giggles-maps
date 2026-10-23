@@ -70,12 +70,14 @@ export async function verifyRoadPlan(input: {
       return { plan: { ...input.plan, order, mealOf,
         baseMin: input.baseline.travelMin, totalMin: clock.totalMin,
         extraMin: Math.max(0, clock.totalMin - input.baseline.travelMin),
-        missedMeals: [...new Set([...input.plan.missedMeals, ...lostMeals])] },
+        missedMeals: [...new Set([...input.plan.missedMeals, ...lostMeals])],
+        unfitRequired: input.plan.requiredIds.filter((id) => !order.some((s) => s.id === id)) },
         geometry: road.geometry, etaMin: clock.etaMin, adjusted, failed };
     }
     if (!order.length) throw new Error("invalid_baseline_route");
     // Preserve meals while trimming discretionary stops to fit the actual road duration.
-    const discretionary = order.map((s, i) => !input.plan.mealOf.has(s.id) ? i : -1).filter((i) => i >= 0);
+    const discretionary = order.map((s, i) => !input.plan.mealOf.has(s.id) && !input.plan.requiredIds.includes(s.id) ? i : -1)
+      .filter((i) => i >= 0);
     order.splice(clock.failed >= 0 ? clock.failed : discretionary.at(-1) ?? order.length - 1, 1);
     adjusted = true;
   }
