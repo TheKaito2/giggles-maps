@@ -1,5 +1,5 @@
 import { admin, json } from "../_shared/http.ts";
-import { PLUS_PRODUCT, verifyNotification, verifyTransaction } from "../_shared/apple.ts";
+import { MEMBERSHIP_PRODUCT, PLUS_PRODUCT, verifyNotification, verifyTransaction } from "../_shared/apple.ts";
 
 // App Store Server Notifications V2 (renewals, expiry, refunds). No user JWT (verify_jwt = false):
 // trust comes from Apple's signature on the payload. Point App Store Connect's server URL here.
@@ -15,9 +15,20 @@ Deno.serve(async (req) => {
   const signedTx = note.data?.signedTransactionInfo;
   if (!signedTx) return json({ received: true });   // e.g. TEST notifications
   const tx = await verifyTransaction(signedTx);
+  const ended = ["REFUND", "REVOKE", "EXPIRED"].includes(String(note.notificationType));
+
+  // one-time membership: only refunds/revokes matter
+  if (tx.productId === MEMBERSHIP_PRODUCT && tx.appAccountToken && tx.originalTransactionId) {
+    const { error } = await admin().rpc("apply_apple_membership", {
+      p_otid: tx.originalTransactionId, p_user: tx.appAccountToken.toLowerCase(), p_env: String(tx.environment),
+      p_revoked: tx.revocationDate ? new Date(tx.revocationDate).toISOString() : ended ? new Date().toISOString() : null,
+    });
+    if (error) { console.error(error); return json({ error: "apply_failed" }, 500); }
+    return json({ received: true });
+  }
+
   if (tx.productId !== PLUS_PRODUCT || !tx.appAccountToken || !tx.originalTransactionId || !tx.expiresDate) return json({ received: true });
 
-  const ended = ["REFUND", "REVOKE", "EXPIRED"].includes(String(note.notificationType));
   const { error } = await admin().rpc("apply_apple_plus", {
     p_otid: tx.originalTransactionId, p_user: tx.appAccountToken.toLowerCase(), p_product: tx.productId,
     p_env: String(tx.environment), p_expires: new Date(tx.expiresDate).toISOString(),

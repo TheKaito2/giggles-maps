@@ -5,15 +5,14 @@ import { estimateMinutes, type LatLng, matrixMinutes, type Mode, routeLine } fro
 interface Candidate {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
   open_min: number | null; close_min: number | null; dwell_min: number; rating: number;
-  is_partner: boolean; is_demo: boolean;
+  is_partner: boolean; is_demo: boolean; min_level: number; exclusive_kind: string | null; perk_text: string | null;
 }
 interface NearPlace {
   id: number; name: string; category: string; lat: number; lng: number; rating: number;
-  is_partner: boolean; dist_m: number; is_demo: boolean;
+  is_partner: boolean; dist_m: number; is_demo: boolean; min_level: number; exclusive_kind: string | null;
 }
 
-const FREE_MAX_BUDGET = 120;
-const PLUS_MAX_BUDGET = 240;
+const MAX_BUDGET = 240; // v4: 4-hour detours for everyone (Plus is cosmetic only)
 const CARD_CATEGORIES = new Set(["park", "viewpoint", "temple"]); // "Near this spot" cards sit under these
 const MAX_CARDS = 2;
 
@@ -32,15 +31,18 @@ serve(async (req) => {
   const mode: Mode = body.mode === "auto" ? "auto" : "pedestrian";
 
   const db = admin();
-  const { data: profile } = await db.from("profiles").select("plus_until").eq("id", user.id).maybeSingle();
+  const { data: profile } = await db.from("profiles").select("plus_until, member_since").eq("id", user.id).maybeSingle();
   const plus = !!profile?.plus_until && new Date(profile.plus_until) > new Date();
-  const budgetMin = num(body.budget_min, 0, PLUS_MAX_BUDGET, "bad_budget_min");
-  if (!plus && budgetMin > FREE_MAX_BUDGET) throw new HttpError(402, "plus_required");
+  const member = !!profile?.member_since;
+  // members unlock exclusive places up to their level; everyone else sees level 0 (no exclusives)
+  const { data: level, error: lErr } = await db.rpc("unlock_level", { p_user: user.id });
+  if (lErr) throw lErr;
+  const budgetMin = num(body.budget_min, 0, MAX_BUDGET, "bad_budget_min");
 
   const metersPerMin = mode === "pedestrian" ? 80 : 500;
   const { data: cands, error } = await db.rpc("detour_candidates", {
     o_lat: origin.lat, o_lng: origin.lng, d_lat: dest.lat, d_lng: dest.lng,
-    extra_m: budgetMin * metersPerMin, max_n: 16,
+    extra_m: budgetMin * metersPerMin, max_n: 16, p_level: level,
   });
   if (error) throw error;
   const candidates = cands as Candidate[];
@@ -71,7 +73,7 @@ serve(async (req) => {
     if (cards.size >= MAX_CARDS) break;
     const c = candidates.find((x) => x.id === s.id)!;
     if (!CARD_CATEGORIES.has(c.category)) continue;
-    const { data, error: nErr } = await db.rpc("places_near", { p_lat: c.lat, p_lng: c.lng, p_radius_m: 400 });
+    const { data, error: nErr } = await db.rpc("places_near", { p_lat: c.lat, p_lng: c.lng, p_radius_m: 400, p_level: level });
     if (nErr) throw nErr;
     const best = ((data ?? []) as NearPlace[]).find((p) =>
       !CARD_CATEGORIES.has(p.category) && !inRoute.has(p.id) && ![...cards.values()].some((x) => x.id === p.id));
@@ -92,10 +94,13 @@ serve(async (req) => {
       id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng,
       is_partner: c.is_partner, is_demo: c.is_demo,
       rating: Number(c.rating), dwell_min: c.dwell_min, eta_min: eta,
+      // exclusive places only reach a route when the member's level opens them
+      min_level: c.min_level, exclusive_kind: c.exclusive_kind, perk_text: c.perk_text,
       // field name kept for existing clients; the card is any nearby place, picked by quality
       nearby_partner: card
         ? { id: card.id, name: card.name, category: card.category, lat: card.lat, lng: card.lng,
-            distance_m: Math.round(card.dist_m), is_partner: card.is_partner, is_demo: card.is_demo }
+            distance_m: Math.round(card.dist_m), is_partner: card.is_partner, is_demo: card.is_demo,
+            min_level: card.min_level, exclusive_kind: card.exclusive_kind }
         : null,
     };
   });
@@ -126,10 +131,10 @@ serve(async (req) => {
   }
 
   return json({
-    route_id: route.id, routing, mode, plus,
+    route_id: route.id, routing, mode, plus, member, level,
     base_min: Math.round(plan.baseMin), total_min: Math.round(plan.totalMin),
     extra_min: Math.round(plan.extraMin), budget_min: budgetMin,
-    max_budget_min: plus ? PLUS_MAX_BUDGET : FREE_MAX_BUDGET,
+    max_budget_min: MAX_BUDGET,
     candidates_considered: candidates.length,
     stops: ordered, geometry,
   });
