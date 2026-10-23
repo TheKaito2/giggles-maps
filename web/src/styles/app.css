@@ -810,3 +810,5 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .range-ticks { display: flex; justify-content: space-between; padding: 0 2px; }
 .filter-q .pref-row > span { display: grid; gap: 2px; }
 .filters-foot { display: grid; gap: 8px; }
+.elsewhere { display: grid; gap: 4px; }
+.elsewhere .btn { gap: 6px; text-decoration: none; }

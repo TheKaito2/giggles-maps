@@ -46,6 +46,36 @@ def p18_files(qids):
     return out
 
 
+def lead_images(qids):
+    """Fallback for places whose Wikidata item has no P18: the free lead image of its English or Thai Wikipedia
+    article (Wikipedia's page_image_free, which only ever names a freely licensed file)."""
+    titles = {}   # (wiki, title) -> qid
+    for i in range(0, len(qids), 50):
+        data = get("https://www.wikidata.org/w/api.php", {"action": "wbgetentities", "ids": "|".join(qids[i:i + 50]),
+                                                          "props": "sitelinks", "sitefilter": "enwiki|thwiki", "format": "json"})
+        for qid, ent in data.get("entities", {}).items():
+            for wiki in ("enwiki", "thwiki"):
+                link = ent.get("sitelinks", {}).get(wiki)
+                if link:
+                    titles[(wiki, link["title"])] = qid
+        time.sleep(0.5)
+    out = {}
+    for wiki in ("enwiki", "thwiki"):
+        names = [t for (w, t) in titles if w == wiki]
+        host = "en.wikipedia.org" if wiki == "enwiki" else "th.wikipedia.org"
+        for i in range(0, len(names), 20):
+            data = get(f"https://{host}/w/api.php", {"action": "query", "titles": "|".join(names[i:i + 20]),
+                                                     "prop": "pageprops", "ppprop": "page_image_free", "format": "json"})
+            norm = {n["to"]: n["from"] for n in data.get("query", {}).get("normalized", [])}
+            for page in data.get("query", {}).get("pages", {}).values():
+                image = page.get("pageprops", {}).get("page_image_free")
+                qid = titles.get((wiki, norm.get(page.get("title"), page.get("title"))))
+                if image and qid and qid not in out:   # English first, Thai fills the gaps
+                    out[qid] = image
+            time.sleep(0.5)
+    return out
+
+
 def image_info(files):
     """Commons file name -> (thumbnail url, author, licence) for freely licensed files only."""
     out = {}
@@ -83,6 +113,7 @@ def main():
         if re.fullmatch(r"Q\d+", qid.strip()):
             by_qid.setdefault(qid.strip(), []).append(int(pid))
     files = p18_files(sorted(by_qid))
+    files.update(lead_images(sorted(set(by_qid) - set(files))))   # no P18: the Wikipedia article's free lead image
     infos = image_info(set(files.values()))
     values = []
     for qid, f in files.items():
@@ -94,7 +125,7 @@ def main():
         out.write("delete from public.place_photos where source = 'wikimedia';\n")
         for i in range(0, len(values), 500):
             out.write("insert into public.place_photos (place_id, source, url, credit, licence) values\n" + ",\n".join(values[i:i + 500]) + ";\n")
-    print(json.dumps({"places_with_wikidata": len(rows), "with_p18": len(files), "free_photos": len(values)}))
+    print(json.dumps({"places_with_wikidata": len(rows), "with_image": len(files), "free_photos": len(values)}))
 
 
 if __name__ == "__main__":

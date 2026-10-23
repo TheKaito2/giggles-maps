@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bookmark, BookmarkCheck, Camera, Clock, Flag, Globe, MapPin, Navigation, Pencil, Phone, Share2, Star, X } from "lucide-react";
+import { Bookmark, BookmarkCheck, Camera, Clock, ExternalLink, Flag, Globe, MapPin, Navigation, Pencil, Phone, Share2, Star, X } from "lucide-react";
 import { ApiError } from "../lib/supabase";
 import { createList, deleteReview, getMyLists, getPlaceExtras, getPlacePage, type PlaceExtras, type PlacePage, photoUrls, reportReview,
   type SavedList, savePlace, shopPhotoUrl, SITE, suggestEdit, writeReview } from "../lib/api";
@@ -164,6 +164,20 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
         {page.website && <li><Globe size={16} aria-hidden /><a href={page.website.startsWith("http") ? page.website : `https://${page.website}`} target="_blank" rel="noopener noreferrer">{page.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}</a></li>}
         {page.address && <li><MapPin size={16} aria-hidden /><span>{page.address}</span></li>}
       </ul>
+
+      {/* other people's reviews and photos live elsewhere: we link to them, never copy them (Google's terms forbid
+          showing its content on a non-Google map, and Wongnai's are its own) */}
+      <section className="elsewhere" aria-labelledby="elsewhere-title">
+        <h4 id="elsewhere-title" className="eyebrow">Reviews and photos elsewhere</h4>
+        <div className="row tight">
+          <a className="btn soft small" target="_blank" rel="noopener noreferrer"
+            href={`https://www.google.com/maps/search/${encodeURIComponent(page.name)}/@${page.lat},${page.lng},17z`}>
+            Google Maps <ExternalLink size={14} aria-hidden /></a>
+          {k.group === "food" && <a className="btn soft small" target="_blank" rel="noopener noreferrer"
+            href={`https://www.wongnai.com/businesses?q=${encodeURIComponent(page.name_th || page.name)}`}>
+            Wongnai <ExternalLink size={14} aria-hidden /></a>}
+        </div>
+      </section>
 
       {page.busy && (
         <section aria-label="Busy times">
