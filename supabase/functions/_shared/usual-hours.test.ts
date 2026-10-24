@@ -7,4 +7,6 @@ test("known hours win; unknown ones fall back to the usual hours for the kind", 
   expect(usualHours("market", "Sakon Nakhon Walking Street, Saturday & Sunday Nights", null, null)).toEqual([1020, 1380]);
   expect(usualHours("market", "ถนนคนเดินสกลนคร", null, null)).toEqual([1020, 1380]);
   expect(usualHours("stay", "Hotel", null, null)).toEqual([null, null]);
+  expect(usualHours("park", "Night Safari", null, null)).toEqual([300, 1200]);       // only markets, shops, food
+  expect(usualHours("cafe", "Midnight Café", null, null)).toEqual([480, 1080]);
 });

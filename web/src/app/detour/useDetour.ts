@@ -48,9 +48,9 @@ export function useDetour(onError: (m: string) => void) {
   const [editing, setEditing] = useState(false);
   const [hidden, setHidden] = useState<number[]>([]);   // removed stops, hidden at once while the route recalculates
   // you put the stops in your own order (a drag, a + between two): edits keep it. A new plan (another time option, plan
-  // card or destination) starts from the planner's order again.
+  // card or destination) starts from the planner's order again: reset where those happen, not by watching `choice`,
+  // which an edit's own result sets too (that reset it after the first edit).
   const [manual, setManual] = useState(false);
-  useEffect(() => setManual(false), [preset, choice, dest]);
   const [locating, setLocating] = useState(false);
   const request = useRef(0);   // preset plans in flight
   const [again, setAgain] = useState(0);   // bumped to plan the presets again (a rewarded ad lifted today's limit)
@@ -85,7 +85,7 @@ export function useDetour(onError: (m: string) => void) {
   useEffect(() => {
     const id = ++request.current;
     edit.current++; setEditing(false);   // an edit in flight belongs to the old trip
-    setExclude([]); setChoice(null); setHidden([]); setResults({});
+    setExclude([]); setChoice(null); setManual(false); setHidden([]); setResults({});
     if (stage === "browse" || !origin || !dest) return;
     const ids: PresetId[] = ["relaxed", "quick", "day", "half", ...(preset === "custom" ? ["custom" as const] : [])];
     // guests plan too (one destination a day, server-side): the server answers sign_in_required after that
@@ -104,10 +104,11 @@ export function useDetour(onError: (m: string) => void) {
   };
   // tapping an option shows its plans (planning it again only if it failed); edits don't carry across options
   const choosePreset = (id: PresetId) => {
-    edit.current++; setPreset(id); setChoice(null); setExclude([]); setEditing(false); setHidden([]);
+    edit.current++; setPreset(id); setChoice(null); setManual(false); setExclude([]); setEditing(false); setHidden([]);
     const r = results[id];
-    // a refused plan (sign in, daily limit) would be refused again: show why instead of asking the server
-    if (r && typeof r === "object" && "gate" in r && r.gate) setGate(r.gate);
+    // a guest's refused plan would be refused again until they sign in: show the sign-in sheet instead of asking the
+    // server. Any other failure (a daily limit too: they may have just bought membership) is asked again.
+    if (guest && r && typeof r === "object" && "gate" in r && r.gate?.startsWith("sign_in")) setGate(r.gate);
     else if (!r || (typeof r === "object" && "error" in r)) planPreset(id, request.current);
   };
   // a new custom time changes the trip, and the effect above plans it; the same time again just picks it
@@ -116,7 +117,7 @@ export function useDetour(onError: (m: string) => void) {
   };
   const close = () => {
     request.current++; edit.current++;
-    setStage("browse"); setDest(null); setResults({}); setExclude([]); setChoice(null); setEditing(false); setHidden([]);
+    setStage("browse"); setDest(null); setResults({}); setExclude([]); setChoice(null); setManual(false); setEditing(false); setHidden([]);
     setOrigin((o) => o?.name === "Your location" ? null : o);   // you'll have moved: locate again next time
   };
 
@@ -163,7 +164,8 @@ export function useDetour(onError: (m: string) => void) {
   };
 
   return {
-    stage, setStage, origin, setOrigin, dest, setDest, prefs, set, results, preset, setPreset: choosePreset, choice, setChoice, plan, response,
+    stage, setStage, origin, setOrigin, dest, setDest, prefs, set, results, preset, setPreset: choosePreset, choice,
+    setChoice: (c: string | null) => { setManual(false); setChoice(c); }, plan, response,
     cap, editing, locating, hidden, retry, notify: onError, gate, setGate, replanAll: () => setAgain((n) => n + 1), goTo, close, pickCustom, budgetOf, removeStop, addStop, reorder,
     swap: () => { if (origin && dest) { setOrigin(dest); setDest(origin); } },
   };

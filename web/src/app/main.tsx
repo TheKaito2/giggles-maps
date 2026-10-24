@@ -6,7 +6,7 @@ import App from "./App";
 import Boundary from "./Boundary";
 import { installDemoGps } from "../lib/demoGps";
 import { installHScroll } from "../lib/hscroll";
-import { isNative, openSite } from "../lib/native";
+import { installNativeGeolocation, isNative, openSite } from "../lib/native";
 import { installTheme } from "../lib/theme";
 import { SplashScreen } from "@capacitor/splash-screen";
 
@@ -20,6 +20,7 @@ if (isNative) {
 }
 installTheme();     // Settings > Appearance: light, dark or follow the phone
 installHScroll();   // mouse users: arrows and wheel for sideways rows
+installNativeGeolocation();   // iOS: the location comes from Core Location (one prompt, the app's own)
 installDemoGps();   // demo mode (Profile) fakes the location for everything that reads it
 import Debug from "./Debug";
 

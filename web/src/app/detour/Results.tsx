@@ -274,8 +274,8 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
       <div className="stack results">
         {presetBar}
         {r && typeof r === "object" && "error" in r
-          ? <p className="fine" role="status">{r.error} {r.gate
-              ? <button type="button" className="link" onClick={() => d.setGate(r.gate!)}>{r.gate.startsWith("sign_in") ? "Sign in" : "See options"}</button>
+          ? <p className="fine" role="status">{r.error} {r.gate?.startsWith("sign_in")
+              ? <button type="button" className="link" onClick={() => d.setGate(r.gate!)}>Sign in</button>
               : <button type="button" className="link" onClick={() => d.preset && d.retry(d.preset)}>Try again</button>}</p>
           : <PlanProgress />}
       </div>

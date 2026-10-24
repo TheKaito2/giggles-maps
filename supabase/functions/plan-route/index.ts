@@ -74,12 +74,14 @@ serve(async (req) => {
   // stops the user removed or swapped out: never offered again in this plan
   const exclude = new Set(ids(body.exclude, 30, "bad_exclude"));
   // the stops an edited plan keeps (a half day can hold 7+); the time budget still decides what fits
-  const mustInclude = ids(body.must_include, STOP_CAP.member, "bad_must_include").filter((id) => !exclude.has(id));
+  const mustInclude = [...new Set(ids(body.must_include, STOP_CAP.member, "bad_must_include"))].filter((id) => !exclude.has(id));
   // keep_order: true = must_include is the order, exactly (the + between two stops puts a place right there). A list = those
   // stops keep that order and the rest of must_include goes where it fits best ("add along your route" after you dragged
   // stops into your own order: it used to re-sort them all)
-  const fixedOrder = body.keep_order === true ? [...mustInclude]
-    : Array.isArray(body.keep_order) ? ids(body.keep_order, STOP_CAP.member, "bad_keep_order").filter((id) => mustInclude.includes(id)) : undefined;
+  // (each stop once; an empty list pins nothing, so the planner still optimises the order)
+  const keepList = body.keep_order === true ? mustInclude
+    : Array.isArray(body.keep_order) ? [...new Set(ids(body.keep_order, STOP_CAP.member, "bad_keep_order"))].filter((id) => mustInclude.includes(id)) : [];
+  const fixedOrder = keepList.length ? [...keepList] : undefined;
 
   const db = admin();
   const { data: profile } = await db.from("profiles").select("plus_until, member_since").eq("id", user.id).maybeSingle();
@@ -233,9 +235,10 @@ serve(async (req) => {
     }
   }
 
-  // places without known hours get their kind's usual hours (a night plan used to visit temples at 04:00)
-  const hoursOf = (c: { category: string; name: string; open_min: number | null; close_min: number | null }) => {
-    const [openMin, closeMin] = usualHours(c.category, c.name, c.open_min, c.close_min);
+  // places without known hours get their kind's usual hours (a night plan used to visit temples at 04:00). Not the ones
+  // the user picked: those go in whatever the hours, and a guess must not mark them "closed when you get there".
+  const hoursOf = (c: { id: number; category: string; name: string; open_min: number | null; close_min: number | null }) => {
+    const [openMin, closeMin] = mustInclude.includes(c.id) ? [c.open_min, c.close_min] : usualHours(c.category, c.name, c.open_min, c.close_min);
     return { openMin, closeMin };
   };
   const allStops: Stop[] = candidates.map((c, i) => ({

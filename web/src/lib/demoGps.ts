@@ -12,7 +12,9 @@ const write = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.st
 
 let on = read<boolean>(ON, false);
 let at = read<LatLng>(AT, SAKON);
-let home = read<LatLng>(HOME, SAKON);   // the demo's city: where "my location" goes back to when you aren't really there
+// the demo's city: where "my location" goes back to when you aren't really there. A demo started before this was kept
+// has no home saved: its current spot stands in (Sakon Nakhon would send a Bangkok demo 600 km away).
+let home = read<LatLng | null>(HOME, null) ?? at;
 const watchers = new Map<number, PositionCallback>();
 const listeners = new Set<() => void>();
 let nextId = 1e6;   // clear of the real watch ids

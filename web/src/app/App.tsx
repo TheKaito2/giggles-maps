@@ -300,7 +300,7 @@ export default function App() {
         </main>
       )}
 
-      <Boundary onClose={() => { setOverlay(null); d.setGate(null); setAdSheet(false); setNav(null); setEtaToken(null); setNameSheet(false); setNameLater(true); }}><Suspense fallback={null}>
+      <Boundary onClose={() => { setOverlay(null); d.setGate(null); setAdSheet(false); if (nav) { setNav(null); liveTrip.end(); } setEtaToken(null); setNameSheet(false); setNameLater(true); }}><Suspense fallback={null}>
       {(overlay === "shop" || overlay === "bag") && (
         <Modal label="Shop" className="shop-modal" onClose={() => setOverlay(null)}>
           <header className="modal-head"><h2>Shop</h2><button type="button" className="icon-btn" onClick={() => setOverlay(null)} aria-label="Close"><X size={20} /></button></header>

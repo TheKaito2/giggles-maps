@@ -1375,7 +1375,7 @@ input[type="file"]::file-selector-button { font: 700 var(--fs-label)/1 var(--fon
   border: 2px solid var(--line); color: var(--ink-2); box-shadow: var(--shadow); }
 .boundary b { color: var(--ink); font: 800 var(--fs-headline)/var(--lh-headline) var(--font-body); }
 .boundary.boundary-page { max-width: 420px; margin: 48px auto; }   /* not .page: that's the passport's absolutely placed page */
-.boundary.modal { margin: 0; max-width: 420px; }
+.modal.boundary-modal { padding: 0; max-width: 420px; background: none; box-shadow: none; } .boundary-modal .boundary { margin: 0; }
 .stop-leg.stale { visibility: hidden; }
 .tile-kind { font: 700 var(--fs-micro)/var(--lh-micro) var(--font-body); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
 /* a gold button you can't press yet: plainly off, not a muddy khaki */

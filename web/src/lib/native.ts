@@ -1,4 +1,5 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Geolocation } from "@capacitor/geolocation";
 import { App as CapApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
@@ -175,6 +176,41 @@ async function attestKey(): Promise<string> {
   await callFn("app-attest", { action: "register", key_id: keyId, challenge, attestation });
   localStorage.setItem(ATTEST_KEY, keyId);
   return keyId;
+}
+
+/**
+ * In the iOS app, navigator.geolocation answers from Core Location (the Geolocation plugin), so the only prompt is the app's
+ * own. WebKit's location asked a second time and named the page "localhost". Everything keeps reading navigator.geolocation;
+ * call this before installDemoGps, which wraps whatever is there.
+ */
+export function installNativeGeolocation() {
+  if (!isNative || !navigator.geolocation) return;
+  const geo = navigator.geolocation;
+  const asError = (e: unknown) => {
+    const message = e instanceof Error ? e.message : String(e);
+    const code = /denied|permission|not authori/i.test(message) ? 1 : /time ?out/i.test(message) ? 3 : 2;
+    return { code, message, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 } as GeolocationPositionError;
+  };
+  const options = (o?: PositionOptions) => ({ enableHighAccuracy: !!o?.enableHighAccuracy, timeout: o?.timeout ?? 15000, maximumAge: o?.maximumAge ?? 0 });
+  // the plugin's Position has the same coords fields the app reads
+  geo.getCurrentPosition = (ok, fail, o) => {
+    Geolocation.getCurrentPosition(options(o)).then((p) => ok(p as unknown as GeolocationPosition), (e) => fail?.(asError(e)));
+  };
+  // navigator's watch ids are numbers handed back at once; the plugin's are strings that arrive later
+  const watches = new Map<number, Promise<string>>();
+  let next = 1;
+  geo.watchPosition = (ok, fail, o) => {
+    const id = next++;
+    watches.set(id, Geolocation.watchPosition(options(o), (p, e) => {
+      if (p) ok(p as unknown as GeolocationPosition); else if (e) fail?.(asError(e));
+    }));
+    return id;
+  };
+  geo.clearWatch = (id) => {
+    const w = watches.get(id);
+    watches.delete(id);
+    void w?.then((callbackId) => Geolocation.clearWatch({ id: callbackId })).catch(() => undefined);
+  };
 }
 
 /** A check-in location: the iOS app asks Core Location, which also says whether software faked it. */

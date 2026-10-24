@@ -10,9 +10,15 @@ let quiet = false;
  *  load are ignored, or Back would land on them and do nothing. */
 export const LOAD = Date.now();
 export const ours = (state: unknown) => (state as { gmLoad?: number } | null)?.gmLoad === LOAD;
+// entries of dialogs that opened while one of our own Backs was still on its way: added once it lands, or it pops them
+let afterBack: (() => void)[] = [];
 addEventListener("popstate", () => {
   quiet = skipPop > 0;
-  if (quiet) { skipPop--; return; }
+  if (quiet) {
+    skipPop--;
+    if (!skipPop) { const later = afterBack; afterBack = []; later.forEach((push) => push()); }
+    return;
+  }
   open.at(-1)?.closedByBack();
 });
 export const dialogsOpen = () => open.length;
@@ -41,8 +47,12 @@ export function useDialog<T extends HTMLElement = HTMLDivElement>(onClose: () =>
     const me = { close: () => close.current(), closedByBack: () => { byBack = true; close.current(); } };
     open.push(me);
     box.current?.focus();
-    const entry = { ...history.state, gmDialog: open.length, gmLoad: LOAD };
-    if (handOver) { handOver--; history.replaceState(entry, ""); } else history.pushState(entry, "");
+    let added = false;   // its history entry is in place (so closing it by its button gives one back)
+    const push = () => { added = true; history.pushState({ ...history.state, gmDialog: open.length, gmLoad: LOAD }, ""); };
+    if (handOver) { handOver--; added = true; history.replaceState({ ...history.state, gmDialog: open.length, gmLoad: LOAD }, ""); }
+    // a lazy dialog (its code loads first) can mount after the closed one's Back was sent: wait for it to land
+    else if (skipPop) afterBack.push(push);
+    else push();
     const keys = (e: KeyboardEvent) => {
       if (open.at(-1) !== me) return;
       if (e.key === "Escape") { e.stopPropagation(); me.close(); return; }
@@ -59,7 +69,8 @@ export function useDialog<T extends HTMLElement = HTMLDivElement>(onClose: () =>
     return () => {
       document.removeEventListener("keydown", keys);
       open.splice(open.indexOf(me), 1);
-      if (!byBack && history.state?.gmDialog && ours(history.state)) {   // closed by its own button: drop the entry it added
+      afterBack = afterBack.filter((f) => f !== push);   // closed before its entry went in: nothing to give back
+      if (!byBack && added && history.state?.gmDialog && ours(history.state)) {   // closed by its own button: drop the entry it added
         handOver++;
         queueMicrotask(() => { if (handOver) { handOver--; quietBack(); } });
       }
