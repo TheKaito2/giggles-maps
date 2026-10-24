@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { ApiError, callFn, ensureSession, supabase } from "../lib/supabase";
-import { type ExclusivePlace, getExclusives, getMonthlyStamps, KIND_NAME, type Profile, startCheckout } from "../lib/api";
+import { type Booking, cancelBooking, getMonthlyStamps, myBookings, PRICES, type Profile, startCheckout } from "../lib/api";
 import { isGuest, useUser } from "../lib/auth";
 import SignIn from "./SignIn";
 
-
-const PLUS_THB = 59;
-const MEMBER_THB = 349;
+const PLUS_THB = PRICES.plus;
+const MEMBER_THB = PRICES.membership;
+const BOOKING_STATUS: Record<Booking["status"], string> = { requested: "Waiting for the shop", accepted: "Confirmed", declined: "Declined",
+  completed: "Done", cancelled: "Cancelled" };
 const monthName = (m: string) => new Date(`${m}T00:00:00+07:00`).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
 const fmtDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
-/** Membership, Plus, member-level places, sign-in and account deletion (bottom of the Profile tab). */
+/** Membership, Plus, your bookings, sign-in and account deletion (Profile settings). */
 export default function Account({ refreshKey, profile, onChange }: { refreshKey: number; profile: Profile | null; onChange: () => void }) {
   const plusUntil = profile?.plusUntil ?? null;
   const user = useUser();
@@ -18,7 +19,7 @@ export default function Account({ refreshKey, profile, onChange }: { refreshKey:
   const [msg, setMsg] = useState("");
   const [plusMsg, setPlusMsg] = useState("");
   const [memberMsg, setMemberMsg] = useState("");
-  const [exclusives, setExclusives] = useState<ExclusivePlace[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [stamps, setStamps] = useState<string[]>([]);
 
   const [paidMsg] = useState(() => new URLSearchParams(location.search).get("paid") === "success"
@@ -33,8 +34,8 @@ export default function Account({ refreshKey, profile, onChange }: { refreshKey:
   useEffect(() => {
     (async () => {
       await ensureSession();
-      setExclusives(await getExclusives());
       setStamps(await getMonthlyStamps());
+      if (!isGuest(user)) setBookings(await myBookings());
     })().catch(() => setMsg("Couldn't load your passport. Check your connection."));
   }, [refreshKey, user?.id, !!plusUntil]);
 
@@ -68,9 +69,13 @@ export default function Account({ refreshKey, profile, onChange }: { refreshKey:
       {paidMsg && <p className="fine" role="status">{paidMsg}</p>}
       {!member && (
         <section className="member-card" aria-label="Membership">
-          <h3>Become a member</h3>
-          <p className="fine">Stamps, photos and the map are free. Members turn XP into levels and coins for the shop, and unlock hidden gems from level 2,
-            member perks from level 4 and events from level 6. One payment of <span className="num">฿{MEMBER_THB}</span>, yours for good. XP you earn now is kept.</p>
+          <div className="row between"><h3>Membership</h3><span className="num price-tag">฿{MEMBER_THB} once</span></div>
+          <ul className="perks">
+            <li>No ads, forever</li>
+            <li>Unlimited detours and added stops</li>
+            <li>Partner and Giggles Choice stops first</li>
+            <li>3 months of Plus free</li>
+          </ul>
           {guest ? <p className="fine">Sign in below first, so your membership stays with your account.</p>
             : <button className="btn gold" onClick={() => buy("membership", setMemberMsg)}>Become a member · ฿{MEMBER_THB}</button>}
           {memberMsg && <p className="fine" role="status">{memberMsg}</p>}
@@ -89,11 +94,11 @@ export default function Account({ refreshKey, profile, onChange }: { refreshKey:
       <section className={`plus-card ${plusUntil ? "active" : ""}`} aria-label="Giggles Plus">
         <div className="row between">
           <h3>Giggles Plus</h3>
-          {plusUntil ? <span className="chip">Active until {fmtDate(plusUntil)}</span> : <span className="num price-tag">฿{PLUS_THB} / 30 days</span>}
+          {plusUntil ? <span className="chip">Active until {fmtDate(plusUntil)}</span> : <span className="num price-tag">฿{PLUS_THB} / month</span>}
         </div>
         {plusUntil
           ? <>
-              <p className="fine">Every Plus cover and name flair is yours in the Shop tab.</p>
+              <p className="fine">No ads, +20 coins every day you open the app, and the Plus shelf in the shop is yours.</p>
               <div className="field">
                 <span>Monthly stamps</span>
                 <div className="month-stamps">{stamps.map((m) => <span key={m} className="month-stamp">{monthName(m)}</span>)}</div>
@@ -101,7 +106,12 @@ export default function Account({ refreshKey, profile, onChange }: { refreshKey:
               <button className="link" onClick={() => buy("plus", setPlusMsg)}>Add another 30 days</button>
             </>
           : <>
-              <p className="fine">Make your passport yours: every Plus cover and name flair in the shop, 3 premium share-card designs, a new stamp every month, and 25% more coins from stamps and challenges. Every place and route stays free.</p>
+              <ul className="perks">
+                <li>No ads</li>
+                <li>+20 coins every day you open the app</li>
+                <li>The Plus shelf: covers, frames, flair and the Plus explorer title</li>
+                <li>25% more coins from quests, a stamp every month</li>
+              </ul>
               {guest ? <p className="fine">Sign in above to get Plus.</p>
                 : <button className="btn gold" onClick={() => buy("plus", setPlusMsg)}>Get Plus · ฿{PLUS_THB}</button>}
             </>}
@@ -109,23 +119,18 @@ export default function Account({ refreshKey, profile, onChange }: { refreshKey:
         <p className="fine">Card or PromptPay. No auto-renew.</p>
       </section>
 
-      {exclusives.length > 0 && <>
-        <h3>Exclusive places</h3>
-        <ul className="exclusives">{exclusives.map((p) => (
-          <li key={p.id} className={p.unlocked ? "" : "locked"}>
-            <div>
-              <b>{p.name}</b>
-              <div className="row">
-                <span className="chip exclusive">{KIND_NAME[p.exclusive_kind]}</span>
-                <span className="chip exclusive">Level {p.min_level}</span>
-                {!p.unlocked && <span className="chip">Locked</span>}
-                {p.is_demo && <span className="chip">Example</span>}
-              </div>
-              {p.unlocked && p.perk_text && <p className="fine">{p.perk_text}</p>}
-            </div>
+      {bookings.length > 0 && <section className="stack" aria-label="Your bookings">
+        <h3>Your bookings</h3>
+        <ul className="bookings">{bookings.map((b) => (
+          <li key={b.id}>
+            <span className="person-main"><b>{b.place}</b>
+              <span className="fine num">{new Date(`${b.day}T00:00:00+07:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · {b.party} {b.party === 1 ? "person" : "people"}</span></span>
+            <span className={`chip booking-${b.status}`}>{BOOKING_STATUS[b.status]}</span>
+            {(b.status === "requested" || b.status === "accepted") && <button type="button" className="link"
+              onClick={() => cancelBooking(b.id).then(myBookings).then(setBookings).catch(() => setMsg("Couldn't cancel. Try again."))}>Cancel</button>}
           </li>
         ))}</ul>
-      </>}
+      </section>}
 
       <div className="danger">
         {!confirmDelete

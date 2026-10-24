@@ -13,12 +13,12 @@ const KINDS: { kind: ShopKind; title: string }[] = [
 ];
 const KIND_NAME: Record<ShopKind, string> = { theme: "Passport cover", frame: "Photo frame", avatar: "Avatar item", flair: "Name flair", title: "Title", map: "Map skin" };
 const ERR: Record<string, string> = {
-  members_only: "Coins come with membership. Become a member to spend them.",
+  plus_only: "This comes with Plus.",
   not_enough_coins: "Not enough coins yet. Stamps, quests and level-ups earn more.",
   already_owned: "You already have this.",
 };
 // the same names as Siam Si sticks: price sets the rarity, Siam Si-only items are Legendary
-export const rarityOf = (i: ShopItem) => i.gacha_only ? "legendary" : i.price === 0 ? null : i.price <= 150 ? "common" : i.price <= 400 ? "rare" : "epic";
+export const rarityOf = (i: ShopItem) => i.gacha_only ? "legendary" : i.price === 0 || i.plus_only ? null : i.price <= 150 ? "common" : i.price <= 400 ? "rare" : "epic";
 const key = (i: { kind: string; id: string }) => `${i.kind}:${i.id}`;
 const left = (iso: string) => {
   const m = Math.max(0, Math.round((new Date(iso).getTime() - Date.now()) / 60000));
@@ -64,7 +64,7 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
     return (profile?.look[i.kind] ?? (i.price === 0 ? i.id : null)) === i.id;
   };
   const byKey = new Map(items.map((i) => [key(i), i]));
-  const canBuy = (i: ShopItem) => owns(i) || (!!profile?.member && coins >= i.price);
+  const canBuy = (i: ShopItem) => owns(i) || (!i.plus_only && coins >= i.price);
 
   const act = async (i: ShopItem) => {
     setMsg("");
@@ -97,10 +97,11 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
         </button>
         <span className="tile-foot">
           {on ? <span className="chip on"><Check size={13} aria-hidden /> On</span> : own ? <span className="chip">Owned</span>
+            : i.plus_only ? <span className="chip plus-chip">Plus</span>
             : <span className={`coin-price num${canBuy(i) ? "" : " short"}`}><Coins size={13} aria-hidden /> {i.price}</span>}
           {r && <span className={`rarity r-${r}`}>{r}</span>}
         </span>
-        {i.plus && !own && <span className="chip">Free with Plus</span>}
+        {i.plus && !i.plus_only && !own && <span className="chip">Free with Plus</span>}
       </li>
     );
   };
@@ -112,7 +113,6 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
     <div className="shop stack">
       <div className="row between">
         <span className="coin-balance num"><Coins size={18} aria-hidden /> {coins} coins</span>
-        {!profile?.member && <span className="fine">Coins unlock with membership</span>}
       </div>
       <div className="seg shop-tabs" role="tablist" aria-label="Shop or bag">
         <button type="button" role="tab" aria-selected={view === "shop"} className={view === "shop" ? "on" : ""} onClick={() => setView("shop")}>
@@ -137,6 +137,11 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
       )) : <>
       {featured && <SetCard s={featured} hero byKey={byKey} profile={profile} coins={coins} onBuy={getSet} onTry={setTrying} />}
 
+      <section>
+        <div className="row between"><h4 className="eyebrow">Plus shelf</h4>{plus && <span className="fine">Yours with Plus</span>}</div>
+        <ul className="shop-grid today">{items.filter((i) => i.plus_only).map(tile)}</ul>
+      </section>
+
       {picks.length > 0 && <section>
         <div className="row between"><h4 className="eyebrow">Today's picks</h4>
           {today && <span className="fine"><Clock size={13} aria-hidden /> New picks in {left(today.ends)}</span>}</div>
@@ -153,7 +158,7 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
           <div className="row between"><h4 className="eyebrow">{title}</h4>
             {kind === "avatar" && <button type="button" className="link" onClick={onAvatar}><Shirt size={14} aria-hidden /> Avatar builder</button>}</div>
           <ul className="shop-grid">
-            {items.filter((i) => i.kind === kind && (!i.gacha_only || owns(i))).map(tile)}
+            {items.filter((i) => i.kind === kind && !i.plus_only && (!i.gacha_only || owns(i))).map(tile)}
           </ul>
         </section>
       ))}
@@ -182,11 +187,13 @@ function TryOn({ item, profile, msg, wearing, owns, canBuy, coins, onAct, onClos
         </header>
         <div className="try-stage"><Preview item={item} profile={profile} big /></div>
         {item.gacha_only && <p className="fine">Siam Si only: won from a fortune stick, never sold.</p>}
+        {item.plus_only && !owns && <p className="fine">On the Plus shelf: yours while you have Plus, never sold.</p>}
         {msg && <p className="fine" role="status">{msg}</p>}
         {wearing ? <button type="button" className="btn" disabled><Check size={16} aria-hidden /> Wearing it</button>
           : owns ? <button type="button" className="btn" onClick={onAct}>Wear it</button>
+          : item.plus_only ? <button type="button" className="btn" disabled>Comes with Plus</button>
           : <button type="button" className="btn gold" disabled={!canBuy} onClick={onAct}><Coins size={16} aria-hidden /> Buy for {item.price} and wear</button>}
-        {!owns && !canBuy && <p className="fine">{profile?.member ? `${item.price - coins} more coins to go.` : ERR.members_only}</p>}
+        {!owns && !canBuy && !item.plus_only && <p className="fine">{item.price - coins} more coins to go.</p>}
       </div>
     </div>
   );
@@ -211,7 +218,7 @@ function SetCard({ s, hero = false, byKey, profile, coins, onBuy, onTry }: {
         {owned ? <span className="chip on"><Check size={13} aria-hidden /> All yours</span> : <span className="num">
           {s.price < s.full && <s className="fine">{s.full}</s>} <b><Coins size={15} aria-hidden /> {s.price}</b>
           {s.price > s.full * 0.7 && <span className="fine"> · save {s.full - s.price}</span>}</span>}
-        {!owned && <button type="button" className="btn gold small" disabled={!profile?.member || coins < s.price} onClick={() => onBuy(s)}>Get the set</button>}
+        {!owned && <button type="button" className="btn gold small" disabled={coins < s.price} onClick={() => onBuy(s)}>Get the set</button>}
       </div>
     </article>
   );

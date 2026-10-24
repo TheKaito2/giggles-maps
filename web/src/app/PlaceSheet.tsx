@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Bookmark, BookmarkCheck, Camera, Clock, Crown, ExternalLink, Flag, Globe, MapPin, Navigation, Pencil, Phone, Share2, Star, X } from "lucide-react";
+import { Bookmark, BookmarkCheck, CalendarCheck, Camera, Clock, Crown, ExternalLink, Flag, Globe, MapPin, Navigation, Pencil, Phone, Share2, Star, X } from "lucide-react";
 import { ApiError } from "../lib/supabase";
 import { createList, deleteReview, getMyLists, getPlaceExtras, getPlacePage, type PlaceExtras, type PlacePage, photoUrls, reportReview,
-  type SavedList, savePlace, shopPhotoUrl, SITE, suggestEdit, writeReview } from "../lib/api";
+  type PartnerTier, placesTiers, type SavedList, savePlace, shopPhotoUrl, SITE, suggestEdit, TIER_NAME, writeReview } from "../lib/api";
+import BookingSheet from "./BookingSheet";
 import { GROUPS, kindOf } from "./kinds";
 import { openNow } from "./hours";
 import Avatar from "./social/Avatar";
@@ -73,7 +74,8 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
   const [page, setPage] = useState<PlacePage | null>(null);
   const [extras, setExtras] = useState<PlaceExtras | null>(null);
   const [urls, setUrls] = useState<Record<string, string>>({});
-  const [menu, setMenu] = useState<"save" | "edit" | null>(null);
+  const [menu, setMenu] = useState<"save" | "edit" | "book" | null>(null);
+  const [tier, setTier] = useState<PartnerTier | null>(null);   // a paying partner: labelled, and you can book it
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState("");
   const [msg, setMsg] = useState("");
@@ -85,6 +87,7 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
   useEffect(() => {
     setPage(null); setExtras(null); setMenu(null); setMsg(""); setRating(0); setBody(""); load();
     getPlaceExtras(id).then(setExtras).catch(() => undefined);
+    setTier(null); placesTiers([id]).then((m) => setTier(m.get(id) ?? null)).catch(() => undefined);
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const paths = (page?.photos ?? []).map((p) => p.path).filter((p): p is string => !!p);
@@ -127,6 +130,7 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
             <span className="fine">· {k.en}</span>
           </span>
           <span className="row tight">
+            {tier && <span className={`chip tier-${tier}`}>{TIER_NAME[tier]}</span>}
             {page.tier === 3 && <span className="chip landmark">Landmark</span>}
             {page.otop && <span className="chip otop">OTOP{extras?.otop_stars ? ` ${"★".repeat(extras.otop_stars)}` : ""}</span>}
             {extras?.verified && <span className="chip">Verified shop</span>}
@@ -139,12 +143,14 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
 
       <div className="place-actions">
         <button type="button" className="btn small" onClick={() => onDirections(page)}><Navigation size={15} aria-hidden /> Directions</button>
+        {tier && <button type="button" className="btn gold small" onClick={() => setMenu(menu === "book" ? null : "book")}><CalendarCheck size={15} aria-hidden /> Book</button>}
         <button type="button" className="btn soft small" onClick={() => setMenu(menu === "save" ? null : "save")}>
           {page.saved_in.length ? <BookmarkCheck size={15} aria-hidden /> : <Bookmark size={15} aria-hidden />} {page.saved_in.length ? "Saved" : "Save"}</button>
         <button type="button" className="btn soft small" onClick={share}><Share2 size={15} aria-hidden /> Share</button>
         {page.detour && <button type="button" className="btn soft small" onClick={() => onCheckin(page)}><Camera size={15} aria-hidden /> Check in</button>}
       </div>
       {menu === "save" && <SaveMenu page={page} onClose={() => setMenu(null)} onChange={load} />}
+      {menu === "book" && <BookingSheet place={page.id} name={page.name} onClose={() => setMenu(null)} onDone={(m) => { setMenu(null); setMsg(m); }} />}
       {msg && <p className="fine" role="status">{msg}</p>}
 
       {extras?.description && <p className="place-about">{extras.description}</p>}

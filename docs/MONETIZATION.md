@@ -1,72 +1,86 @@
-# Monetization plan (v4, decided 23 Oct 2026)
+# Monetization plan (v5, decided 24 Oct 2026)
 
-v3 replaced v2 (22 Oct): **no paid placement anywhere.** Shops pay for customers we deliver (bookings and verified visits), never for position.
-v4 changes only what users pay for: a **one-time membership** unlocks levels and exclusive places, and **Giggles Plus becomes cosmetic only**. See "Users: membership and Plus" below.
+v5 replaces v4 (23 Oct). It **drops v3's "the route is never for sale"**: paying partners now come first on members' routes, always
+labelled. Free users still get the quality order.
 
-**Code:** v4 is migration `20261023000010_membership_levels.sql`. v3 was migration `20261023000009_monetization_v3.sql` + `plan-route` remove the paid slot, `partner_live` and the Starter plan, and replace `partners_near` with quality-only `places_near`. Not built yet: bookings, deposits, listing claims, deals/stamps unlocking only via the counter QR.
+**Code:** migration `20261024000063_monetization_v5.sql`, `plan-route` (sign-in, quotas, partner boost, Giggle's plan),
+`stripe-checkout` (partner / choice), web `AdBanner`, `Upgrade`, `BookingSheet`, the shop dashboard's Partner and Bookings sections.
 
-## Principle: the route is never for sale
+## Prices
 
-1. Stops are ranked by quality only: rating, uniqueness (variety of categories), and fit inside the user's extra-time budget. Nature, scenic spots, temples, free places, unsigned places and signed-up shops are all ranked the same way.
-2. Signing up, paying or bidding never changes a place's rank or whether it appears on a route.
-3. "Near this spot" cards at nature/temple stops are picked the same way: best nearby places by quality, signed up or not.
-4. No "Partner" slot and no paid stops.
+| What | Who pays | Price |
+|---|---|---|
+| Membership | user | ฿349 once, lifetime |
+| Giggles Plus | user | ฿59 / month (30 days, no auto-renew on the web) |
+| Partner | shop | ฿299 / month |
+| Giggles Choice | shop (by invitation) | ฿799 / month |
+| Booking commission | shop | ฿20 flat per completed booking, from its prepaid credit |
+| Verified visit | shop | its per-visit price, from its prepaid credit (unchanged from v3) |
 
-## What a shop gets for signing up
+## Users
 
-Signing up (claiming the listing) is free. Unsigned places stay in routes as normal listings with information and directions only. Signed-up shops get:
+### Everyone (free)
+- Map, stamps, passport, photos, quests, coins, levels, the shop and Siam Si. Coins and levels are no longer a membership perk.
+- A banner ad on the Feed, Quests, Leaderboard and Profile tabs. Never on the map, in directions, the detour planner or check-in.
+- **Detours need a signed-in account** (`403 sign_in_required` for guests): 3 detours and 10 changes a day (Bangkok day).
+  - A detour = one destination (rounded to ~100 m). The 3 time options and preference changes for it count once.
+  - A change = one edit (add, remove or swap a stop). The planner's own retries of that edit count once.
+  - Over the limit: `429 detour_limit` / `edit_limit`; the app shows today's usage and offers membership.
 
-1. **Bookings.** A Book / Reserve button on their card. Requests (name, dates, party size, booking code) arrive in the shop dashboard and as a LINE message. The shop accepts or declines.
-2. **Listing control.** Correct opening hours, a "closed today" switch, photos, menu and prices, and descriptions in Thai, English and Chinese. Unsigned listings use our data, which can go stale.
-3. **Deals.** An offer on their card, such as a free drink with a check-in or 20% off from 2–4 pm. A deal is shown only when the place is already on the route or card by quality. Deals also appear in the **free** coupon spin after a check-in. No paid spins (odds-disclosure rules, and possible Thai gambling-law problems).
-4. **Visitor data.** How many tourists were routed past or stopped, at which hours, where they came from, and how many came back.
-5. **Deposits.** Homestays, guides and boat trips can take a PromptPay deposit at booking, so a no-show still leaves them something.
-6. **Their own stamp.** A custom stamp design in the badge collection. Collectors choose to go; rank is unchanged.
-7. **Replies** to reviews and guest questions.
+### Membership: ฿349 once
+- No ads, forever.
+- Unlimited detours and changes, inside a rate limit that keeps the router alive: 20 plans a minute and 300 a day
+  (`429 slow_down`). Free accounts also stop at 100 plans a day, and an edit of a destination not planned today counts as a detour.
+- Partner and Giggles Choice stops first: in members' plans a Choice place scores ×2 and a Partner ×1.5 (`boost` in `planner.ts`).
+- 3 months of Plus free, once per account (`profiles.membership_plus_given`; Stripe and App Store alike).
+- iOS: non-consumable `com.kristpaul.gigglesmaps.membership` (its App Store description needs updating for v5).
 
-The pitch to an unsigned place: "Giggles sent 34 tourists near you last month and none of them could book. Sign up to take bookings, show a deal and see your numbers."
+### Giggles Plus: ฿59 / month
+- No ads.
+- +20 coins the first time you open the app each day (`plus_daily`).
+- The Plus shelf: items worn while Plus is active and never sold (`shop_items.plus_only`): the Plus explorer title, Holo foil and
+  Aurora frames, Aurora flair. The existing Plus covers and flair stay free with Plus.
+- 25% more coins from quests and a stamp every month (from v4).
 
-## Who pays
+### The Giggle's plan
+A plan card that uses only Giggles Choice places (plus anything you picked). Everyone gets it when a Choice place is along the way.
 
-| Payer | What they pay |
-|---|---|
-| Hotels, homestays, guides, boat trips | Booking commission (10–20%), charged after the stay or trip |
-| Restaurants, cafés, shops | Per verified visit (their per-visit fee), or per diner for table bookings |
-| Community enterprises | Same as shops, possibly subsidised |
-| Province / TAT | Sponsored trails (themed collections users choose to follow; every stop still meets the quality rules) + visit reports |
-| Users | **Membership** ฿349 one-time (levels unlock exclusive places) and **Giggles Plus** ฿59/month (cosmetic only). See below. |
+## Shops
 
-No monthly plans for shops: no customers, no bill. The v2 Starter ฿299/month plan is dropped.
+1. **Free listing** (unchanged): claim or add the place, hours, photos, products, counter QR sticker, visitor numbers.
+2. **Partner, ฿299 / month.** Needs: the owner signed in (not a guest account) and a verified place (its counter QR scanned
+   at least once). Gets: first on members' routes, a Partner badge, bookings through Giggles Maps.
+3. **Giggles Choice, ฿799 / month.** A Partner we hand-pick: the shop applies in its dashboard, an admin approves it
+   (Profile → Settings → admin list). Gets: a Giggles Choice badge, ×2 on members' routes, and the Giggle's plan for everyone.
+   An unapproved Choice payment counts as Partner (and checkout refuses it anyway).
+4. A tier runs 30 days per payment; paying again adds 30 days.
 
-## Users: membership and Plus (v4)
+**Labelling:** every paid place shows its badge (Partner / Giggles Choice) on detour cards and the place page, with a tooltip
+saying it pays. (Map pins don't show it yet.)
 
-Nothing that matters for a trip sits behind a subscription. Every user gets quality routes with up to **+240 min** of extra time, stamps, trails, XP and the free coupon spin.
+## Bookings
 
-### Membership: ฿349 (about $9.99), one-time
+- Any Partner or Choice place shows a **Book** button: day (today up to 6 months), party size (1–20) and a note.
+- Signed-in users only; at most 5 open bookings per user.
+- One open booking per user, place and day. The shop sees the guest's nickname, day, party size and note (PDPA: no email or
+  phone), and accepts (only with credit for the fee) or declines.
+- **Charge:** when the guest's check-in there is approved within a day of the booked date, the booking is completed and ฿20 comes off the
+  shop's credit (never more than the credit left; `bookings.charged_thb` records what was taken). Declined, cancelled and
+  no-show bookings cost nothing.
+- The guest pays the shop directly, as before; Giggles Maps never holds the money.
 
-- **XP for everyone:** +100 per rewarded check-in, +50 at a partner shop, +100 for the first visit to a new kind of place.
-- **Levels:** L1 0 · L2 300 · L3 800 · L4 1,500 · L5 2,500 · L6 4,000 · L7 6,000 · L8 8,500 · L9 11,500 · L10 15,000 XP (`public.level_for`).
-- Non-members keep earning XP, but their unlock level is 0. Buying membership unlocks the level they have already banked straight away.
-- **Exclusive places** (`places.min_level`, `exclusive_kind`):
-  - `gem`: hidden local gems (example: place 33, level 2).
-  - `perk`: member perks at partner shops, such as a free try-out (example: place 31, level 4).
-  - `event`: events and limited spots, only inside `event_starts`–`event_ends` (example: place 51, level 6).
-- A locked place never appears in routes or cards. The Passport list shows it with the level it needs, without its location or perk.
-- Check-in at a place above the user's level: `level_locked`, nothing recorded.
-- Sold through StoreKit (non-consumable `com.kristpaul.gigglesmaps.membership`), Google Play (one-time product, to build) and Stripe on the web (`kind: membership`). A refund removes it again.
+## Ads
 
-### Giggles Plus: ฿59/month, cosmetic only (like Discord Nitro)
+- `web/src/app/AdBanner.tsx`. With `VITE_ADSENSE_CLIENT` and `VITE_ADSENSE_SLOT` set at build time, Google AdSense fills it.
+  Without them it shows our own ads (membership, Plus, become a partner).
+- Hidden for members and Plus. Every banner has a "Remove ads" link to the membership / Plus sheet.
+- Still to do by hand: AdSense (web) and AdMob (iOS) accounts and their IDs.
 
-- 6 passport themes (`classic`, `indigo`, `lotus`, `night-market`, `temple-gold`, `rain`).
-- Name flair (`marigold`, `indigo`, `lotus`, `sparkle`).
-- 3 premium share-card designs (Postcard, Night neon, Indigo cloth); Classic stays free.
-- A collectible stamp for every month subscribed (`plus_stamps`).
-- Never unlocks places, never changes routes. No extra coupon spin.
-- iOS: auto-renewing subscription `com.kristpaul.gigglesmaps.plus.monthly`. Web: Stripe, 30 days, no auto-renew.
+## Security
 
-### Security
-
-Clients cannot write `profiles` at all (v4 removed the old "own profile update" policy, which let a user give themselves Plus). Membership, XP, Plus and cosmetics change only through server functions.
+Clients cannot write `profiles`, `shops.tier*`, `plan_usage`, `plus_logins` or `bookings` directly. Membership, Plus and tiers
+change only through `apply_payment` (Stripe webhook) and the Apple functions. Quotas are checked server-side in `plan_allowed`
+(service role only).
 
 ## Billing rules (attribution)
 
@@ -97,7 +111,7 @@ A shop is charged only for something it can see and check.
 |---|---|---|
 | Agency commission | Guest books on the platform and pays the hotel. The hotel pays the platform a % after the stay. | Booking.com about 15% base, Agoda about 15–20% (third-party figures). Booking Holdings agency revenue 2025: $7.97B (−6.5%). |
 | Merchant (platform takes payment) | Platform charges the guest, keeps its margin, pays the hotel the rest. | Booking Holdings merchant revenue 2025: $17.76B (+25.5%). Expedia: $10.26B of $14.73B total. |
-| Paid visibility | Hotel pays extra commission or funds a discount to rank higher. | Booking.com Preferred Partner about +2–3 points; Visibility Booster; Genius (hotel-funded discount). Advertising revenue 2025: Booking $1.19B, Expedia $1.29B. **Giggles Maps does not do this.** |
+| Paid visibility | Hotel pays extra commission or funds a discount to rank higher. | Booking.com Preferred Partner about +2–3 points; Visibility Booster; Genius (hotel-funded discount). Advertising revenue 2025: Booking $1.19B, Expedia $1.29B. **Giggles Maps v5 does a flat-fee version (Partner / Giggles Choice), for members' routes only, always labelled.** |
 | Per diner (restaurants) | Restaurant pays a fee per guest seated through the platform. | OpenTable $149–499/month + about $1–1.50 per network diner, about $0.25 via the restaurant's own widget. TheFork about €2–2.60 per diner. |
 | Off-peak deals (restaurants) | Restaurant gives 10–50% off at quiet hours to fill empty tables. | Eatigo (Thailand). |
 | Order commission (delivery) | Platform takes a % of each order. | GrabFood / LINE MAN about 15–30% (vendor estimates). |

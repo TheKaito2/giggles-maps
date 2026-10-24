@@ -167,10 +167,17 @@ body { background: var(--paper); overflow: hidden; }
 .spin-label { font: 700 var(--fs-micro)/var(--lh-micro) var(--font-data); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
 .coupon-code { font-size: var(--fs-headline); font-weight: 700; letter-spacing: .1em; color: var(--stamp); }
 
-.account, .plus-card { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; display: grid; gap: 10px; }
+.account, .plus-card, .member-card { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; display: grid; gap: 10px; }
 .plus-card.active { border-color: var(--marigold); }
 .plus-card h3 { font-size: var(--fs-headline); }
 .price-tag { font-weight: 700; color: var(--indigo); }
+.perks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.perks li { display: flex; gap: 8px; align-items: baseline; }
+.perks li::before { content: "✓"; color: var(--good); font-weight: 800; }
+.bookings { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.bookings li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+.chip.booking-accepted, .chip.booking-completed { background: color-mix(in srgb, var(--good) 14%, var(--card)); color: var(--good); }
+.chip.booking-declined, .chip.booking-cancelled { color: var(--ink-2); }
 .plus-list { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
 .plus-dot { margin-left: 6px; font: 700 var(--fs-micro)/var(--lh-micro) var(--font-data); background: var(--marigold); color: #241a00; border-radius: 999px; padding: 1px 6px; }
 
@@ -209,11 +216,10 @@ body { background: var(--paper); overflow: hidden; }
 .flair-lotus { color: #e05a8a; }
 .flair-sparkle { background: linear-gradient(90deg, #e8a317, #e05a8a, #5c6bc0); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .flair-sparkle::after { content: " ✦"; color: var(--marigold); }
+.flair-aurora { background: linear-gradient(90deg, #22b98a, #5b8cff, #b05bff); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
-.chip.exclusive { background: var(--indigo-soft); color: var(--indigo); }
-.exclusives { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.exclusives li { border: 1px solid var(--marigold); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; }
-.exclusives li.locked { border-color: var(--line); color: var(--ink-2); }
+.chip.tier-partner { background: var(--indigo-soft); color: var(--indigo); }
+.chip.tier-choice { background: var(--marigold-soft); color: #8a6200; box-shadow: inset 0 0 0 1px var(--marigold); }
 .field select { font: inherit; font-weight: 400; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); }
 .month-stamps { display: flex; flex-wrap: wrap; gap: 8px; }
 .month-stamp { font: 700 var(--fs-caption)/var(--lh-caption) var(--font-data); text-transform: uppercase; color: var(--stamp); border: 2px dashed var(--stamp);
@@ -322,6 +328,10 @@ body { background: var(--paper); overflow: hidden; }
 .frame-film img, .frame-film .ph { border: 8px solid #1a1a1a; outline: 2px dashed #f5f5f5; outline-offset: -5px; box-sizing: border-box; }
 .frame-stamp img, .frame-stamp .ph { border: 7px dotted #fff; box-shadow: 0 0 0 1px var(--line); box-sizing: border-box; }
 .frame-gold img, .frame-gold .ph { border: 6px solid; border-image: linear-gradient(135deg, #f6d77a, #b8860b, #f6d77a) 1; box-sizing: border-box; }
+/* Plus shelf */
+.frame-holo img, .frame-holo .ph { border: 6px solid; border-image: linear-gradient(135deg, #ff9ad5, #9ad0ff, #b8ffcf, #ffe39a, #ff9ad5) 1; box-sizing: border-box; }
+.frame-aurora img, .frame-aurora .ph { border: 6px solid; border-image: linear-gradient(180deg, #3ee6b0, #5b8cff, #b05bff) 1; box-shadow: 0 0 14px rgb(91 140 255 / .45); box-sizing: border-box; }
+.chip.plus-chip { background: linear-gradient(90deg, #5b8cff, #b05bff); color: #fff; }
 
 /* ===================== Duolingo-grade shell (migration 024 era) ===================== */
 /* chunky buttons: a darker bottom edge that the button presses into */
@@ -1257,3 +1267,21 @@ p.chase { margin: 0; }
 .along > .along-list { height: calc(8 * 56px + 7 * 8px); overflow-y: auto; align-content: start; }
 .along-list .along-empty:has(.skel-rows) { height: auto; }
 .summary-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* one line: the buttons below never move */
+
+/* ===================== monetization v5: ad banner, upgrade sheet ===================== */
+.ad-banner { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; gap: 10px; min-height: 60px; max-width: 640px; margin: 0 auto;
+  padding: 8px 12px; background: var(--card); border: 2px solid var(--line); border-bottom: 0; border-radius: 16px 16px 0 0; box-shadow: 0 -4px 16px rgb(22 27 61 / .06); }
+.ad-label { flex: none; font: 700 var(--fs-micro)/1 var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2);
+  border: 1px solid var(--line); border-radius: 6px; padding: 3px 5px; }
+.ad-house { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; border: 0; background: none; padding: 0; text-align: left; color: inherit; cursor: pointer; }
+.ad-icon { flex: none; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--marigold-soft); color: #8a6200; }
+.ad-slot { flex: 1; min-width: 0; display: block; height: 50px; }
+.ad-remove { flex: none; font-size: var(--fs-caption); }
+.page-col:has(+ .ad-banner) { padding-bottom: 24px; }
+.usage-row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.usage-row > span:not(.fine) { display: grid; }
+.usage-row b { font: 800 var(--fs-title)/var(--lh-title) var(--font-data); color: var(--indigo); }
+.modal.upgrade { width: min(460px, 100%); display: grid; gap: 14px; }
+.member-card h3, .plus-card h3 { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+.booking { padding: 14px; border-radius: 16px; }
+.booking-fields { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 10px; }

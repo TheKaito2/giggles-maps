@@ -14,7 +14,7 @@ const KIND_NAME: Record<string, string> = { theme: "passport cover", flair: "nam
 /** What a shake won, in one line. */
 export function prizeText(s: Pick<Shake, "prize" | "coins" | "xp" | "boost_hours" | "item_kind" | "item_en"> & { member?: boolean }): string {
   switch (s.prize) {
-    case "coins": return `+${s.coins} coins${s.member === false ? " (yours when you become a member)" : ""}`;
+    case "coins": return `+${s.coins} coins`;
     case "xp": return `+${s.xp} XP`;
     case "boost": return `XP ×1.5 on every stamp for ${s.boost_hours >= 48 ? `${s.boost_hours / 24} days` : `${s.boost_hours} hours`}`;
     case "item": return `New ${KIND_NAME[s.item_kind ?? ""] ?? "item"}: ${s.item_en}`;

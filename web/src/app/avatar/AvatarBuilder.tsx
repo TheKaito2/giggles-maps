@@ -14,7 +14,6 @@ const TABS: { slot: Slot; colour?: Slot; label: string }[] = [
   { slot: "bg", label: "Background" },
 ];
 const ERR: Record<string, string> = {
-  members_only: "Avatar items are bought with coins, which come with membership.",
   not_enough_coins: "Not enough coins yet.",
 };
 

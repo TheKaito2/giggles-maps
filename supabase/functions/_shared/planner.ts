@@ -1,5 +1,5 @@
-// Giggles Maps detour planner. The route is never for sale: stops are chosen on quality
-// (rating x variety x trip theme) per added minute. The planner doesn't know which places pay.
+// Giggles Maps detour planner. Stops are chosen on quality (rating x variety x trip theme) per added minute,
+// times an optional per-place boost (monetization v5: members' plans put paying partners first).
 // Constraints: total extra time <= budget, every stop open on arrival, rating >= floor (unrated only if allowed),
 // meal stops arrive inside their meal window, and at most maxStops stops.
 // Phase 0 places the stops the user picked (must_include), then meal stops; phase 1 fills the rest;
@@ -40,6 +40,7 @@ export interface PlanInput {
   maxStops?: number;    // default no cap; meal stops count
   theme?: Theme;        // default top_picks (no boost)
   weight?: (category: string, tier?: Tier) => number;   // overrides theme, e.g. the user's own mix of interests
+  boost?: (id: number) => number;   // per-place multiplier on the score (partners for members); default 1
   requiredIds?: number[];   // places the user picked; go in first, skip the rating floor, count toward maxStops
   meals?: Meal[];       // meals the trip should cover, from mealsInTrip()
   segments?: number;    // spread stops over this many stretches of the route (0/undefined = off, e.g. city trips)
@@ -140,7 +141,7 @@ export function planDetour(input: PlanInput): Plan {
   const score = (s: Stop, order: Stop[], added: number) => {
     const variety = order.some((o) => o.category === s.category) ? 0.5 : 1;
     // value per minute, but sqrt(minutes): a landmark 40 min away should beat a cafe 5 min away
-    return (TIER_VALUE[s.tier ?? 2] * quality(s) * weight(s.category, s.tier) * variety * spread(s, order) * localBoost(s))
+    return (TIER_VALUE[s.tier ?? 2] * quality(s) * weight(s.category, s.tier) * variety * spread(s, order) * localBoost(s) * (input.boost?.(s.id) ?? 1))
       / Math.sqrt(Math.max(added, 1));
   };
 

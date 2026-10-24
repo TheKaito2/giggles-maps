@@ -8,7 +8,7 @@ import { createRouter, estimateMinutes, haversineM, type LatLng, matrixMinutes, 
 interface Candidate {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
   open_min: number | null; close_min: number | null; dwell_min: number; rating: number | null;
-  is_partner: boolean; is_demo: boolean; min_level: number; exclusive_kind: string | null; perk_text: string | null;
+  is_partner: boolean; is_demo: boolean;
   price_level: number | null;
   tier: Tier;   // 3 landmark, 2 worth a visit, 1 everyday
   frac?: number;   // 0 start .. 1 destination along the direct route (route shortlist only)
@@ -16,7 +16,7 @@ interface Candidate {
 }
 interface NearPlace {
   id: number; name: string; category: string; lat: number; lng: number; rating: number;
-  is_partner: boolean; dist_m: number; is_demo: boolean; min_level: number; exclusive_kind: string | null;
+  is_partner: boolean; dist_m: number; is_demo: boolean;
 }
 
 const MAX_BUDGET = 240; // v4: 4-hour detours for everyone (Plus is cosmetic only)
@@ -37,6 +37,8 @@ const point = (v: unknown, code: string): LatLng => {
 
 serve(async (req) => {
   const user = await requireUser(req);
+  // v5: detours need a real account (a guest's quota would reset with every fresh anonymous sign-in)
+  if (user.is_anonymous) throw new HttpError(403, "sign_in_required");
   const body = await req.json().catch(() => { throw new HttpError(400, "bad_json"); });
   const origin = point(body.origin, "bad_origin");
   const dest = point(body.dest, "bad_dest");
@@ -77,7 +79,17 @@ serve(async (req) => {
   const { data: profile } = await db.from("profiles").select("plus_until, member_since").eq("id", user.id).maybeSingle();
   const plus = !!profile?.plus_until && new Date(profile.plus_until) > new Date();
   const member = !!profile?.member_since;
-  // members unlock exclusive places up to their level; everyone else sees level 0 (no exclusives)
+  // quotas (v5): free accounts plan 3 destinations and make 10 edits a day; members are unlimited, everyone is rate-limited.
+  // A detour is keyed by its destination (~100 m), so the 3 preset plans and preference changes count once; an edit by what it
+  // keeps and removes, so the planner's own retries of one edit count once.
+  const destKey = `${dest.lat.toFixed(3)},${dest.lng.toFixed(3)}`;
+  const edit = mustInclude.length > 0 || exclude.size > 0;
+  const key = edit ? `${destKey}|${[...mustInclude].sort((a, b) => a - b).join(".")}|${[...exclude].sort((a, b) => a - b).join(".")}` : destKey;
+  // (an "edit" of a destination not planned today counts as a new detour; the database decides)
+  const { data: allowed, error: qErr } = await db.rpc("plan_allowed", { p_user: user.id, p_edit: edit, p_key: key, p_dest: destKey, p_member: member });
+  if (qErr) throw qErr;
+  if (allowed !== "ok") throw new HttpError(429, allowed);
+  // exclusive places are gone (v5); the candidate queries still take a level and every place is level 0
   const { data: level, error: lErr } = await db.rpc("unlock_level", { p_user: user.id });
   if (lErr) throw lErr;
   // "auto": half the direct trip, set once the direct route time is known (below)
@@ -157,6 +169,14 @@ serve(async (req) => {
       pitIds.add(p.id);
     }
   }
+  // paid tiers (v5): Partner and Giggles Choice. Members' plans put them first; the Giggle's plan uses Choice stops only.
+  const tierOf = new Map<number, "partner" | "choice">();
+  if (candidates.length) {
+    const { data: tiers, error: tErr } = await db.rpc("places_tiers", { p_ids: candidates.map((c) => c.id) });
+    if (tErr) console.error("partner tiers failed", tErr);
+    for (const t of (tiers ?? []) as { id: number; tier: "partner" | "choice" }[]) tierOf.set(t.id, t.tier);
+  }
+  const boost = member ? (id: number) => tierOf.get(id) === "choice" ? 2 : tierOf.get(id) === "partner" ? 1.5 : 1 : undefined;
   const points: LatLng[] = [origin, dest, ...candidates.map((c) => ({ lat: c.lat, lng: c.lng }))];
   let matrix = estimateMinutes(points, mode);
   if (baseline && shortTrip) {
@@ -197,20 +217,25 @@ serve(async (req) => {
   const seen = new Set<string>();
   const themed: { id: string; name: string; plan: Plan; geometry?: [number, number][]; etaMin?: number[]; travelMin?: number }[] = [];
   // "Your mix" (the user's interest chips) leads; the five themed plans follow as alternatives
+  const choiceStops = stops.filter((st) => tierOf.get(st.id) === "choice" || mustInclude.includes(st.id));
   const variants = [
     ...(interests.length ? [{ id: "mix", name: "Your mix", weight: mixWeight(interests) }] : []),
     ...THEMES.map((t) => ({ id: t.id, name: t.name, theme: t.id })),
+    // Giggle's picks: only places we hand-picked (Giggles Choice), for everyone, when any are along the way
+    ...(choiceStops.some((st) => tierOf.get(st.id) === "choice") ? [{ id: "giggles", name: "Giggle's picks", only: choiceStops }] : []),
   ];
   const prefs = { minRating, allowUnrated: includeUnrated, maxStops, requiredIds: mustInclude };
   for (const t of variants) {
-    const sightsWithin = (budget: number) => planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin: budget, stops, travelMin, meals, ...prefs,
+    const sightsWithin = (budget: number) => planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin: budget, stops: ("only" in t && t.only) || stops,
+      travelMin, meals, ...prefs, boost,
       segments: SEGMENTS(), theme: "theme" in t ? t.theme : undefined, weight: "weight" in t ? t.weight : undefined });
     // Quick: plan the sight leaving room for a pit stop, then add the cheapest store that fits; no store fits, the sight gets it all
     const sights = pitStops.length ? sightsWithin(budgetMin - PIT_RESERVE_MIN) : null;
     const plan = (sights && pitStops.map((pit) => insertBest(sights, pit, travelMin, budgetMin)).filter((x): x is Plan => !!x)
       .sort((a, b) => a.extraMin - b.extraMin)[0]) || sightsWithin(budgetMin);
     const key = plan.order.map((s) => s.id).join(",");
-    if (t.id !== "top_picks" && t.id !== "mix" && seen.has(key)) continue;
+    if (t.id === "giggles" && !plan.order.some((st) => tierOf.get(st.id) === "choice")) continue;   // no Choice place fits the time
+    if (t.id !== "top_picks" && t.id !== "mix" && t.id !== "giggles" && seen.has(key)) continue;
     seen.add(key);
     themed.push({ id: t.id, name: t.name, plan });
   }
@@ -236,7 +261,7 @@ serve(async (req) => {
       t.geometry = [origin, ...t.plan.order.map((s) => candidates[s.idx - 2]), dest].map((p) => [p.lng, p.lat]);
     }
     const key = t.plan.order.map((s) => s.id).join(",");
-    if (t.id !== "top_picks" && t.id !== "mix" && verifiedKeys.has(key)) { themed.splice(i--, 1); continue; }
+    if (t.id !== "top_picks" && t.id !== "mix" && t.id !== "giggles" && verifiedKeys.has(key)) { themed.splice(i--, 1); continue; }
     verifiedKeys.add(key);
   }
   // The asked-for theme goes first; top-level fields remain Top picks for existing clients.
@@ -288,13 +313,11 @@ serve(async (req) => {
         extra_min: ((x) => Number.isFinite(x) ? Math.round(x) : null)(insertionCost(plan.order.map((o) => o.idx), s.idx, travelMin, s.dwellMin)),
         photo: photoOf.get(c.id) ?? null,
         local: !!c.local, otop: !!c.otop, community: !!c.community,
-        // exclusive places only reach a route when the member's level opens them
-        min_level: c.min_level, exclusive_kind: c.exclusive_kind, perk_text: c.perk_text,
+        partner_tier: tierOf.get(c.id) ?? null,
         // field name kept for existing clients; the card is any nearby place, picked by quality
         nearby_partner: card
           ? { id: card.id, name: card.name, category: card.category, lat: card.lat, lng: card.lng,
-              distance_m: Math.round(card.dist_m), is_partner: card.is_partner, is_demo: card.is_demo,
-              min_level: card.min_level, exclusive_kind: card.exclusive_kind }
+              distance_m: Math.round(card.dist_m), is_partner: card.is_partner, is_demo: card.is_demo }
           : null,
       };
     });
@@ -305,7 +328,7 @@ serve(async (req) => {
       const c = byId.get(st.id)!;
       return { id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng, tier: c.tier ?? 2,
         rating: c.rating == null ? null : Number(c.rating), local: !!c.local, otop: !!c.otop, community: !!c.community,
-        photo: photoOf.get(c.id) ?? null,
+        photo: photoOf.get(c.id) ?? null, partner_tier: tierOf.get(c.id) ?? null,
         extra_min: Math.round(insertionCost(plan.order.map((x) => x.idx), st.idx, travelMin, st.dwellMin)) };
     }).filter((a) => Number.isFinite(a.extra_min)).sort((a, b) => a.extra_min - b.extra_min).slice(0, 30);
 

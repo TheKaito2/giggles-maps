@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { ApiError, ensureSession, supabase } from "../lib/supabase";
-import { startCheckout } from "../lib/api";
+import { answerBooking, PRICES, requestChoice, type ShopBooking, shopBookings, startCheckout } from "../lib/api";
 import { isGuest, resumeSignIn, useUser } from "../lib/auth";
 import SignIn from "../app/SignIn";
 import MyListing from "./MyListing";
 
-interface ShopRow { id: string; name: string; is_demo: boolean; owner_id: string | null }
+interface ShopRow { id: string; name: string; is_demo: boolean; owner_id: string | null; tier: "partner" | "choice" | null; tier_until: string | null;
+  choice_approved: boolean; choice_requested_at: string | null }
 interface PlaceStat {
   id: number; name: string; bid_thb: number; qr_code: string | null; last_qr_scan_at: string | null;
   impressions_30d: number; card_impressions_30d: number; visits_30d: number;
@@ -42,6 +43,7 @@ export default function Shop() {
   const [shopId, setShopId] = useState("");
   const [overview, setOverview] = useState<Overview | null>(null);
   const [visits, setVisits] = useState<Visit[]>([]);
+  const [bookings, setBookings] = useState<ShopBooking[]>([]);
   const [disputing, setDisputing] = useState<number | null>(null);
   const [reason, setReason] = useState("");
   const [msg, setMsg] = useState(() => {
@@ -54,7 +56,8 @@ export default function Shop() {
   useEffect(() => {
     (async () => {
       await ensureSession();
-      const { data } = await supabase.from("shops").select("id, name, is_demo, owner_id").order("is_demo").order("name");
+      const { data } = await supabase.from("shops").select("id, name, is_demo, owner_id, tier, tier_until, choice_approved, choice_requested_at")
+        .order("is_demo").order("name");
       const rows = (data ?? []) as ShopRow[];
       setShops(rows);
       setShopId((cur) => cur || rows[0]?.id || "");
@@ -70,6 +73,7 @@ export default function Shop() {
     ]);
     setOverview((o.data ?? null) as Overview | null);
     setVisits((v.data ?? []) as unknown as Visit[]);
+    setBookings(await shopBookings(shopId).catch(() => []));
   }, [shopId]);
   useEffect(() => { load().catch(() => setMsg("Couldn't load this shop.")); }, [load]);
 
@@ -84,9 +88,19 @@ export default function Shop() {
     try {
       location.href = (await startCheckout(p)).url;
     } catch (e) {
-      setMsg(e instanceof ApiError && e.code === "payments_not_configured" ? "Payments aren't switched on yet." : "Couldn't start checkout. Try again.");
+      const code = e instanceof ApiError ? e.code : "";
+      setMsg(code === "payments_not_configured" ? "Payments aren't switched on yet."
+        : code === "not_verified" ? "Get your counter sticker scanned by a visitor first: partners must be verified."
+        : code === "choice_not_approved" ? "Giggles Choice is by invitation: apply first and we'll review your shop."
+        : code === "sign_in_required" ? "Sign in at the bottom of this page first." : "Couldn't start checkout. Try again.");
     }
   };
+  const tierLive = shop?.tier && shop.tier_until && new Date(shop.tier_until) > new Date() ? shop.tier : null;
+  const verified = (overview?.places ?? []).some((p) => p.qr_code && p.last_qr_scan_at);
+  const answer = (id: number, ok: boolean) => answerBooking(id, ok).then(load).catch((e) => setMsg(e instanceof ApiError && e.code === "top_up_first"
+    ? `Add credit first: each booking costs ฿${PRICES.booking} once the guest checks in.` : "Couldn't answer that booking."));
+  const apply = () => requestChoice(shopId).then(() => { setMsg("Thanks! We'll review your shop for Giggles Choice."); setShops((xs) =>
+    xs.map((x) => x.id === shopId ? { ...x, choice_requested_at: new Date().toISOString() } : x)); }).catch(() => setMsg("Couldn't send that. Try again."));
 
   const dispute = async (id: number) => {
     const { data, error } = await supabase.rpc("dispute_visit", { p_visit: id, p_reason: reason });
@@ -123,6 +137,44 @@ export default function Shop() {
           <div className="tile"><span className="fine">Credit left</span><b className="num">฿{Number(overview?.wallet_thb ?? 0).toLocaleString()}</b><span className="fine num">฿{spent.toLocaleString()} spent</span></div>
         </section>
 
+        <section className="stack" aria-label="Partner">
+          <h2>Partner and Giggles Choice</h2>
+          <div className="plans">
+            <article className={`plan${tierLive === "partner" ? " current" : ""}`}>
+              <h3>Partner <span className="num price-tag">฿{PRICES.partner} / month</span></h3>
+              <ul className="perks"><li>First on members' routes</li><li>A Partner badge</li><li>Bookings through Giggles</li></ul>
+              <button className="btn gold" disabled={!shopId || !verified} onClick={() => pay({ kind: "partner", shop_id: shopId })}>
+                {tierLive ? "Add 30 days" : "Become a partner"}</button>
+            </article>
+            <article className={`plan${tierLive === "choice" ? " current" : ""}`}>
+              <h3>Giggles Choice <span className="num price-tag">฿{PRICES.choice} / month</span></h3>
+              <ul className="perks"><li>Everything in Partner</li><li>Hand-picked badge</li><li>In the Giggle's picks plan for everyone</li></ul>
+              {shop?.choice_approved
+                ? <button className="btn gold" disabled={!shopId || !verified} onClick={() => pay({ kind: "choice", shop_id: shopId })}>
+                    {tierLive === "choice" ? "Add 30 days" : "Become Giggles Choice"}</button>
+                : <button className="btn" disabled={!shopId || !verified || !!shop?.choice_requested_at} onClick={apply}>
+                    {shop?.choice_requested_at ? "Applied, we're reviewing" : "Apply for Giggles Choice"}</button>}
+            </article>
+          </div>
+          <p className="fine">{tierLive ? `${tierLive === "choice" ? "Giggles Choice" : "Partner"} until ${new Date(shop!.tier_until!).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.`
+            : verified ? "Paid placement is always labelled for travellers." : "Partners must be verified: a visitor has to scan your counter sticker once."}
+            {" "}Each booking costs ฿{PRICES.booking}, taken from your credit once the guest checks in.</p>
+        </section>
+
+        <section className="stack" aria-label="Bookings">
+          <h2>Bookings</h2>
+          {bookings.length === 0 ? <p className="fine">{tierLive ? "No bookings yet." : "Partners take bookings through Giggles Maps."}</p>
+            : <ul className="bookings">{bookings.map((b) => (
+                <li key={b.id}>
+                  <span className="person-main"><b>{b.guest} · {b.party} {b.party === 1 ? "person" : "people"}</b>
+                    <span className="fine num">{new Date(`${b.day}T00:00:00+07:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · {b.place}{b.note ? ` · "${b.note}"` : ""}</span></span>
+                  {b.status === "requested" ? <span className="row tight">
+                      <button className="btn small" onClick={() => answer(b.id, true)}>Accept</button>
+                      <button className="btn ghost small" onClick={() => answer(b.id, false)}>Decline</button></span>
+                    : <span className={`chip booking-${b.status}`}>{b.status === "completed" ? `Done · ฿${b.charged ?? 0}` : b.status}</span>}
+                </li>))}</ul>}
+        </section>
+
         <section className="stack">
           <h2>How you pay</h2>
           <div className="plans">
@@ -134,7 +186,7 @@ export default function Shop() {
               </div>
             </article>
           </div>
-          <p className="fine">Card or PromptPay via Stripe. No monthly fee: no visits, no charge. The route is never for sale: travellers see your shop only when it ranks on quality, the same as places that don't pay. Signing up gets you this dashboard, your counter sticker, deals in the free coupon spin and, soon, bookings.</p>
+          <p className="fine">Card or PromptPay via Stripe. Credit pays for verified visits and bookings.</p>
           {msg && <p className="notice" role="status">{msg}</p>}
         </section>
 

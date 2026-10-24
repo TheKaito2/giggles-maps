@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
-import { getAdminEdits, getLocalStats, type LocalStat, type PendingEdit, reviewEdit } from "../lib/api";
+import { approveChoice, choiceRequests, getAdminEdits, getLocalStats, type LocalStat, type PendingEdit, reviewEdit } from "../lib/api";
 
 /** Admin only: suggested edits and missing places waiting for review. Approving applies it and pays the author 50 XP. */
 export default function AdminEdits() {
@@ -9,9 +9,25 @@ export default function AdminEdits() {
   useEffect(() => { getLocalStats().then(setStats).catch(() => setStats(null)); }, []);
   const load = () => getAdminEdits().then(setEdits).catch(() => setEdits([]));
   useEffect(() => { load(); }, []);
+  // shops applying for Giggles Choice (hand-picked partners)
+  const [choice, setChoice] = useState<Awaited<ReturnType<typeof choiceRequests>>>([]);
+  const loadChoice = () => choiceRequests().then(setChoice).catch(() => setChoice([]));
+  useEffect(() => { loadChoice(); }, []);
   if (!edits) return null;
   return (
     <section className="stack" aria-label="Edits to review">
+      {choice.length > 0 && <>
+        <h3>Giggles Choice applications ({choice.length})</h3>
+        {choice.map((c) => (
+          <article key={c.shop} className="glass admin-edit">
+            <b>{c.name}</b><span className="fine">{c.tier ? `Paying ${c.tier}` : "Not a partner yet"} · applied {new Date(c.at).toLocaleDateString("en-GB")}</span>
+            <div className="row">
+              <button type="button" className="btn small" onClick={() => approveChoice(c.shop, true).then(loadChoice)}><Check size={14} aria-hidden /> Approve</button>
+              <button type="button" className="btn ghost small" onClick={() => approveChoice(c.shop, false).then(loadChoice)}><X size={14} aria-hidden /> Turn down</button>
+            </div>
+          </article>
+        ))}
+      </>}
       <h3>Edits to review ({edits.length})</h3>
       {edits.length === 0 && <p className="fine">Nothing waiting.</p>}
       {edits.map((e) => (

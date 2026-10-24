@@ -7,11 +7,11 @@ export interface LatLng { lat: number; lng: number }
 export interface NearbyPartner {
   id: number; name: string; category: string; lat: number; lng: number; distance_m: number;
   is_partner: boolean; is_demo: boolean;
-  min_level?: number; exclusive_kind?: ExclusiveKind | null;
 }
 
-// v4: members unlock places by level. 0 = open to everyone.
-export type ExclusiveKind = "gem" | "perk" | "event";
+// v5: a verified shop paying monthly. Members' plans put these first; "choice" ones also make the Giggle's plan.
+export type PartnerTier = "partner" | "choice";
+export const TIER_NAME: Record<PartnerTier, string> = { partner: "Partner", choice: "Giggles Choice" };
 
 export interface RouteStop {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
@@ -20,7 +20,7 @@ export interface RouteStop {
   pit_stop?: boolean;   // Quick plans: a convenience store after the sight (snacks, toilet)
   price_level?: number | null; // 0 free, 1-3 = ฿-฿฿฿, null = not listed
   nearby_partner: NearbyPartner | null;
-  min_level?: number; exclusive_kind?: ExclusiveKind | null; perk_text?: string | null;
+  partner_tier?: PartnerTier | null;
   meal?: Meal | null; // engine v2: this stop covers a meal
   meal_late?: boolean; // the restaurant for that meal, outside the usual meal hours (the route couldn't reach them)
   picked?: boolean;   // the user asked for this place (must_include)
@@ -34,6 +34,7 @@ export interface RouteStop {
 export interface AlongPlace {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number; tier: 1 | 2 | 3;
   rating: number | null; local: boolean; otop: boolean; community: boolean; photo: string | null; extra_min: number;
+  partner_tier?: PartnerTier | null;
 }
 
 export type Meal = "breakfast" | "lunch" | "dinner";
@@ -219,8 +220,43 @@ export const verifyCheckin = (p: {
 }) => callFn<CheckinResult>("verify-checkin", p);
 
 // Stripe Checkout (web only). Returns the hosted payment page URL.
-export const startCheckout = (p: { kind: "plus" } | { kind: "membership" } | { kind: "credit"; shop_id: string; pack: number }) =>
+export const startCheckout = (p: { kind: "plus" } | { kind: "membership" } | { kind: "credit"; shop_id: string; pack: number }
+  | { kind: "partner" | "choice"; shop_id: string }) =>
   callFn<{ url: string }>("stripe-checkout", p);
+
+// v5 prices (THB); the server has the same numbers
+export const PRICES = { membership: 349, plus: 59, partner: 299, choice: 799, booking: 20 } as const;
+// v5: who sees ads (everyone but members and Plus)
+export const adFree = (p: Profile | null) => !!p && (p.member || !!p.plusUntil);
+
+// detours planned / edits made today (free accounts: 3 and 10 a day)
+export interface PlanUsage { member: boolean; detours: number; edits: number; max_detours: number; max_edits: number }
+export const getPlanUsage = () => rpc<PlanUsage>("my_plan_usage");
+// Plus: +20 coins the first time you open the app each day (0 when already collected or no Plus)
+export const plusDaily = () => rpc<number>("plus_daily");
+
+// paid tier of these places, when they have one (Partner / Giggles Choice)
+export async function placesTiers(ids: number[]): Promise<Map<number, PartnerTier>> {
+  if (!ids.length) return new Map();
+  const { data, error } = await supabase.rpc("places_tiers", { p_ids: ids.slice(0, 300) });
+  if (error) throw error;
+  return new Map((data as { id: number; tier: PartnerTier }[]).map((t) => [t.id, t.tier]));
+}
+
+// bookings through Giggles Maps (partner places only); the shop pays a flat fee once you check in
+export type BookingStatus = "requested" | "accepted" | "declined" | "completed" | "cancelled";
+export interface Booking { id: number; place_id: number; place: string; day: string; party: number; note: string | null; status: BookingStatus }
+export interface ShopBooking { id: number; place: string; guest: string; day: string; party: number; note: string | null; status: BookingStatus;
+  fee: number; charged: number | null }
+export const requestBooking = (place: number, day: string, party: number, note: string) =>
+  rpc<number>("request_booking", { p_place: place, p_day: day, p_party: party, p_note: note || null });
+export const myBookings = () => rpc<Booking[]>("my_bookings");
+export const cancelBooking = (id: number) => rpc<void>("cancel_booking", { p_id: id });
+export const shopBookings = (shop: string) => rpc<ShopBooking[]>("shop_bookings", { p_shop: shop });
+export const answerBooking = (id: number, accept: boolean) => rpc<void>("answer_booking", { p_id: id, p_accept: accept });
+export const requestChoice = (shop: string) => rpc<void>("request_choice", { p_shop: shop });
+export const approveChoice = (shop: string, ok: boolean) => rpc<void>("approve_choice", { p_shop: shop, p_ok: ok });
+export const choiceRequests = () => rpc<{ shop: string; name: string; tier: PartnerTier | null; at: string }[]>("choice_requests");
 
 export type Look = Partial<Record<ShopKind, string>>;
 export interface Profile {
@@ -304,7 +340,8 @@ export const tripPing = (p: LatLng) => rpc<void>("trip_ping", { p_lat: p.lat, p_
 
 export type ShopKind = "theme" | "flair" | "map" | "frame" | "title" | "avatar";
 export interface ShopItem { kind: ShopKind; id: string; name_en: string; name_th: string; price: number; plus: boolean; sort: number;
-  gacha_only: boolean }   // Siam Si prizes: never sold
+  gacha_only: boolean;   // Siam Si prizes: never sold
+  plus_only: boolean }   // the Plus shelf: worn with Plus, never sold
 export async function getShop(): Promise<ShopItem[]> {
   const { data, error } = await supabase.from("shop_items").select("*").order("sort");
   if (error) throw error;
@@ -458,18 +495,6 @@ export const readCodeParam = (name: "friend" | "trip") => {
   return m ? m[0].toUpperCase() : null;
 };
 
-export interface ExclusivePlace {
-  id: number; name: string; category: string; exclusive_kind: ExclusiveKind; min_level: number; unlocked: boolean;
-  perk_text: string | null; is_demo: boolean;
-}
-
-export async function getExclusives(): Promise<ExclusivePlace[]> {
-  await ensureSession();
-  const { data, error } = await supabase.rpc("my_exclusives");
-  if (error) throw error;
-  return data as ExclusivePlace[];
-}
-
 // Collects this month's Plus stamp (no-op without Plus), then lists them: "2026-10-01", newest first
 export async function getMonthlyStamps(): Promise<string[]> {
   await ensureSession();
@@ -485,7 +510,6 @@ export function levelProgress(xp: number): { into: number; span: number | null }
   const l = levelFor(xp);
   return l >= LEVEL_XP.length ? { into: 0, span: null } : { into: xp - LEVEL_XP[l - 1], span: LEVEL_XP[l] - LEVEL_XP[l - 1] };
 }
-export const KIND_NAME: Record<ExclusiveKind, string> = { gem: "Hidden gem", perk: "Member perk", event: "Event" };
 
 // "?scan=<place_id>-<code>" from the QR sticker at a shop counter
 export function readScanParam(): { placeId: number; code: string } | null {

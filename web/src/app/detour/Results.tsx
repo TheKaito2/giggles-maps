@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ChevronDown, MoreHorizontal, Plus, Repeat, Search, Trash2, Camera, X } from "lucide-react";
 import { useDialog } from "../../lib/useDialog";
-import { type AlongPlace, type CheckinTarget, type FoundPlace, KIND_NAME, type Meal, type RouteStop, routePlaces, searchPlaces } from "../../lib/api";
+import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, type RouteStop, routePlaces, searchPlaces, TIER_NAME } from "../../lib/api";
 import { CHIPS } from "../ExploreChips";
 import { SkelRows } from "../Skeleton";
 import { GROUPS, kindOf } from "../kinds";
@@ -12,7 +12,10 @@ import PlanProgress from "./PlanProgress";
 import Info from "../Info";
 
 const MEAL_NAME: Record<Meal, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
-const PARTNER_TIP = "This shop pays Giggles Maps when you visit. It's ranked like every other place; paying never moves it up.";
+const PARTNER_TIP = "This shop pays Giggles Maps when you visit.";
+// paid placement is always labelled: members' plans put these places first
+const TIER_TIP = { partner: "A verified shop that pays Giggles Maps monthly. Members' plans put partners first.",
+  choice: "Hand-picked by Giggles and pays monthly. Members' plans put it first; the Giggle's plan uses only these." } as const;
 const MAX_STOPS = 6;
 
 /** A place's photo, or its kind icon on its group colour. */
@@ -26,14 +29,14 @@ export function Thumb({ s, size = 48 }: { s: { name: string; category: string; p
 // at most two badges per stop, the most telling first
 function badges(s: RouteStop): { text: string; cls: string; title?: string }[] {
   const all = [
+    s.partner_tier && { text: TIER_NAME[s.partner_tier], cls: `tier-${s.partner_tier}`, title: TIER_TIP[s.partner_tier] },
     s.picked && { text: "You picked", cls: "picked" },
     s.pit_stop && { text: "Pit stop", cls: "pit", title: "A quick stop for snacks, a drink or the toilet" },
     s.meal && { text: s.meal_late ? `Late ${MEAL_NAME[s.meal].toLowerCase()}` : MEAL_NAME[s.meal], cls: "meal" },
     s.tier === 3 && { text: "Landmark", cls: "landmark" },
     (s.otop || s.community) && { text: s.otop ? "OTOP" : "Community", cls: "otop" },
     !s.otop && !s.community && s.local && { text: "Local", cls: "" },
-    s.is_partner && { text: s.is_demo ? "Example partner" : "Partner", cls: "partner", title: PARTNER_TIP },
-    !!s.min_level && s.exclusive_kind && { text: `${KIND_NAME[s.exclusive_kind]} · Lv ${s.min_level}`, cls: "exclusive" },
+    !s.partner_tier && s.is_partner && { text: s.is_demo ? "Example partner" : "Partner", cls: "partner", title: PARTNER_TIP },
   ].filter(Boolean) as { text: string; cls: string; title?: string }[];
   return all.slice(0, 2);
 }

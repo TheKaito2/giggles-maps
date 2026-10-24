@@ -67,7 +67,7 @@ Response
   "plus": false, "member": false, "level": 0, "max_budget_min": 240, "candidates_considered": 15,
   "stops": [{ "id": 31, "name": "…", "name_th": "…", "category": "craft", "lat": 17.16, "lng": 104.14,
               "is_partner": true, "is_demo": true, "rating": 4.2, "dwell_min": 20, "eta_min": 617,
-              "meal": null, "price_level": 0, "min_level": 0, "exclusive_kind": null, "perk_text": null,
+              "meal": null, "price_level": 0, "partner_tier": null,
               "nearby_partner": null }],
   "geometry": [[104.14488, 17.17313], "…"],
   "meals": ["lunch"], "missed_meals": [],
@@ -84,10 +84,16 @@ Response
   render it dashed and label it as approximate. Other baseline outages return
   503 `routing_unavailable`. Road detours include verified leg times, dwell and
   meal waiting within the budget. See `THAILAND-ROUTING.md` for rollout.
-- Stops are chosen by quality only (rating, variety, fit inside the budget). Paying never changes rank; there is no paid slot.
+- v5: signed-in accounts only (403 `sign_in_required` for guests). Free accounts: 3 detours (destinations) and 10 edits a Bangkok
+  day (429 `detour_limit` / `edit_limit`); a request with `must_include` or `exclude` is an edit. Everyone: 20 plans a minute,
+  members 300 and free accounts 100 a day (429 `slow_down`). An edit of a destination not planned today counts as a detour. `my_plan_usage()` reports today's counts.
+- Stops are chosen by quality (rating, variety, fit inside the budget). For members, paid tiers score higher: Giggles Choice ×2,
+  Partner ×1.5. Every stop and `along` place has `partner_tier: "partner" | "choice" | null`; show its badge whenever set.
+- `plans` can include `{id: "giggles", name: "Giggle's picks"}`: Giggles Choice places only (plus picks), for everyone, when a
+  Choice place fits.
 - `is_partner: true` means the place is a signed-up shop that pays per verified visit. It can appear any number of times, only on merit. Show a **Partner** label (`Example partner` when `is_demo`) so users know the shop pays.
 - `nearby_partner` (on park/viewpoint/temple stops, max 2 per route): a "Near this spot" card `{id, name, category, lat, lng, distance_m, is_partner, is_demo}`. It is the best nearby place by quality (rating, then distance), signed up or not; the field name is kept from v2 so existing clients keep working. Show the Partner label only when the card's `is_partner` is true. Users can check in there too.
-- `budget_min` goes up to 240 for everyone. Plus is cosmetic; members (`level` > 0) also get exclusive places their level opens (`min_level`, `exclusive_kind`, `perk_text`).
+- `budget_min` goes up to 240 for everyone. Exclusive places are gone (v5).
 - Each plan (and the top level) splits `extra_min` into `road_extra_min` (more time on the road), `stop_min` (time at the stops, sum of `dwell_min`) and `wait_min` (waiting for a meal window). They add up to `extra_min` (±1 for rounding).
 - `plans`: one per theme, Top picks first (or the requested `theme` first). A themed plan with exactly the same stops as an earlier one is dropped, so there can be 1–5 plans. Themes and their ×2-boosted categories (`_shared/themes.ts`): Top picks (none), Nature lover (park, viewpoint), Food lover (cafe, food, market), Culture & temples (temple, museum, art), Shopping & crafts (craft, market). Other kinds can still appear.
 - Meals: only when asked. Request `meals`: any of `breakfast` (07:00–09:30), `lunch` (11:30–13:30), `dinner` (17:30–20:00); omitted = no meal stop. For each asked meal every plan adds a **restaurant** (OSM restaurants and food courts; breakfast may also be a cafe), arriving inside the window when the route can (arriving early waits, counted in the extra time). If the window can't be reached, a restaurant is still added at the best time the route allows and the stop has `meal_late: true`. The nearest restaurants always make the shortlist when a meal is asked for, and `budget_min: "auto"` adds 35 min per meal. A meal is in `missed_meals` only when no restaurant fits the budget at all. 400 `bad_meals`.
@@ -155,8 +161,10 @@ Body `{}`. Deletes the user's selfies, then the auth user (cascades check-ins, b
 | Body | Buys |
 |---|---|
 | `{ "kind": "credit", "shop_id": "uuid", "pack": 500 \| 1000 \| 3000 }` | Prepaid visit credit for a shop |
-| `{ "kind": "plus" }` | Giggles Plus (cosmetic) for the signed-in user, ฿59 / 30 days (403 `sign_in_required` for guests) |
-| `{ "kind": "membership" }` | One-time membership, ฿349 (403 `sign_in_required` for guests, 409 `already_member`) |
+| `{ "kind": "plus" }` | Giggles Plus for the signed-in user, ฿59 / 30 days (403 `sign_in_required` for guests) |
+| `{ "kind": "membership" }` | Lifetime membership, ฿349, with 90 days of Plus (403 `sign_in_required` for guests, 409 `already_member`) |
+| `{ "kind": "partner", "shop_id": "uuid" }` | Partner tier for 30 days, ฿299 (403 `not_your_shop`, 409 `not_verified`) |
+| `{ "kind": "choice", "shop_id": "uuid" }` | Giggles Choice for 30 days, ฿799 (also 409 `choice_not_approved`) |
 
 → `{ "url": "<Stripe Checkout URL>" }` (card + PromptPay, one-time, no auto-renew). Test keys only unless `STRIPE_LIVE=1`.
 **iOS/Android must not use this**: sell membership and Plus through StoreKit / Google Play Billing.
@@ -193,7 +201,7 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
 - `leaderboard()`: `{top: [card + rank], me: card + rank | null, total}`.
 - `start_trip(p_name)`, `join_trip(p_code)`, `my_trip()` → `{id, code, name, owner, started_at, ends_at, members: [{id, me, owner, nickname, colour, lat, lng, seen_at}], album: [...]}` or null. Errors `trip_not_found`, `trip_full`.
 - `trip_ping(p_lat, p_lng)`, `leave_trip()` (the owner leaving ends the trip).
-- `buy_item(p_kind, p_id)` → coins left. Errors `members_only`, `bad_item`, `already_owned`, `not_enough_coins`.
+- `buy_item(p_kind, p_id)` → coins left. Errors `plus_only`, `bad_item`, `already_owned`, `not_enough_coins` (v5: no membership needed).
 - `equip(p_kind, p_id)` → the new look. Error `not_owned`. `shop_items` is a public table.
 - `verify-checkin` also returns `group_bonus: boolean`.
 - Reward pace (migration 051): at most 12 rewarded check-ins an hour, 60 a day, 30 s apart. Over that the check-in is
@@ -236,7 +244,7 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
 - Shop sets and daily picks (migration 054):
   - `shop_today()` → `{ ends, picks: [{kind, id}] x6, sets: [{ id, name_en, name_th, blurb_en, items: ['kind:id'], full, price }] }`.
     Picks are the same for everyone and change at midnight Bangkok time. `sets[0]` is this week's featured set.
-  - `buy_set(p_id)` → coins left. It buys the set's items you don't own at 75% each (rounded down). Errors: `members_only`,
+  - `buy_set(p_id)` → coins left. It buys the set's items you don't own at 75% each (rounded down). Errors:
     `already_owned`, `not_enough_coins`.
 - `friend_quest()` → `{partner, week, me, them}` or null; `set_friend_quest(p_friend)` (error `already_paired`); `claim_quests()`.
 - `verify-checkin` also returns `badges: [badge]` for tiers reached by that check-in.
@@ -294,7 +302,14 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
 | `place_for_checkin(p_id)` | anyone | `{id, name, lat, lng, is_partner, is_demo}` for a QR deep link |
 | `shop_overview(p_shop)` | shop owner / demo shop | wallet, per place: bid, QR code, last scan, impressions and visits (30 days) |
 | `dispute_visit(p_visit, p_reason)` | shop owner / demo shop | refunds a charged visit within 7 days |
-| `my_exclusives()` | signed in | every exclusive place: `{id, name, category, exclusive_kind, min_level, unlocked, lat, lng, perk_text, event_starts, event_ends, is_demo}`; `lat`/`lng`/`perk_text` are null while locked |
+| `my_plan_usage()` | signed in | `{member, detours, edits, max_detours, max_edits}` for today (Bangkok) |
+| `plus_daily()` | signed in | 20 the first call each Bangkok day while Plus is active, else 0 (the coins join `coins_of`) |
+| `places_tiers(p_ids bigint[])` | anyone | `[{id, tier}]` for places with a live paid tier (`partner` / `choice`) |
+| `request_booking(p_place, p_day, p_party, p_note)` | signed in | booking id. Errors `sign_in_required`, `not_bookable`, `bad_day`, `bad_party`, `too_many_bookings`, `already_booked` |
+| `my_bookings()`, `cancel_booking(p_id)` | signed in | your bookings `{id, place_id, place, day, party, note, status}` / cancel a requested or accepted one |
+| `shop_bookings(p_shop)`, `answer_booking(p_id, p_accept)` | shop owner | `{id, place, guest, day, party, note, status, fee, charged}` / accept or decline a request (accept needs credit for the fee: `top_up_first`) |
+| `request_choice(p_shop)` | shop owner | apply for Giggles Choice |
+| `choice_requests()`, `approve_choice(p_shop, p_ok)` | admin | Giggles Choice applications / approve or turn down |
 | `set_cosmetics(p_theme, p_flair)` | Plus only (`plus_required`) | saves `profiles.cosmetics`; pass null to keep a field. Themes `classic indigo lotus night-market temple-gold rain`, flairs `none marigold indigo lotus sparkle` (`bad_theme` / `bad_flair`) |
 | `claim_monthly_stamp()` | signed in | this month's Plus stamp (date), or null without Plus. Read stamps from `plus_stamps` |
 

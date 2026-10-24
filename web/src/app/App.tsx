@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Bell, Camera, Coins, LocateFixed, Map as MapIcon, MapPin, Navigation, Swords, Trophy, UserRound, X } from "lucide-react";
 import { ensureSession, supabase } from "../lib/supabase";
-import { addFriend, type CheckinTarget, getProfile, type LatLng, type Profile, readCodeParam, readScanParam } from "../lib/api";
+import { addFriend, adFree, type CheckinTarget, getProfile, type LatLng, plusDaily, type Profile, readCodeParam, readScanParam } from "../lib/api";
 import MapView from "./MapView";
 import CheckIn from "./CheckIn";
 import Sheet, { type Snap } from "./detour/Sheet";
@@ -14,6 +14,8 @@ import { useStops } from "./useStops";
 import Nickname from "./social/Nickname";
 import RideAlong, { useTrip } from "./social/RideAlong";
 import Leaderboard from "./Leaderboard";
+import AdBanner from "./AdBanner";
+import Upgrade from "./Upgrade";
 import Quests from "./Quests";
 import Feed from "./Feed";
 import ProfileTab from "./Profile";
@@ -81,6 +83,13 @@ export default function App() {
   const user = useUser();
   // reload on sign-in and sign-out too: the profile belongs to whoever is signed in now
   useEffect(() => { getProfile().then(setProfile).catch(() => setProfile(null)); }, [refreshKey, user?.id]);
+  // Plus: +20 coins the first time you open the app each day
+  const plusActive = !!profile?.plusUntil;
+  useEffect(() => {
+    if (!plusActive) return;
+    plusDaily().then((c) => { if (c > 0) { setNotice(`+${c} coins: your Plus bonus for today`); setRefreshKey((k) => k + 1); } }).catch(() => undefined);
+  }, [plusActive, user?.id]);
+  const [adSheet, setAdSheet] = useState(false);
   const nearby = useStops(refreshKey);
   // demo mode: re-render when you move, and watch the (fake) location from the start
   const [, demoMoved] = useReducer((x: number) => x + 1, 0);
@@ -242,6 +251,7 @@ export default function App() {
           {tab === "profile" && <ProfileTab profile={profile} refreshKey={refreshKey} onChange={refresh} friend={friend} setFriend={setFriend}
             editAvatar={() => setOverlay("avatar")} editName={() => setNameSheet(true)} openShop={() => setOverlay("shop")} openBag={() => setOverlay("bag")}
             openPlace={(id) => { setPlace(id); setTab("map"); }} passport={passport} onPassport={() => setPassport(false)} />}
+          {profile && !adFree(profile) && <AdBanner page={tab} onRemove={() => setAdSheet(true)} />}
         </main>
       )}
 
@@ -254,6 +264,8 @@ export default function App() {
         </div>
       )}
       {overlay === "add" && <AddPlace onClose={() => setOverlay(null)} />}
+      {d.gate && <Upgrade gate={d.gate} onClose={() => d.setGate(null)} />}
+      {adSheet && <Upgrade gate="ads" onClose={() => setAdSheet(false)} />}
       {nav && <Navigate waypoints={nav} mode={d.prefs.mode} onClose={() => setNav(null)}
         onCheckin={(stop, rest) => { setNav(null); setPaused(rest.length ? rest : null); if (stop.id != null) checkInAt({ ...stop, id: stop.id }); }} />}
       {etaToken && <EtaView token={etaToken} onClose={() => setEtaToken(null)} />}

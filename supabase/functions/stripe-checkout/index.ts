@@ -2,11 +2,14 @@ import { admin, HttpError, json, requireUser, serve } from "../_shared/http.ts";
 
 // What can be bought on the web (Stripe). iOS/Android sell Plus through StoreKit / Play Billing instead.
 //   credit  : prepaid visit credit for a shop (each verified visit deducts the shop's bid)
-//   plus       : Giggles Plus for a user, 30 days (cosmetic only: themes, flair, share cards, monthly stamp)
-//   membership : one-time membership for a user (levels + exclusive places), never renews
+//   plus       : Giggles Plus for a user, 30 days (no ads, daily coins, Plus shelf and title, themes and flair)
+//   membership : one-time lifetime membership (no ads, unlimited detours, partners first, 3 months of Plus), never renews
+//   partner    : a shop's Partner tier, 30 days (members' routes put it first; guests can book it)
+//   choice     : Giggles Choice, 30 days: a Partner we hand-picked (needs our approval first), also in the Giggle's plan
 const CREDIT_PACKS = [500, 1000, 3000];
 const PLUS_THB = 59;
 const MEMBERSHIP_THB = 349;
+const TIER_THB = { partner: 299, choice: 799 } as const;
 
 serve(async (req) => {
   const user = await requireUser(req);
@@ -15,7 +18,7 @@ serve(async (req) => {
   if (!/^(sk|rk)_test_/.test(key) && Deno.env.get("STRIPE_LIVE") !== "1") throw new HttpError(503, "live_payments_disabled");
 
   const body = await req.json().catch(() => { throw new HttpError(400, "bad_json"); });
-  const kind = ["credit", "plus", "membership"].includes(body.kind) ? body.kind : "credit";
+  const kind = ["credit", "plus", "membership", "partner", "choice"].includes(body.kind) ? body.kind : "credit";
   const site = Deno.env.get("SITE_URL") ?? "https://giggles-maps.pages.dev";
 
   let amount: number, name: string, back: string;
@@ -30,6 +33,21 @@ serve(async (req) => {
     name = kind === "plus" ? "Giggles Plus, 30 days" : "Giggles Maps membership (one-time)";
     back = `${site}/app/`;
     meta.user_id = user.id;
+  } else if (kind === "partner" || kind === "choice") {
+    // a signed-in owner of a verified place (its counter QR has been scanned) only
+    if (user.is_anonymous) throw new HttpError(403, "sign_in_required");
+    const shopId = typeof body.shop_id === "string" ? body.shop_id : "";
+    const db = admin();
+    const { data: shop } = await db.from("shops").select("id, name, owner_id, choice_approved").eq("id", shopId).maybeSingle();
+    if (!shop || shop.owner_id !== user.id) throw new HttpError(403, "not_your_shop");
+    const { count } = await db.from("places").select("id", { count: "exact", head: true })
+      .eq("shop_id", shop.id).not("qr_code", "is", null).not("last_qr_scan_at", "is", null);
+    if (!count) throw new HttpError(409, "not_verified");
+    if (kind === "choice" && !shop.choice_approved) throw new HttpError(409, "choice_not_approved");
+    amount = TIER_THB[kind as keyof typeof TIER_THB];
+    name = `${kind === "choice" ? "Giggles Choice" : "Giggles Partner"}, 30 days — ${shop.name}`;
+    back = `${site}/shop/`;
+    meta.shop_id = shop.id;
   } else {
     const shopId = typeof body.shop_id === "string" ? body.shop_id : "";
     const { data: shop } = await admin().from("shops").select("id, name, owner_id, is_demo").eq("id", shopId).maybeSingle();

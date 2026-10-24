@@ -101,13 +101,13 @@ export default function CheckIn({ target, initialCode, hasPlus, nickname, onClos
   const shareOptions = (r: CheckinResult): CardOption[] => {
     const at = new Date(), name = nickname ?? "Explorer";
     const base = { place: target.name, placeTh: null, tier: r.stamp?.tier ?? 2, province: r.stamp?.province ?? null, at,
-      level: r.member ? r.level ?? null : null };
+      level: r.level ?? null };
     const list: CardOption[] = [{ id: "story", label: "Story", card: { kind: "photo", ...base, photo: photo || undefined } },
       { id: "sticker", label: "Sticker", card: { kind: "sticker", ...base } }];
     if (r.stamp?.new_province && r.stamp.province) {
       list.unshift({ id: "province", label: "New province", card: { kind: "milestone", what: "province", province: r.stamp.province, at, name } });
     }
-    if (r.level_up && r.member && r.level) list.push({ id: "level", label: "Level up", card: { kind: "milestone", what: "level", level: r.level, name } });
+    if (r.level_up && r.level) list.push({ id: "level", label: "Level up", card: { kind: "milestone", what: "level", level: r.level, name } });
     return list;
   };
 
@@ -189,10 +189,8 @@ export default function CheckIn({ target, initialCode, hasPlus, nickname, onClos
             {result.challenges?.map((c) => (
               <p key={c.slug} className="challenge-done">✓ Quest done: {c.title}. Open its chest in Quests <span className="num">(+{c.xp} XP · +{c.coins} coins)</span></p>
             ))}
-            {!!result.xp_gained && (result.member
-              ? <p className="xp-gain num">+{result.xp_gained} XP · {result.coins ?? 0} coins</p>
-              : <p className="fine">+{result.xp_gained} XP banked. Become a member to turn XP into levels and coins.</p>)}
-            {result.level_up && result.member && <p className="badge-earned">Level up! You're now level {result.level}.</p>}
+            {!!result.xp_gained && <p className="xp-gain num">+{result.xp_gained} XP · {result.coins ?? 0} coins</p>}
+            {result.level_up && <p className="badge-earned">Level up! You're now level {result.level}.</p>}
 
             {result.status === "approved" && result.rewarded && (
               <button type="button" className="btn soft" onClick={() => setSharing(true)}>Share your stamp</button>

@@ -1,6 +1,7 @@
 import { myLocation } from "../../lib/demoGps";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "../../lib/supabase";
+import { isGuest, useUser } from "../../lib/auth";
 import { choosePlan, planRoute, type RoutePlan } from "../../lib/api";
 import { DEFAULT_PREFS, type Place, type Prefs, toRequest } from "../prefs";
 
@@ -14,14 +15,24 @@ export const PRESETS = [
 ] as const;
 export type PresetId = (typeof PRESETS)[number]["id"] | "custom";
 type Result = RoutePlan | "loading" | { error: string };
+// v5: why a plan was refused, for the sign-in / membership sheet
+export type Gate = "sign_in_required" | "detour_limit" | "edit_limit";
+const GATES = new Set<string>(["sign_in_required", "detour_limit", "edit_limit"]);
 
 const errorText = (e: unknown) => {
   const code = e instanceof ApiError ? e.code : "";
   return code === "routing_unavailable" ? "Couldn't find a road route. Try another way to travel, or retry in a moment."
+    : code === "sign_in_required" ? "Sign in to plan detours."
+    : code === "detour_limit" ? "That's today's 3 free detours."
+    : code === "edit_limit" ? "That's today's 10 free changes."
+    : code === "slow_down" ? "Lots of plans at once. Wait a moment, then try again."
     : code.startsWith("bad_") ? "Pick a start and destination inside Thailand." : "Couldn't plan this one. Try again in a moment.";
 };
 
 export function useDetour(onError: (m: string) => void) {
+  const guest = isGuest(useUser());
+  const [gate, setGate] = useState<Gate | null>(null);
+  const gated = (e: unknown) => { if (e instanceof ApiError && GATES.has(e.code)) setGate(e.code as Gate); };
   const [stage, setStage] = useState<Stage>("browse");
   const [origin, setOrigin] = useState<Place | null>(null);   // null = your location, found when needed
   const [dest, setDest] = useState<Place | null>(null);
@@ -60,7 +71,7 @@ export function useDetour(onError: (m: string) => void) {
     setResults((all) => ({ ...all, [k]: "loading" }));
     planRoute(toRequest({ ...prefs, budget: budgetOf(k) }, origin.point, dest.point))
       .then((r) => { if (id === request.current) setResults((all) => ({ ...all, [k]: r })); })
-      .catch((e) => { if (id === request.current) setResults((all) => ({ ...all, [k]: { error: errorText(e) } })); });
+      .catch((e) => { if (id === request.current) { gated(e); setResults((all) => ({ ...all, [k]: { error: errorText(e) } })); } });
   };
   // a new trip plans all three options at once (Relaxed first), plus a custom time if that's the one picked;
   // the cards fill in as each returns
@@ -70,12 +81,14 @@ export function useDetour(onError: (m: string) => void) {
     setExclude([]); setChoice(null); setBump(0); setHidden([]); setResults({});
     if (stage === "browse" || !origin || !dest) return;
     const ids: PresetId[] = ["relaxed", "quick", "day", ...(preset === "custom" ? ["custom" as const] : [])];
+    // detours need an account (v5): ask a guest to sign in instead of sending plans the server refuses
+    if (guest) { setGate("sign_in_required"); setResults(Object.fromEntries(ids.map((k) => [k, { error: "Sign in to plan detours." }]))); return; }
     setResults(Object.fromEntries(ids.map((k) => [k, "loading"])));
     // a short pause first: tapping several filter chips in a row sends one round of plans, not one per tap
     const t = setTimeout(() => { for (const k of ids) planPreset(k, id); }, 400);
     return () => clearTimeout(t);
-  }, [origin, dest, prefs, stage === "browse"]); // eslint-disable-line react-hooks/exhaustive-deps
-  const retry = (k: PresetId) => planPreset(k, request.current);
+  }, [origin, dest, prefs, stage === "browse", guest]); // eslint-disable-line react-hooks/exhaustive-deps
+  const retry = (k: PresetId) => guest ? setGate("sign_in_required") : planPreset(k, request.current);
 
   const goTo = async (place: Place) => {
     setDest(place); setStage("choose"); setPreset(null);
@@ -87,6 +100,7 @@ export function useDetour(onError: (m: string) => void) {
   const choosePreset = (id: PresetId) => {
     edit.current++; setPreset(id); setChoice(null); setExclude([]); setEditing(false); setBump(0); setHidden([]);
     const r = results[id];
+    if (guest) { setGate("sign_in_required"); return; }
     if (!r || (typeof r === "object" && "error" in r)) planPreset(id, request.current);
   };
   // a new custom time changes the trip, and the effect above plans it; the same time again just picks it
@@ -122,7 +136,7 @@ export function useDetour(onError: (m: string) => void) {
         return replan(keep, out, extra + 15, mustFit, tries - 1);
       }
       setExclude(out); setBump(extra); setResults((all) => ({ ...all, [preset!]: r })); setChoice(theme ?? null);
-    } catch (e) { if (id === edit.current) onError(errorText(e)); }
+    } catch (e) { if (id === edit.current) { gated(e); onError(errorText(e)); } }
     finally { if (id === edit.current) { setEditing(false); setHidden([]); } }
   };
   const ids = () => plan?.stops.map((s) => s.id) ?? [];
@@ -140,7 +154,7 @@ export function useDetour(onError: (m: string) => void) {
 
   return {
     stage, setStage, origin, setOrigin, dest, setDest, prefs, set, results, preset, setPreset: choosePreset, choice, setChoice, plan, response,
-    editing, locating, bump, hidden, retry, notify: onError, goTo, close, pickCustom, budgetOf, removeStop, swapStop, addStop,
+    editing, locating, bump, hidden, retry, notify: onError, gate, setGate, goTo, close, pickCustom, budgetOf, removeStop, swapStop, addStop,
     swap: () => { if (origin && dest) { setOrigin(dest); setDest(origin); } },
   };
 }

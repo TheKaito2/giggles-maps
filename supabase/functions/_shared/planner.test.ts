@@ -245,3 +245,12 @@ test("insertBest adds a pit stop at its cheapest place, only when the budget sti
   expect(withPit.extraMin).toBe(base.extraMin + 5);           // no extra driving, 5 minutes there
   expect(insertBest(base, pit, travelMin, base.extraMin + 4)).toBeNull();   // 4 spare minutes: doesn't fit
 });
+
+test("a boost puts a place ahead of an equally good one (members' partners first)", () => {
+  // the park (3) and the café on the route (4) both fit a 12-minute budget, but not together; without a boost the park wins
+  const base = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 12, stops: stops.filter((s) => s.id === 3 || s.id === 4), travelMin });
+  const boosted = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 12, stops: stops.filter((s) => s.id === 3 || s.id === 4), travelMin,
+    boost: (id) => id === 4 ? 2 : 1 });
+  expect(base.order.map((s) => s.id)).not.toEqual(boosted.order.map((s) => s.id));
+  expect(boosted.order.map((s) => s.id)).toContain(4);
+});

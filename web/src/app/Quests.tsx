@@ -75,8 +75,7 @@ function ChestOpen({ quest, onClose, onClaimed }: { quest: Challenge; onClose: (
       {reward ? (
         <div className="chest-rewards" role="status">
           <span className="reward-pop num" style={{ animationDelay: ".05s" }}>+{reward.xp} XP</span>
-          {reward.member ? <span className="reward-pop num" style={{ animationDelay: ".2s" }}>+{reward.coins} coins</span>
-            : <span className="reward-pop fine" style={{ animationDelay: ".2s" }}>Coins come with membership</span>}
+          <span className="reward-pop num" style={{ animationDelay: ".2s" }}>+{reward.coins} coins</span>
           <span className="reward-pop" style={{ animationDelay: ".35s" }}><Sparkles size={18} aria-hidden /> +1 Siam Si shake</span>
           {reward.level_up && <span className="reward-pop level" style={{ animationDelay: ".5s" }}>Level up! Level {reward.level}</span>}
         </div>
@@ -108,7 +107,7 @@ export default function Quests({ profile, refreshKey, onChange, onShop }: { prof
 
   return (
     <div className="page-col stack">
-      <header className="page-hero quests-hero"><Chest open={false} ready={ready > 0} /><h1>Quests <Info label="About quests">Finish quests to open chests full of XP and coins{profile?.member ? "" : " (coins and levels come with membership)"}.
+      <header className="page-hero quests-hero"><Chest open={false} ready={ready > 0} /><h1>Quests <Info label="About quests">Finish quests to open chests full of XP and coins.
           Each chest also gives a bonus Siam Si shake.</Info></h1></header>
       {ready > 0 && <p className="hint chest-pop" role="status">{ready === 1 ? "A chest is" : `${ready} chests are`} ready to open: tap Claim.</p>}
       {msg && <p className="fine" role="status">{msg}</p>}
@@ -148,7 +147,7 @@ export default function Quests({ profile, refreshKey, onChange, onShop }: { prof
         );
       })}
       {opening && <ChestOpen quest={opening} onClaimed={() => { load().catch(() => undefined); onChange(); }} onClose={() => setOpening(null)} />}
-      {profile?.member && <button type="button" className="link center" onClick={onShop}>Spend your coins in the shop</button>}
+      <button type="button" className="link center" onClick={onShop}>Spend your coins in the shop</button>
     </div>
   );
 }
