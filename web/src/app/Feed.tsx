@@ -117,7 +117,7 @@ function Post({ g, urls, onReact, onComments, onShare }: {
       </header>
       <div className="feed-body">
         {g.items.length > 1 ? <>
-          {photos.length > 0 && <div className={`photo-strip n${Math.min(4, photos.length)}`}>
+          {photos.length > 0 && <div className={`day-photos n${Math.min(4, photos.length)}`}>
             {photos.slice(0, 4).map((p, i) => <span key={p} className="strip-cell"><img src={p} alt="" loading="lazy" />
               {i === 3 && photos.length > 4 && <b className="more">+{photos.length - 4}</b>}</span>)}
           </div>}

@@ -134,7 +134,7 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
         {!self && !page.showcase.length && <p className="fine">Nothing pinned yet.</p>}
       </section>
 
-      <nav className="quick-row" aria-label="Open">
+      <nav className="profile-actions" aria-label="Open">
         <button type="button" onClick={() => setSheet("book")} disabled={!book}><BookOpen size={24} aria-hidden /><span>Passport</span></button>
         <button type="button" onClick={() => setSheet("log")} disabled={!book}><NotebookPen size={24} aria-hidden /><span>Logbook</span></button>
         {self && <button type="button" onClick={openShop}><ShoppingBag size={24} aria-hidden /><span>Shop</span></button>}

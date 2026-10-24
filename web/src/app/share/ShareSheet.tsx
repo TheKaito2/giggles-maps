@@ -62,7 +62,7 @@ export default function ShareSheet({ options, hasPlus, onClose }: { options: Car
         </div>
         {sticker && <p className="fine">A clear sticker: in Instagram Stories, add your photo, then paste or pick this from your photos.</p>}
         {option.card.kind !== "sticker" && (
-          <div className="swatches" role="radiogroup" aria-label="Design">
+          <div className="design-swatches" role="radiogroup" aria-label="Design">
             {(Object.keys(DESIGNS) as Design[]).map((k) => {
               const d = DESIGNS[k];
               return <button key={k} type="button" role="radio" aria-checked={design === k} className={design === k ? "on" : ""}

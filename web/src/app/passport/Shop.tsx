@@ -87,7 +87,7 @@ export default function Shop({ profile, coins, onChange, onAvatar }: { profile: 
         </button>
         <span className="tile-foot">
           {on ? <span className="chip on"><Check size={13} aria-hidden /> On</span> : own ? <span className="chip">Owned</span>
-            : <span className={`price num${canBuy(i) ? "" : " short"}`}><Coins size={13} aria-hidden /> {i.price}</span>}
+            : <span className={`coin-price num${canBuy(i) ? "" : " short"}`}><Coins size={13} aria-hidden /> {i.price}</span>}
           {r && <span className={`rarity r-${r}`}>{r}</span>}
         </span>
         {i.plus && !own && <span className="chip">Free with Plus</span>}
