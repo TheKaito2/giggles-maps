@@ -1,6 +1,5 @@
-import maplibregl from "maplibre-gl";
-import { layers, namedFlavor } from "@protomaps/basemaps";
-import { FileSource, PMTiles, Protocol } from "pmtiles";
+import type maplibregl from "maplibre-gl";
+import type { Protocol } from "pmtiles";
 
 // Night map, plus offline province maps (Protomaps packs saved on the device).
 export type Night = "auto" | "on" | "off";
@@ -25,7 +24,7 @@ export const styleUrl = (skin: string, night: boolean) =>
 // ---------- offline province maps ----------
 // ponytail: r2.dev is rate limited; serve from a custom domain if downloads get busy
 export const PACKS_URL = "https://pub-33a938fc0962483c8bdce739ffec9e22.r2.dev";
-export const PACK_CACHE = "gm-packs";
+const PACK_CACHE = "gm-packs";
 const GLYPHS = "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf";
 const SPRITE = "https://protomaps.github.io/basemaps-assets/sprites/v4";
 
@@ -66,7 +65,10 @@ export async function offlineStyle(lng: number, lat: number, night: boolean): Pr
   if (!p || !("caches" in window)) return null;
   const hit = await (await caches.open(PACK_CACHE)).match(`/packs/${p.iso}.pmtiles`);
   if (!hit) return null;
-  if (!protocol) { protocol = new Protocol(); maplibregl.addProtocol("pmtiles", protocol.tile); }
+  // the Protomaps libraries load only here, the first time a saved map is used
+  const [{ default: maplibre }, { layers, namedFlavor }, { FileSource, PMTiles, Protocol }] =
+    await Promise.all([import("maplibre-gl"), import("@protomaps/basemaps"), import("pmtiles")]);
+  if (!protocol) { protocol = new Protocol(); maplibre.addProtocol("pmtiles", protocol.tile); }
   const name = `${p.iso}.pmtiles`;
   protocol.add(new PMTiles(new FileSource(new File([await hit.blob()], name))));
   const flavor = night ? "dark" : "light";

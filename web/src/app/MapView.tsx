@@ -5,14 +5,13 @@ import { type LatLng, mapPlaces, type MapPlace, type RouteStop, type Stop, type 
 import { addPinIcons } from "./pinIcons";
 import { colourOf } from "./kinds";
 import { isNight, type MapLook, offlineStyle, styleUrl } from "./mapLayers";
-export const SAKON: LatLng = { lat: 17.163, lng: 104.149 };
+import { SAKON } from "../lib/demoGps";
 
 interface Props {
   origin: LatLng | null;
   dest: LatLng | null;
   stops: RouteStop[];
   geometry: [number, number][];
-  baseGeometry?: [number, number][];
   alternates?: [number, number][][];   // the other plans' routes, drawn faint behind this one
   focus?: LatLng | null;               // fly here (a stop tapped in the list)
   estimated?: boolean;
@@ -31,7 +30,7 @@ interface Props {
 
 const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 // shared defaults: a fresh [] each render would refit the map on every GPS fix
-const NO_LINES: [number, number][] = [], NO_ALTS: [number, number][][] = [];
+const NO_ALTS: [number, number][][] = [];
 // on phones the bottom sheet covers the map's lower part (its height is in --sheet-h): keep the route above it
 const padding = () => {
   const sheet = innerWidth < 960 ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sheet-h")) || 0 : 0;
@@ -46,7 +45,7 @@ const pin = (cls: string, text: string, label: string) => {
   return el;
 };
 
-export default function MapView({ origin, dest, stops, geometry, baseGeometry = NO_LINES, alternates = NO_ALTS, focus = null, estimated = false, picking, onPick, onSelectStop,
+export default function MapView({ origin, dest, stops, geometry, alternates = NO_ALTS, focus = null, estimated = false, picking, onPick, onSelectStop,
   nearby = [], here = null, inZone = [], members = [], skin = "liberty", look = { night: "auto" }, kinds = null, onPlace }: Props) {
   const night = isNight(look.night);
   const [online, setOnline] = useState(navigator.onLine);
@@ -71,7 +70,6 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
   const pickingRef = useRef(picking);
   pickingRef.current = picking;
   const lineRef = useRef<GeoJSON.FeatureCollection>({ type: "FeatureCollection", features: [] });
-  const baseRef = useRef<GeoJSON.FeatureCollection>({ type: "FeatureCollection", features: [] });
   const altRef = useRef<GeoJSON.FeatureCollection>({ type: "FeatureCollection", features: [] });
   const estimatedRef = useRef(estimated);
   estimatedRef.current = estimated;
@@ -96,13 +94,11 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
           "icon-image": ["concat", "k-", ["get", "kind"]], "icon-allow-overlap": false, "symbol-sort-key": ["get", "rank"],
           "text-field": ["step", ["zoom"], "", 15, ["get", "name"]], "text-size": 12, "text-offset": [0, 1.3], "text-anchor": "top",
           "text-optional": true, "text-max-width": 9, "text-font": ["Noto Sans Regular"],
-        }, paint: { "text-color": ["get", "colour"], "text-halo-color": lookRef.current.night ? "#1c1f26" : "#ffffff", "text-halo-width": 1.6 } }, "baseline");
+        }, paint: { "text-color": ["get", "colour"], "text-halo-color": lookRef.current.night ? "#1c1f26" : "#ffffff", "text-halo-width": 1.6 } }, "route-casing");
       }).catch((e) => console.error("place pin icons failed", e));
       m.addSource("alternates", { type: "geojson", data: altRef.current });
       m.addLayer({ id: "alternates", type: "line", source: "alternates", paint: { "line-color": "#8a93ad", "line-width": 5, "line-opacity": 0.45 },
         layout: { "line-cap": "round", "line-join": "round" } });
-      m.addSource("baseline", { type: "geojson", data: baseRef.current });
-      m.addLayer({ id: "baseline", type: "line", source: "baseline", paint: { "line-color": "#777f97", "line-width": 4, "line-opacity": 0.6, "line-dasharray": [2, 2] } });
       m.addSource("route", { type: "geojson", data: lineRef.current }); // picks up a route planned before the style loaded
       m.addLayer({ id: "route-casing", type: "line", source: "route", paint: { "line-color": "#ffffff", "line-width": 9, "line-opacity": 0.9 }, layout: { "line-cap": "round", "line-join": "round" } });
       m.addLayer({ id: "route", type: "line", source: "route", paint: { "line-color": "#27348b", "line-width": 5 }, layout: { "line-cap": "round", "line-join": "round" } });
@@ -171,8 +167,6 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
     });
 
     lineRef.current = { type: "FeatureCollection", features: geometry.length ? [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: geometry } }] : [] };
-    baseRef.current = { type: "FeatureCollection", features: baseGeometry.length && stops.length ? [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: baseGeometry } }] : [] };
-    (m.getSource("baseline") as maplibregl.GeoJSONSource | undefined)?.setData(baseRef.current);
     altRef.current = { type: "FeatureCollection", features: alternates.map((g) => ({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: g } })) };
     (m.getSource("alternates") as maplibregl.GeoJSONSource | undefined)?.setData(altRef.current);
     (m.getSource("route") as maplibregl.GeoJSONSource | undefined)?.setData(lineRef.current);
@@ -188,7 +182,7 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
       const b = pts.reduce((acc, p) => acc.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
       m.fitBounds(b, { padding: pad, maxZoom: 16, duration: 600 });
     }
-  }, [origin, dest, stops, geometry, baseGeometry, alternates, estimated, onSelectStop]);
+  }, [origin, dest, stops, geometry, alternates, estimated, onSelectStop]);
 
   useEffect(() => {
     if (focus) map.current?.flyTo({ center: [focus.lng, focus.lat], zoom: Math.max(map.current.getZoom(), 15), padding: padding(), duration: 700 });

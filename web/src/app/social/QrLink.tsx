@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import QRCode from "qrcode";
 import { Copy, Share2 } from "lucide-react";
 import { isNative, shareLink } from "../../lib/native";
 
@@ -7,7 +6,7 @@ import { isNative, shareLink } from "../../lib/native";
 export default function QrLink({ url, label }: { url: string; label: string }) {
   const [src, setSrc] = useState("");
   const [copied, setCopied] = useState(false);
-  useEffect(() => { QRCode.toDataURL(url, { margin: 1, width: 320, color: { dark: "#161b3d", light: "#ffffff" } }).then(setSrc).catch(() => setSrc("")); }, [url]);
+  useEffect(() => { import("qrcode").then(({ default: QRCode }) => QRCode.toDataURL(url, { margin: 1, width: 320, color: { dark: "#161b3d", light: "#ffffff" } })).then(setSrc).catch(() => setSrc("")); }, [url]);
   const copy = () => navigator.clipboard?.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); });
   return (
     <div className="qr-link">

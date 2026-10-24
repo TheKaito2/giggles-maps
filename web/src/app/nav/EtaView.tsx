@@ -4,8 +4,10 @@ import { Flag, X } from "lucide-react";
 import { type EtaView as Eta, viewEta } from "../../lib/api";
 import Avatar from "../social/Avatar";
 import { Spinner } from "../Skeleton";
+import { styleUrl } from "../mapLayers";
+import { SAKON } from "../../lib/demoGps";
+import { clockTime } from "../../lib/format";
 
-const hhmm = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
 /** What someone sees when you share your trip: where you are now and when you'll arrive. Refreshes every 15 s. */
 export default function EtaView({ token, onClose }: { token: string; onClose: () => void }) {
@@ -14,7 +16,7 @@ export default function EtaView({ token, onClose }: { token: string; onClose: ()
   const marks = useRef<maplibregl.Marker[]>([]);
   const [eta, setEta] = useState<Eta | null | undefined>(undefined);
   useEffect(() => {
-    map.current = new maplibregl.Map({ container: box.current!, style: "https://tiles.openfreemap.org/styles/liberty", center: [104.149, 17.163], zoom: 12,
+    map.current = new maplibregl.Map({ container: box.current!, style: styleUrl("liberty", false), center: [SAKON.lng, SAKON.lat], zoom: 12,
       attributionControl: { compact: true } });
     const load = () => viewEta(token).then(setEta).catch(() => setEta(null));
     load();
@@ -43,8 +45,8 @@ export default function EtaView({ token, onClose }: { token: string; onClose: ()
         {eta === undefined ? <b><Spinner size={18} /> Loading the trip…</b> : eta === null ? <b>This shared trip has ended.</b> : <>
           <Avatar name={eta.who.nickname} colour={eta.who.colour} avatar={eta.who.avatar} size={44} />
           <span className="nav-turn"><b>{eta.who.nickname} is on the way{eta.dest.name ? ` to ${eta.dest.name}` : ""}</b>
-            <span>{eta.eta_at ? <>Arriving around <b className="num">{hhmm(eta.eta_at)}</b></> : null}
-              {eta.at ? ` · updated ${hhmm(eta.at.seen_at)}` : " · waiting for their location"}</span></span>
+            <span>{eta.eta_at ? <>Arriving around <b className="num">{clockTime(eta.eta_at)}</b></> : null}
+              {eta.at ? ` · updated ${clockTime(eta.at.seen_at)}` : " · waiting for their location"}</span></span>
           <Flag size={22} aria-hidden />
         </>}
         <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button>

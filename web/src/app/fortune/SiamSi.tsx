@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ShoppingBag, Sparkles } from "lucide-react";
-import { type PastShake, type Profile, shakeHistory } from "../../lib/api";
+import { getShop, type PastShake, type Profile, shakeHistory } from "../../lib/api";
 import Fortune, { OddsTable, prizeText, RARITY } from "./Fortune";
 import { SkelRows } from "../Skeleton";
 import Info from "../Info";
@@ -10,7 +10,12 @@ export default function SiamSi({ profile, onChange, onShop }: { profile: Profile
   const [open, setOpen] = useState(false);
   const [more, setMore] = useState(false);
   const [history, setHistory] = useState<PastShake[] | null>(null);
-  useEffect(() => { if (more) shakeHistory().then(setHistory).catch(() => setHistory([])); }, [more, open]);
+  const [names, setNames] = useState<Map<string, string>>(new Map());   // "kind:id" → item name, for the prizes in the history
+  useEffect(() => {
+    if (!more) return;
+    shakeHistory().then(setHistory).catch(() => setHistory([]));
+    getShop().then((items) => setNames(new Map(items.map((i) => [`${i.kind}:${i.id}`, i.name_en])))).catch(() => undefined);
+  }, [more, open]);
   const tickets = profile?.fortuneTickets ?? 0;
   const boost = profile?.xpBoostUntil && profile.xpBoostUntil > new Date() ? profile.xpBoostUntil : null;
   return (
@@ -33,7 +38,7 @@ export default function SiamSi({ profile, onChange, onShop }: { profile: Profile
           <ul className="shake-history">
             {history.map((h) => <li key={h.id} className={`r-${h.rarity}`}>
               <span className="num">No. {h.stick}</span><b>{RARITY[h.rarity].en}</b>
-              <span className="fine">{prizeText({ prize: h.prize_kind, coins: h.coins, xp: h.xp, boost_hours: h.boost_hours, item_kind: h.item_kind as never, item_en: h.item_id })}</span>
+              <span className="fine">{prizeText({ prize: h.prize_kind, coins: h.coins, xp: h.xp, boost_hours: h.boost_hours, item_kind: h.item_kind, item_en: names.get(`${h.item_kind}:${h.item_id}`) ?? h.item_id })}</span>
             </li>)}
           </ul>
         )}

@@ -1,18 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useDialog } from "../../lib/useDialog";
 import { Download, Lock, Share2, X } from "lucide-react";
-import { type Card, DESIGNS, type Design, drawCard } from "./cards";
+import { type Card, DESIGNS, type Design } from "./designs";
 import Info from "../Info";
-import { isNative, shareFiles } from "../../lib/native";
+import { isNative, saveBlob, shareFiles } from "../../lib/native";
 
 export interface CardOption { id: string; label: string; card: Card }
 
 const toBlob = (c: HTMLCanvasElement) => new Promise<Blob | null>((ok) => c.toBlob(ok, "image/png"));
-const save = (blob: Blob, name: string) => {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob); a.download = name; a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-};
 
 /** Share one of a few cards (story, sticker, progress, milestone...) in one of the designs: preview, Share, or Save. */
 export default function ShareSheet({ options, hasPlus, onClose }: { options: CardOption[]; hasPlus: boolean; onClose: () => void }) {
@@ -29,7 +24,7 @@ export default function ShareSheet({ options, hasPlus, onClose }: { options: Car
   useEffect(() => {
     let live = true;
     setBlob(null); setMsg("");
-    drawCard(option.card, locked ? "classic" : design).then(toBlob).then((b) => {
+    import("./cards").then(({ drawCard }) => drawCard(option.card, locked ? "classic" : design)).then(toBlob).then((b) => {
       if (!live) return;
       if (!b) { setMsg("Couldn't draw this card."); return; }
       if (shown.current) URL.revokeObjectURL(shown.current);
@@ -43,7 +38,7 @@ export default function ShareSheet({ options, hasPlus, onClose }: { options: Car
   const name = `giggles-${option.id}.png`;
   const share = async () => {
     if (!blob) return;
-    if (!await shareFiles([new File([blob], name, { type: "image/png" })])) save(blob, name);
+    if (!await shareFiles([new File([blob], name, { type: "image/png" })])) saveBlob(blob, name);
   };
   const sticker = option.card.kind === "sticker" || option.card.kind === "stats";
 
@@ -78,7 +73,7 @@ export default function ShareSheet({ options, hasPlus, onClose }: { options: Car
         {msg && <p className="fine" role="alert">{msg}</p>}
         <div className="row">
           <button type="button" className="btn grow" onClick={share} disabled={!blob}><Share2 size={16} aria-hidden /> Share</button>
-          <button type="button" className="btn soft" onClick={() => blob && (isNative ? share() : save(blob, name))} disabled={!blob}><Download size={16} aria-hidden /> Save</button>
+          <button type="button" className="btn soft" onClick={() => blob && (isNative ? share() : saveBlob(blob, name))} disabled={!blob}><Download size={16} aria-hidden /> Save</button>
         </div>
       </div>
     </div>

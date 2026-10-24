@@ -1,7 +1,7 @@
-import { admin, HttpError, json, requireUser, serve } from "../_shared/http.ts";
+import { admin, HttpError, json, readJson, requireUser, serve } from "../_shared/http.ts";
 
 // What can be bought on the web (Stripe). iOS/Android sell Plus through StoreKit / Play Billing instead.
-//   credit  : prepaid visit credit for a shop (each verified visit deducts the shop's bid)
+//   credit     : prepaid visit credit for a shop (each verified visit deducts the shop's bid)
 //   plus       : Giggles Plus for a user, 30 days (no ads, daily coins, Plus shelf and title, themes and flair)
 //   membership : one-time lifetime membership (no ads, unlimited detours, partners first, 3 months of Plus), never renews
 //   partner    : a shop's Partner tier, 30 days (members' routes put it first; guests can book it)
@@ -17,7 +17,7 @@ serve(async (req) => {
   if (!key) throw new HttpError(503, "payments_not_configured");
   if (!/^(sk|rk)_test_/.test(key) && Deno.env.get("STRIPE_LIVE") !== "1") throw new HttpError(503, "live_payments_disabled");
 
-  const body = await req.json().catch(() => { throw new HttpError(400, "bad_json"); });
+  const body = await readJson(req);
   const kind = ["credit", "plus", "membership", "partner", "choice"].includes(body.kind) ? body.kind : "credit";
   const site = Deno.env.get("SITE_URL") ?? "https://giggles-maps.pages.dev";
 

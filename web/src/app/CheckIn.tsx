@@ -3,16 +3,38 @@ import Fortune from "./fortune/Fortune";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "../lib/supabase";
 import ShareSheet, { type CardOption } from "./share/ShareSheet";
-import { BILLING_TEXT, type CheckinResult, type CheckinTarget, REASON_TEXT, setPhoto, setPublicPhoto, uploadSelfie, verifyCheckin } from "../lib/api";
+import { type Billing, type CheckinResult, type CheckinTarget, setPhoto, setPublicPhoto, uploadSelfie, verifyCheckin } from "../lib/api";
 import { Spinner } from "./Skeleton";
 import ProvinceStamp from "./passport/ProvinceStamp";
 import { checkinClient, checkinFix } from "../lib/native";
 import { useProvinces } from "./passport/useProvinces";
+import { ROMAN, STAMP_TIER } from "../lib/format";
 
-const TIER_NAME = { 3: "Landmark", 2: "Worth a visit", 1: "Everyday" } as const;
 const CONSENT_KEY = "giggles.photoConsent.v2";   // v2: photos are kept for the passport album
 const readConsent = () => { try { return localStorage.getItem(CONSENT_KEY) === "yes"; } catch { return false; } };
 const saveConsent = () => { try { localStorage.setItem(CONSENT_KEY, "yes"); } catch { /* storage blocked: ask again next time */ } };
+
+const REASON_TEXT: Record<string, string> = {
+  too_far: "You're outside this place's check-in zone (150 m for landmarks and parks, 50 m elsewhere).",
+  no_face: "We couldn't see a face in the selfie.",
+  no_selfie: "The photo didn't upload.",
+  mock_location: "Your location looks simulated.",
+  speed_jump: "You moved faster than a car since your last check-in.",
+  low_accuracy: "GPS was too rough (over 75 m). A person will review it.",
+  already_rewarded_today: "Already stamped here today. Come back tomorrow.",
+  already_stamped: "You already have this stamp. The photo is added to your passport.",
+  level_locked: "This place is for members at a higher level.",
+  slow_down: "You're stamping fast! Stamps here are paused for a bit; your photo is saved. Check in again later for the stamp.",
+};
+
+// what happened on the shop's side (shown as "Business view" for the demo)
+const BILLING_TEXT: Partial<Record<Billing, string>> = {
+  charged: "The shop paid its bid for this verified visit.",
+  no_qr: "No counter code, so the shop isn't charged.",
+  not_shown_on_route: "This shop wasn't on your route in the last 3 hours, so it isn't charged.",
+  repeat_visit_30d: "Already counted for this shop in the last 30 days, so it isn't charged again.",
+  wallet_empty: "The shop's credit ran out, so it isn't charged.",
+};
 
 type Step = "consent" | "camera" | "working" | "result" | "error";
 
@@ -93,9 +115,10 @@ export default function CheckIn({ target, initialCode, hasPlus, nickname, onClos
 
   const fromFile = (f: File | undefined) => {
     if (!f) return;
-    const img = new Image();
-    img.onload = () => submit(toCanvas(img, img.naturalWidth, img.naturalHeight));
-    img.src = URL.createObjectURL(f);
+    const img = new Image(), src = URL.createObjectURL(f);
+    img.onload = () => { URL.revokeObjectURL(src); submit(toCanvas(img, img.naturalWidth, img.naturalHeight)); };
+    img.onerror = () => URL.revokeObjectURL(src);
+    img.src = src;
   };
 
   const billing = result ? BILLING_TEXT[result.billing] : undefined;
@@ -174,7 +197,7 @@ export default function CheckIn({ target, initialCode, hasPlus, nickname, onClos
           <div className="stack result">
             {result.stamp && (
               <div className={`stamp tier-${result.stamp.tier}`} aria-label="New stamp">
-                {TIER_NAME[result.stamp.tier]}<span>{target.name}</span>
+                {STAMP_TIER[result.stamp.tier]}<span>{target.name}</span>
               </div>
             )}
             <p className={`verdict ${result.status}`}>
@@ -189,7 +212,7 @@ export default function CheckIn({ target, initialCode, hasPlus, nickname, onClos
               </>;
             })()}
             {result.group_bonus && <p className="badge-earned">Group bonus: +50% XP and coins with your ride-along crew</p>}
-            {result.badges?.map((b) => <p key={b.slug} className="badge-earned">Badge unlocked: {b.name_en} {["", "I", "II", "III", "IV", "V"][b.tier]}</p>)}
+            {result.badges?.map((b) => <p key={b.slug} className="badge-earned">Badge unlocked: {b.name_en} {ROMAN[b.tier]}</p>)}
             {result.reasons.filter((r) => r !== "already_stamped" || !result.stamp).map((r) => <p key={r} className="fine">
               {r === "level_locked" && result.required_level ? `Needs member level ${result.required_level}.` : REASON_TEXT[r] ?? r}
             </p>)}

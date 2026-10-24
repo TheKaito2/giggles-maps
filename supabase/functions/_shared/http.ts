@@ -13,8 +13,9 @@ export class HttpError extends Error {
   constructor(public status: number, public code: string) { super(code); }
 }
 
+let adminClient: SupabaseClient | undefined;
 export const admin = (): SupabaseClient =>
-  createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
+  adminClient ??= createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
     auth: { persistSession: false },
   });
 
@@ -45,3 +46,19 @@ export const num = (v: unknown, min: number, max: number, code: string): number 
   if (typeof v !== "number" || !Number.isFinite(v) || v < min || v > max) throw new HttpError(400, code);
   return v;
 };
+
+// Thailand bounding box: reject coordinates we can't route anyway
+export const thaiPoint = (v: unknown, latCode: string, lngCode = latCode) => {
+  const p = v as { lat?: unknown; lng?: unknown } | null;
+  return { lat: num(p?.lat, 5, 21, latCode), lng: num(p?.lng, 97, 106, lngCode) };
+};
+
+/** The request body as a JSON object; anything else is a 400. `allowEmpty` treats a missing body as {}. */
+export async function readJson(req: Request, allowEmpty = false): Promise<Record<string, any>> {
+  const text = await req.text().catch(() => { throw new HttpError(400, "bad_json"); });
+  if (allowEmpty && !text.trim()) return {};
+  let body: unknown;
+  try { body = JSON.parse(text); } catch { throw new HttpError(400, "bad_json"); }
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw new HttpError(400, "bad_json");
+  return body as Record<string, any>;
+}

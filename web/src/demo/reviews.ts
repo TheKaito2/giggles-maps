@@ -1,7 +1,7 @@
 // MADE-UP demo-mode content: fake traveller reviews for showing the app off. Shown ONLY while demo mode is on
 // (lib/demoGps.ts `demoOn()`), never to real users, never written to the database.
-import { seeded } from "./types";
-import type { PlaceReview, Who } from "../lib/api";
+import { type DemoPerson, seeded, who } from "./types";
+import type { PlaceReview } from "../lib/api";
 
 type Cat = "temple" | "museum" | "art" | "park" | "viewpoint" | "food" | "market" | "cafe" | "craft" | "shop" | "hotel" | "other";
 
@@ -259,7 +259,7 @@ function categoryKey(category: string): Cat {
 export function demoReviews(
   placeId: number,
   category: string,
-  people: { id: string; nickname: string; colour: string; avatar: Record<string, string>; level: number }[],
+  people: DemoPerson[],
   now = new Date(),
 ): { reviews: PlaceReview[]; rating: number; count: number } {
   const r = seeded(placeId);
@@ -287,9 +287,8 @@ export function demoReviews(
     for (let tries = 0; used.has(texts[k]) && tries < texts.length; tries++) k = (k + 1) % texts.length;
     const body = noBody || used.has(texts[k]) ? null : texts[k];
     if (body) used.add(body);
-    const who: Who = { id: p.id, nickname: p.nickname, colour: p.colour, avatar: p.avatar, level: p.level };
     return {
-      who,
+      who: who(p),
       rating,
       body,
       at: new Date(now.getTime() - daysAgo[i] * DAY_MS).toISOString(),

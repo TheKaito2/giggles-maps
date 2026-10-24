@@ -1,0 +1,3 @@
+Mali (Copyright 2018 The Mali Project Authors) and IBM Plex Mono (Copyright 2017 IBM Corp.) are
+licensed under the SIL Open Font License 1.1, the same licence as LINE Seed (see OFL-LINE-Seed.txt).
+The woff2 subsets here were downloaded from Google Fonts.

@@ -7,20 +7,20 @@ import type { AvatarLook } from "../avatar/parts";
 import Avatar from "../social/Avatar";
 import ProvinceMap from "./ProvinceMap";
 import ProvinceStamp from "./ProvinceStamp";
-import { REGIONS, regionOf, useProvinces } from "./useProvinces";
+import { REGIONS, regionOf, thName, useProvinces } from "./useProvinces";
+import { STAMP_TIER, stampDate } from "../../lib/format";
 
-export interface BookOwner {
+interface BookOwner {
   nickname: string; colour: string; avatar?: AvatarLook | null; title: string | null; level: number; xp: number;
   joined?: string | null; code?: string | null;
 }
 const STAMPS_PER_PAGE = 8, PLACES_PER_PAGE = 3, PHOTOS_PER_PAGE = 4, TRIPS_PER_PAGE = 2;
-const TIER = { 3: "LANDMARK", 2: "WORTH A VISIT", 1: "EVERYDAY" } as const;
 interface Album {
   title: string; sub: string; photos: PassportPhoto[];
   stamp: { kind: "province"; id: number; at: string } | { kind: "landmark"; tier: 1 | 2 | 3; at: string; nameTh: string | null; province: string | null };
 }
 /** Who's sharing (your own passport only): your name on milestone cards, and whether Plus designs are unlocked. */
-export interface ShareAs { name: string; hasPlus: boolean }
+interface ShareAs { name: string; hasPlus: boolean }
 
 /** Cards to share from a stamp: one photo (in the large view), or the stamp itself. */
 function stampCards(album: Album, photo: PassportPhoto | null, url: string | undefined, name: string, tierOf: (p: PassportPhoto) => 1 | 2 | 3): CardOption[] {
@@ -63,7 +63,7 @@ function StampPhotos({ album, urls, shareAs, tierOf, onClose }: {
         {p ? (
           <figure className="stamp-photo-big">
             {urls[p.path] ? <img src={urls[p.path]} alt={p.caption ?? `Photo at ${p.place}`} /> : <div className="ph" />}
-            <figcaption><b>{p.place}</b> · {day(p.at)}{p.caption && <> · {p.caption}</>}</figcaption>
+            <figcaption><b>{p.place}</b> · {stampDate(p.at)}{p.caption && <> · {p.caption}</>}</figcaption>
             <div className="row">
               <button type="button" className="btn soft small" onClick={() => setBig(null)}>All photos</button>
               {album.photos.length > 1 && <span className="row">
@@ -75,7 +75,7 @@ function StampPhotos({ album, urls, shareAs, tierOf, onClose }: {
           </figure>
         ) : album.photos.length ? (
           <ul className="stamp-photo-grid">
-            {album.photos.map((x, i) => <li key={x.checkin_id}><button type="button" onClick={() => setBig(i)} aria-label={`Open photo at ${x.place}, ${day(x.at)}`}>
+            {album.photos.map((x, i) => <li key={x.checkin_id}><button type="button" onClick={() => setBig(i)} aria-label={`Open photo at ${x.place}, ${stampDate(x.at)}`}>
               {urls[x.path] ? <img src={urls[x.path]} alt="" loading="lazy" /> : <span className="ph" />}
               <span className="fine">{x.place}</span></button></li>)}
           </ul>
@@ -84,7 +84,6 @@ function StampPhotos({ album, urls, shareAs, tierOf, onClose }: {
     </div>
   );
 }
-const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
 const chunk = <T,>(xs: T[], n: number) => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
 // machine-readable zone, passport style: letters, digits and "<" only, 30 characters a line
 const mrz = (s: string) => (s.toUpperCase().normalize("NFD").replace(/[^A-Z0-9]+/g, "<") + "<".repeat(30)).slice(0, 30);
@@ -170,7 +169,7 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
           <div className="wide"><dt>Name / ชื่อ</dt><dd>{owner.nickname}</dd></div>
           <div className="wide"><dt>Title</dt><dd>{owner.title ?? "Traveller"}</dd></div>
           <div><dt>Level</dt><dd className="num">{owner.level}</dd></div><div><dt>XP</dt><dd className="num">{owner.xp}</dd></div>
-          <div className="wide"><dt>Date of issue</dt><dd className="num">{day(issued)}</dd></div>
+          <div className="wide"><dt>Date of issue</dt><dd className="num">{stampDate(issued)}</dd></div>
         </dl>
       </div>
       <div className="mrz num" aria-hidden>
@@ -180,7 +179,7 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
     </Page>,
     <Page key="map" n={2} className="map-page">
       <h3 className="page-h">Provinces visited · จังหวัดที่ไป</h3>
-      <ProvinceMap counts={counts} selected={null} onSelect={() => undefined} />
+      <ProvinceMap counts={counts} />
     </Page>,
     ...chunk(ordered, STAMPS_PER_PAGE).map((list, i) => (
       <Page key={`visa-${i}`} n={3 + i} className="visa">
@@ -196,7 +195,7 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
             if (!firstIn.has(f.id)) return <div key={f.id} className="visa-slot" style={style}>{inner}</div>;
             const pics = photos.filter((p) => p.province_id === f.id);
             return <button key={f.id} type="button" className="visa-slot stamp-btn" style={style} aria-label={`${f.properties.name_en}: ${pics.length} photo${pics.length === 1 ? "" : "s"}`}
-              onClick={() => setAlbum({ title: f.properties.name_en, sub: f.properties.name_th.replace(/^จังหวัด/, ""), photos: pics,
+              onClick={() => setAlbum({ title: f.properties.name_en, sub: thName(f), photos: pics,
                 stamp: { kind: "province", id: f.id, at: firstIn.get(f.id)! } })}>
               {inner}<span className="stamp-tag"><Camera size={12} aria-hidden /> {pics.length ? `${pics.length} photo${pics.length === 1 ? "" : "s"}` : "No photos"}</span>
             </button>;
@@ -219,8 +218,8 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
             return <button type="button" className="entry landmark stamp-btn" style={{ rotate: `${(s.place_id % 13) - 6}deg` }}
               aria-label={`${s.name}: ${pics.length} photo${pics.length === 1 ? "" : "s"}`} onClick={() => setAlbum({ title: s.name, sub: s.name_th ?? "Landmark", photos: pics, stamp: { kind: "landmark", tier: s.tier, at: s.earned_at,
                 nameTh: s.name_th, province: features.find((x) => x.id === s.province_id)?.properties.name_en ?? null } })}>
-              <span className="entry-tier">{TIER[s.tier]}</span><b>{s.name}</b>{s.name_th && <span className="th">{s.name_th}</span>}
-              <span className="num band">{day(s.earned_at)}</span>
+              <span className="entry-tier">{STAMP_TIER[s.tier].toUpperCase()}</span><b>{s.name}</b>{s.name_th && <span className="th">{s.name_th}</span>}
+              <span className="num band">{stampDate(s.earned_at)}</span>
               <span className="stamp-tag"><Camera size={12} aria-hidden /> {pics.length ? `${pics.length} photo${pics.length === 1 ? "" : "s"}` : "No photos"}</span>
             </button>;
           })()}
@@ -243,7 +242,7 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
     <Page key={`trips-${i}`} n={3 + visaPages + placePages + photoPages + i} className={`trips frame-${frame}`}>
       <h3 className="page-h">RIDE-ALONGS · ไปด้วยกัน</h3>
       {list.map((t) => <section key={t.id} className="trip-memory">
-        <h4>{t.name ?? "Ride along"} <span className="num">{day(t.started_at)}</span></h4>
+        <h4>{t.name ?? "Ride along"} <span className="num">{stampDate(t.started_at)}</span></h4>
         <ul className="print-grid three">
           {t.photos.map((p, j) => <li key={p.checkin_id} className="print" style={{ rotate: `${(j - 1) * 3}deg` }}>
             {urls[p.path] ? <img src={urls[p.path]} alt={p.caption ?? `${p.nickname} at ${p.place}`} loading="lazy" /> : <div className="ph" />}
@@ -261,11 +260,18 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
   const last = leaves.length - (spread ? 0 : 1);
   const go = (d: number) => setAt((a) => Math.max(0, Math.min(last, a + d)));
 
+  // arrow keys turn pages, Escape closes: one listener, reading the latest state through a ref
+  const keys = useRef({ go, album, onClose });
+  keys.current = { go, album, onClose };
   useEffect(() => {
-    const key = (e: KeyboardEvent) => { if (album) return; if (e.key === "ArrowRight") go(1); else if (e.key === "ArrowLeft") go(-1); else if (e.key === "Escape") onClose(); };
+    const key = (e: KeyboardEvent) => {
+      const k = keys.current;
+      if (k.album) return;
+      if (e.key === "ArrowRight") k.go(1); else if (e.key === "ArrowLeft") k.go(-1); else if (e.key === "Escape") k.onClose();
+    };
     addEventListener("keydown", key);
     return () => removeEventListener("keydown", key);
-  });
+  }, []);
   const startX = useRef<number | null>(null);
 
   const shift = spread ? (at === 0 ? "-25%" : at === leaves.length ? "25%" : "0%") : "0%";

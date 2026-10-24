@@ -15,13 +15,12 @@ export const THEMES: { id: Theme; name: string; boost: string[]; landmarks?: "bo
   { id: "shopping", name: "Shopping & crafts", boost: ["craft", "market"] },
 ];
 
-export const THEME_BOOST = 2;
+const THEME_BOOST = 2;
 
 const ALIASES: Record<string, Theme> = { scenic: "nature" };
 /** The theme id a request names (accepts "scenic" for the Scenic style), or null. */
 export const toTheme = (v: unknown): Theme | null =>
-  typeof v !== "string" ? null : ALIASES[v] ?? (THEMES.some((t) => t.id === v) ? v as Theme : null);
-export const isTheme = (v: unknown): v is Theme => toTheme(v) === v;
+  typeof v !== "string" ? null : Object.hasOwn(ALIASES, v) ? ALIASES[v] : THEMES.some((t) => t.id === v) ? v as Theme : null;
 
 // "What draws you in?": the kinds of stop each interest chip means. "landmarks" means tier 3 of any kind.
 export const INTERESTS: Record<string, string[]> = {
@@ -33,7 +32,7 @@ export const INTERESTS: Record<string, string[]> = {
   landmarks: [],
 };
 
-export const isInterest = (v: unknown): v is string => typeof v === "string" && v in INTERESTS;
+export const isInterest = (v: unknown): v is string => typeof v === "string" && Object.hasOwn(INTERESTS, v);
 
 /** "Only these kinds": does a place fit any picked interest? ("landmarks" = tier 3 of any kind). Empty = everything. */
 export function fitsInterests(interests: string[], category: string, tier?: Tier): boolean {
@@ -42,7 +41,7 @@ export function fitsInterests(interests: string[], category: string, tier?: Tier
 }
 
 /** "Avoid chains": shops, cafés and restaurants must be independent (local, OTOP or community); sights always pass. */
-export const COMMERCIAL = new Set(["food", "cafe", "market", "craft"]);
+const COMMERCIAL = new Set(["food", "cafe", "market", "craft"]);
 export const independent = (p: { category: string; local?: boolean; otop?: boolean; community?: boolean }) =>
   !COMMERCIAL.has(p.category) || !!(p.local || p.otop || p.community);
 

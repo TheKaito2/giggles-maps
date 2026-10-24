@@ -1,36 +1,31 @@
-import { type ProvinceFeature, useProvinces } from "./useProvinces";
+import { type ProvinceFeature, ringsOf, THAILAND, useProvinces } from "./useProvinces";
 
-type Ring = [number, number][];
-type Feature = ProvinceFeature;
-
-// Thailand's bounding box; a plain equirectangular projection is fine at this size
-const W = 260, H = 460, LNG0 = 97.3, LNG1 = 105.7, LAT0 = 5.5, LAT1 = 20.6;
-const x = (lng: number) => ((lng - LNG0) / (LNG1 - LNG0)) * W;
-const y = (lat: number) => ((LAT1 - lat) / (LAT1 - LAT0)) * H;
-const path = (g: Feature["geometry"]) => {
-  const polys = (g.type === "Polygon" ? [g.coordinates] : g.coordinates) as Ring[][];
-  return polys.map((rings) => rings.map((r) => "M" + r.map(([lng, lat]) => `${x(lng).toFixed(1)},${y(lat).toFixed(1)}`).join("L") + "Z").join("")).join("");
+const { lng0, lng1, lat0, lat1, w: W, h: H } = THAILAND;
+const x = (lng: number) => ((lng - lng0) / (lng1 - lng0)) * W;
+const y = (lat: number) => ((lat1 - lat) / (lat1 - lat0)) * H;
+// each outline walks thousands of points: build its path once, not on every page turn
+const paths = new Map<number, string>();
+const path = (f: ProvinceFeature) => {
+  let d = paths.get(f.id);
+  if (!d) {
+    d = ringsOf(f.geometry).map((r) => "M" + r.map(([lng, lat]) => `${x(lng).toFixed(1)},${y(lat).toFixed(1)}`).join("L") + "Z").join("");
+    paths.set(f.id, d);
+  }
+  return d;
 };
 
-/** The 77 provinces; visited ones fill in (darker with more stamps). Tap one to filter the passport. */
-export default function ProvinceMap({ counts, selected, onSelect }: {
-  counts: Map<number, number>; selected: number | null; onSelect: (id: number | null) => void;
-}) {
+/** The 77 provinces; visited ones fill in (darker with more stamps). */
+export default function ProvinceMap({ counts }: { counts: Map<number, number> }) {
   const features = useProvinces();
   const visited = [...counts.values()].filter((n) => n > 0).length;
-  const name = features.find((f) => f.id === selected)?.properties.name_en;
   return (
     <div className="province-map">
-      <div className="row between">
-        <b>{visited} of 77 provinces</b>
-        {selected != null && <button type="button" className="link" onClick={() => onSelect(null)}>Show all ({name})</button>}
-      </div>
+      <div className="row between"><b>{visited} of 77 provinces</b></div>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Map of Thailand, ${visited} provinces visited`}>
         {features.map((f) => {
           const n = counts.get(f.id) ?? 0;
           return (
-            <path key={f.id} d={path(f.geometry)} className={`prov${n ? " visited" : ""}${selected === f.id ? " sel" : ""}`}
-              style={n ? { fillOpacity: Math.min(1, 0.45 + n * 0.1) } : undefined} onClick={() => onSelect(selected === f.id ? null : f.id)}>
+            <path key={f.id} d={path(f)} className={`prov${n ? " visited" : ""}`} style={n ? { fillOpacity: Math.min(1, 0.45 + n * 0.1) } : undefined}>
               <title>{f.properties.name_en} · {f.properties.name_th}{n ? ` · ${n} stamp${n === 1 ? "" : "s"}` : ""}</title>
             </path>
           );

@@ -3,7 +3,8 @@ import { useProvinces } from "./passport/useProvinces";
 import { AvatarSvg, randomLook } from "./avatar/parts";
 import { useEffect, useState } from "react";
 import Badges from "./Badges";
-import { type Card, DESIGNS, type Design, drawCard } from "./share/cards";
+import { drawCard } from "./share/cards";
+import { type Card, DESIGNS, type Design } from "./share/designs";
 import type { Badge } from "../lib/api";
 
 const ICONS = ["map", "landmark", "stamp", "camera", "utensils", "temple", "users", "car", "trophy", "star", "pin"];

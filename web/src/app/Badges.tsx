@@ -3,6 +3,7 @@ import { Camera, Car, Check, Flower2, Landmark, Lock, type LucideIcon, Map, MapP
 import type { Badge } from "../lib/api";
 import { useDialog } from "../lib/useDialog";
 import ShareSheet from "./share/ShareSheet";
+import { ROMAN } from "../lib/format";
 
 const GLYPH: Record<string, LucideIcon> = { map: Map, landmark: Landmark, stamp: Stamp, camera: Camera, utensils: UtensilsCrossed,
   temple: Flower2, users: Users, car: Car, trophy: Trophy, star: Star, pin: MapPinPlus };
@@ -12,7 +13,6 @@ const ICON: Record<string, (s: number) => ReactNode> = Object.fromEntries(Object
 // tier 0 = not earned yet; then bronze, silver, gold, platinum, diamond
 export const TIER_COLOURS = ["#c4c9d6", "#c8813f", "#9aa7b8", "#e9a400", "#3fb3c6", "#7b5cff"];
 export const TIER_NAMES = ["Locked", "Bronze", "Silver", "Gold", "Platinum", "Diamond"];
-const ROMAN = ["", "I", "II", "III", "IV", "V"];
 /** Metal for each tier: highlight, body, shadow (the share card draws the same). */
 export const METAL: [string, string, string][] = [
   ["#f1efe9", "#d3d0c8", "#a9a59a"], ["#ffd9ab", "#c8813f", "#6e3f17"], ["#ffffff", "#b4bfcc", "#5f6c7c"],

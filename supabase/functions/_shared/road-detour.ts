@@ -33,7 +33,7 @@ export function scheduleStops(order: Stop[], legs: number[], startMin: number, m
   return { totalMin: time + legs[order.length] - startMin, etaMin, failed };
 }
 
-// Per-request cache/limit shared across all five themed plans, never five separate budgets.
+// Per-request cache/limit shared across all the plans (one per theme, plus mix/Giggle's), never a budget per plan.
 export function boundedRouter(route: (points: LatLng[], mode: Mode) => Promise<RoadRoute>, limit = 7, durationMs = 24000) {
   const cache = new Map<string, Promise<RoadRoute>>();
   const deadline = Date.now() + durationMs;
@@ -50,7 +50,7 @@ export function boundedRouter(route: (points: LatLng[], mode: Mode) => Promise<R
   return { route: limited, calls: () => calls };
 }
 
-// Main's theme/meal planner proposes an order. Only complete road-verified orders are returned.
+// The theme/meal planner (planner.ts) proposes an order. Only complete road-verified orders are returned.
 export async function verifyRoadPlan(input: {
   plan: Plan; origin: LatLng; dest: LatLng; candidates: LatLng[]; mode: Mode;
   baseline: RoadRoute; startMin: number; budgetMin: number;

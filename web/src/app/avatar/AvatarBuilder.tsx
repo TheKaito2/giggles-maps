@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Coins, Dices, Lock, X } from "lucide-react";
-import { ApiError } from "../../lib/supabase";
+import { errCode } from "../../lib/supabase";
 import { buyItem, getShop, type Profile, setAvatar } from "../../lib/api";
 import { type AvatarLook, AvatarSvg, DEFAULT_LOOK, randomLook, type Slot, SLOTS } from "./parts";
 import { Spinner } from "../Skeleton";
@@ -36,7 +36,7 @@ export default function AvatarBuilder({ profile, onClose, onSaved }: { profile: 
       const price = prices[`${s}:${id}`];
       if (!confirm(`Buy ${SLOTS[s].options.find((x) => x.id === id)!.label} for ${price} coins?`)) return;
       try { setCoins(await buyItem("avatar", `${s}:${id}`)); setOwned((o) => new Set(o).add(`avatar:${s}:${id}`)); }
-      catch (e) { setMsg(ERR[e instanceof ApiError ? e.code : ""] ?? "Couldn't buy that. Try again."); return; }
+      catch (e) { setMsg(ERR[errCode(e)] ?? "Couldn't buy that. Try again."); return; }
     }
     setLook((l) => ({ ...l, [s]: id }));
   };

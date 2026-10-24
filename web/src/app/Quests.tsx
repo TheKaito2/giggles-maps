@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { chestOpen, rattle } from "../lib/sfx";
 import { Clock, Sparkles, Users, Zap } from "lucide-react";
 import { useDialog } from "../lib/useDialog";
-import { ApiError } from "../lib/supabase";
+import { errCode } from "../lib/supabase";
 import { type Challenge, claimQuest, type FriendQuest, type QuestReward, getFriendQuest, getPassport, getSocial, nudge, type Profile, setFriendQuest,
   type Card } from "../lib/api";
 import Avatar from "./social/Avatar";
@@ -66,7 +66,7 @@ function ChestOpen({ quest, onClose, onClaimed }: { quest: Challenge; onClose: (
       stop();
       if (!live) return;
       setReward(r); onClaimed(); buzz("done"); chestOpen();
-    }).catch((e) => { stop(); if (live) setError(e instanceof ApiError && e.message === "not_ready" ? "This chest was already opened." : "Couldn't open the chest. Try again."); });
+    }).catch((e) => { stop(); if (live) setError(errCode(e) === "not_ready" ? "This chest was already opened." : "Couldn't open the chest. Try again."); });
     return () => { live = false; stop(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
@@ -105,7 +105,7 @@ export default function Quests({ profile, refreshKey, onChange, onShop }: { prof
   useEffect(() => { load().catch(() => setMsg("Couldn't load quests.")); }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pair = (id: string) => setFriendQuest(id).then(load)
-    .catch((e) => setMsg(e instanceof ApiError && e.code === "already_paired" ? "One of you already has a partner this week." : "Couldn't start the quest."));
+    .catch((e) => setMsg(errCode(e) === "already_paired" ? "One of you already has a partner this week." : "Couldn't start the quest."));
   const fqDone = list?.find((c) => c.slug === "friend-quest");
   const ready = (list ?? []).filter((c) => !c.claimed && c.have >= c.need).length;
 
@@ -119,7 +119,7 @@ export default function Quests({ profile, refreshKey, onChange, onShop }: { prof
       <VerifyLocal />
       <section className="friend-quest glass">
         <div className="row between"><h3><Users size={18} aria-hidden /> Friends Quest <Info label="About Friends Quest">Team up with one friend each week: collect 10 new
-          stamps between you and you both get +150 XP and +40 coins.</Info></h3>{<span className="chip"><Clock size={12} aria-hidden /> {left("week")}</span>}</div>
+          stamps between you and you both get +150 XP and +40 coins.</Info></h3><span className="chip"><Clock size={12} aria-hidden /> {left("week")}</span></div>
         {fq === undefined ? <SkelLines n={1} /> : fq ? <>
           <div className="fq-pair">
             <span className="fq-person"><Avatar name={profile?.nickname ?? "You"} colour={profile?.colour ?? "marigold"} avatar={profile?.avatar} size={56} /><b>You</b><span className="num">{fq.me}</span></span>

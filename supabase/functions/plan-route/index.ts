@@ -1,4 +1,4 @@
-import { admin, HttpError, json, num, requireUser, serve } from "../_shared/http.ts";
+import { admin, HttpError, json, num, readJson, requireUser, serve, thaiPoint } from "../_shared/http.ts";
 import { type Meal, MEAL_WINDOWS } from "../_shared/meals.ts";
 import { insertBest, insertionCost, type Plan, planDetour, type Stop } from "../_shared/planner.ts";
 import { fitsInterests, independent, isInterest, mixWeight, type Tier, THEMES, toTheme } from "../_shared/themes.ts";
@@ -19,7 +19,7 @@ interface NearPlace {
   is_partner: boolean; dist_m: number; is_demo: boolean;
 }
 
-const MAX_BUDGET = 240; // v4: 4-hour detours for everyone (Plus is cosmetic only)
+const MAX_BUDGET = 240; // 4-hour detours for everyone (Plus is cosmetic only)
 const CARD_CATEGORIES = new Set(["park", "viewpoint", "temple"]); // "Near this spot" cards sit under these
 const MAX_CARDS = 2;
 const QUICK_DWELL_MIN = 10; // time counted at each stop on a short (Quick) detour
@@ -28,20 +28,17 @@ const PIT_RESERVE_MIN = 7;  // kept free for it while the sight is chosen (5 the
 const MAX_CANDIDATES = 22; // up to 5 per theme group, so every themed plan has its kind of stop to pick
 const MODES = new Set<Mode>(["pedestrian", "bicycle", "auto"]);
 const MIN_RATINGS = new Set([0, 3.5, 4, 4.5]);
-
-// Thailand bounding box: reject coordinates we can't route anyway
-const point = (v: unknown, code: string): LatLng => {
-  const p = v as { lat?: unknown; lng?: unknown } | null;
-  return { lat: num(p?.lat, 5, 21, code), lng: num(p?.lng, 97, 106, code) };
-};
+const END_CLEARANCE_M = 150; // the start and destination themselves aren't detours: places this close to either end are dropped
+// plans that are dropped when they repeat an earlier plan's stops (Top picks, Your mix and Giggle's picks always stay)
+const dropsIfDuplicate = (id: string) => id !== "top_picks" && id !== "mix" && id !== "giggles";
 
 serve(async (req) => {
   const user = await requireUser(req);
-  // v5: detours need a real account (a guest's quota would reset with every fresh anonymous sign-in)
+  // detours need a real account (a guest's quota would reset with every fresh anonymous sign-in)
   if (user.is_anonymous) throw new HttpError(403, "sign_in_required");
-  const body = await req.json().catch(() => { throw new HttpError(400, "bad_json"); });
-  const origin = point(body.origin, "bad_origin");
-  const dest = point(body.dest, "bad_dest");
+  const body = await readJson(req);
+  const origin = thaiPoint(body.origin, "bad_origin");
+  const dest = thaiPoint(body.dest, "bad_dest");
   const startMin = num(body.start_min, 0, 1439, "bad_start_min");
   if (body.mode != null && !MODES.has(body.mode)) throw new HttpError(400, "bad_mode");
   const mode: Mode = body.mode ?? "pedestrian";
@@ -60,7 +57,7 @@ serve(async (req) => {
   if (maxPrice != null && !Number.isInteger(maxPrice)) throw new HttpError(400, "bad_max_price");
   // meals the user asked to stop for ("Stop for a meal?"); none = no food stop is forced into the plans
   const meals: Meal[] = body.meals ?? [];
-  if (!Array.isArray(meals) || meals.length > 3 || !meals.every((m) => m in MEAL_WINDOWS)) throw new HttpError(400, "bad_meals");
+  if (!Array.isArray(meals) || meals.length > 3 || !meals.every((m) => Object.hasOwn(MEAL_WINDOWS, m))) throw new HttpError(400, "bad_meals");
   const filters = { p_min_rating: minRating, p_unrated: includeUnrated, p_max_price: maxPrice };
   // stricter filters (all optional): only places whose opening hours we know (the planner then checks you arrive
   // while they're open), and no chain shops, cafés or restaurants
@@ -79,17 +76,17 @@ serve(async (req) => {
   const { data: profile } = await db.from("profiles").select("plus_until, member_since").eq("id", user.id).maybeSingle();
   const plus = !!profile?.plus_until && new Date(profile.plus_until) > new Date();
   const member = !!profile?.member_since;
-  // quotas (v5): free accounts plan 3 destinations and make 10 edits a day; members are unlimited, everyone is rate-limited.
+  // quotas: free accounts plan 3 destinations and make 10 edits a day; members are unlimited, everyone is rate-limited.
   // A detour is keyed by its destination (~100 m), so the 3 preset plans and preference changes count once; an edit by what it
   // keeps and removes, so the planner's own retries of one edit count once.
   const destKey = `${dest.lat.toFixed(3)},${dest.lng.toFixed(3)}`;
   const edit = mustInclude.length > 0 || exclude.size > 0;
-  const key = edit ? `${destKey}|${[...mustInclude].sort((a, b) => a - b).join(".")}|${[...exclude].sort((a, b) => a - b).join(".")}` : destKey;
+  const quotaKey = edit ? `${destKey}|${[...mustInclude].sort((a, b) => a - b).join(".")}|${[...exclude].sort((a, b) => a - b).join(".")}` : destKey;
   // (an "edit" of a destination not planned today counts as a new detour; the database decides)
-  const { data: allowed, error: qErr } = await db.rpc("plan_allowed", { p_user: user.id, p_edit: edit, p_key: key, p_dest: destKey, p_member: member });
+  const { data: allowed, error: qErr } = await db.rpc("plan_allowed", { p_user: user.id, p_edit: edit, p_key: quotaKey, p_dest: destKey, p_member: member });
   if (qErr) throw qErr;
   if (allowed !== "ok") throw new HttpError(429, allowed);
-  // exclusive places are gone (v5); the candidate queries still take a level and every place is level 0
+  // exclusive places are gone; the candidate queries still take a level and every place is level 0
   const { data: level, error: lErr } = await db.rpc("unlock_level", { p_user: user.id });
   if (lErr) throw lErr;
   // "auto": half the direct trip, set once the direct route time is known (below)
@@ -97,8 +94,9 @@ serve(async (req) => {
   let budgetMin = autoBudget ? 0 : num(body.budget_min, 0, MAX_BUDGET, "bad_budget_min");
 
   const warnings: string[] = [];
-  const shortTrip = haversineM(origin, dest) <= 10000;
-  const localWalkingFallback = allowsEstimateFallback(mode, haversineM(origin, dest));
+  const directM = haversineM(origin, dest);
+  const shortTrip = directM <= 10000;
+  const localWalkingFallback = allowsEstimateFallback(mode, directM);
   const routeRoad = createRouter(Deno.env.get("VALHALLA_URL") ?? "https://valhalla1.openstreetmap.de");
   let baseline: RoadRoute | null = null;
   try { baseline = await routeRoad([origin, dest], mode); }
@@ -119,8 +117,7 @@ serve(async (req) => {
   const dwellOf = (m: number) => quickStops ? Math.min(m, QUICK_DWELL_MIN) : m;
   const narrowed = interests.length > 0 || openOnly || noChains;   // the filters below drop places: fetch more first
   // spread stops along the way: 5 stretches on long drives, 3 on short ones, none inside a city block
-  const directM = haversineM(origin, dest);
-  const SEGMENTS = () => directM < 3000 ? 0 : directM < 30000 ? 3 : 5;
+  const segments = directM < 3000 ? 0 : directM < 30000 ? 3 : 5;
   const { data: cands, error } = baseline
     ? await db.rpc("route_detour_candidates", {
       p_geometry: baseline.geometry,
@@ -130,31 +127,30 @@ serve(async (req) => {
       p_budget_min: quickStops ? MAX_BUDGET : budgetMin, p_level: level, p_max_n: maxCandidates + exclude.size + (narrowed ? 20 : 0),
       p_per_group: (shortTrip ? 4 : 5) + Math.min(exclude.size, 3) + (narrowed ? 4 : 0), ...filters,
       p_meal_slots: meals.length ? 4 : 0,   // nearest restaurants always make the shortlist when a meal is asked for
-      p_segments: SEGMENTS(),
+      p_segments: segments,
     })
     : await db.rpc("detour_candidates", {
       o_lat: origin.lat, o_lng: origin.lng, d_lat: dest.lat, d_lng: dest.lng,
       extra_m: budgetMin * 80, max_n: 16 + exclude.size, p_level: level, p_per_group: 4 + Math.min(exclude.size, 3), ...filters, p_meal_slots: meals.length ? 4 : 0,
     });
   if (error) { console.error("candidate lookup failed", error); warnings.push("places_unavailable"); }
-  // the start and destination themselves aren't detours: drop places within 150 m of either end
   // "only these kinds" (a meal asked for still allows restaurants), confirmed opening hours, no chains;
   // places the user named as must-visit always stay in
   const keep = (c: Candidate) => mustInclude.includes(c.id) || (
     (fitsInterests(interests, c.category, c.tier) || (meals.length > 0 && c.category === "food"))
     && (!openOnly || (c.open_min != null && c.close_min != null))
     && (!noChains || independent(c)));
-  const candidates = ((cands ?? []) as Candidate[]).filter((c) => !exclude.has(c.id) && keep(c) && haversineM(c, origin) > 150 && haversineM(c, dest) > 150)
+  const candidates = ((cands ?? []) as Candidate[]).filter((c) => !exclude.has(c.id) && keep(c) && haversineM(c, origin) > END_CLEARANCE_M && haversineM(c, dest) > END_CLEARANCE_M)
     .slice(0, maxCandidates);   // over-fetched for the filters: the road-time matrix stays its usual size
   if (mustInclude.length) {
     const { data: picked, error: pErr } = await db.rpc("places_by_ids", { p_ids: mustInclude, p_level: level });
     if (pErr) throw pErr;
     // a pick that can't fit even in a straight line stays out of the matrix (a far point can break the routing call);
     // the planner then reports it in unfit_required
-    const reach = budgetMin * METERS_PER_MIN[mode], direct = haversineM(origin, dest);
+    const reach = budgetMin * METERS_PER_MIN[mode];
     for (const p of (picked ?? []) as Candidate[]) {
       if (candidates.some((c) => c.id === p.id)) continue;
-      if (haversineM(origin, p) + haversineM(p, dest) - direct <= reach) candidates.push(p);
+      if (haversineM(origin, p) + haversineM(p, dest) - directM <= reach) candidates.push(p);
     }
   }
   // Quick: the convenience stores nearest the road, for a pit stop after the sight. They share the travel-time matrix,
@@ -164,12 +160,12 @@ serve(async (req) => {
     const { data: pits, error: pitErr } = await db.rpc("route_pit_stops", { p_geometry: baseline.geometry, p_radius_m: 800, p_max_n: 6 });
     if (pitErr) console.error("pit stops failed", pitErr);
     for (const p of (pits ?? []) as Candidate[]) {
-      if (exclude.has(p.id) || candidates.some((c) => c.id === p.id) || haversineM(p, origin) <= 150 || haversineM(p, dest) <= 150) continue;
+      if (exclude.has(p.id) || candidates.some((c) => c.id === p.id) || haversineM(p, origin) <= END_CLEARANCE_M || haversineM(p, dest) <= END_CLEARANCE_M) continue;
       candidates.push({ ...p, dwell_min: PIT_DWELL_MIN });
       pitIds.add(p.id);
     }
   }
-  // paid tiers (v5): Partner and Giggles Choice. Members' plans put them first; the Giggle's plan uses Choice stops only.
+  // paid tiers: Partner and Giggles Choice. Members' plans put them first; the Giggle's plan uses Choice stops only.
   const tierOf = new Map<number, "partner" | "choice">();
   if (candidates.length) {
     const { data: tiers, error: tErr } = await db.rpc("places_tiers", { p_ids: candidates.map((c) => c.id) });
@@ -221,8 +217,8 @@ serve(async (req) => {
 
   // one plan per theme from the same shortlist + matrix; drop themed plans identical to an earlier one
   const seen = new Set<string>();
-  const themed: { id: string; name: string; plan: Plan; geometry?: [number, number][]; etaMin?: number[]; travelMin?: number }[] = [];
-  // "Your mix" (the user's interest chips) leads; the five themed plans follow as alternatives
+  let themed: { id: string; name: string; plan: Plan; geometry?: [number, number][]; etaMin?: number[]; travelMin?: number }[] = [];
+  // "Your mix" (the user's interest chips) leads; the themed plans follow as alternatives
   const choiceStops = stops.filter((st) => tierOf.get(st.id) === "choice" || mustInclude.includes(st.id));
   const variants = [
     ...(interests.length ? [{ id: "mix", name: "Your mix", weight: mixWeight(interests) }] : []),
@@ -234,30 +230,30 @@ serve(async (req) => {
   for (const t of variants) {
     const sightsWithin = (budget: number) => planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin: budget, stops: ("only" in t && t.only) || stops,
       travelMin, meals, ...prefs, boost,
-      segments: SEGMENTS(), theme: "theme" in t ? t.theme : undefined, weight: "weight" in t ? t.weight : undefined });
+      segments, theme: "theme" in t ? t.theme : undefined, weight: "weight" in t ? t.weight : undefined });
     // Quick: plan the sight leaving room for a pit stop, then add the cheapest store that fits; no store fits, the sight gets it all
     const sights = pitStops.length ? sightsWithin(budgetMin - PIT_RESERVE_MIN) : null;
     const plan = (sights && pitStops.map((pit) => insertBest(sights, pit, travelMin, budgetMin)).filter((x): x is Plan => !!x)
       .sort((a, b) => a.extraMin - b.extraMin)[0]) || sightsWithin(budgetMin);
-    const key = plan.order.map((s) => s.id).join(",");
+    const stopsKey = plan.order.map((s) => s.id).join(",");
     if (t.id === "giggles" && !plan.order.some((st) => tierOf.get(st.id) === "choice")) continue;   // no Choice place fits the time
-    if (t.id !== "top_picks" && t.id !== "mix" && t.id !== "giggles" && seen.has(key)) continue;
-    seen.add(key);
+    if (dropsIfDuplicate(t.id) && seen.has(stopsKey)) continue;
+    seen.add(stopsKey);
     themed.push({ id: t.id, name: t.name, plan });
   }
   // up to 12 routing calls per request, shared by all plans: one per plan plus retries when a long route times out
   const verification = boundedRouter(routeRoad, 12);
   const verifiedKeys = new Set<string>();
-  for (let i = 0; i < themed.length; i++) {
-    const t = themed[i];
+  const verifiedPlans: typeof themed = [];
+  for (const t of themed) {
     if (baseline) {
       const verified = await verifyRoadPlan({ plan: t.plan, origin, dest, candidates, mode,
         baseline, startMin, budgetMin, route: verification.route });
       t.plan = verified.plan; t.geometry = verified.geometry; t.etaMin = verified.etaMin; t.travelMin = verified.travelMin;
       if (verified.failed) warnings.push("some_detours_unavailable");
       // an alternative plan the routing server couldn't check at all isn't worth a tab; Top picks always stays
-      if (verified.failed && t.id !== "top_picks") { themed.splice(i--, 1); continue; }
-      else if (verified.adjusted) warnings.push("detours_adjusted");
+      if (verified.failed && t.id !== "top_picks") continue;
+      if (verified.adjusted) warnings.push("detours_adjusted");
     } else {
       const legs = []; let at = 0;
       for (const s of t.plan.order) { legs.push(matrix[at][s.idx]); at = s.idx; }
@@ -266,10 +262,12 @@ serve(async (req) => {
       t.travelMin = legs.reduce((a, b) => a + b, 0);
       t.geometry = [origin, ...t.plan.order.map((s) => candidates[s.idx - 2]), dest].map((p) => [p.lng, p.lat]);
     }
-    const key = t.plan.order.map((s) => s.id).join(",");
-    if (t.id !== "top_picks" && t.id !== "mix" && t.id !== "giggles" && verifiedKeys.has(key)) { themed.splice(i--, 1); continue; }
-    verifiedKeys.add(key);
+    const stopsKey = t.plan.order.map((s) => s.id).join(",");
+    if (dropsIfDuplicate(t.id) && verifiedKeys.has(stopsKey)) continue;
+    verifiedKeys.add(stopsKey);
+    verifiedPlans.push(t);
   }
+  themed = verifiedPlans;
   // The asked-for theme goes first; top-level fields remain Top picks for existing clients.
   if (requestedTheme) themed.sort((a, b) => Number(b.id === requestedTheme) - Number(a.id === requestedTheme));
 

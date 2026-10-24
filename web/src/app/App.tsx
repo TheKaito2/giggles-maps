@@ -1,40 +1,41 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Bell, Camera, Coins, LocateFixed, Map as MapIcon, MapPin, Navigation, Swords, Trophy, UserRound, X } from "lucide-react";
 import { ensureSession, supabase } from "../lib/supabase";
-import { addFriend, adFree, type CheckinTarget, getProfile, type LatLng, plusDaily, type Profile, readCodeParam, readScanParam } from "../lib/api";
-import MapView from "./MapView";
-import CheckIn from "./CheckIn";
+import { addFriend, adFree, type CheckinTarget, getProfile, type LatLng, levelFor, levelProgress, plusDaily, type Profile, readCodeParam, readScanParam } from "../lib/api";
 import Sheet, { type Snap } from "./detour/Sheet";
 import WhereTo from "./detour/WhereTo";
 import Choose, { TripHead } from "./detour/Choose";
 import Results from "./detour/Results";
 import { useDetour } from "./detour/useDetour";
 import { listenForAuthCallback, resumeSignIn, useUser } from "../lib/auth";
-import { deliverPurchases, liveTrip } from "../lib/native";
+import { buzz, deliverPurchases, liveTrip } from "../lib/native";
 import { useStops } from "./useStops";
 import Nickname from "./social/Nickname";
 import RideAlong, { useTrip } from "./social/RideAlong";
-import Leaderboard from "./Leaderboard";
 import AdBanner from "./AdBanner";
-import Upgrade from "./Upgrade";
 import DemoWelcome from "./DemoWelcome";
-import Quests from "./Quests";
-import Feed from "./Feed";
-import ProfileTab from "./Profile";
-import Shop from "./passport/Shop";
-import AvatarBuilder from "./avatar/AvatarBuilder";
-import { levelFor, levelProgress } from "../lib/api";
-import PlaceSheet from "./PlaceSheet";
-import AddPlace from "./AddPlace";
-import Navigate, { type Waypoint } from "./nav/Navigate";
-import EtaView from "./nav/EtaView";
+import type { Waypoint } from "./nav/Navigate";
 import LayersButton from "./LayersButton";
 import { loadLook, type MapLook, saveLook } from "./mapLayers";
 import ExploreChips, { CHIPS } from "./ExploreChips";
 import DemoBar from "./DemoBar";
 import { demoOn, onDemoChange } from "../lib/demoGps";
-import { buzz } from "../lib/native";
+import { SkelLines } from "./Skeleton";
 
+// Only the map and the detour sheet load up front; tabs and sheets arrive when first opened.
+const MapView = lazy(() => import("./MapView"));   // maplibre is most of the code: the sheet paints first
+const CheckIn = lazy(() => import("./CheckIn"));
+const Leaderboard = lazy(() => import("./Leaderboard"));
+const Upgrade = lazy(() => import("./Upgrade"));
+const Quests = lazy(() => import("./Quests"));
+const Feed = lazy(() => import("./Feed"));
+const ProfileTab = lazy(() => import("./Profile"));
+const Shop = lazy(() => import("./passport/Shop"));
+const AvatarBuilder = lazy(() => import("./avatar/AvatarBuilder"));
+const PlaceSheet = lazy(() => import("./PlaceSheet"));
+const AddPlace = lazy(() => import("./AddPlace"));
+const Navigate = lazy(() => import("./nav/Navigate"));
+const EtaView = lazy(() => import("./nav/EtaView"));
 
 type Tab = "map" | "board" | "quests" | "feed" | "profile";
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -42,7 +43,6 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "quests", label: "Quests", icon: <Swords size={24} /> }, { id: "feed", label: "Feed", icon: <Bell size={24} /> },
   { id: "profile", label: "Profile", icon: <UserRound size={24} /> },
 ];
-
 
 // shared empty arrays: a fresh [] each render would make the map refit the route on every position update
 const NONE: never[] = [];
@@ -178,12 +178,12 @@ export default function App() {
         ))}
       </nav>
       <header className="topbar">
-        <a className="brand mobile-only" href="/"><span className="brand-mark" aria-hidden><MapPin size={16} /></span></a>
+        <a className="brand mobile-only" href="/" aria-label="Giggles Maps home"><span className="brand-mark" aria-hidden><MapPin size={16} /></span></a>
         <div className="stat-chips">
-          <button type="button" className="stat-chip level" onClick={() => setTab("profile")} aria-label={`Level ${level}, ${profile?.xp ?? 0} XP`}
-            style={{ ["--p" as string]: span ? into / span : 1 }}><span className="ring"><b>{level}</b></span><span className="num">{profile?.xp ?? 0} XP</span></button>
+          <button type="button" className="stat-chip level" onClick={() => setTab("profile")}
+            style={{ ["--p" as string]: span ? into / span : 1 }}><span className="sr-only">Level </span><span className="ring"><b>{level}</b></span><span className="num">{profile?.xp ?? 0} XP</span></button>
           <button type="button" className="stat-chip provinces" onClick={() => { setFriend(null); setTab("profile"); setPassport(true); }}
-            aria-label={`${profile?.provinces ?? 0} of 77 provinces, open your passport`}>
+            aria-label={`${profile?.provinces ?? 0}/77 provinces, open your passport`}>
             <MapIcon size={18} aria-hidden /><span className="num">{profile?.provinces ?? 0}/77</span></button>
           <button type="button" className="stat-chip coins" onClick={() => setOverlay("shop")} aria-label={`${profile?.coins ?? 0} coins, open the shop`}>
             <Coins size={18} aria-hidden /><span className="num">{profile?.coins ?? 0}</span></button>
@@ -198,21 +198,21 @@ export default function App() {
               <p className="map-banner">Tap the map to set your {picking === "origin" ? "start" : "destination"}.
                 <button className="link" onClick={() => setPicking(null)}>Cancel</button></p>
             )}
-            <MapView origin={d.stage === "browse" ? null : d.origin?.point ?? null} dest={d.dest?.point ?? null}
+            <Suspense fallback={null}><MapView origin={d.stage === "browse" ? null : d.origin?.point ?? null} dest={d.dest?.point ?? null}
               stops={mapPlan?.stops ?? NONE} geometry={mapPlan?.geometry ?? NONE}
               alternates={alternates} focus={focus} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop}
-              nearby={nearby.stops} here={nearby.here} inZone={nearby.inZone.map((s) => s.id)}
+              nearby={nearby.stops} here={nearby.here} inZone={nearby.inZoneIds}
               members={trip.trip?.members ?? NONE} skin={profile?.look.map ?? "liberty"} look={look}
-              kinds={d.stage === "browse" ? CHIPS.find((c) => c.id === chip)?.kinds ?? null : null} onPlace={(p) => setPlace(p.id)} />
+              kinds={d.stage === "browse" ? CHIPS.find((c) => c.id === chip)?.kinds ?? null : null} onPlace={(p) => setPlace(p.id)} /></Suspense>
             {demoOn() && <DemoBar />}
             {d.stage === "browse" && <ExploreChips active={chip} onPick={setChip} />}
             <div className="map-tools">
               <LayersButton look={look} setLook={setLook} />
               {!nearby.watching && <button type="button" className="map-tool" onClick={nearby.start} aria-label="Show stops near me"><LocateFixed size={20} /></button>}
             </div>
-            {place && <PlaceSheet id={place} onClose={() => setPlace(null)}
+            {place && <Suspense fallback={null}><PlaceSheet id={place} onClose={() => setPlace(null)}
               onDirections={(p) => { setPlace(null); d.goTo({ point: { lat: p.lat, lng: p.lng }, name: p.name }); }}
-              onCheckin={(p) => setCheckin({ target: { id: p.id, name: p.name, lat: p.lat, lng: p.lng, is_partner: false, is_demo: false } })} />}
+              onCheckin={checkInAt} /></Suspense>}
             {(zoneStop || paused) && (
               <div className="map-actions">
                 {zoneStop && !zoneStop.stamped ? (
@@ -253,16 +253,19 @@ export default function App() {
         </main>
       ) : (
         <main className="page-view">
+          <Suspense fallback={<div className="page-col"><SkelLines n={6} /></div>}>
           {tab === "board" && <Leaderboard profile={profile} onChange={refresh} />}
           {tab === "quests" && <Quests profile={profile} refreshKey={refreshKey} onChange={refresh} onShop={() => setOverlay("shop")} />}
           {tab === "feed" && <Feed profile={profile} refreshKey={refreshKey} openFriend={(id) => { setFriend(id); setTab("profile"); }} goProfile={() => { setFriend(null); setTab("profile"); }} openPlace={(id) => { setPlace(id); setTab("map"); }} />}
           {tab === "profile" && <ProfileTab profile={profile} refreshKey={refreshKey} onChange={refresh} friend={friend} setFriend={setFriend}
             editAvatar={() => setOverlay("avatar")} editName={() => setNameSheet(true)} openShop={() => setOverlay("shop")} openBag={() => setOverlay("bag")}
             openPlace={(id) => { setPlace(id); setTab("map"); }} passport={passport} onPassport={() => setPassport(false)} />}
+          </Suspense>
           {profile && !adFree(profile) && <AdBanner page={tab} onRemove={() => setAdSheet(true)} />}
         </main>
       )}
 
+      <Suspense fallback={null}>
       {(overlay === "shop" || overlay === "bag") && (
         <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="Shop" onClick={(e) => { if (e.target === e.currentTarget) setOverlay(null); }}>
           <div className="modal shop-modal">
@@ -295,9 +298,10 @@ export default function App() {
           onLater={() => { setNameSheet(false); setNameLater(true); }} />
       )}
 
-      {checkin && (
+      </Suspense>
+      {checkin && <Suspense fallback={null}>
         <CheckIn target={checkin.target} initialCode={checkin.code} hasPlus={!!profile?.plusUntil} nickname={profile?.nickname} onClose={() => setCheckin(null)} onDone={() => { liveTrip.checkedIn(checkin.target.id); refresh(); }} />
-      )}
+      </Suspense>}
     </div>
   );
 }

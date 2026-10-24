@@ -17,7 +17,7 @@ export interface Prefs {
 
 export interface Pick { id: number; name: string }
 
-export const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 export const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(Math.round(m) % 60).padStart(2, "0")}`;
 
 export const DEFAULT_PREFS: Prefs = {
@@ -26,6 +26,7 @@ export const DEFAULT_PREFS: Prefs = {
 };
 
 export const MAX_BUDGET = 240;
+export const MAX_STOPS = 6;   // the most stops one plan holds
 export const MEALS: { id: Meal; label: string; window: string }[] = [
   { id: "breakfast", label: "Breakfast", window: "07:00–09:30" },
   { id: "lunch", label: "Lunch", window: "11:30–13:30" },
@@ -50,7 +51,6 @@ export const startMin = (p: Prefs) =>
   p.depart === "custom" ? Number(p.time.slice(0, 2)) * 60 + Number(p.time.slice(3, 5))
     : (nowMin() + (p.depart === "now" ? 0 : Number(p.depart))) % 1440;
 
-export const departLabel = (p: Prefs) => p.depart === "custom" ? `at ${p.time}` : p.depart === "now" ? "now" : DEPARTS.find((d) => d.id === p.depart)!.label.toLowerCase();
 
 /** The request body: defaults are left out so the server applies its own. */
 export function toRequest(p: Prefs, origin: LatLng, dest: LatLng): PlanRequest {

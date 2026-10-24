@@ -7,7 +7,7 @@ import { Share } from "@capacitor/share";
 // The iOS app is this same web app inside a Capacitor shell. These wrappers pick the native way on the phone and keep the
 // web way everywhere else, so screens call one function and never check the platform themselves.
 export const isNative = Capacitor.isNativePlatform();
-export const SITE = "https://giggles-maps.pages.dev";
+const SITE = "https://giggles-maps.pages.dev";   // = SITE in api.ts (not imported: api needs the Vite env, tests run without it)
 export const AUTH_CALLBACK = "giggles://auth-callback";
 
 /** A buzz for a moment in a ceremony. iPhones have no navigator.vibrate, so the app uses the Taptic Engine. */
@@ -29,6 +29,12 @@ export async function shareLink(title: string, url: string, text?: string): Prom
   return true;
 }
 
+/** Share a link, or copy it where the device can't share. Callers say "Link copied." on "copied". */
+export async function shareOrCopy(title: string, url: string, text?: string): Promise<"shared" | "copied" | "failed"> {
+  if (await shareLink(title, url, text)) return "shared";
+  return navigator.clipboard?.writeText(text ? `${text} ${url}` : url).then(() => "copied" as const, () => "failed" as const) ?? "failed";
+}
+
 /** Share image files (a share card, a trip album). Native: write them to the cache and hand them to the share sheet,
  *  which also has Save Image. Returns false where the browser can't share files (the caller downloads instead). */
 export async function shareFiles(files: File[]): Promise<boolean> {
@@ -48,6 +54,13 @@ export async function shareFiles(files: File[]): Promise<boolean> {
   if (!navigator.canShare?.({ files })) return false;
   try { await navigator.share({ files }); } catch (e) { if ((e as Error).name !== "AbortError") return false; }   // Safari may refuse after a wait
   return true;
+}
+
+/** Download a file (web): the share sheet's Save, and where a browser can't share files. */
+export function saveBlob(blob: Blob, name: string) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
 /** Open a page of the website (shop site, privacy): in the app that's the in-app browser, on the web a normal link. */
@@ -92,10 +105,10 @@ interface TripPlugin {
   end(): Promise<void>;
 }
 interface LocationFixPlugin { current(): Promise<{ lat: number; lng: number; accuracy: number; isMock: boolean }> }
-export const Attest = registerPlugin<AttestPlugin>("Attest");
+const Attest = registerPlugin<AttestPlugin>("Attest");
 export const Purchases = registerPlugin<PurchasesPlugin>("Purchases");
 export const Trip = registerPlugin<TripPlugin>("Trip");
-export const LocationFix = registerPlugin<LocationFixPlugin>("LocationFix");
+const LocationFix = registerPlugin<LocationFixPlugin>("LocationFix");
 
 /** Hand one App Store transaction to the server (apple-plus), then tell StoreKit it's delivered. Undelivered ones
  *  stay unfinished and are retried at the next launch. */
@@ -105,7 +118,7 @@ async function deliver(tx: Tx) {
   await Purchases.finish({ id: tx.id });
 }
 /** Buy in the iOS app. Returns false if the buyer cancelled; true once the server has it (or Ask to Buy is waiting). */
-export async function buyInApp(product: "membership" | "plus", account: string): Promise<boolean> {
+async function buyInApp(product: "membership" | "plus", account: string): Promise<boolean> {
   const r = await Purchases.buy({ product, account });
   if ("cancelled" in r) return false;
   if ("pending" in r) return true;
@@ -180,3 +193,14 @@ export const liveTrip = {
   checkedIn(placeId: number) { if (isNative) void Trip.checkedIn({ placeId }).catch(() => undefined); },
   end() { if (isNative) void Trip.end().catch(() => undefined); },
 };
+
+const PURCHASE_ERR: Record<string, string> = {
+  sign_in_required: "Sign in first so it stays with your account.",
+  already_member: "You're already a member.",
+  payments_not_configured: "Payments aren't switched on yet.",
+  purchase_on_another_account: "This Apple ID bought it for another Giggles account.",
+  subscription_on_another_account: "This Apple ID bought it for another Giggles account.",
+};
+/** What to tell the buyer when purchase() fails (ApiError codes from checkout or apple-plus). */
+export const purchaseErrorText = (e: unknown) =>
+  PURCHASE_ERR[(e as { code?: string } | null)?.code ?? ""] ?? "Couldn't finish the purchase. Try again.";

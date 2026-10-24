@@ -1,10 +1,18 @@
 import type { AvatarLook } from "../app/avatar/parts";
 import { ApiError, callFn, ensureSession, supabase } from "./supabase";
-import { demoOn } from "./demoGps";
+import { demoOn, isDemoId } from "./demoGps";
 
 // Demo mode mixes a pretend community (src/demo) into what the server returns. Loaded only while demo mode is on, so real
 // users never download it or see it.
 const demo = () => demoOn() ? import("../demo") : null;
+
+/** A database function, after making sure there's a (guest) session; errors become ApiError(code). */
+async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
+  await ensureSession();
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) throw new ApiError(error.message);
+  return data as T;
+}
 
 export interface LatLng { lat: number; lng: number }
 
@@ -106,12 +114,12 @@ export interface Shake {
 /** Shake for a first-visit check-in (its id), or spend a bonus shake (no id). Error "nothing_to_shake" otherwise. */
 export const shakeFortune = (checkin?: string) => rpc<Shake>("shake_fortune", { p_checkin: checkin ?? null });
 export interface PastShake { id: number; stick: number; rarity: Rarity; prize_kind: Shake["prize"]; coins: number; xp: number;
-  boost_hours: number; item_kind: string | null; item_id: string | null; source: "checkin" | "bonus"; created_at: string }
+  boost_hours: number; item_kind: ShopKind | null; item_id: string | null; source: "checkin" | "bonus"; created_at: string }
 export async function shakeHistory(): Promise<PastShake[]> {
   await ensureSession();
   const { data, error } = await supabase.from("fortune_pulls").select("id, stick, rarity, prize_kind, coins, xp, boost_hours, item_kind, item_id, source, created_at")
     .order("id", { ascending: false }).limit(20);
-  if (error) throw error;
+  if (error) throw new ApiError(error.message);
   return data as PastShake[];
 }
 
@@ -145,12 +153,10 @@ export interface FoundPlace extends LatLng {
 }
 
 export async function searchPlaces(query: string, near?: LatLng | null, kind?: Kind | null): Promise<FoundPlace[]> {
-  await ensureSession();
-  const { data, error } = await supabase.rpc("search_places", {
+  const data = await rpc<Omit<FoundPlace, "source">[] | null>("search_places", {
     p_query: query, p_lat: near?.lat ?? null, p_lng: near?.lng ?? null, p_kind: kind ?? null, p_limit: 12,
   });
-  if (error) throw error;
-  return ((data ?? []) as Omit<FoundPlace, "source">[]).map((p) => ({ ...p, source: "giggles" }));
+  return (data ?? []).map((p) => ({ ...p, source: "giggles" }));
 }
 
 // Photon (photon.komoot.io): free OpenStreetMap search, fair use: 3+ letters, after a 300 ms pause, the previous request cancelled.
@@ -178,10 +184,8 @@ export async function uploadSelfie(blob: Blob): Promise<string> {
 }
 
 /** Hide or caption one of your check-in photos (passport album). */
-export const setPhoto = async (checkinId: string, hidden: boolean, caption?: string) => {
-  const { error } = await supabase.rpc("set_photo", { p_checkin: checkinId, p_hidden: hidden, p_caption: caption ?? null });
-  if (error) throw error;
-};
+export const setPhoto = (checkinId: string, hidden: boolean, caption?: string) =>
+  rpc<void>("set_photo", { p_checkin: checkinId, p_hidden: hidden, p_caption: caption ?? null });
 
 export interface PassportStamp { place_id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3;
   province_id: number | null; event: string | null; earned_at: string; photo: string | null }
@@ -196,12 +200,7 @@ export interface PassportData {
   stamps: PassportStamp[]; photos: PassportPhoto[]; challenges: Challenge[]; trips?: TripMemory[];
   provinces: { id: number; iso: string; name_en: string; name_th: string; stamps: number }[];
 }
-export async function getPassport(): Promise<PassportData> {
-  await ensureSession();
-  const { data, error } = await supabase.rpc("passport_v2");
-  if (error) throw error;
-  return data as PassportData;
-}
+export const getPassport = () => rpc<PassportData>("passport_v2");
 /** Short-lived links to your own check-in photos (private bucket). */
 export async function photoUrls(paths: string[]): Promise<Record<string, string>> {
   if (!paths.length) return {};
@@ -212,12 +211,8 @@ export async function photoUrls(paths: string[]): Promise<Record<string, string>
 export interface Stop { id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3;
   lat: number; lng: number; zone_m: number; distance_m: number; stamped: boolean }
 /** Places around you, landmarks first, with their check-in zone and whether you have the stamp. */
-export async function stopsNear(p: LatLng, radiusM = 1500): Promise<Stop[]> {
-  await ensureSession();
-  const { data, error } = await supabase.rpc("stops_near", { p_lat: p.lat, p_lng: p.lng, p_radius_m: radiusM });
-  if (error) throw error;
-  return (data ?? []) as Stop[];
-}
+export const stopsNear = async (p: LatLng, radiusM = 1500) =>
+  (await rpc<Stop[] | null>("stops_near", { p_lat: p.lat, p_lng: p.lng, p_radius_m: radiusM })) ?? [];
 
 export const verifyCheckin = (p: {
   place_id: number; lat: number; lng: number; accuracy_m: number; selfie_path: string;
@@ -248,8 +243,8 @@ export const plusDaily = () => rpc<number>("plus_daily");
 // paid tier of these places, when they have one (Partner / Giggles Choice)
 export async function placesTiers(ids: number[]): Promise<Map<number, PartnerTier>> {
   if (!ids.length) return new Map();
-  const { data, error } = await supabase.rpc("places_tiers", { p_ids: ids.slice(0, 300) });
-  if (error) throw error;
+  const { data, error } = await supabase.rpc("places_tiers", { p_ids: ids.slice(0, 300) });   // no session needed: public
+  if (error) throw new ApiError(error.message);
   const real = new Map((data as { id: number; tier: PartnerTier }[]).map((t) => [t.id, t.tier])), d = demo();
   return d ? (await d).demoTiersFor(ids, real) : real;
 }
@@ -283,10 +278,14 @@ export interface Profile {
   fortuneTickets: number; xpBoostUntil: Date | null;   // Siam Si: bonus shakes waiting, x1.5 stamp XP until
 }
 
+/** The row the `me` database function returns. */
+interface MeRow {
+  member: boolean; xp: number; plus_until: string | null; look: Look | null; nickname: string | null; colour: string | null;
+  friend_code: string | null; on_leaderboard: boolean | null; title: string | null; owned: string[] | null; avatar: AvatarLook | null;
+  joined: string | null; coins: number | null; provinces: number | null; is_admin: boolean; fortune_tickets: number | null; xp_boost_until: string | null;
+}
 export async function getProfile(): Promise<Profile> {
-  await ensureSession();
-  const { data, error } = await supabase.rpc("me");
-  if (error) throw error;
+  const data = await rpc<MeRow | null>("me");
   const until = data?.plus_until ? new Date(data.plus_until) : null;
   const look: Look = data?.look ?? {};
   return {
@@ -301,12 +300,6 @@ export async function getProfile(): Promise<Profile> {
 
 // ---------- phase 2: friends, leaderboard, ride along, coin shop ----------
 // every RPC raises a short code ("code_not_found", "not_enough_coins", ...) as its message
-async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
-  await ensureSession();
-  const { data, error } = await supabase.rpc(fn, args);
-  if (error) throw new ApiError(error.message);
-  return data as T;
-}
 
 export const COLOURS = ["marigold", "indigo", "lotus", "jade", "sky", "coral", "plum", "slate"] as const;
 export const setMe = (p: { nickname?: string; colour?: string; onLeaderboard?: boolean }) =>
@@ -322,14 +315,13 @@ export async function getSocial(): Promise<Social> {
 }
 export const addFriend = (code: string) => rpc<"friends" | "requested">("add_friend", { p_code: code });
 export const answerFriend = (from: string, accept: boolean) => rpc<void>("answer_friend", { p_from: from, p_accept: accept });
-export const removeFriend = async (id: string) => { if (!id.startsWith("demo-")) await rpc<void>("remove_friend", { p_id: id }); };
+export const removeFriend = async (id: string) => { if (!isDemoId(id)) await rpc<void>("remove_friend", { p_id: id }); };
 export interface FriendPassport { card: Card; stamps: PassportStamp[]; photos: PassportPhoto[]; provinces: PassportData["provinces"] }
 export async function getFriendPassport(id: string): Promise<FriendPassport> {
   const d = demo();
-  if (d && id.startsWith("demo-")) { const p = (await d).demoPassport(id); if (p) return p; }
+  if (d && isDemoId(id)) { const p = (await d).demoPassport(id); if (p) return p; }
   return rpc<FriendPassport>("friend_passport", { p_id: id });
 }
-export const getLeaderboard = () => rpc<{ top: Card[]; me: Card | null; total: number }>("leaderboard");
 export type BoardScope = "everyone" | "friends";
 export type BoardPeriod = "week" | "all";
 export type BoardMetric = "xp" | "provinces" | "landmarks" | "temples" | "food";
@@ -365,12 +357,13 @@ export const leaveTrip = () => rpc<void>("leave_trip");
 export const tripPing = (p: LatLng) => rpc<void>("trip_ping", { p_lat: p.lat, p_lng: p.lng });
 
 export type ShopKind = "theme" | "flair" | "map" | "frame" | "title" | "avatar";
+export const KIND_NAME: Record<ShopKind, string> = { theme: "Passport cover", frame: "Photo frame", avatar: "Avatar item", flair: "Name flair", title: "Title", map: "Map skin" };
 export interface ShopItem { kind: ShopKind; id: string; name_en: string; name_th: string; price: number; plus: boolean; sort: number;
   gacha_only: boolean;   // Siam Si prizes: never sold
   plus_only: boolean }   // the Plus shelf: worn with Plus, never sold
 export async function getShop(): Promise<ShopItem[]> {
   const { data, error } = await supabase.from("shop_items").select("*").order("sort");
-  if (error) throw error;
+  if (error) throw new ApiError(error.message);
   return data as ShopItem[];
 }
 export const buyItem = (kind: ShopKind, id: string) => rpc<number>("buy_item", { p_kind: kind, p_id: id });
@@ -391,7 +384,7 @@ export interface ProfilePage extends Omit<Card, "rank"> { friend_code: string | 
 export const setShowcase = (pins: { type: "badge" | "stamp"; id: string }[]) => rpc<unknown>("set_showcase", { p: pins });
 export async function getProfilePage(id: string): Promise<ProfilePage> {
   const d = demo();
-  if (d && id.startsWith("demo-")) { const p = (await d).demoProfile(id); if (p) return p; }
+  if (d && isDemoId(id)) { const p = (await d).demoProfile(id); if (p) return p; }
   return rpc<ProfilePage>("profile_of", { p_id: id });
 }
 
@@ -427,7 +420,7 @@ export async function getFeed(scope: "all" | "friends" | "me" = "all"): Promise<
   return d ? (await d).demoFeedMerged(real, scope) : real;
 }
 export const react = async (id: number, emoji: Reaction | null) => { if (id > 0) await rpc<void>("react", { p_activity: id, p_emoji: emoji }); };
-export const nudge = async (friend: string) => { if (!friend.startsWith("demo-")) await rpc<void>("nudge", { p_friend: friend }); };
+export const nudge = async (friend: string) => { if (!isDemoId(friend)) await rpc<void>("nudge", { p_friend: friend }); };
 
 export interface FriendQuest { partner: Who; week: string; me: number; them: number }
 export async function getFriendQuest(): Promise<FriendQuest | null> {
@@ -436,7 +429,7 @@ export async function getFriendQuest(): Promise<FriendQuest | null> {
 }
 // a quest with a pretend friend (demo mode) stays on this device
 export const setFriendQuest = async (friend: string) => {
-  if (friend.startsWith("demo-")) { const d = demo(); if (d) (await d).setDemoFriendQuest(friend); return; }
+  if (isDemoId(friend)) { const d = demo(); if (d) (await d).setDemoFriendQuest(friend); return; }
   await rpc<void>("set_friend_quest", { p_friend: friend });
 };
 export interface QuestReward { slug: string; title: string; title_th: string; xp: number; coins: number; member: boolean; level: number;
@@ -449,7 +442,7 @@ export interface MapPlace { id: number; name: string; name_th: string | null; ki
 /** Place pins for the visible map box: fewer when zoomed out, landmarks and OTOP first. */
 export async function mapPlaces(w: number, s: number, e: number, n: number, zoom: number, kinds: string[] | null): Promise<MapPlace[]> {
   const { data, error } = await supabase.rpc("map_places", { p_min_lng: w, p_min_lat: s, p_max_lng: e, p_max_lat: n, p_zoom: zoom, p_kinds: kinds });
-  if (error) throw error;
+  if (error) throw new ApiError(error.message);
   return (data ?? []) as MapPlace[];
 }
 
@@ -574,25 +567,3 @@ export function readScanParam(): { placeId: number; code: string } | null {
   const m = /^(\d+)-([A-Za-z0-9]{2,16})$/.exec(new URLSearchParams(location.search).get("scan") ?? "");
   return m ? { placeId: Number(m[1]), code: m[2].toUpperCase() } : null;
 }
-
-export const REASON_TEXT: Record<string, string> = {
-  too_far: "You're outside this place's check-in zone (150 m for landmarks and parks, 50 m elsewhere).",
-  no_face: "We couldn't see a face in the selfie.",
-  no_selfie: "The photo didn't upload.",
-  mock_location: "Your location looks simulated.",
-  speed_jump: "You moved faster than a car since your last check-in.",
-  low_accuracy: "GPS was too rough (over 75 m). A person will review it.",
-  already_rewarded_today: "Already stamped here today. Come back tomorrow.",
-  already_stamped: "You already have this stamp. The photo is added to your passport.",
-  level_locked: "This place is for members at a higher level.",
-  slow_down: "You're stamping fast! Stamps here are paused for a bit; your photo is saved. Check in again later for the stamp.",
-};
-
-// what happened on the shop's side (shown as "Business view" for the demo)
-export const BILLING_TEXT: Partial<Record<Billing, string>> = {
-  charged: "The shop paid its bid for this verified visit.",
-  no_qr: "No counter code, so the shop isn't charged.",
-  not_shown_on_route: "This shop wasn't on your route in the last 3 hours, so it isn't charged.",
-  repeat_visit_30d: "Already counted for this shop in the last 30 days, so it isn't charged again.",
-  wallet_empty: "The shop's credit ran out, so it isn't charged.",
-};

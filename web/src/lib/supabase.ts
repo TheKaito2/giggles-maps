@@ -45,3 +45,5 @@ export async function callFn<T>(name: string, body: object): Promise<T> {
 export class ApiError extends Error {
   constructor(public code: string) { super(code); }
 }
+/** The server's error code, or "" for anything else (offline, a bug): `ERR[errCode(e)] ?? "Couldn't…"`. */
+export const errCode = (e: unknown) => e instanceof ApiError ? e.code : "";

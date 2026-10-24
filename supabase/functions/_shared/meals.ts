@@ -9,7 +9,6 @@ export const MEAL_WINDOWS: Record<Meal, [number, number]> = {
   dinner: [17 * 60 + 30, 20 * 60],
 };
 
-export const MEAL_CATEGORIES = new Set(["cafe", "food", "market"]);
 /** Where a meal stop can be: a restaurant (OSM restaurants and food courts are "food"); breakfast may also be a cafe. */
 export const MEAL_PLACES: Record<Meal, Set<string>> = {
   breakfast: new Set(["food", "cafe"]), lunch: new Set(["food"]), dinner: new Set(["food"]),

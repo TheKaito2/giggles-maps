@@ -2,7 +2,7 @@ import { useState } from "react";
 import { CalendarCheck } from "lucide-react";
 import { requestBooking } from "../lib/api";
 import { isGuest, useUser } from "../lib/auth";
-import { ApiError } from "../lib/supabase";
+import { errCode } from "../lib/supabase";
 import SignIn from "./SignIn";
 
 const ERR: Record<string, string> = {
@@ -26,7 +26,7 @@ export default function BookingSheet({ place, name, onClose, onDone }: { place: 
     setBusy(true); setMsg("");
     requestBooking(place, day, party, note.trim())
       .then(() => onDone(`Booking sent to ${name}. You'll see their answer in Profile settings.`))
-      .catch((e) => setMsg(ERR[e instanceof ApiError ? e.message : ""] ?? "Couldn't send the booking. Try again."))
+      .catch((e) => setMsg(ERR[errCode(e)] ?? "Couldn't send the booking. Try again."))
       .finally(() => setBusy(false));
   };
   if (guest) return <section className="booking glass stack"><SignIn why="Sign in to book, so the shop knows who's coming." /></section>;

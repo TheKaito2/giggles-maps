@@ -1,8 +1,8 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { CalendarCheck, ChevronLeft, ChevronRight, Crown, LogIn, LogOut, RotateCcw, ShieldCheck, Sparkles, Trash2, Volume2, Wand2, X } from "lucide-react";
-import { ApiError, callFn, ensureSession, supabase } from "../lib/supabase";
+import { callFn, ensureSession, supabase } from "../lib/supabase";
 import { type Booking, cancelBooking, getMonthlyStamps, myBookings, PRICES, type Profile } from "../lib/api";
-import { isNative, purchase, restorePurchases } from "../lib/native";
+import { isNative, purchase, purchaseErrorText, restorePurchases } from "../lib/native";
 import { isGuest, useUser } from "../lib/auth";
 import { demoOn, setDemo } from "../lib/demoGps";
 import { setSound, soundOn } from "../lib/sfx";
@@ -75,14 +75,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
   const buy = async (kind: "plus" | "membership") => {
     setMsg("");
     try { if (await purchase(kind, user?.id)) { setMsg("Thanks! It switches on in a moment."); setTimeout(onChange, 1500); } }
-    catch (e) {
-      const code = e instanceof ApiError ? e.code : "";
-      setMsg(code === "sign_in_required" ? "Sign in first so it stays with your account."
-        : code === "already_member" ? "You're already a member."
-        : code === "payments_not_configured" ? "Payments aren't switched on yet."
-        : code === "purchase_on_another_account" || code === "subscription_on_another_account" ? "This Apple ID bought it for another Giggles account."
-        : "Couldn't finish the purchase. Try again.");
-    }
+    catch (e) { setMsg(purchaseErrorText(e)); }
   };
   const deleteAccount = async () => {
     try {

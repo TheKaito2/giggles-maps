@@ -2,7 +2,7 @@
 // written to the database. Everything here is made up for showing the app off; ids start with "demo-" (people) or are
 // negative numbers (feed items, comments) so they can never collide with real rows.
 import type { AvatarLook } from "../app/avatar/parts";
-import type { Look } from "../lib/api";
+import type { Look, Who } from "../lib/api";
 
 export interface DemoPerson {
   id: string;              // "demo-01" .. "demo-40"
@@ -27,3 +27,6 @@ export function seeded(seed: number): () => number {
   let s = (seed * 2654435761) >>> 0 || 1;
   return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
 }
+
+/** How a pretend person appears next to a post, review or comment. */
+export const who = (p: DemoPerson): Who => ({ id: p.id, nickname: p.nickname, colour: p.colour, avatar: p.avatar, level: p.level });

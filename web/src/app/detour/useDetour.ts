@@ -1,13 +1,13 @@
 import { myLocation } from "../../lib/demoGps";
 import { useEffect, useRef, useState } from "react";
-import { ApiError } from "../../lib/supabase";
+import { ApiError, errCode } from "../../lib/supabase";
 import { isGuest, useUser } from "../../lib/auth";
 import { choosePlan, planRoute, type RoutePlan } from "../../lib/api";
-import { DEFAULT_PREFS, type Place, type Prefs, toRequest } from "../prefs";
+import { DEFAULT_PREFS, MAX_BUDGET, MAX_STOPS, type Place, type Prefs, toRequest } from "../prefs";
 
 // Detour flow, Google-Maps style: browse the map -> pick where to -> pick how much time (Quick, Relaxed and Day out
 // are planned in parallel; none is picked until you tap one) -> results you can edit (remove, swap or add stops).
-export type Stage = "browse" | "choose" | "results";
+type Stage = "browse" | "choose" | "results";
 export const PRESETS = [
   { id: "quick", label: "Quick", min: 20, blurb: "A quick sight and a 7-Eleven stop" },
   { id: "relaxed", label: "Relaxed", min: 45, blurb: "The best along the way" },
@@ -20,7 +20,7 @@ export type Gate = "sign_in_required" | "detour_limit" | "edit_limit";
 const GATES = new Set<string>(["sign_in_required", "detour_limit", "edit_limit"]);
 
 const errorText = (e: unknown) => {
-  const code = e instanceof ApiError ? e.code : "";
+  const code = errCode(e);
   return code === "routing_unavailable" ? "Couldn't find a road route. Try another way to travel, or retry in a moment."
     : code === "sign_in_required" ? "Sign in to plan detours."
     : code === "detour_limit" ? "That's today's 3 free detours."
@@ -65,7 +65,6 @@ export function useDetour(onError: (m: string) => void) {
   });
 
   const budgetOf = (id: PresetId) => id === "custom" ? prefs.budget : PRESETS.find((p) => p.id === id)!.min;
-  const MAX_BUDGET = 240;
 
   const planPreset = (k: PresetId, id: number) => {
     if (!origin || !dest) return;
@@ -129,7 +128,7 @@ export function useDetour(onError: (m: string) => void) {
       // auto: the server's own pick is the base (response.budget_min already includes the current bump)
       const budget = base === "auto" ? (extra ? Math.min(MAX_BUDGET, response.budget_min - bump + extra) : "auto") : Math.min(MAX_BUDGET, base + extra);
       const r = await planRoute({ ...toRequest({ ...prefs, budget }, origin.point, dest.point),
-        must_include: [...new Set([...prefs.picks.map((p) => p.id), ...keep])].slice(0, 6), exclude: out.slice(-30), theme });
+        must_include: [...new Set([...prefs.picks.map((p) => p.id), ...keep])].slice(0, MAX_STOPS), exclude: out.slice(-30), theme });
       if (id !== edit.current) return;
       // the estimate said it fits but the real road time didn't: give it 15 more minutes (twice at most)
       const unfit = r.plans?.find((p) => p.id === theme)?.unfit_required ?? r.unfit_required ?? [];
@@ -144,7 +143,6 @@ export function useDetour(onError: (m: string) => void) {
   // one edit at a time: the next one builds on its result
   const removeStop = (stop: number) => { if (editing) return; setHidden((h) => [...h, stop]); return replan(ids().filter((x) => x !== stop), [...exclude, stop]); };
   // swap: keep the others, rule this one out, and let the planner pick its best replacement
-  const swapStop = removeStop;
   // adding means adding: stretch the time (to the next 15 min) when the place wouldn't fit what's left
   const addStop = (place: number, extraMin: number) => {
     if (editing) return;
@@ -155,7 +153,7 @@ export function useDetour(onError: (m: string) => void) {
 
   return {
     stage, setStage, origin, setOrigin, dest, setDest, prefs, set, results, preset, setPreset: choosePreset, choice, setChoice, plan, response,
-    editing, locating, bump, hidden, retry, notify: onError, gate, setGate, replanAll: () => setAgain((n) => n + 1), goTo, close, pickCustom, budgetOf, removeStop, swapStop, addStop,
+    editing, locating, bump, hidden, retry, notify: onError, gate, setGate, replanAll: () => setAgain((n) => n + 1), goTo, close, pickCustom, budgetOf, removeStop, addStop,
     swap: () => { if (origin && dest) { setOrigin(dest); setDest(origin); } },
   };
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { UserPlus } from "lucide-react";
-import { ApiError } from "../../lib/supabase";
+import { errCode } from "../../lib/supabase";
 import { addFriend, answerFriend, type Card, getSocial, type Profile, SITE, type Social } from "../../lib/api";
 import Avatar from "./Avatar";
 import QrLink from "./QrLink";
@@ -12,7 +12,7 @@ const ADD_TEXT: Record<string, string> = {
   nickname_required: "Pick a name first, so they know who's asking.",
 };
 
-export function Person({ c, children, onOpen }: { c: Card; children?: React.ReactNode; onOpen?: () => void }) {
+function Person({ c, children, onOpen }: { c: Card; children?: React.ReactNode; onOpen?: () => void }) {
   const body = (<>
     <Avatar name={c.nickname} colour={c.colour} avatar={c.avatar} size={44} />
     <span className="person-main">
@@ -40,7 +40,7 @@ export default function FriendsSection({ profile, onOpen }: { profile: Profile |
   const add = async () => {
     setMsg("");
     try { setMsg((await addFriend(code)) === "friends" ? "You're friends now." : "Request sent. They'll see it next time they open the app."); setCode(""); load(); }
-    catch (e) { setMsg(ADD_TEXT[e instanceof ApiError ? e.code : ""] ?? "Couldn't add that code. Try again."); }
+    catch (e) { setMsg(ADD_TEXT[errCode(e)] ?? "Couldn't add that code. Try again."); }
   };
 
   return (
@@ -63,8 +63,8 @@ export default function FriendsSection({ profile, onOpen }: { profile: Profile |
       {!!social?.incoming.length && <><h4 className="eyebrow">Wants to be friends</h4><ul className="people">
         {social.incoming.map((c) => <Person key={c.id} c={c}>
           <span className="row">
-            <button type="button" className="btn small" onClick={() => answerFriend(c.id, true).then(load)}>Accept</button>
-            <button type="button" className="link" onClick={() => answerFriend(c.id, false).then(load)}>Decline</button>
+            <button type="button" className="btn small" onClick={() => answerFriend(c.id, true).then(load).catch(() => setMsg("Couldn't answer that request. Try again."))}>Accept</button>
+            <button type="button" className="link" onClick={() => answerFriend(c.id, false).then(load).catch(() => setMsg("Couldn't answer that request. Try again."))}>Decline</button>
           </span>
         </Person>)}
       </ul></>}

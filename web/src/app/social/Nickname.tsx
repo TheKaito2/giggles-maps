@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ApiError } from "../../lib/supabase";
+import { errCode } from "../../lib/supabase";
 import { COLOURS, setMe } from "../../lib/api";
 import Avatar from "./Avatar";
 
@@ -13,7 +13,7 @@ export default function Nickname({ current, colour: initialColour, onDone, onLat
   const save = async () => {
     setMsg("");
     try { await setMe({ nickname: name, colour }); onDone(); }
-    catch (e) { setMsg(e instanceof ApiError && e.code === "bad_nickname" ? "Use 2 to 20 letters or numbers." : "Couldn't save. Try again."); }
+    catch (e) { setMsg(errCode(e) === "bad_nickname" ? "Use 2 to 20 letters or numbers." : "Couldn't save. Try again."); }
   };
   return (
     <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="nick-title">

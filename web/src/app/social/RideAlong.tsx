@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Car, Download, LogOut, Share2 } from "lucide-react";
-import { ApiError } from "../../lib/supabase";
+import { errCode } from "../../lib/supabase";
 import { getTrip, joinTrip, type LatLng, leaveTrip, photoUrls, type Profile, SITE, startTrip, type Trip, tripPing } from "../../lib/api";
 import ShareSheet from "../share/ShareSheet";
 import Avatar from "./Avatar";
@@ -8,11 +8,11 @@ import Album from "../passport/Album";
 import QrLink from "./QrLink";
 import { Spinner } from "../Skeleton";
 import Info from "../Info";
-import { shareFiles } from "../../lib/native";
+import { saveBlob, shareFiles } from "../../lib/native";
+import { clockTime } from "../../lib/format";
 
 const POLL_MS = 15_000;
 const PING_MS = 30_000;
-const hhmm = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
 /**
  * The running trip: reloads every 15 s while one is live and sends your position at most every 30 s.
@@ -39,9 +39,9 @@ export function useTrip(here: LatLng | null, startWatching: () => void, refreshK
   const run = (p: Promise<Trip | null | void>) => {
     setError("");
     return p.then((t) => { setTrip(t ?? null); pinged.current = 0; if (t) startWatching(); })
-      .catch((e) => setError(e instanceof ApiError && e.code === "trip_not_found" ? "That trip has ended or the code is wrong."
-        : e instanceof ApiError && e.code === "trip_full" ? "That trip is full (20 people)."
-        : e instanceof ApiError && e.code === "bad_name" ? "Trip names can't contain < or >." : "Couldn't do that. Try again."));
+      .catch((e) => setError(errCode(e) === "trip_not_found" ? "That trip has ended or the code is wrong."
+        : errCode(e) === "trip_full" ? "That trip is full (20 people)."
+        : errCode(e) === "bad_name" ? "Trip names can't contain < or >." : "Couldn't do that. Try again."));
   };
   return {
     trip, error,
@@ -50,7 +50,7 @@ export function useTrip(here: LatLng | null, startWatching: () => void, refreshK
     leave: () => run(leaveTrip().then(() => null)),
   };
 }
-export type TripState = ReturnType<typeof useTrip>;
+type TripState = ReturnType<typeof useTrip>;
 
 export default function RideAlong({ trip: t, profile }: { trip: TripState; profile: Profile | null }) {
   const [name, setName] = useState("");
@@ -92,8 +92,7 @@ export default function RideAlong({ trip: t, profile }: { trip: TripState; profi
         return new File([b], `trip-${trip.code}-${i + 1}.jpg`, { type: b.type || "image/jpeg" });
       }))).filter((f): f is File => !!f);
       const download = async () => { for (const f of files) {   // one download each where the browser can't share files
-        const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click();
-        await new Promise((r) => setTimeout(r, 300)); URL.revokeObjectURL(a.href);
+        saveBlob(f, f.name); await new Promise((r) => setTimeout(r, 300));
       } };
       if (!await shareFiles(files)) await download();
     } catch { setAlbumMsg("Couldn't save the photos. Try again."); } finally { setSaving(false); }
@@ -108,7 +107,7 @@ export default function RideAlong({ trip: t, profile }: { trip: TripState; profi
       <section className="me-card glass">
         <div className="row between">
           <span className="person-main"><b>{trip.name ?? "Ride along"}</b>
-            <span className="fine">Live until {hhmm(trip.ends_at)} · code <b className="num">{trip.code}</b></span></span>
+            <span className="fine">Live until {clockTime(trip.ends_at)} · code <b className="num">{trip.code}</b></span></span>
           <button type="button" className="btn ghost" onClick={() => { if (confirm(trip.owner ? "End the trip for everyone?" : "Leave this trip?")) t.leave(); }}>
             <LogOut size={15} aria-hidden /> {trip.owner ? "End trip" : "Leave"}</button>
         </div>

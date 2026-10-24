@@ -9,7 +9,7 @@ const KINDS: { id: Kind | null; label: string }[] = [
   { id: null, label: "All" }, { id: "food", label: "Food" }, { id: "cafes", label: "Cafés" },
   { id: "culture", label: "Culture" }, { id: "nature", label: "Nature" }, { id: "shopping", label: "Shopping" },
 ];
-export const MAX_PICKS = 3;
+const MAX_PICKS = 3;
 
 /** "Places you want to visit": search our places by name or kind near the start, and add up to 3 as stops. */
 export default function ExplorePlaces({ near, picks, setPicks }: { near: LatLng | null; picks: Pick[]; setPicks: (p: Pick[]) => void }) {

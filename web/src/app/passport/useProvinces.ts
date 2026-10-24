@@ -19,6 +19,11 @@ export function useProvinces() {
 }
 
 /** Outer rings of a province (all its islands), as [lng, lat] lists. */
+/** Thailand's bounding box and the 260 x 460 frame both maps draw it in (plain equirectangular: fine at this size). */
+export const THAILAND = { lng0: 97.3, lng1: 105.7, lat0: 5.5, lat1: 20.6, w: 260, h: 460 } as const;
+/** The Thai province name without its "จังหวัด" (province) prefix. */
+export const thName = (f: ProvinceFeature) => f.properties.name_th.replace(/^จังหวัด/, "");
+
 export const ringsOf = (g: ProvinceFeature["geometry"]): Ring[] =>
   ((g.type === "Polygon" ? [g.coordinates] : g.coordinates) as Ring[][]).map((poly) => poly[0]);
 

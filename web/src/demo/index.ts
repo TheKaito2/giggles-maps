@@ -2,17 +2,15 @@
 // on (dynamic import), so real users never get it. Nothing is written to the database: reactions, comments and nudges on
 // pretend people stay on this device.
 import { type Board, type BoardMetric, type BoardPeriod, type BoardRow, type BoardScope, type Card, type Champion, type Comment,
-  type FeedItem, type FriendPassport, type FriendQuest, mapPlaces, type PartnerTier, type PlacePage, type ProfilePage, type Social, type Who } from "../lib/api";
+  type FeedItem, type FriendPassport, type FriendQuest, mapPlaces, type PartnerTier, type PlacePage, type ProfilePage, type Social } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { demoAt } from "../lib/demoGps";
 import { DEMO_INCOMING, DEMO_PEOPLE, demoChampions } from "./people";
 import { demoReviews } from "./reviews";
 import { demoComments, demoFeed, type DemoPlace } from "./feed";
-import type { DemoPerson } from "./types";
+import { type DemoPerson, who } from "./types";
 
-export const isDemoId = (id: string) => id.startsWith("demo-");
 const byId = new Map(DEMO_PEOPLE.map((p) => [p.id, p]));
-const who = (p: DemoPerson): Who => ({ id: p.id, nickname: p.nickname, colour: p.colour, avatar: p.avatar, level: p.level });
 const card = (p: DemoPerson): Card => ({ id: p.id, nickname: p.nickname, colour: p.colour, xp: p.xp, level: p.level, stamps: p.stamps,
   provinces: p.provinces, look: p.look, title: p.title, avatar: p.avatar, joined: p.joined });
 const count = (p: DemoPerson, metric: Exclude<BoardMetric, "xp">) => metric === "provinces" ? p.provinces : p[metric];
@@ -88,7 +86,6 @@ export function demoPassport(id: string): FriendPassport | null {
   const p = byId.get(id);
   return p ? { card: card(p), stamps: [], photos: [], provinces: [] } : null;
 }
-export const demoWho = (id: string) => { const p = byId.get(id); return p ? who(p) : null; };
 
 // Friends Quest with a pretend friend: remembered on this device for the week (Monday, Bangkok time)
 const FQ = "gm-demo-friend-quest";

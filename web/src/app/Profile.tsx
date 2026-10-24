@@ -2,7 +2,7 @@ import SiamSi from "./fortune/SiamSi";
 import { type ReactNode, useEffect, useState } from "react";
 import { ArrowLeft, Award, Backpack, BookOpen, Camera, Crown, Check, Map as MapIcon, NotebookPen, Pencil, Plus, Settings, Share2, ShoppingBag, Sparkles, Stamp,
   UserMinus, X, Zap } from "lucide-react";
-import { ApiError } from "../lib/supabase";
+import { errCode } from "../lib/supabase";
 import { getFriendPassport, getPassport, getProfilePage, levelProgress, nudge, type PassportPhoto, type PassportStamp, type Pin, type Profile,
   type ProfilePage, removeFriend, setShowcase, type TripMemory } from "../lib/api";
 import { useUser } from "../lib/auth";
@@ -17,15 +17,15 @@ import ShareSheet from "./share/ShareSheet";
 import SettingsSheet from "./Settings";
 import SavedLists from "./SavedLists";
 import { SkelProfile } from "./Skeleton";
+import { STAMP_TIER } from "../lib/format";
 
 const month = (iso?: string | null) => iso ? new Date(iso).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "";
-const TIER = { 3: "Landmark", 2: "Worth a visit", 1: "Everyday" } as const;
 type Sheet = "book" | "log" | "settings" | "pins" | "share" | null;
 
 function PinView({ p }: { p: Pin }) {
   return p.type === "badge"
     ? <><BadgeIcon b={p} size={54} /><b>{p.name_en}</b><span className="fine">Tier {p.tier}</span></>
-    : <><span className={`entry tier-${p.tier}`}><span className="entry-tier">{TIER[p.tier].toUpperCase()}</span></span><b>{p.name}</b>
+    : <><span className={`entry tier-${p.tier}`}><span className="entry-tier">{STAMP_TIER[p.tier].toUpperCase()}</span></span><b>{p.name}</b>
         <span className="fine">{p.province ?? new Date(p.earned_at).getFullYear()}</span></>;
 }
 
@@ -61,7 +61,7 @@ function PinPicker({ page, stamps, onClose, onSaved }: { page: ProfilePage; stam
           : <p className="fine">Earn a badge first: stamps, photos and quests all count.</p>}
         <h4 className="eyebrow">Stamps</h4>
         {best.length ? <ul className="pin-grid">{best.map((s) => opt(`stamp:${s.place_id}`,
-          <><span className={`entry tier-${s.tier}`}><span className="entry-tier">{TIER[s.tier].toUpperCase()}</span></span><b>{s.name}</b></>))}</ul>
+          <><span className={`entry tier-${s.tier}`}><span className="entry-tier">{STAMP_TIER[s.tier].toUpperCase()}</span></span><b>{s.name}</b></>))}</ul>
           : <p className="fine">Check in somewhere to collect stamps.</p>}
         {msg && <p className="fine" role="alert">{msg}</p>}
         <button type="button" className="btn" onClick={save}><Check size={16} aria-hidden /> Save showcase</button>
@@ -89,7 +89,7 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
   useEffect(() => { (self ? getPassport() : getFriendPassport(id)).then((b) => setBook({ stamps: b.stamps, photos: b.photos, trips: "trips" in b ? b.trips : undefined })).catch(() => undefined); }, [id, self, refreshKey]);
 
   const doNudge = () => nudge(id).then(() => setMsg(`Nudged ${page?.nickname}. They'll see it in their feed.`))
-    .catch((e) => setMsg(e instanceof ApiError && e.code === "already_nudged" ? "You nudged them today already." : "Couldn't nudge. Try again."));
+    .catch((e) => setMsg(errCode(e) === "already_nudged" ? "You nudged them today already." : "Couldn't nudge. Try again."));
 
   if (!page) return <div className="page-col">{onBack && <button type="button" className="link" onClick={onBack}><ArrowLeft size={16} /> Back</button>}{msg ? <p className="fine">{msg}</p> : <SkelProfile self={self} theme={self ? profile?.look?.theme : undefined} />}</div>;
   const look = self ? profile?.look ?? page.look : page.look;
@@ -103,7 +103,7 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
     <div className="page-col stack profile">
       {onBack && <button type="button" className="link back-link" onClick={onBack}><ArrowLeft size={16} aria-hidden /> Back</button>}
       <header className={`profile-hero cover-bg theme-${look.theme ?? "classic"}`}>
-        <div className="hero-map" aria-hidden><ProvinceMap counts={counts} selected={null} onSelect={() => undefined} /></div>
+        <div className="hero-map" aria-hidden><ProvinceMap counts={counts} /></div>
         {self && <div className="hero-tools">
           <button type="button" className="icon-btn" onClick={() => setSheet("share")} disabled={!book} aria-label="Share your progress"><Share2 size={18} /></button>
           <button type="button" className="icon-btn" onClick={() => setSheet("settings")} aria-label="Settings and account"><Settings size={18} /></button>

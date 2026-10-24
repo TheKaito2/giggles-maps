@@ -1,3 +1,4 @@
+import type { Rarity } from "./api";
 // Little sound effects for the chest and Siam Si ceremonies, synthesized with Web Audio (no files to download).
 // Off when the Sound switch in Settings is off. The audio context starts on the first tap that plays something.
 const KEY = "gm-sound";
@@ -74,7 +75,7 @@ export function stickDrop() {
 // pentatonic, a nod to Thai scales; higher rarities climb further
 const SCALE = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51];
 /** The fortune card turns over: a whoosh, then a chime that grows with the rarity. */
-export function reveal(rarity: "common" | "rare" | "epic" | "legendary") {
+export function reveal(rarity: Rarity) {
   const a = audio();
   if (!a) return;
   const t = a.currentTime;

@@ -11,6 +11,10 @@ export interface Progress {
 }
 
 const M_PER_DEG = 111_320;
+
+/** Metres between two points (equirectangular: fine at city distances). */
+export const metres = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) =>
+  Math.hypot((b.lng - a.lng) * Math.cos(((a.lat + b.lat) / 2) * Math.PI / 180), b.lat - a.lat) * M_PER_DEG;
 /** Cumulative metres along the shape (equirectangular: fine for routes in one country). */
 export function cumulative(shape: [number, number][]): number[] {
   const out = [0];

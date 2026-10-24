@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import { ApiError } from "../lib/supabase";
+import { errCode } from "../lib/supabase";
 import { nominate, suggestEdit, uploadSelfie } from "../lib/api";
 import { KINDS } from "./kinds";
 
@@ -27,15 +27,15 @@ export default function AddPlace({ onClose }: { onClose: () => void }) {
       if (local) {
         uploadSelfie(photo!).then((path) => nominate({ name: name.trim(), kind, otop: kind === "otop", community: kind === "community_enterprise", photo: path, at: here }))
           .then(() => setMsg("Nominated! When two other travellers confirm it on the spot, it goes on the map and you get +100 XP."))
-          .catch((e) => setMsg(e instanceof ApiError && e.code === "sign_in_required" ? "Sign in on your Profile first: nominations need a real account."
-            : e instanceof ApiError && e.code === "already_listed" ? "That shop is already listed or nominated here."
-            : e instanceof ApiError && e.code === "too_many_nominations" ? "That's 5 nominations today. Try again tomorrow." : "Couldn't send that. Try again."))
+          .catch((e) => setMsg(errCode(e) === "sign_in_required" ? "Sign in on your Profile first: nominations need a real account."
+            : errCode(e) === "already_listed" ? "That shop is already listed or nominated here."
+            : errCode(e) === "too_many_nominations" ? "That's 5 nominations today. Try again tomorrow." : "Couldn't send that. Try again."))
           .finally(() => setBusy(false));
         return;
       }
       suggestEdit(null, { name: name.trim(), kind, ...here, ...(hours.trim() ? { opening_hours: hours.trim() } : {}), ...(phone.trim() ? { phone: phone.trim() } : {}) }, here)
         .then(() => setMsg("Thanks! We'll check it and add it to the map. +50 XP when it's approved."))
-        .catch((e) => setMsg(e instanceof ApiError && e.code === "too_many_edits" ? "That's a lot of suggestions today. Try again tomorrow." : "Couldn't send that. Try again."))
+        .catch((e) => setMsg(errCode(e) === "too_many_edits" ? "That's a lot of suggestions today. Try again tomorrow." : "Couldn't send that. Try again."))
         .finally(() => setBusy(false));
     }, () => { setMsg("We need your location: add the place while you're standing at it."); setBusy(false); },
     { enableHighAccuracy: true, timeout: 15000 });

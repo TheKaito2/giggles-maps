@@ -19,6 +19,12 @@ function ResultIcon({ p }: { p: FoundPlace }) {
 
 // Start/destination field, Google-style: our places AND addresses (Photon, OpenStreetMap search) preview as you type.
 // Photon asks for fair use: 3+ characters, a 300 ms pause, and the previous request is cancelled.
+/** "17.16, 104.14" typed into the search box. */
+const parseLatLng = (text: string) => {
+  const m = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/.exec(text);
+  return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null;
+};
+
 export default function PlaceSearch({ label, value, pin, near, onPick, actions, footer }: {
   label: string; value: string; pin: ReactNode; near?: LatLng | null;
   onPick: (point: LatLng, name: string) => void; actions?: ReactNode;
@@ -40,7 +46,7 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions, 
   useEffect(() => {
     const text = query.trim();
     if (!open || text.length < 2 || text === value) { request.current++; setPlaces([]); setAddresses([]); return; }   // drop late replies
-    const coords = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/.exec(text);
+    const coords = parseLatLng(text);
     if (coords) { setPlaces([]); setAddresses([]); return; }
     const id = ++request.current;
     const key = `${text.toLowerCase()}|${near?.lat?.toFixed(2)},${near?.lng?.toFixed(2)}`;
@@ -69,9 +75,9 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions, 
     setQuery(p.name); setPlaces([]); setAddresses([]); setMessage(""); setOpen(false);
   };
   const enter = () => {
-    const coords = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/.exec(query.trim());
+    const coords = parseLatLng(query.trim());
     if (coords) {
-      const lat = Number(coords[1]), lng = Number(coords[2]);
+      const { lat, lng } = coords;
       if (lat < 5 || lat > 21 || lng < 97 || lng > 106) { setMessage("Choose a point inside Thailand."); return; }
       pick({ lat, lng, name: `${lat.toFixed(4)}, ${lng.toFixed(4)}`, source: "photon" }); return;
     }

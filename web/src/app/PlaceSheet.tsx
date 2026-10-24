@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bookmark, BookmarkCheck, CalendarCheck, Camera, Clock, Crown, ExternalLink, Flag, Globe, MapPin, Navigation, Pencil, Phone, Share2, Star, X } from "lucide-react";
-import { ApiError } from "../lib/supabase";
+import { errCode } from "../lib/supabase";
 import { createList, deleteReview, getMyLists, getPlaceExtras, getPlacePage, type PlaceExtras, type PlacePage, photoUrls, reportReview,
   type PartnerTier, placesTiers, type SavedList, savePlace, shopPhotoUrl, SITE, suggestEdit, TIER_NAME, writeReview } from "../lib/api";
 import BookingSheet from "./BookingSheet";
@@ -9,7 +9,7 @@ import { openNow } from "./hours";
 import Avatar from "./social/Avatar";
 import { SkelLines, SkelPlace } from "./Skeleton";
 import Info from "./Info";
-import { shareLink } from "../lib/native";
+import { shareOrCopy } from "../lib/native";
 
 const ago = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
@@ -80,30 +80,34 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState("");
   const [msg, setMsg] = useState("");
+  // a late answer for the previous pin must not land on this one
+  const shown = useRef(id);
+  shown.current = id;
   const load = () => getPlacePage(id).then((p) => {
+    if (shown.current !== id) return;
     setPage(p);
     const mine = p?.reviews.find((r) => r.mine);
     if (mine) { setRating(mine.rating); setBody(mine.body ?? ""); }
   }).catch(() => setMsg("Couldn't load this place."));
   useEffect(() => {
     setPage(null); setExtras(null); setMenu(null); setMsg(""); setRating(0); setBody(""); load();
-    getPlaceExtras(id).then(setExtras).catch(() => undefined);
-    setTier(null); placesTiers([id]).then((m) => setTier(m.get(id) ?? null)).catch(() => undefined);
+    getPlaceExtras(id).then((x) => { if (shown.current === id) setExtras(x); }).catch(() => undefined);
+    setTier(null); placesTiers([id]).then((m) => { if (shown.current === id) setTier(m.get(id) ?? null); }).catch(() => undefined);
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // signed photo links: fetched when the photos change, not on every reload of the page (a saved review, a list toggle)
+  const photoKey = (page?.photos ?? []).map((p) => p.path).filter(Boolean).join("|");
   useEffect(() => {
-    const paths = (page?.photos ?? []).map((p) => p.path).filter((p): p is string => !!p);
-    if (paths.length) photoUrls(paths).then(setUrls).catch(() => undefined);
-  }, [page]);
+    if (photoKey) photoUrls(photoKey.split("|")).then(setUrls).catch(() => undefined);
+  }, [photoKey]);
 
   if (!page) return <aside className="place-sheet glass" aria-busy="true"><button type="button" className="icon-btn sheet-close" onClick={onClose} aria-label="Close"><X size={18} /></button>{msg ? <p className="fine">{msg}</p> : <SkelPlace />}</aside>;
   const k = kindOf(page.kind, page.category);
   const open = openNow(page.opening_hours);
   const share = async () => {
-    const url = `${SITE}/app/?place=${page.id}`;
-    if (!await shareLink(page.name, url)) navigator.clipboard?.writeText(url).then(() => setMsg("Link copied."));
+    if (await shareOrCopy(page.name, `${SITE}/app/?place=${page.id}`) === "copied") setMsg("Link copied.");
   };
   const submitReview = () => writeReview(page.id, rating, body).then(() => { setMsg("Review saved."); load(); })
-    .catch((e) => setMsg(e instanceof ApiError && e.code === "check_in_first" ? "Check in here first: reviews are from verified visits only." : "Couldn't save the review."));
+    .catch((e) => setMsg(errCode(e) === "check_in_first" ? "Check in here first: reviews are from verified visits only." : "Couldn't save the review."));
   const peak = page.busy ? Math.max(...page.busy, 1) : 1;
   const hourNow = new Date().getHours();
 

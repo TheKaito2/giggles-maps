@@ -1,8 +1,7 @@
 import { useId } from "react";
-import { type ProvinceFeature, type Region, regionOf, ringsOf } from "./useProvinces";
+import { type ProvinceFeature, type Region, regionOf, ringsOf, thName } from "./useProvinces";
+import { stampDate } from "../../lib/format";
 
-// provinces with illustrated art in /stamps/<iso>.webp replace the drawn stamp (none yet)
-const ART = new Set<string>();
 const SHAPES = ["circle", "rect", "octagon", "oval", "scallop", "hexagon", "postmark", "ticket"] as const;
 type Shape = (typeof SHAPES)[number];
 const ARC = new Set<Shape>(["circle", "scallop", "hexagon", "postmark"]);   // names curve along the ring
@@ -32,7 +31,7 @@ function drawOutline(f: ProvinceFeature, x: number, y: number, w: number, h: num
 
 /** A small line drawing for each region, set into the date band: a temple spire, waves, a sticky-rice basket,
  *  mountains, a mountain over a river, a palm. Drawn on a 24 x 24 grid. */
-export const MOTIF: Record<Region["id"], string> = {
+const MOTIF: Record<Region["id"], string> = {
   central: "M12 2 L13.6 8 L15.6 8 L16.6 13 L18.6 13 L20 22 L4 22 L5.4 13 L7.4 13 L8.4 8 L10.4 8 Z",
   east: "M1 11 Q5 5 9 11 T17 11 T25 11 M1 18 Q5 12 9 18 T17 18 T25 18",
   northeast: "M6 7 L18 7 M7 7 L8 21 L16 21 L17 7 M9 7 Q12 2 15 7 M8 12 L16 12 M8.4 16.5 L15.6 16.5",
@@ -43,7 +42,6 @@ export const MOTIF: Record<Region["id"], string> = {
 
 // mono glyphs are ~0.6 em wide: the size that fits `text` (with its letter spacing) into `room` units, at most `max`
 const fit = (text: string, max: number, room: number, spacing = 0) => Math.min(max, (room / Math.max(text.length, 1) - spacing) / 0.62);
-const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
 const pt = (r: number, a: number) => `${(100 + r * Math.cos(a)).toFixed(1)},${(100 + r * Math.sin(a)).toFixed(1)}`;
 
 function Border({ shape, ink }: { shape: Shape; ink: string }) {
@@ -83,17 +81,13 @@ export default function ProvinceStamp({ f, earnedAt, size = 120, tilt = true, fr
 }) {
   const uid = useId().replace(/:/g, "");
   const { id, iso, name_en } = f.properties;
-  const name_th = f.properties.name_th.replace(/^จังหวัด/, "");
+  const name_th = thName(f);
   const region = regionOf(iso);
   const locked = !earnedAt;
   const ink = locked ? "#b9b2a0" : region.ink;
   const shape = SHAPES[id % SHAPES.length];
   const rot = tilt ? ((id * 37) % 17) - 8 : 0;
-  const label = locked ? `${name_en} stamp, not collected yet` : `${name_en} stamp, entered ${fmt(earnedAt!)}`;
-
-  if (!locked && ART.has(iso)) {
-    return <img src={`/stamps/${iso}.webp`} width={size} height={size} alt={label} style={{ rotate: `${rot}deg` }} className="province-stamp" />;
-  }
+  const label = locked ? `${name_en} stamp, not collected yet` : `${name_en} stamp, entered ${stampDate(earnedAt!)}`;
 
   const arc = ARC.has(shape);
   const en = name_en.toUpperCase();
@@ -121,7 +115,7 @@ export default function ProvinceStamp({ f, earnedAt, size = 120, tilt = true, fr
         <rect x="30" y="118" width="140" height="20" rx="2" fill={ink} stroke="none" />
         <path d={MOTIF[region.id]} transform="translate(34 120.5) scale(.62)" fill="none" stroke="#fdf8ec" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
         <text x="107" y="132" textAnchor="middle" fontSize="10" fontWeight="700" fill="#fdf8ec" stroke="none" fontFamily="var(--font-data)" letterSpacing=".4"
-          textLength="112" lengthAdjust="spacingAndGlyphs">ENTRY · {fmt(earnedAt!)}</text>
+          textLength="112" lengthAdjust="spacingAndGlyphs">ENTRY · {stampDate(earnedAt!)}</text>
       </g>
     )}
   </>;

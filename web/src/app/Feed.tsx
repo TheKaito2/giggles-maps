@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Award, Bell, MessageCircle, Share2, Trash2, Trophy, Zap } from "lucide-react";
-import { ApiError } from "../lib/supabase";
+import { errCode } from "../lib/supabase";
 import { addComment, type Card, type Comment, deleteComment, type FeedItem, getComments, getFeed, getSocial, getSpotlight, photoUrls,
-  type Profile, react, type Reaction, type Spotlight } from "../lib/api";
+  type LatLng, type Profile, react, type Reaction, type Spotlight } from "../lib/api";
 import Avatar from "./social/Avatar";
 import ProvinceStamp from "./passport/ProvinceStamp";
 import { useProvinces } from "./passport/useProvinces";
@@ -10,9 +10,10 @@ import { BadgeIcon, TIER_COLOURS } from "./Badges";
 import { type FeedGroup, groupFeed } from "./feedGroups";
 import ShareSheet, { type CardOption } from "./share/ShareSheet";
 import { SkelPosts, SkelRows } from "./Skeleton";
+import { SAKON } from "../lib/demoGps";
+import { ROMAN, STAMP_TIER } from "../lib/format";
 
 const EMOJI: Record<Reaction, string> = { heart: "❤️", fire: "🔥", clap: "👏", wow: "😍" };
-const TIER = { 3: "Landmark", 2: "Worth a visit", 1: "Everyday" } as const;
 const WHAT: Record<string, string> = { stamp: "stamp", province: "new province", level: "level-up", challenge: "quest", badge: "badge", fortune: "Siam Si stick" };
 const ago = (iso: string) => {
   const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
@@ -32,7 +33,7 @@ function line(g: FeedGroup): string {
     case "province": return `${name} entered ${it.province?.name_en ?? "a new province"}`;
     case "level": return `${name} reached level ${d.level}`;
     case "challenge": return `${name} finished “${d.title}”`;
-    case "badge": return `${name} earned ${d.name_en} ${["", "I", "II", "III", "IV", "V"][Number(d.tier)]}`;
+    case "badge": return `${name} earned ${d.name_en} ${ROMAN[Number(d.tier)]}`;
     case "fortune": return `${name} drew a ${d.rarity === "legendary" ? "Legendary" : "Epic"} Siam Si stick${d.item ? `: ${d.item}` : ""}`;
     case "nudge": return it.mine ? `You nudged ${it.to?.nickname}` : `${it.who.nickname} nudged you: time for a stamp!`;
     case "award": return `${name} ${d.scope === "friends" ? "led their friends" : `finished #${d.rank}`} last week · +${d.coins} coins`;
@@ -74,7 +75,7 @@ function Comments({ it, onCount }: { it: FeedItem; onCount: (n: number) => void 
       const c = await addComment(it.id, text);
       setList((l) => [...(l ?? []), c]); setText("");
     } catch (e) {
-      const code = e instanceof ApiError ? e.message : "";
+      const code = errCode(e);
       setMsg(code === "comment_limit" ? "That's 30 comments today, the daily most." : "Couldn't post that. Try again.");
     } finally { setBusy(false); }
   };
@@ -126,7 +127,7 @@ function Post({ g, urls, onReact, onComments, onShare }: {
           <ul className="place-chips">{g.items.map((x) => x.place && <li key={x.id} className={`tier-${x.place.tier}`}>{x.place.name}</li>)}</ul>
         </> : <>
           {it.kind === "province" && f && <ProvinceStamp f={f} earnedAt={it.at} size={170} fresh={Date.now() - Date.parse(it.at) < 864e5} />}
-          {it.kind === "stamp" && it.place && <div className={`entry big tier-${it.place.tier}`}><span className="entry-tier">{TIER[it.place.tier].toUpperCase()}</span>
+          {it.kind === "stamp" && it.place && <div className={`entry big tier-${it.place.tier}`}><span className="entry-tier">{STAMP_TIER[it.place.tier].toUpperCase()}</span>
             <b>{it.place.name}</b>{it.place.name_th && <span>{it.place.name_th}</span>}</div>}
           {it.kind === "stamp" && url && <figure className="feed-photo"><img src={url} alt={it.caption ?? `Photo at ${it.place?.name}`} loading="lazy" />
             {it.caption && <figcaption>{it.caption}</figcaption>}</figure>}
@@ -163,13 +164,14 @@ export default function Feed({ profile, refreshKey, openFriend, goProfile, openP
   const [spot, setSpot] = useState<Spotlight | null>(null);
   // this week's local spotlight: where you are if location is already allowed, else Sakon Nakhon
   useEffect(() => {
-    const get = (lat: number, lng: number) => getSpotlight({ lat, lng }).then(setSpot).catch(() => undefined);
+    const get = (at: LatLng) => getSpotlight(at).then(setSpot).catch(() => undefined);
     navigator.permissions?.query({ name: "geolocation" }).then((st) => st.state === "granted"
-      ? navigator.geolocation.getCurrentPosition((p) => get(p.coords.latitude, p.coords.longitude), () => get(17.163, 104.149))
-      : get(17.163, 104.149)).catch(() => get(17.163, 104.149));
+      ? navigator.geolocation.getCurrentPosition((p) => get({ lat: p.coords.latitude, lng: p.coords.longitude }), () => get(SAKON))
+      : get(SAKON)).catch(() => get(SAKON));
   }, []);
   const [scope, setScope] = useState<"all" | "friends" | "me">("all");
   const [items, setItems] = useState<FeedItem[] | null>(null);
+  const groups = useMemo(() => groupFeed(items ?? []), [items]);   // not on every comment keystroke
   const [friends, setFriends] = useState<Card[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [sharing, setSharing] = useState<CardOption[] | null>(null);
@@ -216,7 +218,7 @@ export default function Feed({ profile, refreshKey, openFriend, goProfile, openP
           onClick={() => setScope(s)}>{s === "all" ? "All" : s === "friends" ? "Friends" : "Me"}</button>)}
       </div>
       {items === null ? <SkelPosts n={3} /> : items.length ? (
-        <ul className="feed">{groupFeed(items).map((g) => <Post key={g.key} g={g} urls={urls} onReact={(r) => onReact(g.items[0].id, r)}
+        <ul className="feed">{groups.map((g) => <Post key={g.key} g={g} urls={urls} onReact={(r) => onReact(g.items[0].id, r)}
           onComments={(n) => patch(g.items[0].id, (it) => ({ ...it, comments: n }))} onShare={setSharing} />)}</ul>
       ) : (
         <div className="empty glass">

@@ -1,7 +1,7 @@
 // Made-up demo-mode content: fake community posts and comments that exist only while demo mode is on.
 // Nothing here is saved, sent to the server, or shown to real users. Same people + places + now give the same feed.
-import type { Comment, FeedItem, Reaction, Who } from "../lib/api";
-import { type DemoPerson, seeded } from "./types";
+import type { Comment, FeedItem, Reaction } from "../lib/api";
+import { type DemoPerson, seeded, who } from "./types";
 
 export interface DemoPlace {
   id: number;
@@ -24,7 +24,6 @@ const pick = <T,>(r: Rand, xs: readonly T[]): T => xs[Math.floor(r() * xs.length
 /** Whole number from lo to hi, both included. */
 const int = (r: Rand, lo: number, hi: number): number => lo + Math.floor(r() * (hi - lo + 1));
 
-const who = (p: DemoPerson): Who => ({ id: p.id, nickname: p.nickname, colour: p.colour, avatar: p.avatar, level: p.level });
 const placeOf = (pl: DemoPlace) => ({ id: pl.id, name: pl.name, name_th: pl.name_th, category: pl.category, tier: pl.tier });
 
 const CAPTIONS = ["ร้านนี้อร่อยมาก!", "Best view all week", "มาครั้งแรก ประทับใจ", "Worth the detour", "Golden hour here", "ไม่ผิดหวังเลย"];

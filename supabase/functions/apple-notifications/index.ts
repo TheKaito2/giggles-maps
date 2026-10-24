@@ -1,10 +1,9 @@
-import { admin, json } from "../_shared/http.ts";
+import { admin, json, serve } from "../_shared/http.ts";
 import { MEMBERSHIP_PRODUCT, PLUS_PRODUCT, verifyNotification, verifyTransaction } from "../_shared/apple.ts";
 
 // App Store Server Notifications V2 (renewals, expiry, refunds). No user JWT (verify_jwt = false):
 // trust comes from Apple's signature on the payload. Point App Store Connect's server URL here.
-Deno.serve(async (req) => {
-  if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+serve(async (req) => {
   const body = await req.json().catch(() => null);
   if (typeof body?.signedPayload !== "string") return json({ error: "bad_payload" }, 400);
 

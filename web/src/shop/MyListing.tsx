@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ApiError } from "../lib/supabase";
+import { errCode } from "../lib/supabase";
 import { addOwnerPhoto, addShop, claimShop, deleteOwnerPhoto, deleteProduct, type FoundPlace, getMyPlaces, type OwnedPlace,
   saveProduct, searchPlaces, shopPhotoUrl, suggestEdit, updateMyPlace, uploadShopPhoto } from "../lib/api";
 import { KINDS } from "../app/kinds";
@@ -12,7 +12,7 @@ const ERR: Record<string, string> = {
   not_claimable: "Only shops can be claimed (not temples, parks or landmarks). Contact us if this is yours.",
   already_listed: "Your shop is already on the map: search for it above and claim it.",
 };
-const err = (e: unknown, fallback: string) => ERR[e instanceof ApiError ? e.code : ""] ?? fallback;
+const err = (e: unknown, fallback: string) => ERR[errCode(e)] ?? fallback;
 const here = () => new Promise<{ lat: number; lng: number }>((ok, fail) => navigator.geolocation.getCurrentPosition(
   (p) => ok({ lat: p.coords.latitude, lng: p.coords.longitude }), fail, { enableHighAccuracy: true, timeout: 15000 }));
 
@@ -65,7 +65,7 @@ function Listing({ p, onChange }: { p: OwnedPlace; onChange: () => void }) {
         {p.products.map((pr) => <li key={pr.id}>
           {pr.photo ? <img src={shopPhotoUrl(pr.photo)} alt={pr.name} /> : <div className="ph" />}
           <b>{pr.name}</b>{pr.price != null && <span className="num">฿{pr.price}</span>}
-          <button type="button" className="link" onClick={() => deleteProduct(p.id, pr.id).then(onChange)}>Remove</button>
+          <button type="button" className="link" onClick={() => deleteProduct(p.id, pr.id).then(onChange).catch(() => setMsg("Couldn't remove that. Try again."))}>Remove</button>
         </li>)}
       </ul>
       <form className="row" onSubmit={(e) => {
@@ -83,7 +83,7 @@ function Listing({ p, onChange }: { p: OwnedPlace; onChange: () => void }) {
 
       <h4>Photos</h4>
       <ul className="product-grid">{p.photos.map((ph) => <li key={ph.id}><img src={shopPhotoUrl(ph.url)} alt="" />
-        <button type="button" className="link" onClick={() => deleteOwnerPhoto(p.id, ph.id).then(onChange)}>Remove</button></li>)}</ul>
+        <button type="button" className="link" onClick={() => deleteOwnerPhoto(p.id, ph.id).then(onChange).catch(() => setMsg("Couldn't remove that. Try again."))}>Remove</button></li>)}</ul>
       <label className="btn soft small">Add a photo<input type="file" accept="image/*" hidden onChange={(e) => upload(e.target.files?.[0], (path) => addOwnerPhoto(p.id, path))} /></label>
       {msg && <p className="fine" role="status">{msg}</p>}
     </article>

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Share2, X } from "lucide-react";
 import ShareSheet from "../share/ShareSheet";
-import { ApiError } from "../../lib/supabase";
-import { type Rarity, type Shake, shakeFortune } from "../../lib/api";
+import { errCode } from "../../lib/supabase";
+import { KIND_NAME, type Rarity, type Shake, shakeFortune } from "../../lib/api";
 import { FORTUNES } from "./fortunes";
 import { rattle, reveal, stickDrop } from "../../lib/sfx";
 import { buzz } from "../../lib/native";
@@ -11,15 +11,14 @@ export const RARITY: Record<Rarity, { en: string; th: string }> = {
   common: { en: "Common", th: "ธรรมดา" }, rare: { en: "Rare", th: "หายาก" },
   epic: { en: "Epic", th: "พิเศษ" }, legendary: { en: "Legendary", th: "ตำนาน" },
 };
-const KIND_NAME: Record<string, string> = { theme: "passport cover", flair: "name flair", map: "map skin", frame: "photo frame", title: "title", avatar: "avatar item" };
 
 /** What a shake won, in one line. */
-export function prizeText(s: Pick<Shake, "prize" | "coins" | "xp" | "boost_hours" | "item_kind" | "item_en"> & { member?: boolean }): string {
+export function prizeText(s: Pick<Shake, "prize" | "coins" | "xp" | "boost_hours" | "item_kind" | "item_en">): string {
   switch (s.prize) {
     case "coins": return `+${s.coins} coins`;
     case "xp": return `+${s.xp} XP`;
     case "boost": return `XP ×1.5 on every stamp for ${s.boost_hours >= 48 ? `${s.boost_hours / 24} days` : `${s.boost_hours} hours`}`;
-    case "item": return `New ${KIND_NAME[s.item_kind ?? ""] ?? "item"}: ${s.item_en}`;
+    case "item": return `New ${s.item_kind ? KIND_NAME[s.item_kind].toLowerCase() : "item"}: ${s.item_en}`;
   }
 }
 
@@ -80,7 +79,7 @@ export default function Fortune({ checkin, onClose, onShaken, name = "Explorer",
       timers.current.push(window.setTimeout(() => setPhase("card"), calm() ? 0 : 900));
     } catch (e) {
       hush.current(); setPhase("ready");
-      const code = e instanceof ApiError ? e.message : "";
+      const code = errCode(e);
       setError(code === "nothing_to_shake" ? "No shakes left. Check in somewhere new, finish a quest or reach a new province."
         : code === "shake_limit" ? "That's 30 shakes today, the daily most. The cup will be ready again tomorrow."
         : "Couldn't reach the fortune cup. Try again.");

@@ -4,7 +4,9 @@ import type { LatLng } from "./api";
 // shown anywhere. It stands in for navigator.geolocation itself, so everything that reads the location (stops near
 // you, check-in, turn-by-turn) follows it without knowing. Check-ins made with it are marked demo on the server.
 const ON = "gm-demo", AT = "gm-demo-at";
-const SAKON: LatLng = { lat: 17.163, lng: 104.149 };
+/** Demo-mode people have ids "demo-01".. and exist only on this device. */
+export const isDemoId = (id: string) => id.startsWith("demo-");
+export const SAKON: LatLng = { lat: 17.163, lng: 104.149 };   // Sakon Nakhon: the default map centre
 const read = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) as T : d; } catch { return d; } };
 const write = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* not remembered */ } };
 

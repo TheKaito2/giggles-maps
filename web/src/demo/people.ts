@@ -1,6 +1,6 @@
 // Made-up demo-mode data: a pretend community of travellers, shown only while demo mode is on. Not real users.
 import { levelFor, type Champion, type Who } from "../lib/api";
-import type { DemoPerson } from "./types";
+import { type DemoPerson, who } from "./types";
 
 const L = levelFor;
 
@@ -50,10 +50,7 @@ export const DEMO_PEOPLE: DemoPerson[] = [
 /** Two people who "sent you a friend request" in demo mode. */
 export const DEMO_INCOMING: string[] = ["demo-33", "demo-37"];
 
-const person = (id: string): Who => {
-  const p = DEMO_PEOPLE.find((x) => x.id === id)!;
-  return { id: p.id, nickname: p.nickname, colour: p.colour, avatar: p.avatar, level: p.level };
-};
+const person = (id: string): Who => who(DEMO_PEOPLE.find((x) => x.id === id)!);
 
 /** Six province champions for the demo map. Visits = distinct visit-days in 90 days. */
 export function demoChampions(): Champion[] {

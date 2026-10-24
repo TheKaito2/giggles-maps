@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
-import QRCode from "qrcode";
-import { ApiError, ensureSession, supabase } from "../lib/supabase";
-import { answerBooking, PRICES, requestChoice, type ShopBooking, shopBookings, startCheckout } from "../lib/api";
+import { ensureSession, errCode, supabase } from "../lib/supabase";
+import { answerBooking, PRICES, requestChoice, type ShopBooking, shopBookings, SITE, startCheckout } from "../lib/api";
 import { isGuest, resumeSignIn, useUser } from "../lib/auth";
 import SignIn from "../app/SignIn";
 import MyListing from "./MyListing";
@@ -21,14 +20,13 @@ const PACKS = [500, 1000, 3000];
 const TABS = [["overview", "Overview"], ["partner", "Partner"], ["bookings", "Bookings"], ["visits", "Visits"], ["listing", "Listing"], ["sticker", "Sticker"]] as const;
 type Tab = (typeof TABS)[number][0];
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-const SITE = "https://giggles-maps.pages.dev";
 const DAY = 86400_000;
 const fmt = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 function Sticker({ place }: { place: PlaceStat }) {
   const [src, setSrc] = useState("");
   const url = `${SITE}/app/?scan=${place.id}-${place.qr_code}`;
-  useEffect(() => { QRCode.toDataURL(url, { margin: 1, width: 360, color: { dark: "#161b3d", light: "#ffffff" } }).then(setSrc); }, [url]);
+  useEffect(() => { import("qrcode").then(({ default: QRCode }) => QRCode.toDataURL(url, { margin: 1, width: 360, color: { dark: "#161b3d", light: "#ffffff" } })).then(setSrc).catch(() => setSrc("")); }, [url]);
   return (
     <figure className="sticker">
       {src && <img src={src} width={180} height={180} alt={`QR code for ${place.name}`} />}
@@ -98,7 +96,7 @@ export default function Shop() {
     try {
       location.href = (await startCheckout(p)).url;
     } catch (e) {
-      const code = e instanceof ApiError ? e.code : "";
+      const code = errCode(e);
       setMsg(code === "payments_not_configured" ? "Payments aren't switched on yet."
         : code === "not_verified" ? "Get your counter sticker scanned by a visitor first: partners must be verified."
         : code === "choice_not_approved" ? "Giggles Choice is by invitation: apply first and we'll review your shop."
@@ -107,11 +105,11 @@ export default function Shop() {
   };
   const tierLive = shop?.tier && shop.tier_until && new Date(shop.tier_until) > new Date() ? shop.tier : null;
   const verified = (overview?.places ?? []).some((p) => p.qr_code && p.last_qr_scan_at);
-  const answer = (id: number, ok: boolean) => answerBooking(id, ok).then(load).catch((e) => setMsg(e instanceof ApiError && e.code === "top_up_first"
+  const answer = (id: number, ok: boolean) => answerBooking(id, ok).then(load).catch((e) => setMsg(errCode(e) === "top_up_first"
     ? `Add credit first: each booking costs ฿${PRICES.booking} once the guest checks in.` : "Couldn't answer that booking."));
   const apply = () => requestChoice(shopId).then(() => { setMsg("Thanks! We'll review your shop for Giggles Choice."); setShops((xs) =>
     xs.map((x) => x.id === shopId ? { ...x, choice_requested_at: new Date().toISOString() } : x)); })
-    .catch((e) => setMsg(e instanceof ApiError && e.code === "partners_only" ? "Only partners can apply for Giggles Choice." : "Couldn't send that. Try again."));
+    .catch((e) => setMsg(errCode(e) === "partners_only" ? "Only partners can apply for Giggles Choice." : "Couldn't send that. Try again."));
   const mine = shops.filter((s) => !s.is_demo && s.owner_id === user?.id && !isGuest(user));
   const owner = mine.length > 0;
   const picker = owner ? mine : shops.filter((s) => s.is_demo);

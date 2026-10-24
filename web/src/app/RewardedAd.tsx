@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Ban, Gift } from "lucide-react";
 import { type AdReward, claimAdReward, PRICES, startAdReward } from "../lib/api";
-import { ApiError } from "../lib/supabase";
+import { errCode } from "../lib/supabase";
 import { useDialog } from "../lib/useDialog";
 
 // Rewarded ad: Google Ad Manager's web rewarded format once VITE_GAM_REWARDED_UNIT is set (AdSense has none), else our own
@@ -38,12 +38,12 @@ export default function RewardedAd({ kind, onDone, onClose }: { kind: AdReward; 
   const claim = (rewardId: number) => {
     const wait = started.current + AD_SECONDS * 1000 + 300 - Date.now();   // the server counts from the start too
     setTimeout(() => claimAdReward(rewardId).then(onDone)
-      .catch((e) => setMsg(ERR[e instanceof ApiError ? e.message : ""] ?? "Couldn't add the reward. Try again.")), Math.max(0, wait));
+      .catch((e) => setMsg(ERR[errCode(e)] ?? "Couldn't add the reward. Try again.")), Math.max(0, wait));
   };
 
   useEffect(() => {
     startAdReward(kind).then((rid) => { started.current = Date.now(); setId(rid); })
-      .catch((e) => setMsg(ERR[e instanceof ApiError ? e.message : ""] ?? "Couldn't load an ad. Try again."));
+      .catch((e) => setMsg(ERR[errCode(e)] ?? "Couldn't load an ad. Try again."));
   }, [kind]);
 
   // house ad: count down, then the claim button

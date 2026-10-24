@@ -6,9 +6,8 @@
     <title>Giggles Maps</title>
     <meta name="description" content="Got spare time? Tell Giggles Maps where you're going and how many extra minutes you have. It fills them with local stops across all 77 provinces of Thailand." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Mali:wght@600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" />
+    <link rel="preload" href="/fonts/LINESeedSansTH_A_Rg.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/LINESeedSansTH_A_Bd.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/src/styles/landing.css" />
   </head>
   <body>
@@ -33,7 +32,7 @@
           </div>
         </div>
         <figure class="phone hero-phone">
-          <img src="/landing/choose.webp" width="390" height="844" alt="Giggles Maps planning a trip to Chatuchak Market: Quick +20 min, Relaxed +45 min and Day out +2 h, each with its stops" />
+          <img src="/landing/choose.webp" srcset="/landing/choose-360.webp 360w, /landing/choose-540.webp 540w, /landing/choose.webp 780w" sizes="(max-width: 820px) 250px, 320px" width="390" height="844" fetchpriority="high" alt="Giggles Maps planning a trip to Chatuchak Market: Quick +20 min, Relaxed +45 min and Day out +2 h, each with its stops" />
         </figure>
       </section>
 
@@ -59,35 +58,35 @@
             <h3 class="c-indigo">Stamp all 77 provinces.</h3>
             <p>Every check-in stamps your passport. Fill the map one province at a time.</p>
           </div>
-          <figure class="phone"><img src="/landing/profile.webp" width="390" height="844" loading="lazy" alt="Profile with level, XP, provinces and stamps" /></figure>
+          <figure class="phone"><img src="/landing/profile.webp" srcset="/landing/profile-360.webp 360w, /landing/profile-540.webp 540w, /landing/profile.webp 780w" sizes="(max-width: 820px) 250px, 320px" width="390" height="844" loading="lazy" alt="Profile with level, XP, provinces and stamps" /></figure>
         </article>
         <article class="feature">
           <div class="feature-copy">
             <h3 class="c-marigold">Quests open chests.</h3>
             <p>Daily and weekly quests pay XP and coins.</p>
           </div>
-          <figure class="phone"><img src="/landing/quests.webp" width="390" height="844" loading="lazy" alt="Quests page with daily and weekly quests" /></figure>
+          <figure class="phone"><img src="/landing/quests.webp" srcset="/landing/quests-360.webp 360w, /landing/quests-540.webp 540w, /landing/quests.webp 780w" sizes="(max-width: 820px) 250px, 320px" width="390" height="844" loading="lazy" alt="Quests page with daily and weekly quests" /></figure>
         </article>
         <article class="feature">
           <div class="feature-copy">
             <h3 class="c-good">Beat your friends this week.</h3>
             <p>A weekly board for XP, provinces and temples. Fresh start every Monday.</p>
           </div>
-          <figure class="phone"><img src="/landing/board.webp" width="390" height="844" loading="lazy" alt="Weekly leaderboard podium" /></figure>
+          <figure class="phone"><img src="/landing/board.webp" srcset="/landing/board-360.webp 360w, /landing/board-540.webp 540w, /landing/board.webp 780w" sizes="(max-width: 820px) 250px, 320px" width="390" height="844" loading="lazy" alt="Weekly leaderboard podium" /></figure>
         </article>
         <article class="feature">
           <div class="feature-copy">
             <h3 class="c-indigo">Cheer your friends on.</h3>
             <p>See where your friends stamped, react, and leave a comment.</p>
           </div>
-          <figure class="phone"><img src="/landing/feed.webp" width="390" height="844" loading="lazy" alt="Feed with friends' stamps and reactions" /></figure>
+          <figure class="phone"><img src="/landing/feed.webp" srcset="/landing/feed-360.webp 360w, /landing/feed-540.webp 540w, /landing/feed.webp 780w" sizes="(max-width: 820px) 250px, 320px" width="390" height="844" loading="lazy" alt="Feed with friends' stamps and reactions" /></figure>
         </article>
         <article class="feature">
           <div class="feature-copy">
             <h3 class="c-stamp">Shake for your fortune.</h3>
             <p>Check-ins earn Siam Si shakes. Draw a stick for coins, XP boosts or a rare item.</p>
           </div>
-          <figure class="phone"><img src="/landing/siamsi.webp" width="390" height="844" loading="lazy" alt="Siam Si fortune cup full of sticks" /></figure>
+          <figure class="phone"><img src="/landing/siamsi.webp" srcset="/landing/siamsi-360.webp 360w, /landing/siamsi-540.webp 540w, /landing/siamsi.webp 780w" sizes="(max-width: 820px) 250px, 320px" width="390" height="844" loading="lazy" alt="Siam Si fortune cup full of sticks" /></figure>
         </article>
       </section>
 

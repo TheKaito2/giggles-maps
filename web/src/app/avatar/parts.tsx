@@ -47,7 +47,7 @@ export const SLOTS: Record<Slot, { label: string; options: Option[] }> = {
     c("red", "Red", "#d1452f"), c("green", "Green", "#1b7f52"), c("sky", "Sky", "#2f7bf5"), c("pink", "Pink", "#e05a8a"),
     c("purple", "Purple", "#7a3b8f"), c("black", "Black", "#2a2a2e"), c("white", "White", "#f4f4f4"), c("khaki", "Khaki", "#b59a6a")] },
 };
-export const SLOT_ORDER: Slot[] = ["skin", "face", "hair", "hair_colour", "eyes", "brows", "mouth", "facial_hair", "glasses", "headwear", "outfit", "outfit_colour", "bg"];
+const SLOT_ORDER: Slot[] = ["skin", "face", "hair", "hair_colour", "eyes", "brows", "mouth", "facial_hair", "glasses", "headwear", "outfit", "outfit_colour", "bg"];
 export const DEFAULT_LOOK: Required<AvatarLook> = { bg: "sky", skin: "s3", face: "round", eyes: "dots", brows: "soft", mouth: "smile",
   hair: "short", hair_colour: "black", facial_hair: "none", glasses: "none", headwear: "none", outfit: "tshirt", outfit_colour: "indigo" };
 

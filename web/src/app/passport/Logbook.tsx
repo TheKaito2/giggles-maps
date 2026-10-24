@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { type PassportStamp, photoUrls } from "../../lib/api";
 import { useDialog } from "../../lib/useDialog";
+import { clockTime, STAMP_TIER } from "../../lib/format";
 
-const TIER = { 3: "Landmark", 2: "Worth a visit", 1: "Everyday" } as const;
 
 /** Every place stamped, newest first, by day: the travel diary. The passport book keeps only provinces and landmarks. */
 export default function Logbook({ owner, stamps, onClose }: { owner: string; stamps: PassportStamp[]; onClose: () => void }) {
@@ -33,9 +33,9 @@ export default function Logbook({ owner, stamps, onClose }: { owner: string; sta
                 <li key={s.place_id} className={`tier-${s.tier}`}>
                   {s.photo && urls[s.photo] ? <img src={urls[s.photo]} alt="" loading="lazy" /> : <span className="log-dot" aria-hidden />}
                   <span className="log-main"><b>{s.name}</b>
-                    <span className="fine">{new Date(s.earned_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                    <span className="fine">{clockTime(s.earned_at)}
                       {s.name_th ? ` · ${s.name_th}` : ""}</span></span>
-                  <span className={`log-tier tier-${s.tier}`}>{TIER[s.tier]}</span>
+                  <span className={`log-tier tier-${s.tier}`}>{STAMP_TIER[s.tier]}</span>
                 </li>
               ))}
             </ol>

@@ -5,7 +5,7 @@ import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, type R
 import { CHIPS } from "../ExploreChips";
 import { SkelRows } from "../Skeleton";
 import { GROUPS, kindOf } from "../kinds";
-import { budgetLabel, hhmm, MEALS } from "../prefs";
+import { budgetLabel, hhmm, MAX_STOPS, MEALS } from "../prefs";
 import { type Detour, PRESETS } from "./useDetour";
 import { arrive } from "./Choose";
 import PlanProgress from "./PlanProgress";
@@ -16,7 +16,6 @@ const PARTNER_TIP = "This shop pays Giggles Maps when you visit.";
 // paid placement is always labelled: members' plans put these places first
 const TIER_TIP = { partner: "A verified shop that pays Giggles Maps monthly. Members' plans put partners first.",
   choice: "Hand-picked by Giggles and pays monthly. Members' plans put it first; the Giggle's plan uses only these." } as const;
-const MAX_STOPS = 6;
 
 /** A place's photo, or its kind icon on its group colour. */
 export function Thumb({ s, size = 48 }: { s: { name: string; category: string; photo?: string | null }; size?: number }) {
@@ -59,6 +58,7 @@ function StopRow({ s, i, d, sel, onOpen, onCheckin }: { s: RouteStop; i: number;
     more.current?.querySelector<HTMLButtonElement>("[role=menuitem]")?.focus();
     return () => { document.removeEventListener("pointerdown", out); document.removeEventListener("keydown", esc); };
   }, [menu]);
+  const tags = badges(s);
   return (
     <li className={`stop-row${sel ? " sel" : ""}`} id={`stop-${s.id}`}>
       <button type="button" className="stop-main" onClick={() => onOpen(s)}>
@@ -68,14 +68,14 @@ function StopRow({ s, i, d, sel, onOpen, onCheckin }: { s: RouteStop; i: number;
           <b>{s.name}</b>
           <span className="stop-meta"><b className="num">{hhmm(s.eta_min)}</b>{s.extra_min != null && <b className="num extra">+{s.extra_min} min</b>}
             <span className="fine">{kindOf(s.pit_stop ? "convenience" : null, s.category).en}{s.rating != null && ` · ★ ${s.rating.toFixed(1)}`}</span></span>
-          {badges(s).length > 0 && <span className="row tight">{badges(s).map((b) => <span key={b.text} className={`chip ${b.cls}`} title={b.title}>{b.text}</span>)}</span>}
+          {tags.length > 0 && <span className="row tight">{tags.map((b) => <span key={b.text} className={`chip ${b.cls}`} title={b.title}>{b.text}</span>)}</span>}
         </span>
       </button>
       <div className="stop-more" ref={more}>
         <button type="button" className="icon-btn" aria-label={`More for ${s.name}`} aria-expanded={menu} aria-haspopup="menu" disabled={d.editing} onClick={() => setMenu(!menu)}><MoreHorizontal size={18} /></button>
         {menu && <div className="menu glass" role="menu" onClick={() => setMenu(false)}>
           <button type="button" role="menuitem" onClick={() => onCheckin(s)}><Camera size={16} aria-hidden /> Check in</button>
-          <button type="button" role="menuitem" onClick={() => d.swapStop(s.id)}><Repeat size={16} aria-hidden /> Swap for another</button>
+          <button type="button" role="menuitem" onClick={() => d.removeStop(s.id)}><Repeat size={16} aria-hidden /> Swap for another</button>
           <button type="button" role="menuitem" onClick={() => d.removeStop(s.id)}><Trash2 size={16} aria-hidden /> Remove</button>
         </div>}
       </div>

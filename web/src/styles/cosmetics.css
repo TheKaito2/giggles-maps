@@ -12,57 +12,57 @@
 :root[data-theme="dark"] { --myth-tint: #3a1708; --cel-tint: #0e2a3a; --vault-bg: #0a0812; }
 
 /* ---------- covers ---------- */
-.passport-card.theme-tuk-tuk, .cover-bg.theme-tuk-tuk, .page.cover.theme-tuk-tuk, .level-card.theme-tuk-tuk {
+.cover-bg.theme-tuk-tuk, .page.cover.theme-tuk-tuk {
   background: radial-gradient(circle at 50% 0, #d1452f 0 6px, transparent 7px) 0 0 / 16px 12px repeat-x,
     linear-gradient(180deg, #0b5d36 0 12px, transparent 12px),
     repeating-linear-gradient(-45deg, #0a7a43 0 14px, #0d8a4d 14px 16px, #e8b800 16px 30px, #f2c200 30px 32px);
   color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / .55); }
-.passport-card.theme-rice-paddy, .cover-bg.theme-rice-paddy, .page.cover.theme-rice-paddy, .level-card.theme-rice-paddy {
+.cover-bg.theme-rice-paddy, .page.cover.theme-rice-paddy {
   background: linear-gradient(180deg, #bfe8ff 0 22%, transparent 22%),
     repeating-radial-gradient(ellipse 140% 90% at 30% 130%, #6aa83b 0 11px, #8bc34a 11px 20px, #d4ecb0 20px 22px);
   color: #f4ffe8; text-shadow: 0 1px 2px rgb(20 50 10 / .6); }
-.passport-card.theme-beach-day, .cover-bg.theme-beach-day, .page.cover.theme-beach-day, .level-card.theme-beach-day {
+.cover-bg.theme-beach-day, .page.cover.theme-beach-day {
   background: radial-gradient(circle at 78% 18%, #ffe066 0 8%, #ffe06655 9%, transparent 18%),
     linear-gradient(180deg, #5cc8ff 0 44%, #1fa9d6 44% 52%, #0b8fc0 52% 64%, #fff 64% 65.5%, #f3d9a4 65.5%);
   color: #fff; text-shadow: 0 1px 2px rgb(0 60 100 / .5); }
-.passport-card.theme-jasmine, .cover-bg.theme-jasmine, .page.cover.theme-jasmine, .level-card.theme-jasmine {
+.cover-bg.theme-jasmine, .page.cover.theme-jasmine {
   background: radial-gradient(circle, #ffd54f 0 1.5px, #fffdf4 2.5px 5px, transparent 6px) 0 0 / 30px 30px,
     radial-gradient(circle, #ffd54f 0 1px, #fffdf4 2px 4px, transparent 5px) 15px 15px / 30px 30px,
     linear-gradient(150deg, #2f6b45, #163a25);
   color: #fff8dc; }
-.passport-card.theme-floating-market, .cover-bg.theme-floating-market, .page.cover.theme-floating-market, .level-card.theme-floating-market {
+.cover-bg.theme-floating-market, .page.cover.theme-floating-market {
   background: radial-gradient(circle at 28% 62%, #f2c230 0 4%, transparent 4.5%), radial-gradient(circle at 68% 74%, #f2c230 0 4%, transparent 4.5%),
     radial-gradient(ellipse 22% 4% at 28% 68%, #6d3b1a 96%, transparent), radial-gradient(ellipse 22% 4% at 68% 80%, #6d3b1a 96%, transparent),
     radial-gradient(circle at 22% 66%, #e53935 0 1.6%, transparent 2%), radial-gradient(circle at 74% 78%, #7cb342 0 1.6%, transparent 2%),
     linear-gradient(180deg, transparent 54%, #1e6f6a 54%), repeating-linear-gradient(180deg, transparent 0 6px, #2a8c84 6px 8px),
     linear-gradient(180deg, #ff9e57, #ffcf7a 54%);
   color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / .45); }
-.passport-card.theme-elephant-parade, .cover-bg.theme-elephant-parade, .page.cover.theme-elephant-parade, .level-card.theme-elephant-parade {
+.cover-bg.theme-elephant-parade, .page.cover.theme-elephant-parade {
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 26'%3E%3Cpath fill='%23f2c230' d='M6 9Q6 3 13 3h11q6 0 7 5 5 0 6 5 1 6-1 10h-2q1-5-1-8h-2v9h-3v-7H12v7H9v-8Q6 13 6 9z'/%3E%3C/svg%3E") 0 74% / 44px 26px repeat-x,
     repeating-linear-gradient(90deg, #f2c230 0 4px, #8e1c1c 4px 8px) 0 0 / 100% 8px no-repeat,
     linear-gradient(180deg, transparent 88%, #f2c230 88% 90%, transparent 90%),
     linear-gradient(160deg, #a3172b, #5c0a16);
   color: #fbe3a0; }
 /* Mythic covers */
-.passport-card.theme-naga-scales, .cover-bg.theme-naga-scales, .page.cover.theme-naga-scales, .level-card.theme-naga-scales {
+.cover-bg.theme-naga-scales, .page.cover.theme-naga-scales {
   background: radial-gradient(circle at 50% 0, transparent 0 8px, #d4a01780 9px, #0b4d3a 10.5px, transparent 11px) 0 0 / 20px 12px,
     radial-gradient(circle at 50% 0, transparent 0 8px, #d4a01780 9px, #0b4d3a 10.5px, transparent 11px) 10px 6px / 20px 12px,
     linear-gradient(160deg, #1f8a63, #0b4d3a 55%, #06261d);
   color: #f6d77a; text-shadow: 0 0 8px rgb(246 215 122 / .5); }
-.passport-card.theme-golden-hour, .cover-bg.theme-golden-hour, .page.cover.theme-golden-hour, .level-card.theme-golden-hour {
+.cover-bg.theme-golden-hour, .page.cover.theme-golden-hour {
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 40' preserveAspectRatio='none'%3E%3Cpath fill='%233b1405' d='M0 40V30h8l4-8 4 8h10l3-14 3 14h8l6-26 6 26h8l3-14 3 14h10l4-8 4 8h18l3-10 3 10h10v10z'/%3E%3C/svg%3E") 0 100% / 100% 34% no-repeat,
     radial-gradient(circle at 50% 66%, #fff4c2 0 7%, #ffd166aa 10%, transparent 32%),
     linear-gradient(180deg, #5a1e6b, #c2410c 48%, #f59e0b 72%, #fde68a);
   color: #fff4c2; text-shadow: 0 1px 3px rgb(60 20 5 / .6); }
 /* Celestial cover */
-.passport-card.theme-kinnaree-dawn, .cover-bg.theme-kinnaree-dawn, .page.cover.theme-kinnaree-dawn, .level-card.theme-kinnaree-dawn {
+.cover-bg.theme-kinnaree-dawn, .page.cover.theme-kinnaree-dawn {
   background: repeating-radial-gradient(ellipse 60% 40% at 0 100%, transparent 0 14px, #ffffff44 14px 16px),
     repeating-radial-gradient(ellipse 60% 40% at 100% 100%, transparent 0 14px, #ffffff44 14px 16px),
     radial-gradient(circle at 50% 100%, #fff3c4 0 10%, transparent 45%),
     linear-gradient(180deg, #4c3a9a, #b072c9 45%, #f4a6b8 75%, #ffd9a0);
   color: #fff; text-shadow: 0 1px 3px rgb(60 30 100 / .55); }
 /* Transcendent cover: gold rays and a passing sheen */
-.passport-card.theme-erawan, .cover-bg.theme-erawan, .page.cover.theme-erawan, .level-card.theme-erawan {
+.cover-bg.theme-erawan, .page.cover.theme-erawan {
   background: linear-gradient(110deg, transparent 35%, rgb(255 236 170 / .35) 50%, transparent 65%) -200% 0 / 200% 100% no-repeat,
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 44'%3E%3Cg fill='%23f6d77a'%3E%3Cpath d='M30 1l4 7h-8zM24 9h12l-2 3h-8z'/%3E%3Cellipse cx='21.5' cy='17' rx='4.5' ry='6.5'/%3E%3Cellipse cx='38.5' cy='17' rx='4.5' ry='6.5'/%3E%3Ccircle cx='30' cy='18' r='7.5'/%3E%3Cpath d='M27 22q-1 12 4 18 2 1 2-1-3-6-2-17z'/%3E%3Cellipse cx='9' cy='21' rx='3.5' ry='5'/%3E%3Ccircle cx='15' cy='22' r='5.5'/%3E%3Cpath d='M13 25q-2 9 1 14 2 1 2-1-2-5-1-13z'/%3E%3Cellipse cx='51' cy='21' rx='3.5' ry='5'/%3E%3Ccircle cx='45' cy='22' r='5.5'/%3E%3Cpath d='M47 25q2 9-1 14-2 1-2-1 2-5 1-13z'/%3E%3C/g%3E%3C/svg%3E") 50% 10% / auto 28% no-repeat,
     radial-gradient(circle at 50% 42%, transparent 0 18%, #f6d77a66 18.5% 19.5%, transparent 20% 27%, #f6d77a44 27.5% 28.5%, transparent 29%),

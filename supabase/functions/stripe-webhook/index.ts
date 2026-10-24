@@ -1,22 +1,27 @@
-import { admin, json } from "../_shared/http.ts";
+import { admin, json, serve } from "../_shared/http.ts";
 
 // Stripe calls this; no user JWT (verify_jwt = false). Trust comes from the signature.
 // metadata.kind = credit (shop wallet) | plus | membership (user) | partner | choice (shop tier); see stripe-checkout.
 async function verify(payload: string, header: string, secret: string): Promise<boolean> {
-  const parts = Object.fromEntries(header.split(",").map((p) => p.split("=") as [string, string]));
-  const t = Number(parts.t);
-  if (!parts.t || !parts.v1 || Math.abs(Date.now() / 1000 - t) > 300) return false;
+  // "t=...,v1=...,v1=...": during a secret rotation Stripe signs with each secret, so any v1 may match
+  const parts = header.split(",").map((p) => p.split("=", 2));
+  const ts = parts.find(([k]) => k === "t")?.[1];
+  const sigs = parts.filter(([k, v]) => k === "v1" && v).map(([, v]) => v);
+  if (!ts || !sigs.length || Math.abs(Date.now() / 1000 - Number(ts)) > 300) return false;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${parts.t}.${payload}`));
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${ts}.${payload}`));
   const hex = [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
-  // constant-time compare
-  if (hex.length !== parts.v1.length) return false;
-  let diff = 0;
-  for (let i = 0; i < hex.length; i++) diff |= hex.charCodeAt(i) ^ parts.v1.charCodeAt(i);
-  return diff === 0;
+  return sigs.some((v1) => {
+    // constant-time compare
+    if (hex.length !== v1.length) return false;
+    let diff = 0;
+    for (let i = 0; i < hex.length; i++) diff |= hex.charCodeAt(i) ^ v1.charCodeAt(i);
+    return diff === 0;
+  });
 }
 
-Deno.serve(async (req) => {
+// serve() leaves the raw body unread and needs no auth, so the signature check still sees the exact payload
+serve(async (req) => {
   const secret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
   if (!secret) return json({ error: "payments_not_configured" }, 503);
   const payload = await req.text();

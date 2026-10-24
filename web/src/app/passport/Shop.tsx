@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Backpack, Check, Clock, Coins, Shirt, ShoppingBag, Vault, X } from "lucide-react";
-import { ApiError } from "../../lib/supabase";
-import { buyItem, buySet, equip, getShop, getShopToday, type Profile, setAvatar, type ShopItem, type ShopKind, type ShopSet,
+import { errCode } from "../../lib/supabase";
+import { buyItem, buySet, equip, getShop, getShopToday, KIND_NAME, type Profile, setAvatar, type ShopItem, type ShopKind, type ShopSet,
   type ShopToday } from "../../lib/api";
 import { AvatarSvg, type Slot } from "../avatar/parts";
 import { useDialog } from "../../lib/useDialog";
@@ -11,7 +11,6 @@ const KINDS: { kind: ShopKind; title: string }[] = [
   { kind: "theme", title: "Passport covers" }, { kind: "frame", title: "Photo frames" }, { kind: "avatar", title: "Avatar items" },
   { kind: "flair", title: "Name flair" }, { kind: "title", title: "Titles" }, { kind: "map", title: "Map skins" },
 ];
-const KIND_NAME: Record<ShopKind, string> = { theme: "Passport cover", frame: "Photo frame", avatar: "Avatar item", flair: "Name flair", title: "Title", map: "Map skin" };
 const ERR: Record<string, string> = {
   plus_only: "This comes with Plus.",
   not_enough_coins: "Not enough coins yet. Stamps, quests and level-ups earn more.",
@@ -19,10 +18,10 @@ const ERR: Record<string, string> = {
 };
 // the same names as Siam Si sticks: price sets the rarity, Siam Si-only items are Legendary
 // above Legendary, the Vault: saved up for, never drawn from Siam Si or shown as a daily pick (both cap by price)
-export type Rarity = "common" | "rare" | "epic" | "legendary" | "mythic" | "celestial" | "transcendent";
-export const rarityOf = (i: ShopItem): Rarity | null => i.gacha_only ? "legendary" : i.price >= 20000 ? "transcendent" : i.price >= 6000 ? "celestial"
+type ItemRarity = "common" | "rare" | "epic" | "legendary" | "mythic" | "celestial" | "transcendent";
+const rarityOf = (i: ShopItem): ItemRarity | null => i.gacha_only ? "legendary" : i.price >= 20000 ? "transcendent" : i.price >= 6000 ? "celestial"
   : i.price >= 2000 ? "mythic" : i.price === 0 || i.plus_only ? null : i.price <= 150 ? "common" : i.price <= 400 ? "rare" : "epic";
-const VAULT: { r: Rarity; title: string }[] = [{ r: "mythic", title: "Mythic" }, { r: "celestial", title: "Celestial" }, { r: "transcendent", title: "Transcendent" }];
+const VAULT: { r: ItemRarity; title: string }[] = [{ r: "mythic", title: "Mythic" }, { r: "celestial", title: "Celestial" }, { r: "transcendent", title: "Transcendent" }];
 const inVault = (i: ShopItem) => VAULT.some((v) => v.r === rarityOf(i));
 const key = (i: { kind: string; id: string }) => `${i.kind}:${i.id}`;
 const left = (iso: string) => {
@@ -78,12 +77,12 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
       if (i.kind === "avatar") { const [slot, part] = i.id.split(":"); await setAvatar({ ...profile?.avatar, [slot]: part }); }
       else await equip(i.kind, i.id);
       onChange(); setTrying(null);
-    } catch (e) { setMsg(ERR[e instanceof ApiError ? e.message : ""] ?? "Couldn't do that. Try again."); }
+    } catch (e) { setMsg(ERR[errCode(e)] ?? "Couldn't do that. Try again."); }
   };
   const getSet = async (s: ShopSet) => {
     setMsg("");
     try { await buySet(s.id); onChange(); load(); setMsg(`${s.name_en} set is yours. Tap an item to wear it.`); }
-    catch (e) { setMsg(ERR[e instanceof ApiError ? e.message : ""] ?? "Couldn't buy the set. Try again."); }
+    catch (e) { setMsg(ERR[errCode(e)] ?? "Couldn't buy the set. Try again."); }
   };
 
   // the bag: kinds where you own something beyond the free default (which stays listed, to switch back), wearing first

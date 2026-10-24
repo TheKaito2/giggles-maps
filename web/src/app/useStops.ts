@@ -1,11 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type LatLng, type Stop, stopsNear } from "../lib/api";
+import { metres } from "./nav/progress";
 
-// metres between two points (equirectangular: fine at check-in distances)
-export const metres = (a: LatLng, b: LatLng) => {
-  const x = (b.lng - a.lng) * Math.cos(((a.lat + b.lat) / 2) * Math.PI / 180), y = b.lat - a.lat;
-  return Math.hypot(x, y) * 111_320;
-};
 
 /**
  * PokéStop-style stops: while watching, follow the user's position, load places around them (again after moving
@@ -44,9 +40,11 @@ export function useStops(refreshKey: number) {
     if (loadedAt.current) stopsNear(loadedAt.current).then(setStops).catch(() => undefined);
   }, [refreshKey]);
 
-  const inZone = here
+  // memoised: the map redraws its nearby markers whenever these arrays change identity
+  const inZone = useMemo(() => here
     ? stops.filter((s) => metres(here, s) <= s.zone_m)
         .sort((a, b) => Number(a.stamped) - Number(b.stamped) || b.tier - a.tier || metres(here, a) - metres(here, b))
-    : [];
-  return { here, stops, inZone, watching, start };
+    : [], [here, stops]);
+  const inZoneIds = useMemo(() => inZone.map((s) => s.id), [inZone]);
+  return { here, stops, inZone, inZoneIds, watching, start };
 }

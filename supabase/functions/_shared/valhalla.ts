@@ -38,12 +38,6 @@ export async function matrixMinutes(points: LatLng[], mode: Mode): Promise<numbe
     row.map((c) => (c.time == null ? Infinity : c.time / 60))));
 }
 
-// road geometry for the final stop order as [lng, lat] pairs
-export async function routeLine(points: LatLng[], mode: Mode): Promise<[number, number][]> {
-  const data = await post("route", { locations: points.map((p) => ({ lat: p.lat, lon: p.lng })), costing: mode });
-  return data.trip.legs.flatMap((leg: { shape: string }) => decodePolyline6(leg.shape));
-}
-
 // straight-line fallback when routing is down: haversine * 1.3 detour factor
 export function estimateMinutes(points: LatLng[], mode: Mode): number[][] {
   const metersPerMin = METERS_PER_MIN[mode];
@@ -56,7 +50,6 @@ export function haversineM(a: LatLng, b: LatLng): number {
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
   return 2 * r * Math.asin(Math.sqrt(h));
 }
-
 
 export interface RoadRoute { geometry: [number, number][]; legMin: number[]; travelMin: number }
 export class RoutingError extends Error {}

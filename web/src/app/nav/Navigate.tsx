@@ -3,12 +3,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ArrowUp, Camera, CornerUpLeft, CornerUpRight, FastForward, Flag, Languages, Share2, SkipForward, Volume2, VolumeX, X } from "lucide-react";
 import { demoOn, moveTo } from "../../lib/demoGps";
 import { type Avoid, getNavRoute, type LatLng, type NavRoute, shareEta, SITE, stopEta, type TravelMode, tripPing } from "../../lib/api";
-import { cumulative, dueCall, type Progress, progress } from "./progress";
+import { cumulative, dueCall, metres, type Progress, progress } from "./progress";
 import { say } from "./thai";
 import { isNight, loadLook, styleUrl } from "../mapLayers";
-import { metres } from "../useStops";
 import { Spinner } from "../Skeleton";
-import { buzz, shareLink } from "../../lib/native";
+import { buzz, shareOrCopy } from "../../lib/native";
+import { clockTime } from "../../lib/format";
 
 export interface Waypoint extends LatLng { name: string; id?: number }   // id: a place you can check in at
 const ARRIVE_M = 50;   // this close to a stop counts as there: the arrival card comes up
@@ -17,7 +17,7 @@ const OFF_ROUTE_M = 60, OFF_ROUTE_S = 10, REROUTE_GAP_S = 20;
 // announce a turn this far ahead, then again closer, then at the turn
 const CALLS: Record<TravelMode, number[]> = { auto: [800, 200, 0], bicycle: [300, 80, 0], pedestrian: [150, 40, 0] };
 const fmtM = (m: number) => m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`;
-const clock = (min: number) => new Date(Date.now() + min * 60000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+const clock = (min: number) => clockTime(new Date(Date.now() + min * 60000));
 
 function TurnIcon({ type }: { type: number }) {
   if ([10, 11, 18, 20, 23, 37].includes(type)) return <ArrowRight size={34} />;
@@ -188,7 +188,7 @@ export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
       if (here) await tripPing(here).catch(() => undefined);
       const url = `${SITE}/app/?eta=${token}`;
       setShare(url);
-      if (!await shareLink(`My trip to ${dest.name}`, url)) navigator.clipboard?.writeText(url).then(() => setMsg("Link copied: anyone with it can follow your trip until you stop."));
+      if (await shareOrCopy(`My trip to ${dest.name}`, url) === "copied") setMsg("Link copied: anyone with it can follow your trip until you stop.");
     } catch { setMsg("Couldn't start sharing."); }
   };
   const end = () => { if (share) stopEta().catch(() => undefined); onClose(); };

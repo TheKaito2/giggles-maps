@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Ban, Sparkles, Store } from "lucide-react";
 import { openSite } from "../lib/native";
+import { PRICES } from "../lib/api";
 
 // v5: the banner everyone sees except members and Plus. Google AdSense fills it once VITE_ADSENSE_CLIENT and VITE_ADSENSE_SLOT are
 // set; until then it shows our own ads. Never on the map (directions, the detour planner, check-in): only on the other tabs.
 const CLIENT = import.meta.env.VITE_ADSENSE_CLIENT as string | undefined;
 const SLOT = import.meta.env.VITE_ADSENSE_SLOT as string | undefined;
 const HOUSE = [
-  { icon: <Ban size={20} aria-hidden />, title: "Remove ads forever", sub: "Membership · ฿349 once, 3 months of Plus free", act: "upgrade" },
-  { icon: <Sparkles size={20} aria-hidden />, title: "Try Giggles Plus", sub: "No ads and +20 coins a day · ฿59/month", act: "upgrade" },
+  { icon: <Ban size={20} aria-hidden />, title: "Remove ads forever", sub: `Membership · ฿${PRICES.membership} once, 3 months of Plus free`, act: "upgrade" },
+  { icon: <Sparkles size={20} aria-hidden />, title: "Try Giggles Plus", sub: `No ads and +20 coins a day · ฿${PRICES.plus}/month`, act: "upgrade" },
   { icon: <Store size={20} aria-hidden />, title: "Own a shop or café?", sub: "Become a Giggles partner and take bookings", act: "partner" },
 ] as const;
 

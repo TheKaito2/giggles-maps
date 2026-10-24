@@ -1,4 +1,4 @@
-import { admin, HttpError, json, requireUser, serve } from "../_shared/http.ts";
+import { admin, HttpError, json, readJson, requireUser, serve } from "../_shared/http.ts";
 import { MEMBERSHIP_PRODUCT, PLUS_PRODUCT, verifyTransaction } from "../_shared/apple.ts";
 
 // The iOS app sends each signed StoreKit transaction after a purchase or restore. We verify it came from Apple
@@ -8,7 +8,7 @@ import { MEMBERSHIP_PRODUCT, PLUS_PRODUCT, verifyTransaction } from "../_shared/
 serve(async (req) => {
   const user = await requireUser(req);
   if (user.is_anonymous) throw new HttpError(403, "sign_in_required");   // purchases must survive a reinstall
-  const body = await req.json().catch(() => { throw new HttpError(400, "bad_json"); });
+  const body = await readJson(req);
   if (typeof body.jws !== "string" || body.jws.length > 20000) throw new HttpError(400, "bad_jws");
 
   const tx = await verifyTransaction(body.jws).catch((e) => { console.error("apple verify", e); throw new HttpError(400, "invalid_transaction"); });

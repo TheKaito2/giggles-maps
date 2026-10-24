@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Gift, Infinity as Unlimited, Sparkles, X } from "lucide-react";
 import { getPlanUsage, PRICES, type PlanUsage } from "../lib/api";
-import { purchase } from "../lib/native";
-import { ApiError } from "../lib/supabase";
+import { purchase, purchaseErrorText } from "../lib/native";
 import { useDialog } from "../lib/useDialog";
 import { isGuest, useUser } from "../lib/auth";
 import type { Gate } from "./detour/useDetour";
@@ -32,13 +31,7 @@ export default function Upgrade({ gate, onClose, onRewarded }: { gate: Why; onCl
   const buy = async (kind: "membership" | "plus") => {
     setMsg("");
     try { if (await purchase(kind, user?.id)) { setMsg("Thanks! It switches on in a moment."); setTimeout(onClose, 1500); } }
-    catch (e) {
-      const code = e instanceof ApiError ? e.code : "";
-      setMsg(code === "already_member" ? "You're already a member." : code === "sign_in_required" ? "Sign in first so it stays with your account."
-        : code === "payments_not_configured" ? "Payments aren't switched on yet."
-        : code === "purchase_on_another_account" || code === "subscription_on_another_account" ? "This Apple ID bought it for another Giggles account."
-        : "Couldn't finish the purchase. Try again.");
-    }
+    catch (e) { setMsg(purchaseErrorText(e)); }
   };
   return (
     <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label={TITLE[gate]} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
