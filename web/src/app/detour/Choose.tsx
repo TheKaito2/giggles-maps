@@ -7,6 +7,7 @@ import Filters, { filterCount, KIND_ICON } from "../Customize";
 import { BUDGETS, budgetLabel, DEPARTS, filterSummary, hhmm, INTERESTS, MODES, type Prefs, startMin } from "../prefs";
 import { type Detour, PRESETS, type PresetId } from "./useDetour";
 import { Thumb } from "./Results";
+import PlanProgress from "./PlanProgress";
 
 const MODE_ICON: Record<TravelMode, ReactNode> = {
   pedestrian: <Footprints size={16} aria-hidden />, auto: <Car size={16} aria-hidden />, bicycle: <Bike size={16} aria-hidden />,
@@ -77,6 +78,7 @@ export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => voi
           {d.prefs.depart === "custom" && <input type="time" aria-label="Departure time" value={d.prefs.time} onChange={(e) => d.set({ time: e.target.value })} />}
         </span>
       </div>
+      {Object.values(d.results).some((r) => r === "loading") && <PlanProgress />}
       <div className="presets">
         {PRESETS.map((p) => card(p.id, p.label, p.min, p.blurb))}
       </div>

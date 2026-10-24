@@ -5,6 +5,7 @@ import { GROUPS, kindOf } from "../kinds";
 import { budgetLabel, hhmm, MEALS } from "../prefs";
 import { type Detour, PRESETS } from "./useDetour";
 import { arrive } from "./Choose";
+import PlanProgress from "./PlanProgress";
 
 const MEAL_NAME: Record<Meal, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
 const PARTNER_TIP = "This shop pays Giggles Maps when you visit. It's ranked like every other place; paying never moves it up.";
@@ -132,6 +133,7 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
   const current = plans.find((p) => p.id === d.choice) ?? plans[0];
   return (
     <div className={`stack results${d.editing ? " updating" : ""}`} aria-busy={d.editing}>
+      {d.editing && <PlanProgress editing />}
       {presetBar}
 
       {plans.length > 1 && (
