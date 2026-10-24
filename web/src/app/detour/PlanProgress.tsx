@@ -8,13 +8,23 @@ const STEPS: [number, string][] = [
 ];
 const EDIT_STEPS: [number, string][] = [[0, "Updating your plan"], [1200, "Re-timing the road"], [3000, "Almost there"]];
 
+// one plan's progress survives a screen change (tapping a time card while it's planning): a new panel within a second of the last
+// one carries on from the same start instead of starting over
+let started = 0, lastSeen = 0;
+
 export default function PlanProgress({ editing = false }: { editing?: boolean }) {
-  const [ms, setMs] = useState(0);
+  const [t0] = useState(() => {   // an edit's short run has its own clock
+    const now = performance.now();
+    if (editing) return now;
+    if (now - lastSeen > 1000) started = now;
+    return started;
+  });
+  const [ms, setMs] = useState(() => performance.now() - t0);
   useEffect(() => {
-    const t0 = performance.now();
-    const t = setInterval(() => setMs(performance.now() - t0), 200);
-    return () => clearInterval(t);
-  }, []);
+    const seen = () => { if (!editing) lastSeen = performance.now(); };
+    const t = setInterval(() => { seen(); setMs(performance.now() - t0); }, 200);
+    return () => { clearInterval(t); seen(); };
+  }, [editing, t0]);
   const steps = editing ? EDIT_STEPS : STEPS;
   const step = steps.filter(([at]) => ms >= at).length - 1;
   const pct = 92 * (1 - Math.exp(-ms / (editing ? 1500 : 2600)));

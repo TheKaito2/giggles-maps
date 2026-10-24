@@ -197,7 +197,7 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
         {presetBar}
         {r && typeof r === "object" && "error" in r
           ? <p className="fine" role="status">{r.error} <button type="button" className="link" onClick={() => d.preset && d.retry(d.preset)}>Try again</button></p>
-          : <p className="fine" role="status">Planning your detour…</p>}
+          : <PlanProgress />}
       </div>
     );
   }
