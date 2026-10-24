@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ChevronDown, MoreHorizontal, Plus, Search, Trash2, Camera, X } from "lucide-react";
+import { ChevronDown, GripVertical, MoreHorizontal, Plus, Search, Trash2, Camera, X } from "lucide-react";
 import { useDialog } from "../../lib/useDialog";
 import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, type RouteStop, routePlaces, searchPlaces, TIER_NAME } from "../../lib/api";
 import { CHIPS } from "../ExploreChips";
@@ -48,7 +48,8 @@ const SPEED_M_PER_MIN = { pedestrian: 80, bicycle: 250, auto: 500 } as const;   
 interface Row { id: number; name: string; name_th: string | null; category: string; kind: string | null; photo: string | null;
   extra: number; estimate: boolean; rating: number | null }
 
-function StopRow({ s, i, d, sel, onOpen, onCheckin }: { s: RouteStop; i: number; d: Detour; sel: boolean; onOpen: (s: RouteStop) => void; onCheckin: (t: CheckinTarget) => void }) {
+function StopRow({ s, i, d, sel, dragging, onDrag, onStep, onOpen, onCheckin }: { s: RouteStop; i: number; d: Detour; sel: boolean; dragging: boolean;
+  onDrag: (e: React.PointerEvent) => void; onStep: (by: number) => void; onOpen: (s: RouteStop) => void; onCheckin: (t: CheckinTarget) => void }) {
   const [menu, setMenu] = useState(false);
   const more = useRef<HTMLDivElement>(null);
   // the menu closes on Escape or a tap anywhere else
@@ -62,7 +63,10 @@ function StopRow({ s, i, d, sel, onOpen, onCheckin }: { s: RouteStop; i: number;
   }, [menu]);
   const tags = badges(s);
   return (
-    <li className={`stop-row${sel ? " sel" : ""}`} id={`stop-${s.id}`}>
+    <li className={`stop-row${sel ? " sel" : ""}${dragging ? " dragging" : ""}`} id={`stop-${s.id}`}>
+      <button type="button" className="drag-handle" aria-label={`Move ${s.name}: hold and drag, or use the arrow keys`} disabled={d.editing}
+        onPointerDown={onDrag} onKeyDown={(e) => { if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); onStep(e.key === "ArrowUp" ? -1 : 1); } }}>
+        <GripVertical size={16} aria-hidden /></button>
       <button type="button" className="stop-main" onClick={() => onOpen(s)}>
         <span className="stop-num" aria-hidden>{i + 1}</span>
         <Thumb s={s} />
@@ -211,6 +215,40 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
   const [details, setDetails] = useState(false);
   const [adding, setAdding] = useState<number | null>(null);   // the "Add a stop" sheet: the gap its + sits in (0 = before the first stop)
   const { response, plan } = d;
+  // hold a stop's handle and drag it: the list reorders as you move, and letting go reroutes in that order
+  const [order, setOrder] = useState<number[] | null>(null);   // stop ids while dragging, then until the new route arrives
+  const [dragId, setDragId] = useState<number | null>(null);
+  const rows = useRef<HTMLOListElement>(null);
+  useEffect(() => { if (!d.editing && dragId == null) setOrder(null); }, [plan, d.editing]); // eslint-disable-line react-hooks/exhaustive-deps
+  const visible = plan?.stops.filter((s) => !d.hidden.includes(s.id)) ?? [];
+  const shown = order ? order.map((id) => visible.find((s) => s.id === id)).filter((s): s is RouteStop => !!s) : visible;
+  const commit = (next: number[]) => { if (next.join() !== visible.map((s) => s.id).join()) d.reorder(next); else setOrder(null); };
+  const drag = (id: number, e: React.PointerEvent) => {
+    if (d.editing || e.button > 0) return;
+    e.preventDefault();
+    let cur = visible.map((s) => s.id);
+    setOrder(cur); setDragId(id);
+    const move = (ev: PointerEvent) => {
+      // the dragged stop goes before the first other row whose middle is below the pointer
+      const others = [...rows.current!.querySelectorAll<HTMLElement>("li.stop-row")].filter((r) => r.id !== `stop-${id}`);
+      const k = others.filter((r) => { const b = r.getBoundingClientRect(); return b.top + b.height / 2 < ev.clientY; }).length;
+      const next = cur.filter((x) => x !== id);
+      next.splice(k, 0, id);
+      if (next.join() !== cur.join()) { cur = next; setOrder(next); }
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up);
+      setDragId(null); commit(cur);
+    };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up);
+  };
+  const step = (id: number, by: number) => {
+    if (d.editing) return;
+    const cur = visible.map((s) => s.id), at = cur.indexOf(id), to = at + by;
+    if (to < 0 || to >= cur.length) return;
+    const next = [...cur]; next.splice(at, 1); next.splice(to, 0, id);
+    setOrder(next); commit(next);
+  };
   const presetBar = (
     <div className="seg presets-mini" role="radiogroup" aria-label="Extra time">
       {[...PRESETS, ...(d.preset === "custom" ? [{ id: "custom" as const, label: "Custom", min: d.budgetOf("custom") }] : [])].map((p) => (
@@ -270,11 +308,12 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
       {plan.stops.length === 0
         ? <p className="fine">{plan.warnings?.some((w) => w === "places_unavailable" || w === "some_detours_unavailable")
             ? "Couldn't check road times right now. Try again in a moment." : "No stops fit this much time. Try a longer option or fewer filters."}</p>
-        : <ol className="stop-rows">
-            {plan.stops.filter((s) => !d.hidden.includes(s.id)).map((s, i) => <Fragment key={s.id}>
-              {i === 0 && <AddGap onAdd={() => setAdding(0)} />}
-              <StopRow s={s} i={i} d={d} sel={selected === s.id} onOpen={onOpen} onCheckin={onCheckin} />
-              <AddGap onAdd={() => setAdding(i + 1)} />
+        : <ol className="stop-rows" ref={rows}>
+            {shown.map((s, i) => <Fragment key={s.id}>
+              {i === 0 && !order && <AddGap onAdd={() => setAdding(0)} />}
+              <StopRow s={s} i={i} d={d} sel={selected === s.id} dragging={dragId === s.id} onDrag={(e) => drag(s.id, e)} onStep={(by) => step(s.id, by)}
+                onOpen={onOpen} onCheckin={onCheckin} />
+              {!order && <AddGap onAdd={() => setAdding(i + 1)} />}
             </Fragment>)}
           </ol>}
       {adding != null && <AddStopSheet places={current?.along ?? []} d={d} full={plan.stops.length >= d.cap} at={adding} onClose={() => setAdding(null)} />}

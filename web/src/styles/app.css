@@ -655,6 +655,12 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .stop-text { display: grid; gap: 2px; min-width: 0; }
 .stop-text b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stop-more { position: relative; flex: none; }
+/* hold and drag to reorder: touch-action none, so a drag on the handle never scrolls the panel instead */
+.drag-handle { flex: none; display: grid; place-items: center; width: 24px; height: 44px; margin-right: -4px; border: 0; background: none;
+  color: var(--ink-2); cursor: grab; touch-action: none; border-radius: 8px; }
+.drag-handle:disabled { opacity: .4; cursor: default; }
+.stop-row.dragging { background: var(--card); box-shadow: var(--shadow); z-index: 2; }
+.stop-row.dragging .drag-handle { cursor: grabbing; }
 .menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 10; display: grid; min-width: 190px; padding: 6px; border-radius: 14px; }
 .menu button { display: flex; align-items: center; gap: 10px; border: 0; background: none; padding: 10px 12px; border-radius: 10px; color: var(--ink); text-align: left; font-weight: 700; }
 .menu button:hover, .menu button:focus-visible { background: var(--indigo-soft); }

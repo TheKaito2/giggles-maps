@@ -143,6 +143,8 @@ export function useDetour(onError: (m: string) => void) {
   // one edit at a time: the next one builds on its result. Removing keeps the others, rules this one out,
   // and lets the planner fill the gap with its best replacement.
   const removeStop = (stop: number) => { if (editing) return; setHidden((h) => [...h, stop]); return replan(ids().filter((x) => x !== stop), [...exclude, stop]); };
+  // a stop dragged to a new place: the route goes in exactly this order
+  const reorder = (order: number[]) => { if (editing) return; return replan(order, exclude, true); };
   // adding means adding: the place goes in even when the trip runs past the preset's time. `at`: the gap it goes in
   // (the + between two stops, 0 = before the first): the route goes through it right there; none = "add along your
   // route", and the planner fits it in the best order
@@ -154,7 +156,7 @@ export function useDetour(onError: (m: string) => void) {
 
   return {
     stage, setStage, origin, setOrigin, dest, setDest, prefs, set, results, preset, setPreset: choosePreset, choice, setChoice, plan, response,
-    cap, editing, locating, hidden, retry, notify: onError, gate, setGate, replanAll: () => setAgain((n) => n + 1), goTo, close, pickCustom, budgetOf, removeStop, addStop,
+    cap, editing, locating, hidden, retry, notify: onError, gate, setGate, replanAll: () => setAgain((n) => n + 1), goTo, close, pickCustom, budgetOf, removeStop, addStop, reorder,
     swap: () => { if (origin && dest) { setOrigin(dest); setDest(origin); } },
   };
 }
