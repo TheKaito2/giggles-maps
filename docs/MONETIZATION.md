@@ -13,7 +13,7 @@ labelled. Free users still get the quality order.
 | Membership | user | ฿349 once, lifetime |
 | Giggles Plus | user | ฿59 / month (30 days, no auto-renew on the web) |
 | Partner | shop | ฿299 / month |
-| Giggles Choice | shop (by invitation) | ฿799 / month |
+| Giggles Choice | a Partner we chose (apply first) | ฿799 / month, only after being chosen |
 | Booking commission | shop | ฿20 flat per completed booking, from its prepaid credit |
 | Verified visit | shop | its per-visit price, from its prepaid credit (unchanged from v3) |
 
@@ -55,9 +55,10 @@ A plan card that uses only Giggles Choice places (plus anything you picked). Eve
 1. **Free listing** (unchanged): claim or add the place, hours, photos, products, counter QR sticker, visitor numbers.
 2. **Partner, ฿299 / month.** Needs: the owner signed in (not a guest account) and a verified place (its counter QR scanned
    at least once). Gets: first on members' routes, a Partner badge, bookings through Giggles Maps.
-3. **Giggles Choice, ฿799 / month.** A Partner we hand-pick: the shop applies in its dashboard, an admin approves it
-   (Profile → Settings → admin list). Gets: a Giggles Choice badge, ×2 on members' routes, and the Giggle's plan for everyone.
-   An unapproved Choice payment counts as Partner (and checkout refuses it anyway).
+3. **Giggles Choice, by invitation (not a plan you can buy).** Only a live Partner can apply (`request_choice`, else
+   `partners_only`). An admin chooses (Profile → Settings → admin list). Only a chosen shop can then switch it on for
+   ฿799 / month (checkout refuses Choice before approval). Gets: a Giggles Choice badge, ×2 on members' routes, and the
+   Giggle's plan for everyone.
 4. A tier runs 30 days per payment; paying again adds 30 days.
 
 **Labelling:** every paid place shows its badge (Partner / Giggles Choice) on detour cards and the place page, with a tooltip

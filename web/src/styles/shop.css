@@ -37,3 +37,62 @@ td .row { flex-wrap: nowrap; }
 .product-grid li { display: grid; gap: 4px; }
 .product-grid img, .product-grid .ph { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; background: var(--indigo-soft); }
 .price-in { max-width: 110px; }
+
+/* ---------- shop pitch (signed out / no shop yet): Grab Merchant + Airbnb Host pattern ---------- */
+.pitch { display: grid; gap: 44px; }
+.pitch h2 { font: 800 var(--fs-display)/var(--lh-display) var(--font-display); margin: 0 0 14px; }
+.pitch-hero { display: grid; gap: 14px; padding: 18px 0 4px; }
+.pitch-hero h1 { font: 800 clamp(32px, 6vw, 48px)/1.12 var(--font-display); margin: 0; max-width: 16ch; }
+.pitch-hero .lede { font-size: var(--fs-headline); line-height: var(--lh-headline); color: var(--ink-2); max-width: 46ch; margin: 0; }
+.pitch-hero .row { align-items: center; gap: 18px; flex-wrap: wrap; }
+.reach { display: grid; gap: 12px; padding: 16px; border-radius: 20px; background: var(--card); border: 2px solid var(--line); max-width: 560px; }
+.reach-search { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; background: var(--paper); color: var(--ink-2); }
+.reach-search input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; font-size: var(--fs-body); color: var(--ink); outline: none; }
+.reach-results { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.reach-results button { width: 100%; display: flex; align-items: center; gap: 8px; text-align: left; border: 0; background: none; padding: 9px 10px;
+  border-radius: 10px; font: inherit; color: var(--ink); cursor: pointer; }
+.reach-results button:hover { background: var(--paper); }
+.reach-out { display: grid; gap: 8px; }
+.reach-nums { display: flex; gap: 22px; flex-wrap: wrap; }
+.reach-nums > span { display: grid; }
+.reach-nums b { font: 800 var(--fs-hero)/1.1 var(--font-data); color: var(--indigo); }
+.reasons { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.reasons li { position: relative; display: grid; gap: 6px; align-content: start; padding: 18px 16px; border-radius: 18px; background: var(--card);
+  border: 2px solid var(--line); border-bottom-width: 4px; color: var(--indigo); }
+.reasons li b { color: var(--ink); font-size: var(--fs-headline); }
+.reason-n { position: absolute; top: 12px; right: 14px; font-size: var(--fs-caption); color: var(--ink-2); }
+.join-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.join-steps li { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; padding-bottom: 18px; position: relative; }
+.join-steps li:not(:last-child)::before { content: ""; position: absolute; left: 17px; top: 36px; bottom: 0; width: 2px; background: var(--line); }
+.join-steps li > span:last-child { display: grid; gap: 2px; padding-top: 6px; }
+.join-dot { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--indigo); color: var(--on-indigo); font-weight: 800; }
+.faq { display: grid; gap: 8px; }
+.faq details { border: 2px solid var(--line); border-radius: 14px; background: var(--card); padding: 0 16px; }
+.faq summary { cursor: pointer; padding: 14px 0; font-weight: 700; list-style-position: inside; }
+.faq details p { margin: 0 0 14px; color: var(--ink-2); }
+
+/* price ladder: pitch and the dashboard's Partner tab */
+.ladder { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.ladder article { display: grid; gap: 8px; align-content: start; justify-items: start; padding: 18px 16px; border-radius: 18px; background: var(--card);
+  border: 2px solid var(--line); border-bottom-width: 4px; }
+.ladder article > b { font: 800 var(--fs-title)/var(--lh-title) var(--font-display); display: inline-flex; align-items: center; gap: 6px; }
+.ladder article > b.num { font-family: var(--font-data); }
+.ladder article > b small { font-size: var(--fs-caption); color: var(--ink-2); margin-left: 2px; }
+.ladder article.hot { border-color: color-mix(in srgb, var(--marigold) 60%, var(--line)); }
+.ladder article.here { box-shadow: 0 0 0 3px var(--indigo-soft); border-color: var(--indigo); }
+.ladder .btn { justify-self: stretch; }
+.chip.chosen { background: var(--marigold-soft); color: #8a6200; box-shadow: inset 0 0 0 1px var(--marigold); display: inline-flex; gap: 4px; align-items: center; }
+
+/* dashboard */
+.dash { padding-top: 12px; border-top: 2px solid var(--line); }
+.dash-tabs { display: flex; flex-wrap: wrap; max-width: 100%; }
+.dash-tabs button { position: relative; white-space: nowrap; }
+.dot-new { position: absolute; top: 5px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: #c0392b; }
+.next-step { padding: 12px 14px; border-radius: 14px; background: var(--indigo-soft); margin: 0; }
+.peek { justify-self: start; }
+.pitch-hero .btn { width: auto; }
+@media (min-width: 820px) {
+  .pitch-hero { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); column-gap: 32px; align-items: center; }
+  .pitch-hero > :not(.reach) { grid-column: 1; }
+  .pitch-hero > .reach { grid-column: 2; grid-row: 1 / span 4; }
+}

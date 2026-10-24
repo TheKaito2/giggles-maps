@@ -112,7 +112,7 @@ export default function MyListing({ signedIn }: { signedIn: boolean }) {
   return (
     <section className="stack my-listing" aria-label="Your listing">
       <h2>Your shop on Giggles Maps (free)</h2>
-      <p className="fine">The listing is free, and our planner prefers independent and community businesses. Partners (below) also come first on members' routes and take bookings.</p>
+      <p className="fine">The listing is free, and our planner prefers independent and community businesses. Partners also come first on members' routes and take bookings.</p>
       {!signedIn ? <p className="notice">Sign in at the bottom of this page to claim or add your shop.</p> : <>
         {mine?.map((p) => <Listing key={p.id} p={p} onChange={load} />)}
         <div className="glass listing">

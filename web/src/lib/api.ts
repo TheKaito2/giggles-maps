@@ -260,6 +260,9 @@ export const cancelBooking = (id: number) => rpc<void>("cancel_booking", { p_id:
 export const shopBookings = (shop: string) => rpc<ShopBooking[]>("shop_bookings", { p_shop: shop });
 export const answerBooking = (id: number, accept: boolean) => rpc<void>("answer_booking", { p_id: id, p_accept: accept });
 export const requestChoice = (shop: string) => rpc<void>("request_choice", { p_shop: shop });
+// the shop pitch's real number: trips planned near a place and times it was on a route (30 days)
+export interface ShopReach { name: string; shown_30d: number; trips_near_30d: number }
+export const shopReach = (place: number) => rpc<ShopReach>("shop_reach", { p_place: place });
 export const approveChoice = (shop: string, ok: boolean) => rpc<void>("approve_choice", { p_shop: shop, p_ok: ok });
 export const choiceRequests = () => rpc<{ shop: string; name: string; tier: PartnerTier | null; at: string }[]>("choice_requests");
 

@@ -309,7 +309,8 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
 | `request_booking(p_place, p_day, p_party, p_note)` | signed in | booking id. Errors `sign_in_required`, `not_bookable`, `bad_day`, `bad_party`, `too_many_bookings`, `already_booked` |
 | `my_bookings()`, `cancel_booking(p_id)` | signed in | your bookings `{id, place_id, place, day, party, note, status}` / cancel a requested or accepted one |
 | `shop_bookings(p_shop)`, `answer_booking(p_id, p_accept)` | shop owner | `{id, place, guest, day, party, note, status, fee, charged}` / accept or decline a request (accept needs credit for the fee: `top_up_first`) |
-| `request_choice(p_shop)` | shop owner | apply for Giggles Choice |
+| `request_choice(p_shop)` | shop owner | apply for Giggles Choice; live Partners only (`partners_only`) |
+| `shop_reach(p_place)` | anyone | `{name, shown_30d, trips_near_30d}`: times on a route and trips planned within 20 km, last 30 days (counts only) |
 | `choice_requests()`, `approve_choice(p_shop, p_ok)` | admin | Giggles Choice applications / approve or turn down |
 | `set_cosmetics(p_theme, p_flair)` | Plus only (`plus_required`) | saves `profiles.cosmetics`; pass null to keep a field. Themes `classic indigo lotus night-market temple-gold rain`, flairs `none marigold indigo lotus sparkle` (`bad_theme` / `bad_flair`) |
 | `claim_monthly_stamp()` | signed in | this month's Plus stamp (date), or null without Plus. Read stamps from `plus_stamps` |
