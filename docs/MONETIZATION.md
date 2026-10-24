@@ -22,7 +22,7 @@ labelled. Free users still get the quality order.
 ### Everyone (free)
 - Map, stamps, passport, photos, quests, coins, levels, the shop and Siam Si. Coins and levels are no longer a membership perk.
 - A banner ad on the Feed, Quests, Leaderboard and Profile tabs. Never on the map, in directions, the detour planner or check-in.
-- **Detours need a signed-in account** (`403 sign_in_required` for guests): 3 detours and 10 changes a day (Bangkok day).
+- **Guests try one detour a day** (1 destination, 3 changes; then `403 sign_in_required`). Free accounts: 3 detours and 10 changes a day (Bangkok day).
   - A detour = one destination (rounded to ~100 m). The 3 time options and preference changes for it count once.
   - A change = one edit (add, remove or swap a stop). The planner's own retries of that edit count once.
   - Over the limit: `429 detour_limit` / `edit_limit`; the app shows today's usage and offers membership.

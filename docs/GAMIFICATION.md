@@ -179,3 +179,14 @@ XP, coins and bonus Siam Si shake. Check-ins only say a quest is ready.
   - top 3: +100/+60/+40 coins;
   - whoever led their friends: +30;
   - each winner also gets a Siam Si shake and a feed post.
+
+## Level rewards, reviews and place photos (migrations 072-076)
+- **Level-up rewards:** every level from 2 up lets you pick one permanent perk, +10% luck (Siam Si: every rarity above Common
+  is 1.1× likelier per pick) or +10% coins (every coin earned afterwards), and unlocks that level's sky cosmetic, worn free
+  from then on: Cloud puff frame (2), Sky blue flair (3), Cloud hopper title (4), Blue sky cover (5), Rainbow frame (6),
+  Sky captain title (7), Sunrise flair (8), Starry night cover (9), Above the clouds title (10). Never sold.
+- **Reviews:** the first review of a place you checked in at gives +20 XP; the first one with 60+ characters of text also
+  gives a bonus Siam Si shake.
+- **Place photos:** add up to 3 photos of a place you have a stamp at to its page (public, reportable); your first one there
+  pays 10 coins.
+- **Waiting shakes:** a check-in's shake you closed without taking stays on the Siam Si card for 24 hours.

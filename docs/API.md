@@ -66,7 +66,7 @@ Response
   "base_min": 21, "total_min": 66, "extra_min": 44, "budget_min": 45,
   "plus": false, "member": false, "level": 0, "max_budget_min": 240, "candidates_considered": 15,
   "stops": [{ "id": 31, "name": "…", "name_th": "…", "category": "craft", "lat": 17.16, "lng": 104.14,
-              "is_partner": true, "is_demo": true, "rating": 4.2, "dwell_min": 20, "eta_min": 617,
+              "is_partner": true, "is_demo": true, "rating": 4.2, "dwell_min": 20, "eta_min": 617, "travel_min": 12,
               "meal": null, "price_level": 0, "partner_tier": null,
               "nearby_partner": null }],
   "geometry": [[104.14488, 17.17313], "…"],
@@ -84,7 +84,8 @@ Response
   render it dashed and label it as approximate. Other baseline outages return
   503 `routing_unavailable`. Road detours include verified leg times, dwell and
   meal waiting within the budget. See `THAILAND-ROUTING.md` for rollout.
-- v5: signed-in accounts only (403 `sign_in_required` for guests). Free accounts: 3 detours (destinations) and 10 edits a Bangkok
+- Guests (anonymous sessions) try it: 1 detour (destination) and 3 edits a Bangkok day, then 403 `sign_in_required`
+  (migration 073; show "sign in free for 3", not a retry). Free accounts: 3 detours (destinations) and 10 edits a Bangkok
   day (429 `detour_limit` / `edit_limit`); a request with `must_include` or `exclude` is an edit. Everyone: 20 plans a minute,
   members 300 and free accounts 100 a day (429 `slow_down`). An edit of a destination not planned today counts as a detour. `my_plan_usage()` reports today's counts.
 - Stops are chosen by quality (rating, variety, fit inside the budget). For members, paid tiers score higher: Giggles Choice ×2,
@@ -264,9 +265,16 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
 - `place_page(p_id)`: details (hours, phone, website, address, flags), `rating` (review average, shown from 3 reviews),
   `review_count`, latest 20 `reviews`, `checked_in`, `stamped`, `photos` (Wikimedia `url` + author + licence, or a public
   check-in `path`), `busy` (check-ins per hour 6:00-23:00 for today's weekday, only once a place has 20+), `saved_in` (my list ids).
-- Reviews: `write_review(p_place, p_rating 1-5, p_body)` needs a non-rejected check-in there (error `check_in_first`);
+- Reviews: `write_review(p_place, p_rating 1-5, p_body)` needs an approved check-in there (error `check_in_first`) and returns
+  `{xp, shake, tickets}`: +20 XP for the first review of a place, and one bonus Siam Si shake for the first review with 60+
+  characters of text (migrations 072, 076). `place_page.review_shake` = that shake is still available here.
   `delete_review`, `report_review`. Three or more reviews set `places.rating`, which the planner uses.
 - Photos: `set_public_photo(p_checkin, p_public)`; public check-in photos are readable by anyone signed in.
+  Traveller photos of a place (migration 072): upload a JPEG to the public bucket `place-photos` at `<your uid>/<file>`, then
+  `add_place_photo(p_place, p_path)` (needs a stamp there; at most 3 per place and 20 a day; errors `check_in_first`, `bad_photo`,
+  `photo_limit`, `already_added`) returns `{coins_earned, coins}`: the first photo of a place pays 10 coins (plus coin perks).
+  `delete_place_photo(p_id)` (yours; then delete the file), `report_place_photo(p_id)` (3 reports hide it). In `place_page.photos`
+  they have `source: "traveller"`, `id`, `url: "place-photos/<path>"` and `mine`; `place_page.photo_reward` = your first photo here still pays.
   `place_photos` holds Wikimedia Commons photos (`supabase/tools/wikimedia_photos.py`, free licences only).
 - Lists: `my_lists()` (makes "Want to go" + "Favourites" on first call), `save_place(p_list, p_place, p_saved)`,
   `create_list(p_name)`, `update_list(p_list, p_name, p_shared, p_delete)`, `friend_lists(p_friend)` (shared ones, friends only).
@@ -333,3 +341,12 @@ No client can write to profiles, check-ins, billing, badges or wallets directly;
 exclusive names/coordinates are not exposed. Literal Thai/English queries are
 2–100 characters. It searches imported POIs, not every address; any map pin or
 coordinate can still be the destination.
+
+## Level rewards, waiting shakes (migrations 072-074)
+- `me()` adds `perks: {luck, coins, chosen: [{level, perk}]}` and `pending_shakes: [{checkin, place}]`.
+- Each level from 2 up gives one pick: `choose_level_perk(p_level, p_perk 'luck' | 'coins')` returns the new `perks`
+  (errors `level_not_reached`, `already_chosen`, `bad_perk`). Levels reached but not picked = 2..level minus `chosen`.
+  - luck: each pick multiplies the chance of every rarity above Common by 1.1 (the roll is divided by 1 + 0.1 × picks).
+  - coins: each pick adds 10% to every coin earned afterwards (stamps, quests, weekly awards, Siam Si, place photos).
+- Level cosmetics: `shop_items.level_req` (2-10). Worn free from that level (`can_wear`), never sold (`buy_item` → `level_reward`).
+- `pending_shakes`: first-visit check-ins from the last 24 h whose shake wasn't taken; pass the id to `shake_fortune(p_checkin)`.
