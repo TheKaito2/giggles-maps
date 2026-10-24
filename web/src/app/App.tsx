@@ -186,8 +186,7 @@ export default function App() {
               members={trip.trip?.members ?? NONE} skin={profile?.look.map ?? "liberty"} look={look}
               kinds={d.stage === "browse" ? CHIPS.find((c) => c.id === chip)?.kinds ?? null : null} onPlace={(p) => setPlace(p.id)}
               onTap={demoOn() ? moveTo : undefined} />
-            {demoOn() && <DemoBar nearby={nearby.stops}
-              route={mapPlan ? [...mapPlan.stops, ...(d.dest ? [{ ...d.dest.point, name: d.dest.name }] : [])] : []} />}
+            {demoOn() && <DemoBar />}
             {d.stage === "browse" && <ExploreChips active={chip} onPick={setChip} />}
             <div className="map-tools">
               <LayersButton look={look} setLook={setLook} />

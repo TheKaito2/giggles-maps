@@ -1,6 +1,7 @@
 import maplibregl from "maplibre-gl";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ArrowUp, Camera, CornerUpLeft, CornerUpRight, Flag, Languages, Share2, SkipForward, Volume2, VolumeX, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUp, Camera, CornerUpLeft, CornerUpRight, FastForward, Flag, Languages, Share2, SkipForward, Volume2, VolumeX, X } from "lucide-react";
+import { demoOn, moveTo } from "../../lib/demoGps";
 import { type Avoid, getNavRoute, type LatLng, type NavRoute, shareEta, SITE, stopEta, type TravelMode, tripPing } from "../../lib/api";
 import { cumulative, dueCall, type Progress, progress } from "./progress";
 import { say } from "./thai";
@@ -101,6 +102,25 @@ export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
     navigator.vibrate?.([80, 60, 80]);
     speak(lang === "th" ? `ถึง ${next.name} แล้ว` : `You've arrived at ${next.name}`);
   }, [here, left]); // eslint-disable-line react-hooks/exhaustive-deps
+  // demo mode: drive along the route to the next stop in a few seconds, so the map, the voice and the arrival card all play out
+  const [driving, setDriving] = useState(false);
+  const drive = useRef<number | null>(null);
+  useEffect(() => () => { if (drive.current) clearInterval(drive.current); }, []);
+  const fastForward = () => {
+    const target = left[0];
+    if (!route || !target || driving) return;
+    let end = route.shape.length - 1, best = Infinity;   // the route point nearest the stop
+    route.shape.forEach(([lng, lat], i) => { const d = metres({ lat, lng }, target); if (i >= lastIndex.current && d < best) { best = d; end = i; } });
+    const path = route.shape.slice(lastIndex.current, end + 1);
+    const steps = Math.min(40, path.length), at = (k: number) => path[Math.round((k * (path.length - 1)) / Math.max(steps - 1, 1))];
+    let k = 0;
+    setDriving(true);
+    drive.current = window.setInterval(() => {
+      if (k < steps) { const [lng, lat] = at(k++); moveTo({ lat, lng }); return; }
+      clearInterval(drive.current!); drive.current = null; setDriving(false);
+      moveTo({ lat: target.lat, lng: target.lng });
+    }, 120);
+  };
   const keepGoing = () => {   // skip checking in here: on to the next stop
     const rest = left.filter((w) => w !== atStop);
     setAtStop(null);
@@ -204,6 +224,8 @@ export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
           <button type="button" className="icon-btn" onClick={() => setMuted(!muted)} aria-label={muted ? "Unmute voice" : "Mute voice"}>{muted ? <VolumeX /> : <Volume2 />}</button>
           <button type="button" className="icon-btn" onClick={() => setLang(lang === "th" ? "en" : "th")} aria-label="Voice language"><Languages /><span className="fine">{lang.toUpperCase()}</span></button>
           <button type="button" className={`icon-btn${share ? " on" : ""}`} onClick={startShare} aria-label="Share live ETA"><Share2 /></button>
+          {demoOn() && left[0] && !atStop && <button type="button" className="btn small demo-ff" onClick={fastForward} disabled={!route || driving}>
+            <FastForward size={16} aria-hidden /> {driving ? "Driving…" : `Demo: to ${left[0].name.split(" (")[0].slice(0, 18)}`}</button>}
           <button type="button" className="btn danger-btn small" onClick={end}><X size={16} aria-hidden /> End</button>
         </div>
         {mode === "auto" && <div className="row nav-avoid">
