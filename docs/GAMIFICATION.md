@@ -166,3 +166,16 @@ XP, coins and bonus Siam Si shake. Check-ins only say a quest is ready.
 - **Memories:** every check-in photo, no longer capped at 48.
 - **Ride-alongs page:** 3 photos from each trip's album (first, middle and last). People who were on the trip keep seeing those 3
   after it ends.
+
+## Leaderboard (migration 060)
+- **Boards:** This week (resets Monday 00:00 Bangkok) or All-time; Everyone or Friends; ranked by XP, provinces, landmarks,
+  temples or food stops. Demo check-ins never count.
+- **Chase bar:** how far you are from the player just above you.
+- **Invite card:** shown while a board has fewer than 5 players.
+- **Province champions:** the most visit-days in a province over 90 days (one per place per day) wears its crown. The crown shows
+  on the board and the profile.
+- **Place regular:** the most visit-days at a place in 60 days (at least 2), shown on the place page.
+- **Weekly rewards:**
+  - top 3: +100/+60/+40 coins;
+  - whoever led their friends: +30;
+  - each winner also gets a Siam Si shake and a feed post.

@@ -273,6 +273,19 @@ export const removeFriend = (id: string) => rpc<void>("remove_friend", { p_id: i
 export interface FriendPassport { card: Card; stamps: PassportStamp[]; photos: PassportPhoto[]; provinces: PassportData["provinces"] }
 export const getFriendPassport = (id: string) => rpc<FriendPassport>("friend_passport", { p_id: id });
 export const getLeaderboard = () => rpc<{ top: Card[]; me: Card | null; total: number }>("leaderboard");
+export type BoardScope = "everyone" | "friends";
+export type BoardPeriod = "week" | "all";
+export type BoardMetric = "xp" | "provinces" | "landmarks" | "temples" | "food";
+export type BoardRow = Card & { rank: number | null; value: number };
+/** One board: top 50, your row (rank null when you've scored nothing yet), and the player just above you (the chase). */
+export interface Board { scope: BoardScope; period: BoardPeriod; metric: BoardMetric; ends: string | null;
+  top: BoardRow[]; me: BoardRow | null; next: BoardRow | null; total: number }
+export const getBoard = (scope: BoardScope, period: BoardPeriod, metric: BoardMetric) =>
+  rpc<Board>("board", { p_scope: scope, p_period: period, p_metric: metric });
+/** Per province, who visited on the most different days in 90 days; `need` = visit-days for you to take it. */
+export interface Champion { province: { id: number; iso: string; name_en: string; name_th: string }; champion: Who; visits: number;
+  mine: boolean; my_visits: number; need: number }
+export const getChampions = () => rpc<Champion[]>("province_champions");
 
 export interface TripMember { id: string; me: boolean; owner: boolean; nickname: string; colour: string; lat: number | null; lng: number | null }
 export interface TripPhoto { checkin_id: string; path: string; caption: string | null; place: string; at: string; nickname: string; colour: string }
@@ -306,13 +319,13 @@ export interface Badge { slug: string; name_en: string; name_th: string; icon: s
 export type Pin = ({ type: "badge" } & Badge) | { type: "stamp"; id: number; name: string; name_th: string | null; tier: 1 | 2 | 3;
   earned_at: string; province: string | null };
 export interface ProfilePage extends Omit<Card, "rank"> { friend_code: string | null; photos: number; friends: number; rank: number | null; badges: Badge[];
-  showcase: Pin[] }
+  showcase: Pin[]; crowns: { id: number; name_en: string; name_th: string; visits: number }[] }
 export const setShowcase = (pins: { type: "badge" | "stamp"; id: string }[]) => rpc<unknown>("set_showcase", { p: pins });
 export const getProfilePage = (id: string) => rpc<ProfilePage>("profile_of", { p_id: id });
 
 export type Reaction = "heart" | "fire" | "clap" | "wow";
 export interface FeedItem {
-  id: number; kind: "stamp" | "province" | "level" | "challenge" | "badge" | "nudge" | "fortune" | "comment"; at: string; mine: boolean;
+  id: number; kind: "stamp" | "province" | "level" | "challenge" | "badge" | "nudge" | "fortune" | "comment" | "award"; at: string; mine: boolean;
   data: Record<string, unknown>; who: Who; to: Who | null;
   place: { id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3 } | null;
   province: { id: number; iso: string; name_en: string; name_th: string } | null;
@@ -352,6 +365,7 @@ export interface PlacePage {
   local: boolean; otop: boolean; community: boolean; detour: boolean;
   rating: number | null; review_count: number; reviews: PlaceReview[]; checked_in: boolean; stamped: boolean;
   photos: PlacePhoto[]; busy: number[] | null; saved_in: string[];
+  regular: { who: Who; visits: number; friend: boolean; mine: boolean } | null;   // most visit-days here in 60 days (2+)
 }
 export const getPlacePage = (id: number) => rpc<PlacePage | null>("place_page", { p_id: id });
 export const writeReview = (place: number, rating: number, body: string) => rpc<void>("write_review", { p_place: place, p_rating: rating, p_body: body });

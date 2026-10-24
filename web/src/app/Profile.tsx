@@ -1,7 +1,7 @@
 import SiamSi from "./fortune/SiamSi";
 import { demoOn, setDemo } from "../lib/demoGps";
 import { type ReactNode, useEffect, useState } from "react";
-import { ArrowLeft, Backpack, BookOpen, Check, NotebookPen, Pencil, Plus, Settings, Share2, ShoppingBag, Sparkles, UserMinus, X, Zap } from "lucide-react";
+import { ArrowLeft, Backpack, BookOpen, Crown, Check, NotebookPen, Pencil, Plus, Settings, Share2, ShoppingBag, Sparkles, UserMinus, X, Zap } from "lucide-react";
 import { ApiError } from "../lib/supabase";
 import { getFriendPassport, getPassport, getProfilePage, levelProgress, nudge, type PassportPhoto, type PassportStamp, type Pin, type Profile,
   type ProfilePage, removeFriend, setShowcase, type TripMemory } from "../lib/api";
@@ -116,6 +116,8 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
           <span className="hero-level"><b className="num">Level {page.level}</b>
             {span ? <><progress value={into} max={span} aria-label={`${into} of ${span} XP to level ${page.level + 1}`} /><span className="num">{span - into} XP to go</span></>
               : <span>Max level</span>}</span>
+          {page.crowns.length > 0 && <span className="row tight crowns">{page.crowns.map((c) =>
+            <span key={c.id} className="crown-chip" title={`${c.visits} visit-days in 90 days`}><Crown size={13} aria-hidden /> {c.name_en} champion</span>)}</span>}
           <span className="hero-meta">Joined {month(page.joined)} · {page.friends} {page.friends === 1 ? "friend" : "friends"}</span>
         </div>
       </header>

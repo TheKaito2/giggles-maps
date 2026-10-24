@@ -216,6 +216,17 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
   - `comments_of(p_activity)` → `[{ id, body, at, mine, who }]`, oldest first.
   - `delete_comment(p_id)`: the author or the post's owner.
   - `feed()` items carry `comments` (count); a comment on someone else's post adds a `comment` item that only the two of you see.
+- Leaderboard v2 (migration 060):
+  - `board(p_scope 'everyone'|'friends', p_period 'week'|'all', p_metric 'xp'|'provinces'|'landmarks'|'temples'|'food')` →
+    `{ top (50, with rank and value), me, next (the row just above you), total, ends (week only) }`.
+    - Everyone means players on the leaderboard; friends means you and your friends.
+    - The week starts Monday 00:00 Bangkok.
+    - Demo check-ins never count.
+  - `province_champions()` → per province, the player with the most visit-days (approved, non-demo check-ins, one per place per
+    day) in 90 days, with `my_visits` and `need`.
+  - `place_page.regular`: most visit-days at the place in 60 days (2 or more). `profile_of.crowns`: the provinces you lead.
+  - Weekly rewards: `award_week()` (pg_cron, Monday 00:05 Bangkok) pays last week's top 3 +100/+60/+40 coins and each player who
+    led their friends +30, each with a Siam Si shake and an `award` feed item. It runs once per week (`weekly_awards`).
 - `claim_quest(p_slug)` → `{ slug, title, title_th, xp, coins, member, level, level_up, fortune_tickets }` (migration 057). Quests are
   claimed by hand: a finished quest waits until you claim it, and check-ins only list it in `challenges` with `ready: true`.
   Error `not_ready` if it isn't finished or is already claimed.

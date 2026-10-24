@@ -34,6 +34,7 @@ function line(g: FeedGroup): string {
     case "badge": return `${name} earned ${d.name_en} ${["", "I", "II", "III", "IV", "V"][Number(d.tier)]}`;
     case "fortune": return `${name} drew a ${d.rarity === "legendary" ? "Legendary" : "Epic"} Siam Si stick${d.item ? `: ${d.item}` : ""}`;
     case "nudge": return it.mine ? `You nudged ${it.to?.nickname}` : `${it.who.nickname} nudged you: time for a stamp!`;
+    case "award": return `${name} ${d.scope === "friends" ? "led their friends" : `finished #${d.rank}`} last week · +${d.coins} coins`;
     case "comment": return it.mine ? `You commented on ${it.to?.nickname}'s ${WHAT[String(d.what)] ?? "post"}`
       : `${it.who.nickname} commented on your ${WHAT[String(d.what)] ?? "post"}: “${d.body}”`;
   }
@@ -132,6 +133,7 @@ function Post({ g, urls, onReact, onComments, onShare }: {
           {it.kind === "challenge" && <div className="feed-big"><Award size={40} aria-hidden /><span className="num">+{d.xp} XP · +{d.coins} coins</span></div>}
           {it.kind === "badge" && <div className="feed-big"><BadgeIcon b={{ icon: String(d.icon), tier: Number(d.tier) }} size={64} /></div>}
           {it.kind === "nudge" && <div className="feed-big"><Zap size={36} aria-hidden /></div>}
+          {it.kind === "award" && <div className="feed-big"><Trophy size={40} aria-hidden /><b className="num">{d.scope === "friends" ? "Top of friends" : `#${d.rank} this week`}</b></div>}
         </>}
       </div>
       {social && <footer className="feed-react">

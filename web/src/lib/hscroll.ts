@@ -1,7 +1,7 @@
 // Sideways scrollers (chip rows, photo strips, plan cards...) hide their scrollbar, which is fine with a touchscreen or a
 // trackpad but leaves a mouse stuck. With a mouse, hovering one shows ‹ › buttons at its edges, and the wheel scrolls it
 // sideways. One pair of buttons for the whole app, placed over whichever row the pointer is on.
-const ROWS = ".chips-scroll, .builder-tabs, .friend-row, .explore-chips, .photo-strip, .product-strip, .plan-cards, .share-kinds, .shop-grid.today";
+const ROWS = ".chips-scroll, .builder-tabs, .friend-row, .explore-chips, .photo-strip, .product-strip, .plan-cards, .share-kinds, .shop-grid.today, .champ-row";
 
 export function installHScroll() {
   if (!matchMedia("(hover: hover) and (pointer: fine)").matches) return;

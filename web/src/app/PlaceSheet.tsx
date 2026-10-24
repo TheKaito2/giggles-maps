@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bookmark, BookmarkCheck, Camera, Clock, ExternalLink, Flag, Globe, MapPin, Navigation, Pencil, Phone, Share2, Star, X } from "lucide-react";
+import { Bookmark, BookmarkCheck, Camera, Clock, Crown, ExternalLink, Flag, Globe, MapPin, Navigation, Pencil, Phone, Share2, Star, X } from "lucide-react";
 import { ApiError } from "../lib/supabase";
 import { createList, deleteReview, getMyLists, getPlaceExtras, getPlacePage, type PlaceExtras, type PlacePage, photoUrls, reportReview,
   type SavedList, savePlace, shopPhotoUrl, SITE, suggestEdit, writeReview } from "../lib/api";
@@ -179,6 +179,10 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
         </div>
       </section>
 
+      {page.regular && (
+        <p className="place-regular"><Crown size={16} aria-hidden /> <b>Regular:</b>&nbsp;{page.regular.mine ? "you" : page.regular.who.nickname}
+          <span className="fine">&nbsp;· {page.regular.visits} visit-days in 60 days</span></p>
+      )}
       {page.busy && (
         <section aria-label="Busy times">
           <h4 className="eyebrow">Busy times today</h4>
