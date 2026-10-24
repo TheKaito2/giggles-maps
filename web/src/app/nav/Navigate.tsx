@@ -10,6 +10,7 @@ import { metres } from "../useStops";
 
 export interface Waypoint extends LatLng { name: string; id?: number }   // id: a place you can check in at
 const ARRIVE_M = 50;   // this close to a stop counts as there: the arrival card comes up
+const LEAVE_M = 100;   // this far from it again: you drove on, the card goes away (twice ARRIVE_M so GPS jitter doesn't flicker it)
 const OFF_ROUTE_M = 60, OFF_ROUTE_S = 10, REROUTE_GAP_S = 20;
 // announce a turn this far ahead, then again closer, then at the turn
 const CALLS: Record<TravelMode, number[]> = { auto: [800, 200, 0], bicycle: [300, 80, 0], pedestrian: [150, 40, 0] };
@@ -121,6 +122,8 @@ export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
       moveTo({ lat: target.lat, lng: target.lng });
     }, 120);
   };
+  // driving on past the stop closes its card by itself (counts as skipping it), so the road gets your attention back
+  useEffect(() => { if (atStop && here && metres(here, atStop) > LEAVE_M) keepGoing(); }, [here]); // eslint-disable-line react-hooks/exhaustive-deps
   const keepGoing = () => {   // skip checking in here: on to the next stop
     const rest = left.filter((w) => w !== atStop);
     setAtStop(null);
@@ -151,7 +154,7 @@ export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
     if (done > legsDone.current && left.length > 1) {
       const reached = left[done - legsDone.current - 1] ?? left[0];
       setLeft(left.slice(done - legsDone.current)); legsDone.current = done;
-      if (!greeted.current.has(reached)) { greeted.current.add(reached); setAtStop(reached); speak(lang === "th" ? `ถึง ${reached.name} แล้ว` : `You've reached ${reached.name}`); }
+      if (!greeted.current.has(reached) && metres(here, reached) <= LEAVE_M) { greeted.current.add(reached); setAtStop(reached); speak(lang === "th" ? `ถึง ${reached.name} แล้ว` : `You've reached ${reached.name}`); }
     }
     if (p.next != null) {
       const mv = route.maneuvers[p.next];
@@ -213,6 +216,7 @@ export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
           {left.filter((w) => w !== atStop).length > 0
             ? <button type="button" className="btn soft" onClick={keepGoing}><SkipForward size={16} aria-hidden /> Skip, go to {left.filter((w) => w !== atStop)[0].name}</button>
             : <button type="button" className="btn soft" onClick={end}><X size={16} aria-hidden /> End directions</button>}
+          <p className="fine arrive-note">This card closes by itself when you drive on.</p>
         </div>
       )}
       <div className="nav-bottom">
