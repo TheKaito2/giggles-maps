@@ -120,7 +120,7 @@ export function SkelProfile({ theme = "classic", self = true }: { theme?: string
         {many(3).map((i) => <span key={i} className="show-pin"><Bar w={54} h={54} round /><T w="70%" fs="caption" /><T w="40%" fs="caption" /></span>)}
       </section>
       <div className="profile-actions">{many(self ? 5 : 2).map((i) => <span key={i}><Bar w={24} h={24} /><T w="60%" fs="caption" /></span>)}</div>
-      <ul className="stat-strip">{many(6).map((i) => <li key={i}><T w={44} fs="headline" /><T w={60} fs="caption" /></li>)}</ul>
+      <ul className="stat-strip">{many(6).map((i) => <li key={i}><T w={44} fs="title" /><T w={60} fs="caption" /></li>)}</ul>
     </div>
   );
 }

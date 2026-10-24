@@ -1,7 +1,8 @@
 import SiamSi from "./fortune/SiamSi";
 import { demoOn, setDemo } from "../lib/demoGps";
 import { type ReactNode, useEffect, useState } from "react";
-import { ArrowLeft, Backpack, BookOpen, Crown, Check, NotebookPen, Pencil, Plus, Settings, Share2, ShoppingBag, Sparkles, UserMinus, X, Zap } from "lucide-react";
+import { ArrowLeft, Award, Backpack, BookOpen, Camera, Crown, Check, Map as MapIcon, NotebookPen, Pencil, Plus, Settings, Share2, ShoppingBag, Sparkles, Stamp,
+  UserMinus, X, Zap } from "lucide-react";
 import { ApiError } from "../lib/supabase";
 import { getFriendPassport, getPassport, getProfilePage, levelProgress, nudge, type PassportPhoto, type PassportStamp, type Pin, type Profile,
   type ProfilePage, removeFriend, setShowcase, type TripMemory } from "../lib/api";
@@ -75,10 +76,10 @@ function PinPicker({ page, stamps, onClose, onSaved }: { page: ProfilePage; stam
  * One profile page: a hero in your passport-cover colours with your province map, a showcase of 3 pins, quick actions
  * (Passport, Logbook, Shop, Siam Si), stats and badges. Mine keeps settings and account in a sheet; a friend's adds Nudge.
  */
-function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editName, onChange, openFriend, openPlace, openShop, openBag }: {
+function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editName, onChange, openFriend, openPlace, openShop, openBag, passport, onPassport }: {
   id: string; self: boolean; profile: Profile | null; refreshKey: number; onBack?: () => void;
   editAvatar?: () => void; editName?: () => void; onChange: () => void; openFriend?: (id: string) => void; openPlace?: (id: number) => void;
-  openShop?: () => void; openBag?: () => void;
+  openShop?: () => void; openBag?: () => void; passport?: boolean; onPassport?: () => void;
 }) {
   const [page, setPage] = useState<ProfilePage | null>(null);
   const [book, setBook] = useState<{ stamps: PassportStamp[]; photos: PassportPhoto[]; trips?: TripMemory[] } | null>(null);
@@ -86,6 +87,8 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
   const [msg, setMsg] = useState("");
   const [again, setAgain] = useState(0);
   useEffect(() => { getProfilePage(id).then(setPage).catch(() => setMsg("Couldn't load this profile.")); }, [id, refreshKey, again]);
+  // asked from outside (the provinces counter up top): open the passport, which shows once its stamps are in
+  useEffect(() => { if (passport) { setSheet("book"); onPassport?.(); } }, [passport]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { (self ? getPassport() : getFriendPassport(id)).then((b) => setBook({ stamps: b.stamps, photos: b.photos, trips: "trips" in b ? b.trips : undefined })).catch(() => undefined); }, [id, self, refreshKey]);
 
   const doNudge = () => nudge(id).then(() => setMsg(`Nudged ${page?.nickname}. They'll see it in their feed.`))
@@ -139,7 +142,7 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
       </section>
 
       <nav className="profile-actions" aria-label="Open">
-        <button type="button" onClick={() => setSheet("book")} disabled={!book}><BookOpen size={24} aria-hidden /><span>Passport</span></button>
+        <button type="button" className="primary" onClick={() => setSheet("book")} disabled={!book}><BookOpen size={24} aria-hidden /><span>Passport</span></button>
         <button type="button" onClick={() => setSheet("log")} disabled={!book}><NotebookPen size={24} aria-hidden /><span>Logbook</span></button>
         {self && <button type="button" onClick={openShop}><ShoppingBag size={24} aria-hidden /><span>Shop</span></button>}
         {self && <button type="button" onClick={openBag}><Backpack size={24} aria-hidden /><span>Bag</span></button>}
@@ -147,12 +150,12 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
       </nav>
 
       <ul className="stat-strip">
-        <li><b className="num">{page.xp}</b><span>XP</span></li>
-        <li><b className="num">{page.provinces}<small>/77</small></b><span>Provinces</span></li>
-        <li><b className="num">{page.stamps}</b><span>Stamps</span></li>
-        <li><b className="num">{page.photos}</b><span>Photos</span></li>
-        <li><b className="num">{page.badges.filter((b) => b.tier > 0).length}</b><span>Badges</span></li>
-        <li><b className="num">{page.rank ? `#${page.rank}` : "–"}</b><span>Rank</span></li>
+        <li className="s-xp"><b className="num">{page.xp}</b><span><Zap size={14} aria-hidden />XP</span></li>
+        <li className="s-provinces"><b className="num">{page.provinces}<small>/77</small></b><span><MapIcon size={14} aria-hidden />Provinces</span></li>
+        <li className="s-stamps"><b className="num">{page.stamps}</b><span><Stamp size={14} aria-hidden />Stamps</span></li>
+        <li className="s-photos"><b className="num">{page.photos}</b><span><Camera size={14} aria-hidden />Photos</span></li>
+        <li className="s-badges"><b className="num">{page.badges.filter((b) => b.tier > 0).length}</b><span><Award size={14} aria-hidden />Badges</span></li>
+        <li className="s-rank"><b className="num">{page.rank ? `#${page.rank}` : "–"}</b><span><Crown size={14} aria-hidden />Rank</span></li>
       </ul>
 
       {self && <div id="siamsi"><SiamSi profile={profile} onChange={onChange} onShop={openShop} /></div>}
@@ -188,14 +191,15 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
 }
 
 /** Profile tab: mine, or a friend's when one is opened (from the feed, friends list or a link). */
-export default function ProfileTab({ profile, refreshKey, onChange, editAvatar, editName, friend, setFriend, openPlace, openShop, openBag }: {
+export default function ProfileTab({ profile, refreshKey, onChange, editAvatar, editName, friend, setFriend, openPlace, openShop, openBag, passport, onPassport }: {
   profile: Profile | null; refreshKey: number; onChange: () => void; editAvatar: () => void; editName: () => void;
   friend: string | null; setFriend: (id: string | null) => void; openPlace: (id: number) => void; openShop: () => void; openBag: () => void;
+  passport: boolean; onPassport: () => void;
 }) {
   const user = useUser();
   if (!user) return <div className="page-col"><SkelProfile /></div>;
   return friend
     ? <ProfileView key={friend} id={friend} self={false} profile={profile} refreshKey={refreshKey} onBack={() => setFriend(null)} onChange={onChange} />
     : <ProfileView key="me" id={user.id} self profile={profile} refreshKey={refreshKey} editAvatar={editAvatar} editName={editName} onChange={onChange}
-        openFriend={(id) => { setFriend(id); scrollTo({ top: 0 }); }} openPlace={openPlace} openShop={openShop} openBag={openBag} />;
+        openFriend={(id) => { setFriend(id); scrollTo({ top: 0 }); }} openPlace={openPlace} openShop={openShop} openBag={openBag} passport={passport} onPassport={onPassport} />;
 }

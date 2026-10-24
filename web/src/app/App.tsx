@@ -47,6 +47,7 @@ const TIER_WORD = { 3: "landmark", 2: "worth-a-visit", 1: "everyday" } as const;
 export default function App() {
   const [tab, setTab] = useState<Tab>(() => readCodeParam("friend") ? "profile" : "map");
   const [friend, setFriend] = useState<string | null>(null);   // a friend's profile open in the Profile tab
+  const [passport, setPassport] = useState(false);   // open your passport on the Profile tab
   const [overlay, setOverlay] = useState<"shop" | "bag" | "avatar" | "ride" | "add" | null>(() => readCodeParam("trip") ? "ride" : null);
   const [chip, setChip] = useState<string | null>(null);
   const [nav, setNav] = useState<Waypoint[] | null>(null);   // turn-by-turn running
@@ -164,7 +165,8 @@ export default function App() {
         <div className="stat-chips">
           <button type="button" className="stat-chip level" onClick={() => setTab("profile")} aria-label={`Level ${level}, ${profile?.xp ?? 0} XP`}
             style={{ ["--p" as string]: span ? into / span : 1 }}><span className="ring"><b>{level}</b></span><span className="num">{profile?.xp ?? 0} XP</span></button>
-          <button type="button" className="stat-chip provinces" onClick={() => setTab("profile")} aria-label={`${profile?.provinces ?? 0} of 77 provinces`}>
+          <button type="button" className="stat-chip provinces" onClick={() => { setFriend(null); setTab("profile"); setPassport(true); }}
+            aria-label={`${profile?.provinces ?? 0} of 77 provinces, open your passport`}>
             <MapIcon size={18} aria-hidden /><span className="num">{profile?.provinces ?? 0}/77</span></button>
           <button type="button" className="stat-chip coins" onClick={() => setOverlay("shop")} aria-label={`${profile?.coins ?? 0} coins, open the shop`}>
             <Coins size={18} aria-hidden /><span className="num">{profile?.coins ?? 0}</span></button>
@@ -239,7 +241,7 @@ export default function App() {
           {tab === "feed" && <Feed profile={profile} refreshKey={refreshKey} openFriend={(id) => { setFriend(id); setTab("profile"); }} goProfile={() => { setFriend(null); setTab("profile"); }} openPlace={(id) => { setPlace(id); setTab("map"); }} />}
           {tab === "profile" && <ProfileTab profile={profile} refreshKey={refreshKey} onChange={refresh} friend={friend} setFriend={setFriend}
             editAvatar={() => setOverlay("avatar")} editName={() => setNameSheet(true)} openShop={() => setOverlay("shop")} openBag={() => setOverlay("bag")}
-            openPlace={(id) => { setPlace(id); setTab("map"); }} />}
+            openPlace={(id) => { setPlace(id); setTab("map"); }} passport={passport} onPassport={() => setPassport(false)} />}
         </main>
       )}
 
