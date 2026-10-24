@@ -1,0 +1,172 @@
+/* (conic gradients are written out in place: a var() holding var(--a) would freeze the angle at :root) */
+/* Cosmetics v2: new covers, frames and flair, plus the three Vault tiers above Legendary (Mythic, Celestial, Transcendent).
+   Loaded after app.css. Every animation lives in the prefers-reduced-motion: no-preference block at the end. */
+
+@property --a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+
+:root {
+  --myth-tint: #fff1e8; --cel-tint: #eefcff; --vault-bg: #14111f; --vault-ink: #f4f1ff; --vault-ink-2: #b9b4d6;
+  --prism-line: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e, #06b6d4, #8b5cf6, #ec4899, #ef4444);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --myth-tint: #3a1708; --cel-tint: #0e2a3a; --vault-bg: #0a0812; } }
+:root[data-theme="dark"] { --myth-tint: #3a1708; --cel-tint: #0e2a3a; --vault-bg: #0a0812; }
+
+/* ---------- covers ---------- */
+.passport-card.theme-tuk-tuk, .cover-bg.theme-tuk-tuk, .page.cover.theme-tuk-tuk, .level-card.theme-tuk-tuk {
+  background: radial-gradient(circle at 50% 0, #d1452f 0 6px, transparent 7px) 0 0 / 16px 12px repeat-x,
+    linear-gradient(180deg, #0b5d36 0 12px, transparent 12px),
+    repeating-linear-gradient(-45deg, #0a7a43 0 14px, #0d8a4d 14px 16px, #e8b800 16px 30px, #f2c200 30px 32px);
+  color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / .55); }
+.passport-card.theme-rice-paddy, .cover-bg.theme-rice-paddy, .page.cover.theme-rice-paddy, .level-card.theme-rice-paddy {
+  background: linear-gradient(180deg, #bfe8ff 0 22%, transparent 22%),
+    repeating-radial-gradient(ellipse 140% 90% at 30% 130%, #6aa83b 0 11px, #8bc34a 11px 20px, #d4ecb0 20px 22px);
+  color: #f4ffe8; text-shadow: 0 1px 2px rgb(20 50 10 / .6); }
+.passport-card.theme-beach-day, .cover-bg.theme-beach-day, .page.cover.theme-beach-day, .level-card.theme-beach-day {
+  background: radial-gradient(circle at 78% 18%, #ffe066 0 8%, #ffe06655 9%, transparent 18%),
+    linear-gradient(180deg, #5cc8ff 0 44%, #1fa9d6 44% 52%, #0b8fc0 52% 64%, #fff 64% 65.5%, #f3d9a4 65.5%);
+  color: #fff; text-shadow: 0 1px 2px rgb(0 60 100 / .5); }
+.passport-card.theme-jasmine, .cover-bg.theme-jasmine, .page.cover.theme-jasmine, .level-card.theme-jasmine {
+  background: radial-gradient(circle, #ffd54f 0 1.5px, #fffdf4 2.5px 5px, transparent 6px) 0 0 / 30px 30px,
+    radial-gradient(circle, #ffd54f 0 1px, #fffdf4 2px 4px, transparent 5px) 15px 15px / 30px 30px,
+    linear-gradient(150deg, #2f6b45, #163a25);
+  color: #fff8dc; }
+.passport-card.theme-floating-market, .cover-bg.theme-floating-market, .page.cover.theme-floating-market, .level-card.theme-floating-market {
+  background: radial-gradient(circle at 28% 62%, #f2c230 0 4%, transparent 4.5%), radial-gradient(circle at 68% 74%, #f2c230 0 4%, transparent 4.5%),
+    radial-gradient(ellipse 22% 4% at 28% 68%, #6d3b1a 96%, transparent), radial-gradient(ellipse 22% 4% at 68% 80%, #6d3b1a 96%, transparent),
+    radial-gradient(circle at 22% 66%, #e53935 0 1.6%, transparent 2%), radial-gradient(circle at 74% 78%, #7cb342 0 1.6%, transparent 2%),
+    linear-gradient(180deg, transparent 54%, #1e6f6a 54%), repeating-linear-gradient(180deg, transparent 0 6px, #2a8c84 6px 8px),
+    linear-gradient(180deg, #ff9e57, #ffcf7a 54%);
+  color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / .45); }
+.passport-card.theme-elephant-parade, .cover-bg.theme-elephant-parade, .page.cover.theme-elephant-parade, .level-card.theme-elephant-parade {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 26'%3E%3Cpath fill='%23f2c230' d='M6 9Q6 3 13 3h11q6 0 7 5 5 0 6 5 1 6-1 10h-2q1-5-1-8h-2v9h-3v-7H12v7H9v-8Q6 13 6 9z'/%3E%3C/svg%3E") 0 74% / 44px 26px repeat-x,
+    repeating-linear-gradient(90deg, #f2c230 0 4px, #8e1c1c 4px 8px) 0 0 / 100% 8px no-repeat,
+    linear-gradient(180deg, transparent 88%, #f2c230 88% 90%, transparent 90%),
+    linear-gradient(160deg, #a3172b, #5c0a16);
+  color: #fbe3a0; }
+/* Mythic covers */
+.passport-card.theme-naga-scales, .cover-bg.theme-naga-scales, .page.cover.theme-naga-scales, .level-card.theme-naga-scales {
+  background: radial-gradient(circle at 50% 0, transparent 0 8px, #d4a01780 9px, #0b4d3a 10.5px, transparent 11px) 0 0 / 20px 12px,
+    radial-gradient(circle at 50% 0, transparent 0 8px, #d4a01780 9px, #0b4d3a 10.5px, transparent 11px) 10px 6px / 20px 12px,
+    linear-gradient(160deg, #1f8a63, #0b4d3a 55%, #06261d);
+  color: #f6d77a; text-shadow: 0 0 8px rgb(246 215 122 / .5); }
+.passport-card.theme-golden-hour, .cover-bg.theme-golden-hour, .page.cover.theme-golden-hour, .level-card.theme-golden-hour {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 40' preserveAspectRatio='none'%3E%3Cpath fill='%233b1405' d='M0 40V30h8l4-8 4 8h10l3-14 3 14h8l6-26 6 26h8l3-14 3 14h10l4-8 4 8h18l3-10 3 10h10v10z'/%3E%3C/svg%3E") 0 100% / 100% 34% no-repeat,
+    radial-gradient(circle at 50% 66%, #fff4c2 0 7%, #ffd166aa 10%, transparent 32%),
+    linear-gradient(180deg, #5a1e6b, #c2410c 48%, #f59e0b 72%, #fde68a);
+  color: #fff4c2; text-shadow: 0 1px 3px rgb(60 20 5 / .6); }
+/* Celestial cover */
+.passport-card.theme-kinnaree-dawn, .cover-bg.theme-kinnaree-dawn, .page.cover.theme-kinnaree-dawn, .level-card.theme-kinnaree-dawn {
+  background: repeating-radial-gradient(ellipse 60% 40% at 0 100%, transparent 0 14px, #ffffff44 14px 16px),
+    repeating-radial-gradient(ellipse 60% 40% at 100% 100%, transparent 0 14px, #ffffff44 14px 16px),
+    radial-gradient(circle at 50% 100%, #fff3c4 0 10%, transparent 45%),
+    linear-gradient(180deg, #4c3a9a, #b072c9 45%, #f4a6b8 75%, #ffd9a0);
+  color: #fff; text-shadow: 0 1px 3px rgb(60 30 100 / .55); }
+/* Transcendent cover: gold rays and a passing sheen */
+.passport-card.theme-erawan, .cover-bg.theme-erawan, .page.cover.theme-erawan, .level-card.theme-erawan {
+  background: linear-gradient(110deg, transparent 35%, rgb(255 236 170 / .35) 50%, transparent 65%) -200% 0 / 200% 100% no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 44'%3E%3Cg fill='%23f6d77a'%3E%3Cpath d='M30 1l4 7h-8zM24 9h12l-2 3h-8z'/%3E%3Cellipse cx='21.5' cy='17' rx='4.5' ry='6.5'/%3E%3Cellipse cx='38.5' cy='17' rx='4.5' ry='6.5'/%3E%3Ccircle cx='30' cy='18' r='7.5'/%3E%3Cpath d='M27 22q-1 12 4 18 2 1 2-1-3-6-2-17z'/%3E%3Cellipse cx='9' cy='21' rx='3.5' ry='5'/%3E%3Ccircle cx='15' cy='22' r='5.5'/%3E%3Cpath d='M13 25q-2 9 1 14 2 1 2-1-2-5-1-13z'/%3E%3Cellipse cx='51' cy='21' rx='3.5' ry='5'/%3E%3Ccircle cx='45' cy='22' r='5.5'/%3E%3Cpath d='M47 25q2 9-1 14-2 1-2-1 2-5 1-13z'/%3E%3C/g%3E%3C/svg%3E") 50% 10% / auto 28% no-repeat,
+    radial-gradient(circle at 50% 42%, transparent 0 18%, #f6d77a66 18.5% 19.5%, transparent 20% 27%, #f6d77a44 27.5% 28.5%, transparent 29%),
+    repeating-conic-gradient(from 0deg at 50% 42%, #f6d77a14 0 5deg, transparent 6deg 11deg, #f6d77a14 12deg),
+    radial-gradient(circle at 50% 42%, #3b2a6b, #0d0a1f 70%);
+  color: #f6d77a; text-shadow: 0 0 10px rgb(246 215 122 / .55); }
+
+/* ---------- frames ---------- */
+.frame-washi img, .frame-washi .ph { border: 8px solid; box-sizing: border-box;
+  border-image: repeating-linear-gradient(45deg, #f9c5d1 0 6px, #fde2e4 6px 12px, #cde7f0 12px 18px, #fdf3c4 18px 24px) 8; }
+.frame-banana-leaf img, .frame-banana-leaf .ph { border: 8px solid; box-sizing: border-box;
+  border-image: repeating-linear-gradient(60deg, #2e7d32 0 3px, #43a047 3px 6px, #81c784 6px 7px) 8; box-shadow: 0 2px 8px rgb(46 125 50 / .3); }
+.frame-bamboo img, .frame-bamboo .ph { border: 8px solid; box-sizing: border-box;
+  border-image: repeating-linear-gradient(90deg, #d9c66d 0 13px, #8a7a2e 13px 15px, #efe3a2 15px 16px) 8; }
+.frame-neon img, .frame-neon .ph { border: 3px solid #ff4fd8; border-radius: 12px; outline: 2px solid #3ff0ff; outline-offset: 3px; box-sizing: border-box;
+  box-shadow: 0 0 6px #ff4fd8, 0 0 14px #ff4fd8aa, inset 0 0 8px #ff4fd8aa; }
+.frame-dragon-fire img, .frame-dragon-fire .ph { border: 6px solid; box-sizing: border-box;
+  border-image: linear-gradient(0deg, #7f1d1d, #c2410c 35%, #f97316 65%, #fbbf24) 1; box-shadow: 0 0 14px rgb(249 115 22 / .65), 0 -6px 18px rgb(194 65 12 / .5); }
+.frame-holo-prism img, .frame-holo-prism .ph { border: 6px solid; box-sizing: border-box; border-image: conic-gradient(from var(--a), #22d3ee, #818cf8, #e879f9, #a78bfa, #22d3ee) 1; box-shadow: 0 0 16px rgb(129 140 248 / .55); }
+
+/* ---------- name flair ---------- */
+.flair-mango, .flair-lime, .flair-sunset, .flair-ocean, .flair-ember, .flair-starlight, .flair-prismatic {
+  -webkit-background-clip: text; background-clip: text; color: transparent; }
+.profile-hero .profile-id h1:is(.flair-mango, .flair-lime, .flair-sunset, .flair-ocean, .flair-ember, .flair-starlight, .flair-prismatic) { color: transparent; }
+.flair-mango { background-image: linear-gradient(90deg, #f57c00, #ffb300, #f57c00); }
+.flair-lime { background-image: linear-gradient(90deg, #558b2f, #9ccc3a, #558b2f); }
+.flair-sunset { background-image: linear-gradient(90deg, #e8475f, #ff8a50, #8e6bd6); }
+.flair-ocean { background-image: linear-gradient(90deg, #005f8a, #00a6d6, #0077b6); }
+.flair-neon { color: #ff3fd2; text-shadow: 0 0 6px #ff4fd8, 0 0 14px #ff4fd899; }
+.flair-ember { background-image: linear-gradient(90deg, #991b1b, #ea580c, #f59e0b, #ea580c); filter: drop-shadow(0 0 4px rgb(249 115 22 / .5)); }
+.flair-ember::after { content: " ✹"; }
+.flair-starlight { background-image: linear-gradient(100deg, #0891b2 0 38%, #b9f3ff 50%, #7c3aed 62% 100%); background-size: 250% 100%; background-position: 100% 0;
+  filter: drop-shadow(0 0 5px rgb(34 211 238 / .45)); }
+.flair-starlight::after { content: " ✧"; }
+.flair-prismatic { background-image: var(--prism-line); background-size: 200% 100%; filter: drop-shadow(0 0 4px rgb(168 85 247 / .4)); }
+.flair-prismatic::after { content: " ✦"; }
+.preview.flair:is(.flair-ember, .flair-starlight, .flair-prismatic) { grid-auto-flow: column; justify-content: center; }
+
+/* ---------- Vault tiers: tiles, chips, try-on ---------- */
+.shop-grid li.r-mythic { border-color: #c2410c; background: linear-gradient(180deg, var(--myth-tint), var(--card) 65%);
+  box-shadow: 0 0 0 1px rgb(253 186 116 / .5), 0 4px 16px rgb(194 65 12 / .3); }
+.shop-grid li.r-celestial { border-color: transparent;
+  background: linear-gradient(180deg, var(--cel-tint), var(--card) 65%) padding-box, conic-gradient(from var(--a), #22d3ee, #818cf8, #e879f9, #a78bfa, #22d3ee) border-box; box-shadow: 0 4px 18px rgb(129 140 248 / .35); }
+.shop-grid li.r-transcendent { border-color: transparent; color: var(--vault-ink); overflow: hidden;
+  background: radial-gradient(circle at 50% 0, #2a2150, #0c0a14 70%) padding-box, conic-gradient(from var(--a), #ef4444, #f59e0b, #facc15, #22c55e, #06b6d4, #6366f1, #d946ef, #ef4444) border-box; box-shadow: 0 4px 22px rgb(168 85 247 / .45); }
+.shop-grid li.r-transcendent .fine { color: var(--vault-ink-2); }
+.shop-grid li.r-transcendent .coin-price { color: #f6d77a; } .shop-grid li.r-transcendent .coin-price.short { color: var(--vault-ink-2); }
+.shop-grid li.r-transcendent .preview:not(.cover-prev, .flair) { background: #1d1934; }
+.shop-grid li.r-transcendent .preview.title-chip { color: #f6d77a; }
+.shop-grid li.r-transcendent::before, .shop-grid li.r-transcendent::after { content: "✦"; position: absolute; pointer-events: none; color: #fff;
+  font-size: 11px; line-height: 1; text-shadow: 0 0 6px #e879f9; opacity: .8; }
+.shop-grid li.r-transcendent::before { top: 6px; right: 8px; }
+.shop-grid li.r-transcendent::after { top: 14px; left: 14px; font-size: 8px; text-shadow: 0 0 6px #22d3ee; }
+.shop-grid li.on.r-mythic, .shop-grid li.on.r-celestial, .shop-grid li.on.r-transcendent { outline: 2px solid var(--indigo); outline-offset: 2px; }
+
+.rarity.r-mythic { background: linear-gradient(90deg, #7f1d1d, #c2410c, #f59e0b); color: #fff7ed; }
+.rarity.r-celestial { background: linear-gradient(110deg, #0891b2 0 35%, #a5f3fc 50%, #7c3aed 65% 100%) 100% 0 / 250% 100%; color: #fff; text-shadow: 0 1px 1px rgb(0 0 0 / .35); }
+.rarity.r-transcendent { background: var(--prism-line) 0 0 / 200% 100%; color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / .55); }
+
+.modal.try-on.r-mythic { box-shadow: 0 0 0 2px #c2410c, 0 0 40px rgb(234 88 12 / .45); }
+.modal.try-on.r-mythic .try-stage { background: radial-gradient(circle at 50% 100%, rgb(249 115 22 / .25), var(--paper) 70%); }
+.modal.try-on.r-celestial { border: 3px solid transparent; background: linear-gradient(var(--card), var(--card)) padding-box, conic-gradient(from var(--a), #22d3ee, #818cf8, #e879f9, #a78bfa, #22d3ee) border-box;
+  box-shadow: 0 0 44px rgb(129 140 248 / .45); }
+.modal.try-on.r-celestial .try-stage { background: radial-gradient(circle at 50% 30%, rgb(34 211 238 / .18), var(--paper) 70%); }
+.modal.try-on.r-transcendent { border: 3px solid transparent; color: var(--vault-ink);
+  background: radial-gradient(circle at 50% 0, #2a2150, #0c0a14 70%) padding-box, conic-gradient(from var(--a), #ef4444, #f59e0b, #facc15, #22c55e, #06b6d4, #6366f1, #d946ef, #ef4444) border-box; box-shadow: 0 0 60px rgb(168 85 247 / .5); }
+.modal.try-on.r-transcendent :is(.fine, .eyebrow) { color: var(--vault-ink-2); }
+.modal.try-on.r-transcendent h2 { color: var(--vault-ink); }
+.modal.try-on.r-transcendent .icon-btn { color: var(--vault-ink); background: rgb(255 255 255 / .12); }
+.modal.try-on.r-transcendent .try-stage { background: radial-gradient(circle at 50% 40%, #2d2560, #120f22 75%); }
+.modal.try-on.r-transcendent .try-stage .preview.title-chip { color: #f6d77a; }
+.modal.try-on.r-transcendent .try-stage .preview.title-chip b { color: var(--vault-ink); }
+
+/* ---------- the Vault panel ---------- */
+.vault { display: grid; gap: 14px; padding: 16px; border-radius: 22px; color: var(--vault-ink); min-width: 0;
+  background: radial-gradient(circle at 85% 0, rgb(168 85 247 / .25), transparent 45%), radial-gradient(circle at 0 100%, rgb(234 88 12 / .18), transparent 40%), var(--vault-bg);
+  box-shadow: 0 6px 0 rgb(0 0 0 / .25), inset 0 0 0 1px rgb(255 255 255 / .08); }
+.vault-head { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 8px; color: #f6d77a; }
+.vault-head h4 { margin: 0; font: 800 var(--fs-title)/var(--lh-title) var(--font-display); color: var(--vault-ink); }
+.vault-head .fine { grid-column: 1 / -1; color: var(--vault-ink-2); }
+.vault-row { display: grid; gap: 8px; min-width: 0; }
+.vault-row > .row .coin-price { color: #f6d77a; }
+.vault .rarity { font-size: var(--fs-caption); padding: 3px 8px; }
+.vault .tile-foot .rarity { display: none; }   /* the row already names the tier */
+.vault .shop-grid li:not(.r-transcendent) { color: var(--ink); }
+.goal { display: grid; gap: 2px; }
+.goal progress { width: 100%; height: 6px; appearance: none; border: 0; border-radius: 99px; overflow: hidden; background: rgb(127 127 160 / .25); }
+.goal progress::-webkit-progress-bar { background: rgb(127 127 160 / .25); border-radius: 99px; }
+.goal progress::-webkit-progress-value { background: linear-gradient(90deg, #f59e0b, #f6d77a); border-radius: 99px; }
+.goal progress::-moz-progress-bar { background: linear-gradient(90deg, #f59e0b, #f6d77a); border-radius: 99px; }
+.goal .fine { font-size: var(--fs-micro); }
+
+/* ---------- motion ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes cos-spin { to { --a: 360deg; } }
+  @keyframes cos-slide { from { background-position: 0 0; } to { background-position: 200% 0; } }
+  @keyframes cos-shimmer { 0%, 55% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+  @keyframes cos-sheen { 0%, 60% { background-position: -200% 0, 50% 10%, 0 0, 0 0, 0 0; } 100% { background-position: 300% 0, 50% 10%, 0 0, 0 0, 0 0; } }
+  @keyframes cos-drift { 0%, 100% { transform: translateY(0) scale(.8); opacity: .3; } 50% { transform: translateY(-6px) scale(1.15); opacity: 1; } }
+  .shop-grid li.r-celestial, .modal.try-on.r-celestial, .frame-holo-prism img, .frame-holo-prism .ph { animation: cos-spin 6s linear infinite; }
+  .shop-grid li.r-transcendent, .modal.try-on.r-transcendent { animation: cos-spin 4s linear infinite; }
+  .shop-grid li.r-transcendent::before { animation: cos-drift 2.6s ease-in-out infinite; }
+  .shop-grid li.r-transcendent::after { animation: cos-drift 3.4s ease-in-out 1.1s infinite; }
+  .rarity.r-celestial, .flair-starlight { animation: cos-shimmer 3.2s ease-in-out infinite alternate; }
+  .rarity.r-transcendent, .flair-prismatic { animation: cos-slide 3s linear infinite; }
+  .theme-erawan { animation: cos-sheen 5s ease-in-out infinite; }
+}

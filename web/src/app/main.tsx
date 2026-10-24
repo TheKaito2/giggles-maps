@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import "../styles/tokens.css";
 import "../styles/app.css";
+import "../styles/cosmetics.css";
 import App from "./App";
 import { installDemoGps } from "../lib/demoGps";
 import { installHScroll } from "../lib/hscroll";

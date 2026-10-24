@@ -426,14 +426,6 @@ body { background: var(--paper); overflow: hidden; }
 .passport-card.theme-rain, .cover-bg.theme-rain, .page.cover.theme-rain { background: linear-gradient(135deg, #2f5d6e, #10303c); }
 
 /* ---------- badges ---------- */
-.badge-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
-.badge-grid li { display: grid; justify-items: center; text-align: center; gap: 4px; padding: 14px 8px; border: 2px solid var(--line); border-radius: 18px; background: var(--card); }
-.badge-grid progress { width: 80%; height: 8px; accent-color: var(--marigold); }
-.badge-icon { position: relative; display: inline-grid; place-items: center; }
-.badge-icon svg { grid-area: 1 / 1; filter: drop-shadow(0 3px 0 rgb(0 0 0 / .15)); }
-.badge-icon .badge-glyph { grid-area: 1 / 1; display: grid; place-items: center; margin-bottom: 8%; }
-.badge-icon .badge-roman { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); color: #fff; font: 800 var(--fs-micro)/var(--lh-micro) var(--font-data); padding: 1px 8px; border-radius: 999px; border: 2px solid var(--card); }
-.badge-icon.locked svg { opacity: .6; }
 
 /* ---------- leaderboard ---------- */
 .board-hero { color: var(--marigold); }
@@ -886,13 +878,17 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .modal.share-sheet { width: min(440px, 100%); }
 .share-kinds { overflow-x: auto; max-width: 100%; }
 .share-preview { display: grid; place-items: center; background: repeating-conic-gradient(#0000 0 25%, rgb(0 0 0 / .05) 0 50%) 0 0 / 18px 18px; border-radius: 16px; padding: 12px; }
-.share-preview img, .share-preview .ph { height: min(52vh, 440px); aspect-ratio: 9 / 16; border-radius: 12px; box-shadow: var(--shadow); object-fit: contain; }
+.share-preview img, .share-preview .ph { height: min(52vh, 440px); aspect-ratio: 9 / 16; border-radius: 14px; box-shadow: 0 18px 40px -12px rgb(20 13 43 / .45); object-fit: contain; }
 .share-preview.sticker img, .share-preview.sticker .ph { aspect-ratio: 1; height: auto; width: min(100%, 320px); box-shadow: none; }
 .share-preview .ph { background: var(--indigo-soft); animation: share-pulse 1.2s ease-in-out infinite alternate; }
 @keyframes share-pulse { to { opacity: .5; } }
-.design-swatches { display: flex; gap: 10px; flex-wrap: wrap; }
-.design-swatches button { width: 48px; height: 48px; border-radius: 14px; border: 2px solid var(--line); font-weight: 800; display: grid; place-items: center; }
-.design-swatches button.on { outline: 3px solid var(--indigo); outline-offset: 2px; }
+.design-swatches { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 6px; scrollbar-width: none; }
+.design-swatches button { flex: none; display: grid; justify-items: center; gap: 4px; background: none; border: 0; padding: 0; color: var(--ink-2); font: inherit; }
+.design-swatches .swatch { position: relative; width: 56px; height: 72px; border-radius: 14px; border: 2px solid var(--line); font-weight: 800; display: grid; place-items: center; overflow: hidden; }
+.design-swatches .swatch i { position: absolute; width: 34px; height: 34px; border-radius: 50%; top: -12px; right: -12px; }
+.design-swatches .swatch-name { font: 700 var(--fs-micro)/var(--lh-micro) var(--font-body); white-space: nowrap; }
+.design-swatches button.on .swatch { outline: 3px solid var(--indigo); outline-offset: 2px; }
+.design-swatches button.on .swatch-name { color: var(--ink); }
 
 /* feed: day cards, reactions row, comments */
 .react-row { display: inline-flex; gap: 4px; flex-wrap: wrap; }
@@ -1347,3 +1343,68 @@ p.chase { margin: 0; }
 .set-hero.t-grape { background: color-mix(in srgb, var(--grape) 14%, var(--card)); color: var(--grape); }
 .set-hero.t-bad { background: color-mix(in srgb, var(--bad) 10%, var(--card)); color: var(--bad); }
 .set-page > .btn { width: 100%; }
+
+/* ── Stamps, achievements, share: v2 ───────────────────────────────────────────────────────────────── */
+/* a fresh stamp drops onto the page with a thunk and leaves an ink ring (CountryLogs-style) */
+@media (prefers-reduced-motion: no-preference) {
+  .province-stamp.fresh { animation: stamp-drop .62s cubic-bezier(.3, 1.4, .5, 1) both; }
+  .province-stamp .stamp-splat { animation: stamp-splat .7s .28s ease-out both; transform-origin: 100px 100px; }
+}
+.province-stamp .stamp-splat { opacity: 0; }
+@keyframes stamp-drop {
+  0% { transform: scale(1.9); opacity: 0; filter: drop-shadow(0 18px 12px rgb(0 0 0 / .25)); }
+  55% { transform: scale(.94); opacity: 1; filter: drop-shadow(0 0 0 rgb(0 0 0 / 0)); }
+  100% { transform: scale(1); }
+}
+@keyframes stamp-splat { 0% { opacity: .5; transform: scale(.92); } 100% { opacity: 0; transform: scale(1.16); } }
+.checkin-province { display: grid; place-items: center; padding: 4px 0; }
+
+/* achievements: metal medals on a trophy shelf (Apple Fitness awards, Duolingo achievements) */
+.badge-icon { position: relative; display: inline-grid; place-items: center; flex: none; }
+.badge-icon > svg { grid-area: 1 / 1; filter: drop-shadow(0 3px 0 rgb(0 0 0 / .14)); overflow: visible; }
+.badge-icon.t0 > svg { opacity: .85; }
+/* platinum and diamond catch the light */
+.badge-icon.t4::after, .badge-icon.t5::after { content: ""; position: absolute; inset: 0 0 9% 0; border-radius: 50%; pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, rgb(255 255 255 / .65) 48%, transparent 60%) no-repeat; background-size: 250% 100%; background-position: 140% 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .badge-icon.t4::after, .badge-icon.t5::after { animation: medal-shine 3.6s ease-in-out infinite; }
+}
+@keyframes medal-shine { 0%, 55% { background-position: 140% 0; } 100% { background-position: -60% 0; } }
+
+.medal-ring { --p: 0; display: inline-grid; place-items: center; padding: 5px; border-radius: 50%;
+  background: conic-gradient(var(--marigold) calc(var(--p) * 1turn), var(--line) 0); }
+.medal-ring > .badge-icon { background: var(--card); border-radius: 50%; padding: 3px 3px 0; }
+
+.trophies { display: grid; gap: 14px; }
+.trophy-head { display: grid; gap: 6px; }
+.trophy-head b { font: 800 var(--fs-title)/1 var(--font-display); color: var(--ink); }
+.trophy-head small { font: 700 var(--fs-label)/1 var(--font-body); color: var(--ink-2); }
+.trophy-bar { height: 10px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.trophy-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #c8813f, #e9a400, #6fcbd9, #9b7bff); }
+.almost ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 8px; }
+.almost button { width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; padding: 8px 12px; border: 2px solid var(--line);
+  border-bottom-width: 4px; border-radius: 16px; background: var(--card); color: var(--ink); font: inherit; }
+.almost button > span:last-child { display: grid; min-width: 0; }
+.badge-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+.badge-grid button { width: 100%; height: 100%; display: grid; justify-items: center; align-content: start; text-align: center; gap: 4px; padding: 12px 6px;
+  border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 18px; background: var(--card); color: var(--ink); font: inherit; }
+.badge-grid button b { font-size: var(--fs-label); line-height: var(--lh-label); }
+.badge-grid li.locked button { background: transparent; border-style: dashed; border-bottom-width: 2px; }
+.badge-grid button:active, .almost button:active { transform: translateY(2px); border-bottom-width: 2px; }
+
+.badge-sheet { width: min(420px, 100%); display: grid; gap: 14px; }
+.medal-stage { display: grid; place-items: center; padding: 18px 0 10px; perspective: 700px; touch-action: none; border-radius: 22px;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--marigold) 18%, transparent), transparent 70%); }
+.medal-3d { position: relative; transform: rotateX(var(--rx, 0)) rotateY(var(--ry, 0)); transition: transform .12s ease-out; transform-style: preserve-3d; }
+.medal-3d .badge-icon > svg { filter: drop-shadow(0 10px 14px rgb(0 0 0 / .22)); }
+.medal-glare { position: absolute; inset: 0 0 9% 0; border-radius: 50%; pointer-events: none; mix-blend-mode: soft-light;
+  background: radial-gradient(circle at var(--gx, 30%) var(--gy, 25%), rgb(255 255 255 / .9), transparent 55%); }
+@media (prefers-reduced-motion: reduce) { .medal-3d { transform: none; } .medal-glare { display: none; } }
+.tier-ladder { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.tier-ladder li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 14px; color: var(--ink-2); }
+.tier-ladder li > span:nth-child(2) { display: grid; }
+.tier-ladder li.done { color: var(--ink); }
+.tier-ladder li.done > svg.lucide { color: var(--good, #1b7f52); }
+.tier-ladder li.now { background: var(--paper); color: var(--ink); outline: 2px solid var(--marigold); }
+.ladder-bar { width: 90px; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.ladder-bar i { display: block; height: 100%; background: var(--marigold); border-radius: inherit; }

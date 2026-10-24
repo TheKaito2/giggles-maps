@@ -53,7 +53,7 @@ function shareOptions(it: FeedItem, url: string | undefined, name: string): Card
     case "province": return it.province ? [{ id: "province", label: "New province", card: { kind: "milestone", what: "province", province: it.province.id, at, name } }] : [];
     case "level": return [{ id: "level", label: "Level up", card: { kind: "milestone", what: "level", level: Number(d.level), name } }];
     case "badge": return [{ id: "badge", label: "Badge", card: { kind: "milestone", what: "badge", title: String(d.name_en), tier: Number(d.tier),
-      colour: TIER_COLOURS[Number(d.tier)], name } }];
+      colour: TIER_COLOURS[Number(d.tier)], name, icon: String(d.icon) } }];
     case "fortune": return [{ id: "fortune", label: "Siam Si", card: { kind: "milestone", what: "fortune", rarity: d.rarity === "legendary" ? "Legendary" : "Epic",
       prize: String(d.item ?? "A rare prize"), stick: Number(d.stick ?? 1), name } }];
     default: return [];
@@ -125,7 +125,7 @@ function Post({ g, urls, onReact, onComments, onShare }: {
           </div>}
           <ul className="place-chips">{g.items.map((x) => x.place && <li key={x.id} className={`tier-${x.place.tier}`}>{x.place.name}</li>)}</ul>
         </> : <>
-          {it.kind === "province" && f && <ProvinceStamp f={f} earnedAt={it.at} size={170} />}
+          {it.kind === "province" && f && <ProvinceStamp f={f} earnedAt={it.at} size={170} fresh={Date.now() - Date.parse(it.at) < 864e5} />}
           {it.kind === "stamp" && it.place && <div className={`entry big tier-${it.place.tier}`}><span className="entry-tier">{TIER[it.place.tier].toUpperCase()}</span>
             <b>{it.place.name}</b>{it.place.name_th && <span>{it.place.name_th}</span>}</div>}
           {it.kind === "stamp" && url && <figure className="feed-photo"><img src={url} alt={it.caption ?? `Photo at ${it.place?.name}`} loading="lazy" />

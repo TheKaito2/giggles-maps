@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Backpack, Check, Clock, Coins, Shirt, ShoppingBag, X } from "lucide-react";
+import { Backpack, Check, Clock, Coins, Shirt, ShoppingBag, Vault, X } from "lucide-react";
 import { ApiError } from "../../lib/supabase";
 import { buyItem, buySet, equip, getShop, getShopToday, type Profile, setAvatar, type ShopItem, type ShopKind, type ShopSet,
   type ShopToday } from "../../lib/api";
@@ -18,7 +18,12 @@ const ERR: Record<string, string> = {
   already_owned: "You already have this.",
 };
 // the same names as Siam Si sticks: price sets the rarity, Siam Si-only items are Legendary
-export const rarityOf = (i: ShopItem) => i.gacha_only ? "legendary" : i.price === 0 || i.plus_only ? null : i.price <= 150 ? "common" : i.price <= 400 ? "rare" : "epic";
+// above Legendary, the Vault: saved up for, never drawn from Siam Si or shown as a daily pick (both cap by price)
+export type Rarity = "common" | "rare" | "epic" | "legendary" | "mythic" | "celestial" | "transcendent";
+export const rarityOf = (i: ShopItem): Rarity | null => i.gacha_only ? "legendary" : i.price >= 20000 ? "transcendent" : i.price >= 6000 ? "celestial"
+  : i.price >= 2000 ? "mythic" : i.price === 0 || i.plus_only ? null : i.price <= 150 ? "common" : i.price <= 400 ? "rare" : "epic";
+const VAULT: { r: Rarity; title: string }[] = [{ r: "mythic", title: "Mythic" }, { r: "celestial", title: "Celestial" }, { r: "transcendent", title: "Transcendent" }];
+const inVault = (i: ShopItem) => VAULT.some((v) => v.r === rarityOf(i));
 const key = (i: { kind: string; id: string }) => `${i.kind}:${i.id}`;
 const left = (iso: string) => {
   const m = Math.max(0, Math.round((new Date(iso).getTime() - Date.now()) / 60000));
@@ -98,9 +103,12 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
         <span className="tile-foot">
           {on ? <span className="chip on"><Check size={13} aria-hidden /> On</span> : own ? <span className="chip">Owned</span>
             : i.plus_only ? <span className="chip plus-chip">Plus</span>
-            : <span className={`coin-price num${canBuy(i) ? "" : " short"}`}><Coins size={13} aria-hidden /> {i.price}</span>}
+            : <span className={`coin-price num${canBuy(i) ? "" : " short"}`}><Coins size={13} aria-hidden /> {i.price.toLocaleString()}</span>}
           {r && <span className={`rarity r-${r}`}>{r}</span>}
         </span>
+        {inVault(i) && !own && coins < i.price && <span className="goal">
+          <progress value={coins} max={i.price} aria-label={`Saved toward ${i.name_en}`} />
+          <span className="fine num">{(i.price - coins).toLocaleString()} coins to go</span></span>}
         {i.plus && !i.plus_only && !own && <span className="chip">Free with Plus</span>}
       </li>
     );
@@ -137,6 +145,19 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
       )) : <>
       {featured && <SetCard s={featured} hero byKey={byKey} profile={profile} coins={coins} onBuy={getSet} onTry={setTrying} />}
 
+      <section className="vault" aria-labelledby="vault-h">
+        <div className="vault-head"><Vault size={20} aria-hidden /><h4 id="vault-h">The Vault</h4>
+          <span className="fine">The rarest of all. Saved up for, never in Siam Si.</span></div>
+        {VAULT.map(({ r, title }) => {
+          const list = items.filter((i) => rarityOf(i) === r);
+          return list.length > 0 && <div key={r} className={`vault-row v-${r}`}>
+            <div className="row between"><span className={`rarity r-${r}`}>{title}</span>
+              <span className="coin-price num"><Coins size={14} aria-hidden /> {list[0].price.toLocaleString()} each</span></div>
+            <ul className="shop-grid">{list.map(tile)}</ul>
+          </div>;
+        })}
+      </section>
+
       <section>
         <div className="row between"><h4 className="eyebrow">Plus shelf</h4>{plus && <span className="fine">Yours with Plus</span>}</div>
         <ul className="shop-grid today">{items.filter((i) => i.plus_only).map(tile)}</ul>
@@ -158,7 +179,7 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
           <div className="row between"><h4 className="eyebrow">{title}</h4>
             {kind === "avatar" && <button type="button" className="link" onClick={onAvatar}><Shirt size={14} aria-hidden /> Avatar builder</button>}</div>
           <ul className="shop-grid">
-            {items.filter((i) => i.kind === kind && !i.plus_only && (!i.gacha_only || owns(i))).map(tile)}
+            {items.filter((i) => i.kind === kind && !i.plus_only && !inVault(i) && (!i.gacha_only || owns(i))).map(tile)}
           </ul>
         </section>
       ))}
@@ -192,8 +213,8 @@ function TryOn({ item, profile, msg, wearing, owns, canBuy, coins, onAct, onClos
         {wearing ? <button type="button" className="btn" disabled><Check size={16} aria-hidden /> Wearing it</button>
           : owns ? <button type="button" className="btn" onClick={onAct}>Wear it</button>
           : item.plus_only ? <button type="button" className="btn" disabled>Comes with Plus</button>
-          : <button type="button" className="btn gold" disabled={!canBuy} onClick={onAct}><Coins size={16} aria-hidden /> Buy for {item.price} and wear</button>}
-        {!owns && !canBuy && !item.plus_only && <p className="fine">{item.price - coins} more coins to go.</p>}
+          : <button type="button" className="btn gold" disabled={!canBuy} onClick={onAct}><Coins size={16} aria-hidden /> Buy for {item.price.toLocaleString()} and wear</button>}
+        {!owns && !canBuy && !item.plus_only && <p className="fine">{(item.price - coins).toLocaleString()} more coins to go.</p>}
       </div>
     </div>
   );

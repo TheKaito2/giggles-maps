@@ -191,7 +191,7 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
             const inner = <>
               {firstIn.has(f.id) && urls[provincePhoto.get(f.id) ?? ""] && <img className="visa-photo" src={urls[provincePhoto.get(f.id)!]} alt=""
                 style={{ rotate: `${(f.id % 7) - 3 + (f.id % 2 ? 8 : -8)}deg` }} loading="lazy" />}
-              <ProvinceStamp f={f} earnedAt={firstIn.get(f.id) ?? null} size={160} />
+              <ProvinceStamp f={f} earnedAt={firstIn.get(f.id) ?? null} size={160} fresh={Date.now() - Date.parse(firstIn.get(f.id) ?? "") < 2 * 864e5} />
             </>;
             if (!firstIn.has(f.id)) return <div key={f.id} className="visa-slot" style={style}>{inner}</div>;
             const pics = photos.filter((p) => p.province_id === f.id);

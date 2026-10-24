@@ -46,7 +46,7 @@ export default function ShareSheet({ options, hasPlus, onClose }: { options: Car
     if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file] }).catch(() => { /* closed the share sheet */ });
     else save(blob, name);
   };
-  const sticker = option.card.kind === "sticker";
+  const sticker = option.card.kind === "sticker" || option.card.kind === "stats";
 
   return (
     <div className="sheet-backdrop share-backdrop" role="dialog" aria-modal="true" aria-label="Share" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -63,14 +63,15 @@ export default function ShareSheet({ options, hasPlus, onClose }: { options: Car
         </div>
         {sticker && <p className="fine">Clear sticker <Info label="How to use the sticker">In Instagram Stories, add your photo, then paste or pick
           this sticker from your photos.</Info></p>}
-        {option.card.kind !== "sticker" && (
+        {!sticker && (
           <div className="design-swatches" role="radiogroup" aria-label="Design">
             {(Object.keys(DESIGNS) as Design[]).map((k) => {
               const d = DESIGNS[k];
               return <button key={k} type="button" role="radio" aria-checked={design === k} className={design === k ? "on" : ""}
-                style={{ background: `linear-gradient(135deg, ${d.bg[0]}, ${d.bg[1]})`, color: d.accent }} onClick={() => setDesign(k)}
-                aria-label={`${d.name}${d.plus && !hasPlus ? ", Plus" : ""}`} title={d.name}>
-                {d.plus && !hasPlus ? <Lock size={14} aria-hidden /> : "Aa"}</button>;
+                onClick={() => setDesign(k)} aria-label={`${d.name}${d.plus && !hasPlus ? ", Plus" : ""}`}>
+                <span className="swatch" style={{ background: `linear-gradient(135deg, ${d.bg[0]}, ${d.bg[1]})`, color: d.accent }}>
+                  <i style={{ background: d.pop }} />{d.plus && !hasPlus ? <Lock size={14} aria-hidden /> : "Aa"}</span>
+                <span className="swatch-name">{d.name}</span></button>;
             })}
           </div>
         )}

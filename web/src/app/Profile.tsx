@@ -158,7 +158,7 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
       {self && <div id="siamsi"><SiamSi profile={profile} onChange={onChange} onShop={openShop} /></div>}
 
       <h3>Achievements</h3>
-      <Badges list={page.badges} />
+      <Badges list={page.badges} shareAs={self ? { name: page.nickname, hasPlus: !!profile?.plusUntil } : undefined} />
 
       {self && openPlace && <SavedLists openPlace={openPlace} />}
       {self && openFriend && <FriendsSection profile={profile} onOpen={openFriend} />}
@@ -171,7 +171,8 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
       {sheet === "pins" && book && <PinPicker page={page} stamps={book.stamps} onClose={() => setSheet(null)} onSaved={() => setAgain((n) => n + 1)} />}
       {sheet === "log" && book && <Logbook owner={page.nickname} stamps={book.stamps} onClose={() => setSheet(null)} />}
       {sheet === "share" && <ShareSheet hasPlus={!!profile?.plusUntil} onClose={() => setSheet(null)}
-        options={[{ id: "progress", label: "Provinces", card: { kind: "progress", name: page.nickname, visited: new Set(counts.keys()) } }]} />}
+        options={[{ id: "progress", label: "Provinces", card: { kind: "progress", name: page.nickname, visited: new Set(counts.keys()) } },
+          { id: "stats", label: "Stats sticker", card: { kind: "stats", name: page.nickname, visited: new Set(counts.keys()), level: page.level, stamps: page.stamps } }]} />}
       {sheet === "book" && book && <Book onClose={() => setSheet(null)} stamps={book.stamps} photos={book.photos} trips={book.trips}
         shareAs={self ? { name: page.nickname, hasPlus: !!profile?.plusUntil } : undefined} theme={look.theme} frame={look.frame}
         owner={{ nickname: page.nickname, colour: page.colour, avatar, title: page.title, level: page.level,

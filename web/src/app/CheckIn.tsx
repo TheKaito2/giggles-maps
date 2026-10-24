@@ -5,6 +5,8 @@ import { ApiError } from "../lib/supabase";
 import ShareSheet, { type CardOption } from "./share/ShareSheet";
 import { BILLING_TEXT, type CheckinResult, type CheckinTarget, REASON_TEXT, setPhoto, setPublicPhoto, uploadSelfie, verifyCheckin } from "../lib/api";
 import { Spinner } from "./Skeleton";
+import ProvinceStamp from "./passport/ProvinceStamp";
+import { useProvinces } from "./passport/useProvinces";
 
 const TIER_NAME = { 3: "Landmark", 2: "Worth a visit", 1: "Everyday" } as const;
 const CONSENT_KEY = "giggles.photoConsent.v2";   // v2: photos are kept for the passport album
@@ -20,6 +22,7 @@ interface Props { target: CheckinTarget; initialCode?: string; hasPlus: boolean;
 
 export default function CheckIn({ target, initialCode, hasPlus, nickname, onClose, onDone }: Props) {
   const [step, setStep] = useState<Step>(readConsent() ? "camera" : "consent");
+  const provinces = useProvinces();
   const [demo, setDemo] = useState(false);
   const [code, setCode] = useState(initialCode ?? "");
   const [status, setStatus] = useState("");
@@ -180,7 +183,13 @@ export default function CheckIn({ target, initialCode, hasPlus, nickname, onClos
               {result.status === "approved" ? (result.stamp ? "New stamp!" : "Photo added to your passport.")
                 : result.status === "review" ? "Sent for review." : "Check-in not accepted."}
             </p>
-            {result.stamp?.new_province && <p className="badge-earned">New province: {result.stamp.province}!</p>}
+            {result.stamp?.new_province && (() => {
+              const f = provinces.find((x) => x.properties.name_en === result.stamp!.province || x.id === Number(result.stamp!.province));
+              return <>
+                {f && <div className="checkin-province"><ProvinceStamp f={f} earnedAt={new Date().toISOString()} size={180} fresh /></div>}
+                <p className="badge-earned">New province: {result.stamp!.province}!</p>
+              </>;
+            })()}
             {result.group_bonus && <p className="badge-earned">Group bonus: +50% XP and coins with your ride-along crew</p>}
             {result.badges?.map((b) => <p key={b.slug} className="badge-earned">Badge unlocked: {b.name_en} {["", "I", "II", "III", "IV", "V"][b.tier]}</p>)}
             {result.reasons.filter((r) => r !== "already_stamped" || !result.stamp).map((r) => <p key={r} className="fine">
