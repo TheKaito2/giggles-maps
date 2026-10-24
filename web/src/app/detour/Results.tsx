@@ -3,7 +3,7 @@ import { ChevronDown, MoreHorizontal, Plus, Repeat, Search, Trash2, Camera, X } 
 import { useDialog } from "../../lib/useDialog";
 import { type AlongPlace, type CheckinTarget, type FoundPlace, KIND_NAME, type Meal, type RouteStop, searchPlaces } from "../../lib/api";
 import { GROUPS, kindOf } from "../kinds";
-import { budgetLabel, hhmm, MEALS } from "../prefs";
+import { budgetLabel, hhmm, INTERESTS, MEALS } from "../prefs";
 import { type Detour, PRESETS } from "./useDetour";
 import { arrive } from "./Choose";
 import PlanProgress from "./PlanProgress";
@@ -36,14 +36,15 @@ function badges(s: RouteStop): { text: string; cls: string; title?: string }[] {
   return all.slice(0, 2);
 }
 
-const ALONG_GROUPS: { id: string; label: string; cats: string[] }[] = [
-  { id: "all", label: "All", cats: [] },
-  { id: "food", label: "Food", cats: ["food"] },
-  { id: "coffee", label: "Coffee", cats: ["cafe"] },
-  { id: "sights", label: "Sights", cats: ["temple", "museum", "art", "viewpoint"] },
-  { id: "nature", label: "Nature", cats: ["park", "viewpoint"] },
-  { id: "shops", label: "Shops", cats: ["craft", "market"] },
+// the same kinds as the "What kind of stops?" chips (prefs INTERESTS), with the planner's own rules (supabase _shared/themes.ts)
+const KIND_CATS: Record<string, string[]> = { culture: ["temple", "museum", "art"], nature: ["park", "viewpoint"], food: ["food", "market"],
+  cafes: ["cafe"], shopping: ["craft", "market"], landmarks: [] };
+const ALONG_GROUPS: { id: string; label: string; fits: (category: string, tier?: number) => boolean }[] = [
+  { id: "all", label: "All kinds", fits: () => true },
+  ...INTERESTS.map((k) => ({ id: k.id, label: k.label,
+    fits: (category: string, tier?: number) => k.id === "landmarks" ? tier === 3 : KIND_CATS[k.id].includes(category) })),
 ];
+const STOP_CATS = new Set(Object.values(KIND_CATS).flat());   // places worth a detour (search "elsewhere" skips pharmacies, banks...)
 
 function StopRow({ s, i, d, sel, onOpen, onCheckin }: { s: RouteStop; i: number; d: Detour; sel: boolean; onOpen: (s: RouteStop) => void; onCheckin: (t: CheckinTarget) => void }) {
   const [menu, setMenu] = useState(false);
@@ -87,11 +88,11 @@ function AlongList({ places, d, full, limit, onAdded }: { places: AlongPlace[]; 
   const [q, setQ] = useState("");
   const [kind, setKind] = useState("all");
   const [elsewhere, setElsewhere] = useState<FoundPlace[]>([]);
-  const groups = ALONG_GROUPS.filter((g) => g.id === "all" || places.some((p) => g.cats.includes(p.category)));
+  const groups = ALONG_GROUPS.filter((g) => g.id === "all" || places.some((p) => g.fits(p.category, p.tier)));
   const group = groups.some((g) => g.id === kind) ? kind : "all";   // a re-plan can leave the chosen kind empty
   const needle = q.trim().toLowerCase();
-  const fits = (category?: string) => group === "all" || ALONG_GROUPS.find((g) => g.id === group)!.cats.includes(category ?? "");
-  const list = places.filter((p) => fits(p.category) && (!needle || p.name.toLowerCase().includes(needle) || (p.name_th ?? "").includes(q.trim()))).slice(0, limit);
+  const fits = (category?: string, tier?: number) => ALONG_GROUPS.find((g) => g.id === group)!.fits(category ?? "", tier);
+  const list = places.filter((p) => fits(p.category, p.tier) && (!needle || p.name.toLowerCase().includes(needle) || (p.name_th ?? "").includes(q.trim()))).slice(0, limit);
   // 2+ letters: also search everywhere near the destination, after a short pause
   useEffect(() => {
     if (needle.length < 2) { setElsewhere([]); return; }
@@ -99,8 +100,7 @@ function AlongList({ places, d, full, limit, onAdded }: { places: AlongPlace[]; 
     const t = setTimeout(() => searchPlaces(q.trim(), d.dest?.point).then((r) => {
       if (!live) return;
       const taken = new Set([...places.map((p) => p.id), ...(d.plan?.stops.map((s) => s.id) ?? [])]);
-      const stopKinds = new Set(ALONG_GROUPS.flatMap((g) => g.cats));   // places worth a detour, not pharmacies or banks
-      setElsewhere(r.filter((x) => x.id != null && !taken.has(x.id) && stopKinds.has(x.category ?? "") && fits(x.category)).slice(0, 6));
+      setElsewhere(r.filter((x) => x.id != null && !taken.has(x.id) && STOP_CATS.has(x.category ?? "") && fits(x.category, x.tier)).slice(0, 6));
     }).catch(() => live && setElsewhere([])), 300);
     return () => { live = false; clearTimeout(t); };
   }, [needle, group]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -112,7 +112,7 @@ function AlongList({ places, d, full, limit, onAdded }: { places: AlongPlace[]; 
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search places" aria-label="Search places to add" /></label>
         <label className="along-kind">
           <select value={group} onChange={(e) => setKind(e.target.value)} aria-label="Kind of place">
-            {groups.map((g) => <option key={g.id} value={g.id}>{g.id === "all" ? "All kinds" : g.label}</option>)}
+            {groups.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
           </select></label>
       </div>
       <ul className="along-list">
