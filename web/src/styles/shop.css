@@ -1,3 +1,5 @@
+/* app.css locks the body for the map app; the shop site is an ordinary scrolling page */
+body { overflow: auto; }
 .shop-shell { min-height: 100%; }
 .shop-main { max-width: 900px; margin: 0 auto; display: grid; gap: 28px;
   padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
