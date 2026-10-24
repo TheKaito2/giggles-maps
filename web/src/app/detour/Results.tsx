@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { ChevronDown, MoreHorizontal, Plus, Repeat, Trash2, Camera } from "lucide-react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { ChevronDown, MoreHorizontal, Plus, Repeat, Trash2, Camera, X } from "lucide-react";
+import { useDialog } from "../../lib/useDialog";
 import { type AlongPlace, type CheckinTarget, KIND_NAME, type Meal, type RouteStop } from "../../lib/api";
 import { GROUPS, kindOf } from "../kinds";
 import { budgetLabel, hhmm, MEALS } from "../prefs";
@@ -80,15 +81,14 @@ function StopRow({ s, i, d, sel, onOpen, onCheckin }: { s: RouteStop; i: number;
   );
 }
 
-function Along({ places, d, full }: { places: AlongPlace[]; d: Detour; full: boolean }) {
+/** Places along the route you can add, by kind, cheapest first: the inline list (8) and the "Add a stop" sheet (all). */
+function AlongList({ places, d, full, limit, onAdded }: { places: AlongPlace[]; d: Detour; full: boolean; limit: number; onAdded?: () => void }) {
   const [picked, setGroup] = useState("all");
   const groups = ALONG_GROUPS.filter((g) => g.id === "all" || places.some((p) => g.cats.includes(p.category)));
   const group = groups.some((g) => g.id === picked) ? picked : "all";   // a re-plan can leave the chosen kind empty
-  const list = places.filter((p) => group === "all" || ALONG_GROUPS.find((g) => g.id === group)!.cats.includes(p.category)).slice(0, 8);
-  if (!places.length) return null;
+  const list = places.filter((p) => group === "all" || ALONG_GROUPS.find((g) => g.id === group)!.cats.includes(p.category)).slice(0, limit);
   return (
-    <section className="along" aria-labelledby="along-title">
-      <h3 id="along-title" className="eyebrow">Add along your route</h3>
+    <>
       <div className="chips-scroll" role="radiogroup" aria-label="Kind of place">
         {groups.map((g) => <button key={g.id} type="button" role="radio" aria-checked={group === g.id} className={`pill ${group === g.id ? "on" : ""}`}
           onClick={() => setGroup(g.id)}>{g.label}</button>)}
@@ -97,19 +97,51 @@ function Along({ places, d, full }: { places: AlongPlace[]; d: Detour; full: boo
         {list.map((p) => (
           <li key={p.id}>
             <Thumb s={p} size={40} />
-            <span className="stop-text"><b>{p.name}</b><span className="fine num">{kindOf(null, p.category).en} · about +{p.extra_min} min{p.rating != null && ` · ★ ${p.rating.toFixed(1)}`}</span></span>
-            <button type="button" className="btn soft small" disabled={full || d.editing} onClick={() => d.addStop(p.id, p.extra_min)} aria-label={`Add ${p.name}`}><Plus size={15} aria-hidden /> Add</button>
+            <span className="stop-text"><b>{p.name}</b>
+              <span className="stop-meta"><b className="num extra">+{p.extra_min} min</b>
+                <span className="fine">{kindOf(null, p.category).en}{p.rating != null && ` · ★ ${p.rating.toFixed(1)}`}</span></span></span>
+            <button type="button" className="btn soft small" disabled={full || d.editing} onClick={() => { d.addStop(p.id, p.extra_min); onAdded?.(); }}
+              aria-label={`Add ${p.name}`}><Plus size={15} aria-hidden /> Add</button>
           </li>
         ))}
       </ul>
       {full && <p className="fine">That's {MAX_STOPS} stops, the most a plan holds. Remove one to add another.</p>}
+    </>
+  );
+}
+
+function Along({ places, d, full }: { places: AlongPlace[]; d: Detour; full: boolean }) {
+  if (!places.length) return null;
+  return (
+    <section className="along" aria-labelledby="along-title">
+      <h3 id="along-title" className="eyebrow">Add along your route</h3>
+      <AlongList places={places} d={d} full={full} limit={8} />
     </section>
   );
 }
 
+/** The sheet the + between stops opens: every place along the route, by kind; the planner fits the pick in the best order. */
+function AddStopSheet({ places, d, full, onClose }: { places: AlongPlace[]; d: Detour; full: boolean; onClose: () => void }) {
+  const box = useDialog(onClose);
+  return (
+    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="Add a stop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal add-stop" ref={box} tabIndex={-1}>
+        <header className="modal-head"><span><h2>Add a stop</h2><span className="fine">We fit it in the best order on your route.</span></span>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button></header>
+        {places.length ? <AlongList places={places} d={d} full={full} limit={30} onAdded={onClose} /> : <p className="fine">No more places along this route.</p>}
+      </div>
+    </div>
+  );
+}
+
+/** The small + between stops: shows when you hover the stop next to it (always, faintly, on touch screens). */
+const AddGap = ({ onAdd }: { onAdd: () => void }) =>
+  <li className="add-gap"><button type="button" className="add-here" onClick={onAdd} aria-label="Add a stop here"><Plus size={14} aria-hidden /></button></li>;
+
 /** Step 3: plan cards to compare, then the stops you can remove, swap or add to. */
 export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour; selected: number | null; onOpen: (s: RouteStop) => void; onCheckin: (t: CheckinTarget) => void }) {
   const [details, setDetails] = useState(false);
+  const [adding, setAdding] = useState(false);   // the "Add a stop" sheet, from a + between stops
   const { response, plan } = d;
   const presetBar = (
     <div className="seg presets-mini" role="radiogroup" aria-label="Extra time">
@@ -171,7 +203,14 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
       {plan.stops.length === 0
         ? <p className="fine">{plan.warnings?.some((w) => w === "places_unavailable" || w === "some_detours_unavailable")
             ? "Couldn't check road times right now. Try again in a moment." : "No stops fit this much time. Try a longer option or fewer filters."}</p>
-        : <ol className="stop-rows">{plan.stops.filter((s) => !d.hidden.includes(s.id)).map((s, i) => <StopRow key={s.id} s={s} i={i} d={d} sel={selected === s.id} onOpen={onOpen} onCheckin={onCheckin} />)}</ol>}
+        : <ol className="stop-rows">
+            {plan.stops.filter((s) => !d.hidden.includes(s.id)).map((s, i) => <Fragment key={s.id}>
+              {i === 0 && <AddGap onAdd={() => setAdding(true)} />}
+              <StopRow s={s} i={i} d={d} sel={selected === s.id} onOpen={onOpen} onCheckin={onCheckin} />
+              <AddGap onAdd={() => setAdding(true)} />
+            </Fragment>)}
+          </ol>}
+      {adding && <AddStopSheet places={current?.along ?? []} d={d} full={plan.stops.length >= MAX_STOPS} onClose={() => setAdding(false)} />}
 
       <Along places={current?.along ?? []} d={d} full={plan.stops.length >= MAX_STOPS} />
       <p className="fine">How stops are picked <Info label="How stops are picked">Stops are picked on quality, opening hours and how little time they

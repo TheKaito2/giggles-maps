@@ -1216,3 +1216,14 @@ p.chase { margin: 0; }
 .stop-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
 .stop-meta > b { font: 700 var(--fs-label)/var(--lh-label) var(--font-data); color: var(--ink); }
 .stop-meta > b.extra { color: var(--indigo); }
+
+/* + between stops (detour Results): appears next to the stop you hover; faint but there on touch screens */
+.add-gap { height: 0; position: relative; z-index: 2; display: flex; justify-content: center; list-style: none; }
+.add-here { position: absolute; top: -12px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--indigo); background: var(--card);
+  color: var(--indigo); display: grid; place-items: center; padding: 0; opacity: 0; transform: scale(.7); transition: opacity .15s, transform .15s;
+  box-shadow: var(--shadow); cursor: pointer; }
+.add-gap:hover .add-here, .add-here:focus-visible, .stop-row:hover + .add-gap .add-here, .add-gap:has(+ .stop-row:hover) .add-here { opacity: 1; transform: none; }
+.add-here:hover { background: var(--indigo); color: #fff; }
+@media (hover: none) { .add-here { opacity: .55; transform: none; } }
+.modal.add-stop { width: min(520px, 100%); }
+.add-stop .along-list { max-height: 60vh; overflow-y: auto; }
