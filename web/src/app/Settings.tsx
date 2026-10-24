@@ -1,9 +1,10 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { CalendarCheck, ChevronLeft, ChevronRight, Crown, LogIn, LogOut, ShieldCheck, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight, Crown, LogIn, LogOut, ShieldCheck, Sparkles, Trash2, Volume2, Wand2, X } from "lucide-react";
 import { ApiError, callFn, ensureSession, supabase } from "../lib/supabase";
 import { type Booking, cancelBooking, getMonthlyStamps, myBookings, PRICES, type Profile, startCheckout } from "../lib/api";
 import { isGuest, useUser } from "../lib/auth";
 import { demoOn, setDemo } from "../lib/demoGps";
+import { setSound, soundOn } from "../lib/sfx";
 import Avatar from "./social/Avatar";
 import SignIn from "./SignIn";
 import AdminEdits from "./AdminEdits";
@@ -50,6 +51,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
   const [msg, setMsg] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [stamps, setStamps] = useState<string[]>([]);
+  const [sound, setSoundState] = useState(soundOn);
 
   const [paidMsg] = useState(() => new URLSearchParams(location.search).get("paid") === "success"
     ? "Payment received. It switches on in a few seconds (PromptPay can take a minute)." : "");
@@ -126,6 +128,10 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
         </Group>
 
         <Group title="App" foot="Switching demo mode reloads the app.">
+          <Row icon={<Volume2 size={17} />} tone="marigold" label="Sounds">
+            <input type="checkbox" role="switch" className="switch" checked={sound} aria-label="Sounds for chests and Siam Si"
+              onChange={(e) => { setSound(e.target.checked); setSoundState(e.target.checked); }} />
+          </Row>
           <Row icon={<Wand2 size={17} />} tone="sky" label={<>Demo mode <Info label="About demo mode">Try a trip without going anywhere: start
             directions, then the Demo button drives you to each stop. Check-ins still count, marked as demo, and never on the leaderboard.
             Other travellers, reviews and partners you see are pretend.</Info></>}>

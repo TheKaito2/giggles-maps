@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { chestOpen, rattle } from "../lib/sfx";
 import { Clock, Sparkles, Users, Zap } from "lucide-react";
 import { useDialog } from "../lib/useDialog";
 import { ApiError } from "../lib/supabase";
@@ -59,11 +60,13 @@ function ChestOpen({ quest, onClose, onClaimed }: { quest: Challenge; onClose: (
     const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const wait = new Promise((r) => setTimeout(r, calm ? 0 : 1100));
     navigator.vibrate?.([40, 60, 40, 60, 40]);
+    const stop = rattle("chest");
     Promise.all([claimQuest(quest.slug), wait]).then(([r]) => {
+      stop();
       if (!live) return;
-      setReward(r); onClaimed(); navigator.vibrate?.(120);
-    }).catch((e) => live && setError(e instanceof ApiError && e.message === "not_ready" ? "This chest was already opened." : "Couldn't open the chest. Try again."));
-    return () => { live = false; };
+      setReward(r); onClaimed(); navigator.vibrate?.(120); chestOpen();
+    }).catch((e) => { stop(); if (live) setError(e instanceof ApiError && e.message === "not_ready" ? "This chest was already opened." : "Couldn't open the chest. Try again."); });
+    return () => { live = false; stop(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="chest-stage" role="dialog" aria-modal="true" aria-labelledby="chest-title" ref={box} tabIndex={-1}>

@@ -4,6 +4,7 @@ import ShareSheet from "../share/ShareSheet";
 import { ApiError } from "../../lib/supabase";
 import { type Rarity, type Shake, shakeFortune } from "../../lib/api";
 import { FORTUNES } from "./fortunes";
+import { rattle, reveal, stickDrop } from "../../lib/sfx";
 
 export const RARITY: Record<Rarity, { en: string; th: string }> = {
   common: { en: "Common", th: "ธรรมดา" }, rare: { en: "Rare", th: "หายาก" },
@@ -59,21 +60,25 @@ export default function Fortune({ checkin, onClose, onShaken, name = "Explorer",
   const [sharing, setSharing] = useState(false);   // after the check-in's shake, "again" spends bonus shakes
   const started = useRef(false);
   const timers = useRef<number[]>([]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  const hush = useRef(() => undefined as void);   // stops the cup's rattle
+  useEffect(() => () => { timers.current.forEach(clearTimeout); hush.current(); }, []);
+  useEffect(() => { if (phase === "card" && shake) reveal(shake.rarity); }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const go = async () => {
     if (started.current) return;
     started.current = true; setError(""); setPhase("shaking");
     navigator.vibrate?.([60, 40, 60, 40, 60]);
+    hush.current = rattle("sticks");
     const wait = new Promise((r) => timers.current.push(window.setTimeout(r, calm() ? 0 : 1300)));
     try {
       const [s] = await Promise.all([shakeFortune(checkin && !usedCheckin ? checkin : undefined), wait]);
       if (checkin) setUsedCheckin(true);
+      hush.current();
       setShake(s); onShaken(s);
-      setPhase("stick"); navigator.vibrate?.(s.rarity === "legendary" ? [120, 60, 220] : 80);
+      setPhase("stick"); stickDrop(); navigator.vibrate?.(s.rarity === "legendary" ? [120, 60, 220] : 80);
       timers.current.push(window.setTimeout(() => setPhase("card"), calm() ? 0 : 900));
     } catch (e) {
-      setPhase("ready");
+      hush.current(); setPhase("ready");
       const code = e instanceof ApiError ? e.message : "";
       setError(code === "nothing_to_shake" ? "No shakes left. Check in somewhere new, finish a quest or reach a new province."
         : code === "shake_limit" ? "That's 30 shakes today, the daily most. The cup will be ready again tomorrow."
