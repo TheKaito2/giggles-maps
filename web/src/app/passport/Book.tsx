@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { type PassportPhoto, type PassportStamp, photoUrls } from "../../lib/api";
+import { type PassportPhoto, type PassportStamp, photoUrls, type TripMemory } from "../../lib/api";
 import type { AvatarLook } from "../avatar/parts";
 import Avatar from "../social/Avatar";
 import ProvinceMap from "./ProvinceMap";
@@ -11,7 +11,7 @@ export interface BookOwner {
   nickname: string; colour: string; avatar?: AvatarLook | null; title: string | null; level: number; xp: number;
   joined?: string | null; code?: string | null;
 }
-const STAMPS_PER_PAGE = 8, PLACES_PER_PAGE = 6, PHOTOS_PER_PAGE = 4;
+const STAMPS_PER_PAGE = 8, PLACES_PER_PAGE = 3, PHOTOS_PER_PAGE = 4, TRIPS_PER_PAGE = 2;
 const TIER = { 3: "LANDMARK", 2: "WORTH A VISIT", 1: "EVERYDAY" } as const;
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
 const chunk = <T,>(xs: T[], n: number) => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
@@ -26,8 +26,8 @@ function Page({ n, children, className = "" }: { n?: number; children: ReactNode
  * The passport as a book you flip through: cover, ID page, Thailand map, the 77 province visa pages, place stamps,
  * photos. Two pages side by side on wide screens, one page on phones. Buttons, arrow keys or swipe turn the pages.
  */
-export default function Book({ owner, theme = "classic", frame = "none", stamps, photos, onClose }: {
-  owner: BookOwner; theme?: string; frame?: string; stamps: PassportStamp[]; photos: PassportPhoto[]; onClose: () => void;
+export default function Book({ owner, theme = "classic", frame = "none", stamps, photos, trips = [], onClose }: {
+  owner: BookOwner; theme?: string; frame?: string; stamps: PassportStamp[]; photos: PassportPhoto[]; trips?: TripMemory[]; onClose: () => void;
 }) {
   const features = useProvinces();
   const [spread, setSpread] = useState(() => matchMedia("(min-width: 860px)").matches);
@@ -39,13 +39,24 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
     m.addEventListener("change", on);
     return () => m.removeEventListener("change", on);
   }, []);
-  useEffect(() => { photoUrls(photos.slice(0, 48).map((p) => p.path)).then(setUrls).catch(() => undefined); }, [photos]);
+  // every photo in the book, signed in one request: memories, the photo on each stamp, ride-along picks
+  useEffect(() => {
+    const paths = new Set([...photos.map((p) => p.path), ...stamps.map((s) => s.photo).filter((p): p is string => !!p),
+      ...trips.flatMap((t) => t.photos.map((p) => p.path))]);
+    photoUrls([...paths]).then(setUrls).catch(() => undefined);
+  }, [photos, stamps, trips]);
 
   const firstIn = useMemo(() => {
     const m = new Map<number, string>();
     for (const s of stamps) if (s.province_id != null && (!m.has(s.province_id) || s.earned_at < m.get(s.province_id)!)) m.set(s.province_id, s.earned_at);
     return m;
   }, [stamps]);
+  // a province's visa shows your first photo there, tucked behind the stamp
+  const provincePhoto = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const p of [...photos].reverse()) if (p.province_id != null && !m.has(p.province_id)) m.set(p.province_id, p.path);
+    return m;
+  }, [photos]);
   const counts = useMemo(() => new Map([...firstIn.keys()].map((id) => [id, stamps.filter((s) => s.province_id === id).length])), [firstIn, stamps]);
   const ordered = useMemo(() => [...features].sort((a, b) =>
     REGIONS.indexOf(regionOf(a.properties.iso)) - REGIONS.indexOf(regionOf(b.properties.iso)) || a.properties.name_en.localeCompare(b.properties.name_en)), [features]);
@@ -99,6 +110,8 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
         <h3 className="page-h">VISAS · {regionOf(list[0].properties.iso).en.toUpperCase()} <span>{regionOf(list[0].properties.iso).th}</span></h3>
         <div className="visa-grid">
           {list.map((f) => <div key={f.id} className="visa-slot" style={{ translate: `${(f.id * 13) % 9 - 4}% ${(f.id * 7) % 9 - 4}%` }}>
+            {firstIn.has(f.id) && urls[provincePhoto.get(f.id) ?? ""] && <img className="visa-photo" src={urls[provincePhoto.get(f.id)!]} alt=""
+              style={{ rotate: `${(f.id % 7) - 3 + (f.id % 2 ? 8 : -8)}deg` }} loading="lazy" />}
             <ProvinceStamp f={f} earnedAt={firstIn.get(f.id) ?? null} size={160} />
           </div>)}
         </div>
@@ -110,15 +123,19 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
   chunk(landmarks, PLACES_PER_PAGE).forEach((list, i) => pages.push(
     <Page key={`places-${i}`} n={3 + visaPages + i} className="places">
       <h3 className="page-h">LANDMARKS · แลนด์มาร์ก</h3>
-      <ul className="entry-grid landmarks">
-        {list.map((s) => <li key={s.place_id} className="entry landmark" style={{ rotate: `${(s.place_id % 13) - 6}deg` }}>
-          <span className="entry-tier">{TIER[s.tier]}</span><b>{s.name}</b>{s.name_th && <span className="th">{s.name_th}</span>}
-          <span className="num band">{day(s.earned_at)}</span>
+      <ul className="landmark-list">
+        {list.map((s, j) => <li key={s.place_id} className={`landmark-row${j % 2 ? " flip" : ""}`}>
+          {s.photo && <figure className="print" style={{ rotate: `${j % 2 ? 4 : -4}deg` }}>
+            {urls[s.photo] ? <img src={urls[s.photo]} alt={`Photo at ${s.name}`} loading="lazy" /> : <div className="ph" />}</figure>}
+          <div className="entry landmark" style={{ rotate: `${(s.place_id % 13) - 6}deg` }}>
+            <span className="entry-tier">{TIER[s.tier]}</span><b>{s.name}</b>{s.name_th && <span className="th">{s.name_th}</span>}
+            <span className="num band">{day(s.earned_at)}</span>
+          </div>
         </li>)}
       </ul>
     </Page>));
   const placePages = Math.ceil(landmarks.length / PLACES_PER_PAGE);
-  chunk(photos.slice(0, 48), PHOTOS_PER_PAGE).forEach((list, i) => pages.push(
+  chunk(photos, PHOTOS_PER_PAGE).forEach((list, i) => pages.push(
     <Page key={`photos-${i}`} n={3 + visaPages + placePages + i} className={`photos frame-${frame}`}>
       <h3 className="page-h">MEMORIES · ความทรงจำ</h3>
       <ul className="print-grid">
@@ -127,6 +144,20 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
           <span>{p.place}</span>
         </li>)}
       </ul>
+    </Page>));
+  const photoPages = Math.ceil(photos.length / PHOTOS_PER_PAGE);
+  chunk(trips, TRIPS_PER_PAGE).forEach((list, i) => pages.push(
+    <Page key={`trips-${i}`} n={3 + visaPages + placePages + photoPages + i} className={`trips frame-${frame}`}>
+      <h3 className="page-h">RIDE-ALONGS · ไปด้วยกัน</h3>
+      {list.map((t) => <section key={t.id} className="trip-memory">
+        <h4>{t.name ?? "Ride along"} <span className="num">{day(t.started_at)}</span></h4>
+        <ul className="print-grid three">
+          {t.photos.map((p, j) => <li key={p.checkin_id} className="print" style={{ rotate: `${(j - 1) * 3}deg` }}>
+            {urls[p.path] ? <img src={urls[p.path]} alt={p.caption ?? `${p.nickname} at ${p.place}`} loading="lazy" /> : <div className="ph" />}
+            <span>{p.nickname}</span>
+          </li>)}
+        </ul>
+      </section>)}
     </Page>));
   if (pages.length % 2 === 0) pages.push(<Page key="notes" className="notes"><h3 className="page-h">NOTES</h3></Page>);
   pages.push(<div key="back" className={`page cover back theme-${theme}`}><span className="cover-top">giggles-maps.pages.dev</span></div>);

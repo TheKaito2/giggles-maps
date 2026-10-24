@@ -4,7 +4,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { ArrowLeft, Backpack, BookOpen, Check, NotebookPen, Pencil, Plus, Settings, Share2, ShoppingBag, Sparkles, UserMinus, X, Zap } from "lucide-react";
 import { ApiError } from "../lib/supabase";
 import { getFriendPassport, getPassport, getProfilePage, levelProgress, nudge, type PassportPhoto, type PassportStamp, type Pin, type Profile,
-  type ProfilePage, removeFriend, setShowcase } from "../lib/api";
+  type ProfilePage, removeFriend, setShowcase, type TripMemory } from "../lib/api";
 import { useUser } from "../lib/auth";
 import { useDialog } from "../lib/useDialog";
 import Avatar from "./social/Avatar";
@@ -79,12 +79,12 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
   openShop?: () => void; openBag?: () => void;
 }) {
   const [page, setPage] = useState<ProfilePage | null>(null);
-  const [book, setBook] = useState<{ stamps: PassportStamp[]; photos: PassportPhoto[] } | null>(null);
+  const [book, setBook] = useState<{ stamps: PassportStamp[]; photos: PassportPhoto[]; trips?: TripMemory[] } | null>(null);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [msg, setMsg] = useState("");
   const [again, setAgain] = useState(0);
   useEffect(() => { getProfilePage(id).then(setPage).catch(() => setMsg("Couldn't load this profile.")); }, [id, refreshKey, again]);
-  useEffect(() => { (self ? getPassport() : getFriendPassport(id)).then((b) => setBook({ stamps: b.stamps, photos: b.photos })).catch(() => undefined); }, [id, self, refreshKey]);
+  useEffect(() => { (self ? getPassport() : getFriendPassport(id)).then((b) => setBook({ stamps: b.stamps, photos: b.photos, trips: "trips" in b ? b.trips : undefined })).catch(() => undefined); }, [id, self, refreshKey]);
 
   const doNudge = () => nudge(id).then(() => setMsg(`Nudged ${page?.nickname}. They'll see it in their feed.`))
     .catch((e) => setMsg(e instanceof ApiError && e.code === "already_nudged" ? "You nudged them today already." : "Couldn't nudge. Try again."));
@@ -175,7 +175,7 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
       {sheet === "log" && book && <Logbook owner={page.nickname} stamps={book.stamps} onClose={() => setSheet(null)} />}
       {sheet === "share" && <ShareSheet hasPlus={!!profile?.plusUntil} onClose={() => setSheet(null)}
         options={[{ id: "progress", label: "Provinces", card: { kind: "progress", name: page.nickname, visited: new Set(counts.keys()) } }]} />}
-      {sheet === "book" && book && <Book onClose={() => setSheet(null)} stamps={book.stamps} photos={book.photos} theme={look.theme} frame={look.frame}
+      {sheet === "book" && book && <Book onClose={() => setSheet(null)} stamps={book.stamps} photos={book.photos} trips={book.trips} theme={look.theme} frame={look.frame}
         owner={{ nickname: page.nickname, colour: page.colour, avatar, title: page.title, level: page.level,
           xp: page.xp, joined: page.joined, code: self ? page.friend_code : null }} />}
     </div>

@@ -1035,11 +1035,12 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 
 /* passport: landmark stamps (everyday places live in the Logbook) */
 .entry-grid.landmarks { grid-template-columns: repeat(2, 1fr); gap: 5cqw 4cqw; padding-top: 2cqw; }
-.entry-grid .entry.landmark { aspect-ratio: 1; border-radius: 50%; border: 1.4cqw double #8a6200; color: #8a6200; align-content: center; padding: 4cqw;
-  background: radial-gradient(circle, transparent 60%, rgb(138 98 0 / .06)); mix-blend-mode: multiply; }
-.entry-grid .entry.landmark b { font-size: 3.6cqw; -webkit-line-clamp: 3; }
-.entry-grid .entry.landmark .th { font-size: 2.8cqw !important; opacity: .8; }
-.entry-grid .entry.landmark .band { background: #8a6200; color: #f7efdc; padding: .4cqw 2cqw; border-radius: 1cqw; margin-top: 1cqw; }
+.entry.landmark { aspect-ratio: 1; border-radius: 50%; border: 1.4cqw double #8a6200; color: #8a6200; align-content: center; padding: 4cqw;
+  background: radial-gradient(circle, transparent 60%, rgb(138 98 0 / .06));
+  -webkit-backface-visibility: hidden; backface-visibility: hidden; }   /* no blend mode: Safari draws blended layers through the page's back */
+.entry.landmark b { font-size: 3.6cqw; -webkit-line-clamp: 3; }
+.entry.landmark .th { font-size: 2.8cqw !important; opacity: .8; }
+.entry.landmark .band { background: #8a6200; color: #f7efdc; padding: .4cqw 2cqw; border-radius: 1cqw; margin-top: 1cqw; }
 .modal.shop-modal, .shop, .shop section { grid-template-columns: minmax(0, 1fr); min-width: 0; }
 .shop { display: grid; }
 .preview.cover-prev.theme-classic { background: linear-gradient(135deg, #7b1e2b, #4a0f19); }
@@ -1067,3 +1068,20 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .nav-arrive { position: absolute; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; z-index: 3; }
 .resume-row { align-items: center; gap: 6px; }
 .resume-nav { box-shadow: var(--shadow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100vw - 90px); }
+
+/* passport: photos with stamps, ride-along memories */
+.visa-slot { position: relative; }
+.visa-photo { position: absolute; width: 46%; aspect-ratio: 1; object-fit: cover; right: 2%; top: 4%; border: 1.4cqw solid #fff; box-shadow: 0 .8cqw 1.6cqw rgb(0 0 0 / .2); }
+.visa-slot .province-stamp { position: relative; }
+.landmark-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-rows: repeat(3, 1fr); height: calc(100% - 9cqw); gap: 2cqw; }
+.landmark-row { display: flex; align-items: center; justify-content: center; min-height: 0; }
+.landmark-row.flip { flex-direction: row-reverse; }
+.landmark-row .print { width: 34cqw; flex: none; margin: 0; }
+.landmark-row .entry.landmark { width: 40cqw; flex: none; margin-inline: -5cqw; position: relative; background: rgb(247 239 220 / .75); }
+.landmark-row .entry.landmark b { font-size: 3.4cqw; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.landmark-row .entry.landmark .th { font-size: 2.6cqw; opacity: .8; }
+.landmark-row .entry.landmark .band { font-size: 2.4cqw; }
+.trip-memory { margin-bottom: 5cqw; }
+.trip-memory h4 { margin: 0 0 3cqw; font: 700 3.6cqw var(--font-display); display: flex; justify-content: space-between; color: #4a3b1e; }
+.trip-memory h4 span { font: 600 2.6cqw var(--font-data); opacity: .7; }
+.print-grid.three { grid-template-columns: repeat(3, 1fr); gap: 3cqw; }

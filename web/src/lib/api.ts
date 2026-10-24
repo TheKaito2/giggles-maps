@@ -181,9 +181,12 @@ export interface PassportStamp { place_id: number; name: string; name_th: string
 export interface PassportPhoto { checkin_id: string; path: string; caption: string | null; place: string; province_id: number | null; at: string }
 export interface Challenge { slug: string; kind: "daily" | "weekly" | "province" | "collection" | "friend"; title_en: string; title_th: string;
   have: number; need: number; xp: number; coins: number; claimed: boolean; period?: string }
+/** A ride-along you shared: its 3 memory photos (first, middle and last of the album). */
+export interface TripMemory { id: string; name: string | null; started_at: string;
+  photos: { checkin_id: string; path: string; caption: string | null; place: string; at: string; nickname: string }[] }
 export interface PassportData {
   profile: { xp: number; level: number; member: boolean; plus: boolean; coins: number } | null;
-  stamps: PassportStamp[]; photos: PassportPhoto[]; challenges: Challenge[];
+  stamps: PassportStamp[]; photos: PassportPhoto[]; challenges: Challenge[]; trips?: TripMemory[];
   provinces: { id: number; iso: string; name_en: string; name_th: string; stamps: number }[];
 }
 export async function getPassport(): Promise<PassportData> {
