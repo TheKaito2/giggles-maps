@@ -98,6 +98,10 @@ Response
 
 Errors: `not_signed_in` 401, `routing_unavailable` 503, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_mode` / `bad_theme` / `bad_interests` / `bad_min_rating` / `bad_max_stops` / `bad_max_price` / `bad_must_include` / `bad_exclude` / `bad_meals` / `bad_json` 400.
 
+Quick detours (budget under 30 min, no meal asked for): each stop counts as 10 minutes, every kind of place qualifies, and
+after the sight the cheapest convenience store on the way (`route_pit_stops`, 5 minutes there) is added when it fits.
+Those stops carry `pit_stop: true`; the response has `quick_stops: true`.
+
 ## `verify-checkin`
 
 Upload the selfie first: Storage bucket `selfies`, path `<user_id>/<anything>.jpg` (private bucket, JPEG/WebP/PNG, max 3 MB; users can only write their own folder).

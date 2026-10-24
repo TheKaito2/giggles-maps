@@ -1,6 +1,6 @@
 import { admin, HttpError, json, num, requireUser, serve } from "../_shared/http.ts";
 import { type Meal, MEAL_WINDOWS } from "../_shared/meals.ts";
-import { insertionCost, type Plan, planDetour, type Stop } from "../_shared/planner.ts";
+import { insertBest, insertionCost, type Plan, planDetour, type Stop } from "../_shared/planner.ts";
 import { fitsInterests, independent, isInterest, mixWeight, type Tier, THEMES, toTheme } from "../_shared/themes.ts";
 import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan } from "../_shared/road-detour.ts";
 import { createRouter, estimateMinutes, haversineM, type LatLng, matrixMinutes, METERS_PER_MIN, type Mode, type RoadRoute } from "../_shared/valhalla.ts";
@@ -23,6 +23,8 @@ const MAX_BUDGET = 240; // v4: 4-hour detours for everyone (Plus is cosmetic onl
 const CARD_CATEGORIES = new Set(["park", "viewpoint", "temple"]); // "Near this spot" cards sit under these
 const MAX_CARDS = 2;
 const QUICK_DWELL_MIN = 10; // time counted at each stop on a short (Quick) detour
+const PIT_DWELL_MIN = 5;    // a convenience-store pit stop on a Quick detour: snacks, a drink, the toilet
+const PIT_RESERVE_MIN = 7;  // kept free for it while the sight is chosen (5 there + a little driving)
 const MAX_CANDIDATES = 22; // up to 5 per theme group, so every themed plan has its kind of stop to pick
 const MODES = new Set<Mode>(["pedestrian", "bicycle", "auto"]);
 const MIN_RATINGS = new Set([0, 3.5, 4, 4.5]);
@@ -143,6 +145,18 @@ serve(async (req) => {
       if (haversineM(origin, p) + haversineM(p, dest) - direct <= reach) candidates.push(p);
     }
   }
+  // Quick: the convenience stores nearest the road, for a pit stop after the sight. They share the travel-time matrix,
+  // but the sight planner never sees them; each plan gets the cheapest one afterwards if time is left (insertBest).
+  const pitIds = new Set<number>();
+  if (quickStops && baseline) {
+    const { data: pits, error: pitErr } = await db.rpc("route_pit_stops", { p_geometry: baseline.geometry, p_radius_m: 800, p_max_n: 6 });
+    if (pitErr) console.error("pit stops failed", pitErr);
+    for (const p of (pits ?? []) as Candidate[]) {
+      if (exclude.has(p.id) || candidates.some((c) => c.id === p.id) || haversineM(p, origin) <= 150 || haversineM(p, dest) <= 150) continue;
+      candidates.push({ ...p, dwell_min: PIT_DWELL_MIN });
+      pitIds.add(p.id);
+    }
+  }
   const points: LatLng[] = [origin, dest, ...candidates.map((c) => ({ lat: c.lat, lng: c.lng }))];
   let matrix = estimateMinutes(points, mode);
   if (baseline && shortTrip) {
@@ -172,10 +186,11 @@ serve(async (req) => {
     }
   }
 
-  const stops: Stop[] = candidates.map((c, i) => ({
+  const allStops: Stop[] = candidates.map((c, i) => ({
     idx: i + 2, id: c.id, category: c.category, rating: c.rating == null ? null : Number(c.rating), tier: c.tier ?? 2, dwellMin: dwellOf(c.dwell_min),
     openMin: c.open_min, closeMin: c.close_min, frac: c.frac, local: c.local, otop: c.otop, community: c.community,
   }));
+  const stops = allStops.filter((st) => !pitIds.has(st.id)), pitStops = allStops.filter((st) => pitIds.has(st.id));
   const travelMin = (a: number, b: number) => matrix[a][b];
 
   // one plan per theme from the same shortlist + matrix; drop themed plans identical to an earlier one
@@ -188,8 +203,12 @@ serve(async (req) => {
   ];
   const prefs = { minRating, allowUnrated: includeUnrated, maxStops, requiredIds: mustInclude };
   for (const t of variants) {
-    const plan = planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin, stops, travelMin, meals, ...prefs, segments: SEGMENTS(),
-                              theme: "theme" in t ? t.theme : undefined, weight: "weight" in t ? t.weight : undefined });
+    const sightsWithin = (budget: number) => planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin: budget, stops, travelMin, meals, ...prefs,
+      segments: SEGMENTS(), theme: "theme" in t ? t.theme : undefined, weight: "weight" in t ? t.weight : undefined });
+    // Quick: plan the sight leaving room for a pit stop, then add the cheapest store that fits; no store fits, the sight gets it all
+    const sights = pitStops.length ? sightsWithin(budgetMin - PIT_RESERVE_MIN) : null;
+    const plan = (sights && pitStops.map((pit) => insertBest(sights, pit, travelMin, budgetMin)).filter((x): x is Plan => !!x)
+      .sort((a, b) => a.extraMin - b.extraMin)[0]) || sightsWithin(budgetMin);
     const key = plan.order.map((s) => s.id).join(",");
     if (t.id !== "top_picks" && t.id !== "mix" && seen.has(key)) continue;
     seen.add(key);
@@ -264,7 +283,7 @@ serve(async (req) => {
         id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng,
         is_partner: c.is_partner, is_demo: c.is_demo,
         rating: c.rating == null ? null : Number(c.rating), price_level: c.price_level, tier: c.tier ?? 2,
-        dwell_min: s.dwellMin, eta_min: eta, meal, meal_late: !!late, picked: mustInclude.includes(c.id),
+        dwell_min: s.dwellMin, eta_min: eta, pit_stop: pitIds.has(c.id), meal, meal_late: !!late, picked: mustInclude.includes(c.id),
         // about how many minutes this stop adds (road detour + time there): what removing it would save
         extra_min: ((x) => Number.isFinite(x) ? Math.round(x) : null)(insertionCost(plan.order.map((o) => o.idx), s.idx, travelMin, s.dwellMin)),
         photo: photoOf.get(c.id) ?? null,

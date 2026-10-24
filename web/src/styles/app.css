@@ -1136,3 +1136,4 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .stamp-photo-big .row { justify-content: space-between; align-items: center; }
 .demo-ff { background: #fff4d6; color: #5a3d00; border: 2px dashed #e0a800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46vw; }
 .arrive-note { margin: 2px 0 0; opacity: .75; font-size: 12px; }
+.chip.pit { background: #e8f5e9; color: #1b5e20; }

@@ -225,3 +225,22 @@ export function insertionCost(order: number[], idx: number, travelMin: (a: numbe
   for (let i = 0; i < path.length - 1; i++) best = Math.min(best, travelMin(path[i], idx) + travelMin(idx, path[i + 1]) - travelMin(path[i], path[i + 1]));
   return best + dwellMin;
 }
+
+/**
+ * Add one more stop where it costs least, if the plan still fits the budget: a Quick plan's convenience-store pit stop
+ * after its sight. Returns null when it doesn't fit.
+ */
+export function insertBest(plan: Plan, stop: Stop, travelMin: (a: number, b: number) => number, budgetMin: number,
+  originIdx = 0, destIdx = 1): Plan | null {
+  const path = [originIdx, ...plan.order.map((s) => s.idx), destIdx];
+  let best = Infinity, at = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    const c = travelMin(path[i], stop.idx) + travelMin(stop.idx, path[i + 1]) - travelMin(path[i], path[i + 1]);
+    if (c < best) { best = c; at = i; }
+  }
+  const cost = best + stop.dwellMin;
+  if (!Number.isFinite(cost) || plan.extraMin + cost > budgetMin) return null;
+  const order = [...plan.order];
+  order.splice(at, 0, stop);
+  return { ...plan, order, totalMin: plan.totalMin + cost, extraMin: plan.extraMin + cost };
+}

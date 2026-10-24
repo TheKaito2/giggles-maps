@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { planDetour, type Stop, insertionCost } from "./planner.ts";
+import { insertBest, planDetour, type Stop, insertionCost } from "./planner.ts";
 import { fitsInterests, independent, mixWeight } from "./themes.ts";
 
 // grid world: travel minutes = manhattan distance between points
@@ -235,4 +235,13 @@ test("fitsInterests: only the picked kinds, landmarks by tier; independent: chai
   expect(independent({ category: "cafe", local: false })).toBe(false);
   expect(independent({ category: "cafe", local: true })).toBe(true);
   expect(independent({ category: "temple" })).toBe(true);
+});
+
+test("insertBest adds a pit stop at its cheapest place, only when the budget still has room", () => {
+  const base = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 20, stops: [stops[2]], travelMin });   // café on the route
+  const pit: Stop = { idx: 6, id: 99, category: "shop", rating: null, dwellMin: 5 };   // point 6 sits on the straight road
+  const withPit = insertBest(base, pit, travelMin, 20)!;
+  expect(withPit.order.map((s) => s.id)).toEqual([4, 99]);   // after the café, before the destination
+  expect(withPit.extraMin).toBe(base.extraMin + 5);           // no extra driving, 5 minutes there
+  expect(insertBest(base, pit, travelMin, base.extraMin + 4)).toBeNull();   // 4 spare minutes: doesn't fit
 });

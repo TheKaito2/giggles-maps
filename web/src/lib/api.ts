@@ -17,6 +17,7 @@ export interface RouteStop {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
   is_partner: boolean; // signed-up shop that pays per verified visit; never affects ranking
   is_demo: boolean; rating: number | null; dwell_min: number; eta_min: number;
+  pit_stop?: boolean;   // Quick plans: a convenience store after the sight (snacks, toilet)
   price_level?: number | null; // 0 free, 1-3 = ฿-฿฿฿, null = not listed
   nearby_partner: NearbyPartner | null;
   min_level?: number; exclusive_kind?: ExclusiveKind | null; perk_text?: string | null;

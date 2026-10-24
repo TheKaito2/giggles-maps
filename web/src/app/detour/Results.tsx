@@ -22,6 +22,7 @@ export function Thumb({ s, size = 48 }: { s: { name: string; category: string; p
 function badges(s: RouteStop): { text: string; cls: string; title?: string }[] {
   const all = [
     s.picked && { text: "You picked", cls: "picked" },
+    s.pit_stop && { text: "Pit stop", cls: "pit", title: "A quick stop for snacks, a drink or the toilet" },
     s.meal && { text: s.meal_late ? `Late ${MEAL_NAME[s.meal].toLowerCase()}` : MEAL_NAME[s.meal], cls: "meal" },
     s.tier === 3 && { text: "Landmark", cls: "landmark" },
     (s.otop || s.community) && { text: s.otop ? "OTOP" : "Community", cls: "otop" },
@@ -60,7 +61,7 @@ function StopRow({ s, i, d, sel, onOpen, onCheckin }: { s: RouteStop; i: number;
         <Thumb s={s} />
         <span className="stop-text">
           <b>{s.name}</b>
-          <span className="fine num">{hhmm(s.eta_min)} · {kindOf(null, s.category).en}{s.extra_min != null && ` · +${s.extra_min} min`}{s.rating != null && ` · ★ ${s.rating.toFixed(1)}`}</span>
+          <span className="fine num">{hhmm(s.eta_min)} · {kindOf(s.pit_stop ? "convenience" : null, s.category).en}{s.extra_min != null && ` · +${s.extra_min} min`}{s.rating != null && ` · ★ ${s.rating.toFixed(1)}`}</span>
           {badges(s).length > 0 && <span className="row tight">{badges(s).map((b) => <span key={b.text} className={`chip ${b.cls}`} title={b.title}>{b.text}</span>)}</span>}
         </span>
       </button>
