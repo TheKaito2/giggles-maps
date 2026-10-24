@@ -13,6 +13,7 @@ let at = read<LatLng>(AT, SAKON);
 const watchers = new Map<number, PositionCallback>();
 const listeners = new Set<() => void>();
 let nextId = 1e6;   // clear of the real watch ids
+let realGet: Geolocation["getCurrentPosition"] | null = null;   // the device's own GPS, kept when the stand-in is installed
 
 const position = (): GeolocationPosition => ({
   coords: { latitude: at.lat, longitude: at.lng, accuracy: 5, altitude: null, altitudeAccuracy: null, heading: null, speed: null,
@@ -38,11 +39,21 @@ export function moveTo(p: LatLng) {
   changed();
 }
 
+/**
+ * "Use my location" (a trip's start): in demo mode the demo position first goes back to where you really are, so a new
+ * trip starts from you, not from wherever the last demo drive ended. No real fix (blocked, desktop): the demo spot stays.
+ */
+export function myLocation(ok: PositionCallback, fail: PositionErrorCallback, opts?: PositionOptions) {
+  if (!on || !realGet) return navigator.geolocation.getCurrentPosition(ok, fail, opts);
+  realGet((p) => { moveTo({ lat: p.coords.latitude, lng: p.coords.longitude }); ok(position()); }, () => ok(position()), opts);
+}
+
 /** Swap navigator.geolocation for the demo location while demo mode is on (once, at start-up). */
 export function installDemoGps() {
   const geo = navigator.geolocation;
   if (!geo) return;
   const real = { get: geo.getCurrentPosition.bind(geo), watch: geo.watchPosition.bind(geo), clear: geo.clearWatch.bind(geo) };
+  realGet = real.get;
   geo.getCurrentPosition = (ok, fail, opts) => on ? void setTimeout(() => ok(position()), 150) : real.get(ok, fail, opts);
   geo.watchPosition = (ok, fail, opts) => {
     if (!on) return real.watch(ok, fail, opts);

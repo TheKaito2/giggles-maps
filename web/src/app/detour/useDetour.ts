@@ -1,3 +1,4 @@
+import { myLocation } from "../../lib/demoGps";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "../../lib/supabase";
 import { choosePlan, planRoute, type RoutePlan } from "../../lib/api";
@@ -45,7 +46,7 @@ export function useDetour(onError: (m: string) => void) {
   // start defaults to your location, the first time it's needed
   const locate = () => new Promise<Place>((ok, fail) => {
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
+    myLocation(
       (pos) => { setLocating(false); ok({ point: { lat: pos.coords.latitude, lng: pos.coords.longitude }, name: "Your location" }); },
       () => { setLocating(false); fail(new Error("Location is blocked. Type where you're starting from instead.")); },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });

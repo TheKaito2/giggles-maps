@@ -1,3 +1,4 @@
+import { myLocation } from "../../lib/demoGps";
 import { type ReactNode, useState } from "react";
 import { ArrowUpDown, Bike, Car, Footprints, LocateFixed, SlidersHorizontal, X } from "lucide-react";
 import type { RoutePlan, TravelMode } from "../../lib/api";
@@ -25,7 +26,7 @@ export function TripHead({ d, onBack, backLabel, onSearch }: { d: Detour; onBack
         <PlaceSearch label="From" value={d.locating ? "Finding your location…" : d.origin?.name ?? ""} near={d.dest?.point}
           pin={<span className="dot start" aria-hidden>A</span>} onPick={(point, name) => d.setOrigin({ point, name })}
           actions={<button type="button" className="icon-btn" aria-label="Start from my location"
-            onClick={() => navigator.geolocation.getCurrentPosition(
+            onClick={() => myLocation(
               (p) => d.setOrigin({ point: { lat: p.coords.latitude, lng: p.coords.longitude }, name: "Your location" }),
               () => d.notify("Location is blocked. Type where you're starting from instead."), { enableHighAccuracy: true, timeout: 10000 })}>
             <LocateFixed size={16} aria-hidden /></button>} />
