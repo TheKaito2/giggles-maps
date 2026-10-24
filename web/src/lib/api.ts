@@ -430,8 +430,15 @@ export const react = async (id: number, emoji: Reaction | null) => { if (id > 0)
 export const nudge = async (friend: string) => { if (!friend.startsWith("demo-")) await rpc<void>("nudge", { p_friend: friend }); };
 
 export interface FriendQuest { partner: Who; week: string; me: number; them: number }
-export const getFriendQuest = () => rpc<FriendQuest | null>("friend_quest");
-export const setFriendQuest = (friend: string) => rpc<void>("set_friend_quest", { p_friend: friend });
+export async function getFriendQuest(): Promise<FriendQuest | null> {
+  const real = await rpc<FriendQuest | null>("friend_quest"), d = demo();
+  return real ?? (d ? (await d).demoFriendQuest() : null);
+}
+// a quest with a pretend friend (demo mode) stays on this device
+export const setFriendQuest = async (friend: string) => {
+  if (friend.startsWith("demo-")) { const d = demo(); if (d) (await d).setDemoFriendQuest(friend); return; }
+  await rpc<void>("set_friend_quest", { p_friend: friend });
+};
 export interface QuestReward { slug: string; title: string; title_th: string; xp: number; coins: number; member: boolean; level: number;
   level_up: boolean; fortune_tickets: number }
 /** Claim one finished quest (its chest opens): errors with `not_ready` if it isn't finished or was claimed already. */

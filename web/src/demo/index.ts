@@ -2,7 +2,7 @@
 // on (dynamic import), so real users never get it. Nothing is written to the database: reactions, comments and nudges on
 // pretend people stay on this device.
 import { type Board, type BoardMetric, type BoardPeriod, type BoardRow, type BoardScope, type Card, type Champion, type Comment,
-  type FeedItem, type FriendPassport, mapPlaces, type PartnerTier, type PlacePage, type ProfilePage, type Social, type Who } from "../lib/api";
+  type FeedItem, type FriendPassport, type FriendQuest, mapPlaces, type PartnerTier, type PlacePage, type ProfilePage, type Social, type Who } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { demoAt } from "../lib/demoGps";
 import { DEMO_INCOMING, DEMO_PEOPLE, demoChampions } from "./people";
@@ -89,3 +89,21 @@ export function demoPassport(id: string): FriendPassport | null {
   return p ? { card: card(p), stamps: [], photos: [], provinces: [] } : null;
 }
 export const demoWho = (id: string) => { const p = byId.get(id); return p ? who(p) : null; };
+
+// Friends Quest with a pretend friend: remembered on this device for the week (Monday, Bangkok time)
+const FQ = "gm-demo-friend-quest";
+const weekOf = (d = new Date()) => {
+  const bkk = new Date(d.getTime() + 7 * 3600_000), monday = new Date(bkk);
+  monday.setUTCDate(bkk.getUTCDate() - ((bkk.getUTCDay() + 6) % 7));
+  return monday.toISOString().slice(0, 10);
+};
+export function setDemoFriendQuest(id: string) {
+  try { localStorage.setItem(FQ, JSON.stringify({ id, week: weekOf() })); } catch { /* this visit only */ }
+}
+export function demoFriendQuest(): FriendQuest | null {
+  let saved: { id: string; week: string } | null = null;
+  try { saved = JSON.parse(localStorage.getItem(FQ) ?? "null"); } catch { /* none */ }
+  const p = saved && saved.week === weekOf() ? byId.get(saved.id) : undefined;
+  if (!p) return null;
+  return { partner: who(p), week: saved!.week, me: 0, them: Math.min(6, 1 + (p.week_xp % 5)) };   // the pretend friend has made a start
+}
