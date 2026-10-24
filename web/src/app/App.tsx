@@ -264,7 +264,7 @@ export default function App() {
         </div>
       )}
       {overlay === "add" && <AddPlace onClose={() => setOverlay(null)} />}
-      {d.gate && <Upgrade gate={d.gate} onClose={() => d.setGate(null)}
+      {d.gate && tab === "map" && <Upgrade gate={d.gate} onClose={() => d.setGate(null)}
         onRewarded={d.gate === "detour_limit" ? d.replanAll : () => setNotice("5 more changes for today. Make that change again.")} />}
       {adSheet && <Upgrade gate="ads" onClose={() => setAdSheet(false)} />}
       {nav && <Navigate waypoints={nav} mode={d.prefs.mode} onClose={() => setNav(null)}

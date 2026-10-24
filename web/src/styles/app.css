@@ -1269,7 +1269,10 @@ p.chase { margin: 0; }
 .summary-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* one line: the buttons below never move */
 
 /* ===================== monetization v5: ad banner, upgrade sheet ===================== */
-.ad-banner { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; gap: 10px; min-height: 60px; max-width: 640px; margin: 0 auto;
+/* the page view is a column so the banner sits at the bottom even when the page is short (margin-top: auto) */
+.page-view:has(> .ad-banner) { display: flex; flex-direction: column; }
+.page-view:has(> .ad-banner) > .page-col { width: 100%; flex: none; }
+.ad-banner { position: sticky; bottom: 0; z-index: 5; flex: none; display: flex; align-items: center; gap: 10px; min-height: 60px; width: 100%; max-width: 640px; margin: auto auto 0;
   padding: 8px 12px; background: var(--card); border: 2px solid var(--line); border-bottom: 0; border-radius: 16px 16px 0 0; box-shadow: 0 -4px 16px rgb(22 27 61 / .06); }
 .ad-label { flex: none; font: 700 var(--fs-micro)/1 var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2);
   border: 1px solid var(--line); border-radius: 6px; padding: 3px 5px; }
