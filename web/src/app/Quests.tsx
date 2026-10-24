@@ -7,6 +7,7 @@ import { type Challenge, claimQuest, type FriendQuest, type QuestReward, getFrie
 import Avatar from "./social/Avatar";
 import VerifyLocal from "./VerifyLocal";
 import { SkelRows, Spinner } from "./Skeleton";
+import Info from "./Info";
 
 const GROUPS: { kind: Challenge["kind"]; title: string; resets?: "day" | "week" }[] = [
   { kind: "daily", title: "Daily quests", resets: "day" }, { kind: "weekly", title: "Weekly quests", resets: "week" },
@@ -107,28 +108,28 @@ export default function Quests({ profile, refreshKey, onChange, onShop }: { prof
 
   return (
     <div className="page-col stack">
-      <header className="page-hero quests-hero"><Chest open={false} ready={ready > 0} /><h1>Quests</h1>
-        <p className="fine">Finish quests to open chests full of XP and coins{profile?.member ? "" : " (coins and levels come with membership)"}.</p></header>
+      <header className="page-hero quests-hero"><Chest open={false} ready={ready > 0} /><h1>Quests <Info label="About quests">Finish quests to open chests full of XP and coins{profile?.member ? "" : " (coins and levels come with membership)"}.
+          Each chest also gives a bonus Siam Si shake.</Info></h1></header>
       {ready > 0 && <p className="hint chest-pop" role="status">{ready === 1 ? "A chest is" : `${ready} chests are`} ready to open: tap Claim.</p>}
       {msg && <p className="fine" role="status">{msg}</p>}
 
       <VerifyLocal />
       <section className="friend-quest glass">
-        <div className="row between"><h3><Users size={18} aria-hidden /> Friends Quest</h3>{<span className="chip"><Clock size={12} aria-hidden /> {left("week")}</span>}</div>
+        <div className="row between"><h3><Users size={18} aria-hidden /> Friends Quest <Info label="About Friends Quest">Team up with one friend each week: collect 10 new
+          stamps between you and you both get +150 XP and +40 coins.</Info></h3>{<span className="chip"><Clock size={12} aria-hidden /> {left("week")}</span>}</div>
         {fq === undefined ? <SkelRows n={1} avatar={56} /> : fq ? <>
           <div className="fq-pair">
             <span className="fq-person"><Avatar name={profile?.nickname ?? "You"} colour={profile?.colour ?? "marigold"} avatar={profile?.avatar} size={56} /><b>You</b><span className="num">{fq.me}</span></span>
             <span className="fq-plus">+</span>
             <span className="fq-person"><Avatar name={fq.partner.nickname} colour={fq.partner.colour} avatar={fq.partner.avatar} size={56} /><b>{fq.partner.nickname}</b><span className="num">{fq.them}</span></span>
           </div>
-          <p className="fine center">Collect 10 new stamps between you this week. Both get +150 XP and +40 coins.</p>
           <div className="quest-bar big"><span style={{ width: `${Math.min(100, 10 * (fq.me + fq.them))}%` }} /><em className="num">{Math.min(10, fq.me + fq.them)} / 10</em></div>
           {fqDone?.claimed ? <p className="badge-earned center">Quest complete!</p>
             : fqDone && fqDone.have >= fqDone.need ? <button type="button" className="btn gold claim-btn" onClick={() => setOpening(fqDone)}>Claim your chest</button>
             : <button type="button" className="btn soft" onClick={() => nudge(fq.partner.id).then(() => setMsg(`Nudged ${fq.partner.nickname}.`))
                 .catch(() => setMsg("You nudged them today already."))}><Zap size={15} aria-hidden /> Nudge {fq.partner.nickname}</button>}
         </> : friends.length ? <>
-          <p className="fine">Team up with one friend this week: 10 new stamps between you and you both win.</p>
+          <p className="fine">Pick a friend to team up with this week.</p>
           <ul className="fq-pick">{friends.map((f) => <li key={f.id}>
             <button type="button" className="tile" onClick={() => pair(f.id)}><Avatar name={f.nickname} colour={f.colour} avatar={f.avatar} size={52} /><span>{f.nickname}</span></button>
           </li>)}</ul>

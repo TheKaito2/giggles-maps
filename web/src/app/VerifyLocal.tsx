@@ -4,6 +4,7 @@ import { ApiError } from "../lib/supabase";
 import { confirmNomination, type Nomination, nominationsNear } from "../lib/api";
 import { kindOf } from "./kinds";
 import { formatDistance } from "./PlaceSearch";
+import Info from "./Info";
 
 const here = () => new Promise<{ lat: number; lng: number }>((ok, fail) => navigator.geolocation.getCurrentPosition(
   (p) => ok({ lat: p.coords.latitude, lng: p.coords.longitude }), fail, { enableHighAccuracy: true, timeout: 15000 }));
@@ -20,10 +21,10 @@ export default function VerifyLocal() {
       : e instanceof ApiError && e.code === "account_too_new" ? "New accounts can confirm shops after their first week." : "Couldn't confirm. Try again."));
   return (
     <section className="friend-quest glass" aria-label="Help verify local shops">
-      <h3><HandHeart size={18} aria-hidden /> Local Hero: verify local shops</h3>
-      <p className="fine">Travellers nominate OTOP, craft and family shops the map is missing. Stand at one and confirm it: two confirmations put it on the map for everyone.</p>
+      <h3><HandHeart size={18} aria-hidden /> Local Hero: verify local shops <Info label="About Local Hero">Travellers nominate OTOP, craft and family
+        shops the map is missing. Stand at one and confirm it: two confirmations put it on the map for everyone.</Info></h3>
       {list === null ? <button type="button" className="btn soft" onClick={find}>Find nominated shops near me</button>
-        : list.length === 0 ? <p className="fine">None near you right now. Found a great local shop? Nominate it with Add place on the map.</p>
+        : list.length === 0 ? <p className="fine">None near you right now.</p>
         : <ul className="people">{list.map((n) => {
             const k = kindOf(n.kind, null);
             return <li key={n.id} className="person"><span className="person-main"><b>{n.name}</b>

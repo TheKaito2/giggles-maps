@@ -200,7 +200,7 @@ export default function App() {
                   <div className={`arrive-card tier-${zoneStop.tier}`} role="status">
                     <span className="eyebrow">You're here</span>
                     <b>{zoneStop.name}</b>
-                    <p className="fine">Check in with a photo to collect the {TIER_WORD[zoneStop.tier]} stamp. This card goes away when you leave.</p>
+                    <p className="fine">Collect the {TIER_WORD[zoneStop.tier]} stamp. This card goes away when you leave.</p>
                     <button type="button" className="btn big checkin-go" onClick={() => checkInAt(zoneStop)}><Camera size={20} aria-hidden /> Check in</button>
                   </div>
                 ) : zoneStop && (

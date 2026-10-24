@@ -210,7 +210,7 @@ export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
           <span className="eyebrow">You've arrived</span>
           <b id="arrive-title">{atStop.name}</b>
           {atStop.id != null
-            ? <><p className="fine">Check in with a photo to collect the stamp. Directions pause; you can pick them up again after.</p>
+            ? <><p className="fine">Directions pause while you check in.</p>
                 <button type="button" className="btn big checkin-go" onClick={() => { if (share) stopEta().catch(() => undefined); onCheckin(atStop, left.filter((w) => w !== atStop)); }}>
                   <Camera size={20} aria-hidden /> Check in here</button></>
             : <p className="fine">That's the end of the route. End directions and, if this place is a stop, its check-in is right there on the map.</p>}

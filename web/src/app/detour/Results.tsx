@@ -6,6 +6,7 @@ import { budgetLabel, hhmm, MEALS } from "../prefs";
 import { type Detour, PRESETS } from "./useDetour";
 import { arrive } from "./Choose";
 import PlanProgress from "./PlanProgress";
+import Info from "../Info";
 
 const MEAL_NAME: Record<Meal, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
 const PARTNER_TIP = "This shop pays Giggles Maps when you visit. It's ranked like every other place; paying never moves it up.";
@@ -169,7 +170,8 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
         : <ol className="stop-rows">{plan.stops.filter((s) => !d.hidden.includes(s.id)).map((s, i) => <StopRow key={s.id} s={s} i={i} d={d} sel={selected === s.id} onOpen={onOpen} onCheckin={onCheckin} />)}</ol>}
 
       <Along places={current?.along ?? []} d={d} full={plan.stops.length >= MAX_STOPS} />
-      <p className="fine">Stops are picked on quality. Partner shops rank like everyone else.</p>
+      <p className="fine">How stops are picked <Info label="How stops are picked">Stops are picked on quality, opening hours and how little time they
+        add. Partner shops rank like everyone else.</Info></p>
     </div>
   );
 }

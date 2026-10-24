@@ -7,6 +7,7 @@ import { GROUPS, kindOf } from "./kinds";
 import { openNow } from "./hours";
 import Avatar from "./social/Avatar";
 import { SkelLines, SkelPlace } from "./Skeleton";
+import Info from "./Info";
 
 const ago = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
@@ -205,7 +206,8 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
               {page.reviews.some((r) => r.mine) && <button type="button" className="link" onClick={() => deleteReview(page.id).then(() => { setRating(0); setBody(""); load(); })}>Delete</button>}
             </div>
           </form>
-        ) : <p className="fine">Check in here to leave a review. Every review on Giggles Maps comes from someone who was really there.</p>}
+        ) : <p className="fine">Check in here to leave a review. <Info label="About reviews">Every review on Giggles Maps comes from someone who was really
+          there.</Info></p>}
         {page.reviews.map((r, i) => (
           <article key={i} className="review">
             <header className="row tight"><Avatar name={r.who.nickname} colour={r.who.colour} avatar={r.who.avatar} size={32} />

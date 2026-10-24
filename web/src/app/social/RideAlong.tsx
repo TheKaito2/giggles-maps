@@ -7,6 +7,7 @@ import Avatar from "./Avatar";
 import Album from "../passport/Album";
 import QrLink from "./QrLink";
 import { Spinner } from "../Skeleton";
+import Info from "../Info";
 
 const POLL_MS = 15_000;
 const PING_MS = 30_000;
@@ -60,8 +61,9 @@ export default function RideAlong({ trip: t, profile }: { trip: TripState; profi
 
   if (!trip) return (
     <div className="stack">
-      <p className="fine">Travelling with friends or family? Start a trip and they join with your link or QR. While it runs you see each other on the map,
-        share one album, and when you check in at the same place within an hour, everyone gets +50% XP and coins.</p>
+      <p className="fine">Travelling with friends or family? <Info label="About ride along">Start a trip and they join with your link or QR. While it
+        runs you see each other on the map and share one album, and checking in at the same place within an hour gives everyone +50% XP and
+        coins.</Info></p>
       <form className="stack" onSubmit={(e) => { e.preventDefault(); t.start(name); }}>
         <input className="text-in" value={name} maxLength={40} placeholder="Trip name (optional), e.g. Sakon weekend" aria-label="Trip name"
           onChange={(e) => setName(e.target.value)} />

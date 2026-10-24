@@ -3,6 +3,7 @@ import { ShoppingBag, Sparkles } from "lucide-react";
 import { type PastShake, type Profile, shakeHistory } from "../../lib/api";
 import Fortune, { OddsTable, prizeText, RARITY } from "./Fortune";
 import { SkelRows } from "../Skeleton";
+import Info from "../Info";
 
 /** Profile card: bonus shakes waiting, a running XP boost, and the odds and your last 20 shakes. */
 export default function SiamSi({ profile, onChange, onShop }: { profile: Profile | null; onChange: () => void; onShop?: () => void }) {
@@ -15,11 +16,12 @@ export default function SiamSi({ profile, onChange, onShop }: { profile: Profile
   return (
     <section className="siam-si glass" aria-labelledby="siamsi-title">
       <div className="row between">
-        <h3 id="siamsi-title"><Sparkles size={18} aria-hidden /> Siam Si <span className="fine" lang="th">เซียมซี</span></h3>
+        <h3 id="siamsi-title"><Sparkles size={18} aria-hidden /> Siam Si <span className="fine" lang="th">เซียมซี</span>
+          <Info label="About Siam Si">Every new place you check in at gives a shake. Quests, new provinces and riding along give bonus shakes
+            (keep up to 5).</Info></h3>
         <button type="button" className="btn gold small" disabled={!tickets} onClick={() => setOpen(true)}>
           {tickets ? `Shake · ${tickets}` : "No shakes"}</button>
       </div>
-      <p className="fine">Every new place you check in at gives a shake. Quests, new provinces and riding along give bonus shakes (keep up to 5).</p>
       {boost && <p className="chip boost">XP ×1.5 until {boost.toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" })}</p>}
       <div className="row">
         <button type="button" className="link" aria-expanded={more} onClick={() => setMore(!more)}>Odds and history</button>

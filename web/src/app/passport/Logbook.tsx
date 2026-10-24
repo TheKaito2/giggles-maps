@@ -21,7 +21,7 @@ export default function Logbook({ owner, stamps, onClose }: { owner: string; sta
     <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label={`${owner}'s logbook`} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal logbook" ref={box} tabIndex={-1}>
         <header className="modal-head">
-          <span><h2>Logbook</h2><span className="fine">{list.length} {list.length === 1 ? "place" : "places"} · every check-in, day by day</span></span>
+          <span><h2>Logbook</h2><span className="fine">{list.length} {list.length === 1 ? "place" : "places"}</span></span>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button>
         </header>
         {!list.length && <p className="fine">Check in somewhere and it lands here, with your photo.</p>}

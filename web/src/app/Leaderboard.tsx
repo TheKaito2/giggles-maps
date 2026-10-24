@@ -6,6 +6,7 @@ import Avatar from "./social/Avatar";
 import ProvinceStamp from "./passport/ProvinceStamp";
 import { useProvinces } from "./passport/useProvinces";
 import { SkelBoard, SkelTiles } from "./Skeleton";
+import Info from "./Info";
 
 const METRICS: { id: BoardMetric; label: string; unit: (n: number) => string }[] = [
   { id: "xp", label: "XP", unit: () => "XP" },
@@ -49,7 +50,7 @@ function Chase({ board, unit }: { board: Board; unit: (n: number) => string }) {
 
 function Champions({ list }: { list: Champion[] }) {
   const features = useProvinces();
-  if (!list.length) return <p className="fine">No champions yet: check in around a province on a few different days to claim its crown.</p>;
+  if (!list.length) return <p className="fine">No champions yet.</p>;
   return (
     <ul className="champ-row" aria-label="Province champions">
       {list.map((c) => {
@@ -116,8 +117,9 @@ export default function Leaderboard({ profile, onChange }: { profile: Profile | 
         {METRICS.map((m) => <button key={m.id} type="button" role="radio" aria-checked={metric === m.id} className={`chip-btn${metric === m.id ? " on" : ""}`}
           onClick={() => setMetric(m.id)}>{m.label}</button>)}
       </div>
-      {period === "week" && current?.ends && <p className="week-note fine">Resets in <b className="num">{left(current.ends)}</b> · the top 3 and whoever leads
-        their friends win coins and a Siam Si shake on Monday.</p>}
+      {period === "week" && current?.ends && <p className="week-note fine">Resets in <b className="num">{left(current.ends)}</b>
+        <Info label="Weekly prizes">Every Monday the top 3 get +100, +60 and +40 coins, and whoever leads their friends gets +30. Each winner also
+          gets a Siam Si shake. Demo check-ins don't count.</Info></p>}
 
       {error ? <p className="fine">Couldn't load the board. Try again.</p> : !current ? <SkelBoard /> : <>
         {podium.length > 0 && <ol className="podium" aria-label="Top 3">
@@ -139,16 +141,15 @@ export default function Leaderboard({ profile, onChange }: { profile: Profile | 
         <Chase board={current} unit={unit} />
         {current.total < 5 && <section className="invite-card glass">
           <b>{scope === "friends" ? "Your friends board is quiet" : "The board needs rivals"}</b>
-          <p className="fine">Bring friends: weekly prizes go to the top 3 and to whoever leads their friends. Your code is
-            <b className="num"> {profile?.friendCode}</b>.</p>
+          <p className="fine">Your code: <b className="num">{profile?.friendCode}</b></p>
           <button type="button" className="btn" onClick={invite}><Share2 size={16} aria-hidden /> Invite friends</button>
         </section>}
       </>}
       {current && !current.me && scope === "everyone" && <p className="fine">{profile?.onLeaderboard === false ? "You're hidden from the everyone board."
         : "Pick a name to get on the board."}</p>}
 
-      <h3><Crown size={18} aria-hidden /> Province champions</h3>
-      <p className="fine">Whoever checks in around a province on the most different days in 90 days wears its crown.</p>
+      <h3><Crown size={18} aria-hidden /> Province champions <Info label="About province champions">Whoever checks in around a province on the most
+        different days in 90 days wears its crown. One check-in a day counts, wherever you go in the province.</Info></h3>
       {champs === null ? <SkelTiles n={3} h={150} min={150} /> : <Champions list={champs} />}
 
       <label className="toggle">

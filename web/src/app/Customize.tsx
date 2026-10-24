@@ -3,6 +3,7 @@ import { Coffee, Landmark, type LucideIcon, ShoppingBag, Sparkles, Trees, Utensi
 import type { Interest, LatLng } from "../lib/api";
 import ExplorePlaces from "./ExplorePlaces";
 import { DEFAULT_PREFS, filterSummary, INTERESTS, MEALS, type Prefs } from "./prefs";
+import Info from "./Info";
 
 export const KIND_ICON: Record<Interest, LucideIcon> = {
   culture: Landmark, nature: Trees, food: UtensilsCrossed, cafes: Coffee, shopping: ShoppingBag, landmarks: Sparkles,
@@ -39,8 +40,8 @@ export default function Filters({ prefs: start, apply, near, onClose }: { prefs:
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close without changes"><X size={20} /></button></header>
 
         <section className="filter-q" aria-labelledby="q-kinds">
-          <h3 id="q-kinds">What kind of stops?</h3>
-          <p className="fine">Pick some and every plan uses only those. Pick none for a mix of everything.</p>
+          <h3 id="q-kinds">What kind of stops? <Info label="About kinds of stops">Pick some and every plan uses only those. Pick none for a mix of
+            everything.</Info></h3>
           <div className="kind-tiles">
             {INTERESTS.map((i) => {
               const Icon = KIND_ICON[i.id], on = prefs.interests.includes(i.id);
@@ -51,8 +52,7 @@ export default function Filters({ prefs: start, apply, near, onClose }: { prefs:
         </section>
 
         <section className="filter-q" aria-labelledby="q-meal">
-          <h3 id="q-meal">Stop to eat?</h3>
-          <p className="fine">We add a restaurant you reach inside the meal time.</p>
+          <h3 id="q-meal">Stop to eat? <Info label="About meal stops">We add a restaurant you reach inside the meal time.</Info></h3>
           <div className="row tight">
             {MEALS.map((m) => {
               const on = prefs.meals.includes(m.id);
@@ -64,8 +64,7 @@ export default function Filters({ prefs: start, apply, near, onClose }: { prefs:
         </section>
 
         <section className="filter-q" aria-labelledby="q-picks">
-          <h3 id="q-picks">Anywhere you must visit?</h3>
-          <p className="fine">These go into every plan when there's time.</p>
+          <h3 id="q-picks">Anywhere you must visit? <Info label="About must-visit places">These go into every plan when there's time.</Info></h3>
           <ExplorePlaces near={near} picks={prefs.picks} setPicks={(picks) => set({ picks })} />
         </section>
 

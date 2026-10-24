@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, CloudDownload, Layers, Trash2, X } from "lucide-react";
 import { deletePack, downloadPack, type MapLook, type Night, type Pack, PACKS_URL, savedPacks } from "./mapLayers";
 import { SkelRows } from "./Skeleton";
+import Info from "./Info";
 
 const NIGHTS: { id: Night; label: string }[] = [{ id: "auto", label: "Auto" }, { id: "on", label: "On" }, { id: "off", label: "Off" }];
 const mb = (b: number) => `${(b / 1e6).toFixed(b < 1e7 ? 1 : 0)} MB`;
@@ -39,9 +40,9 @@ function OfflineMaps({ onClose }: { onClose: () => void }) {
   return (
     <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="offline-title">
       <div className="modal offline-maps">
-        <header className="modal-head"><h2 id="offline-title">Offline maps</h2>
+        <header className="modal-head"><h2 id="offline-title">Offline maps <Info label="About offline maps">Save a province to see its map with no signal. Planning, directions and
+          check-ins still need a connection.</Info></h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button></header>
-        <p className="fine">Save a province to see its map with no signal. Planning, directions and check-ins still need a connection.</p>
         <input className="text-in" value={q} placeholder="Search provinces" aria-label="Search provinces" onChange={(e) => setQ(e.target.value)} />
         {all === null ? <SkelRows n={4} avatar={0} /> : <ul className="people">
           {list.map((p) => <li key={p.iso} className="person"><span className="person-main"><b>{p.name_en}</b><span className="fine">{p.name_th} · {mb(p.bytes)}</span></span>

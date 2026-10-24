@@ -18,6 +18,7 @@ import Account from "./Account";
 import SavedLists from "./SavedLists";
 import AdminEdits from "./AdminEdits";
 import { SkelProfile } from "./Skeleton";
+import Info from "./Info";
 
 const month = (iso?: string | null) => iso ? new Date(iso).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "";
 const TIER = { 3: "Landmark", 2: "Worth a visit", 1: "Everyday" } as const;
@@ -166,8 +167,8 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
         <Modal label="Settings" className="settings stack" onClose={() => setSheet(null)}>
             <header className="modal-head"><h2>Settings</h2><button type="button" className="icon-btn" onClick={() => setSheet(null)} aria-label="Close"><X size={20} /></button></header>
             <label className="pref-row demo-toggle">
-              <span><b>Demo mode</b><span className="fine">Try a trip without going anywhere: start directions, then the Demo button drives you to each stop. Check-ins
-                still count (and are marked as demo). Turning it on or off reloads the app.</span></span>
+              <span><b>Demo mode <Info label="About demo mode">Try a trip without going anywhere: start directions, then the Demo button drives you to
+                each stop. Check-ins still count, marked as demo, and never on the leaderboard.</Info></b><span className="fine">Reloads the app.</span></span>
               <input type="checkbox" role="switch" className="switch" checked={demoOn()} onChange={(e) => { setDemo(e.target.checked); location.reload(); }} />
             </label>
             {profile?.isAdmin && <AdminEdits />}

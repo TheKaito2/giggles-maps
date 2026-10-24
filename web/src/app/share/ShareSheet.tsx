@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDialog } from "../../lib/useDialog";
 import { Download, Lock, Share2, X } from "lucide-react";
 import { type Card, DESIGNS, type Design, drawCard } from "./cards";
+import Info from "../Info";
 
 export interface CardOption { id: string; label: string; card: Card }
 
@@ -60,7 +61,8 @@ export default function ShareSheet({ options, hasPlus, onClose }: { options: Car
         <div className={`share-preview${sticker ? " sticker" : ""}`}>
           {url && blob ? <img src={url} alt={`${option.label} card`} /> : <div className="ph" aria-label="Drawing the card" />}
         </div>
-        {sticker && <p className="fine">A clear sticker: in Instagram Stories, add your photo, then paste or pick this from your photos.</p>}
+        {sticker && <p className="fine">Clear sticker <Info label="How to use the sticker">In Instagram Stories, add your photo, then paste or pick
+          this sticker from your photos.</Info></p>}
         {option.card.kind !== "sticker" && (
           <div className="design-swatches" role="radiogroup" aria-label="Design">
             {(Object.keys(DESIGNS) as Design[]).map((k) => {
