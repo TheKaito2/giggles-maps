@@ -3,7 +3,9 @@ import "../styles/tokens.css";
 import "../styles/app.css";
 import App from "./App";
 import { installDemoGps } from "../lib/demoGps";
+import { installHScroll } from "../lib/hscroll";
 
+installHScroll();   // mouse users: arrows and wheel for sideways rows
 installDemoGps();   // demo mode (Profile) fakes the location for everything that reads it
 import Debug from "./Debug";
 
