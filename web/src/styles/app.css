@@ -619,7 +619,7 @@ table.stats th, table.stats td { padding: 6px 8px; border-bottom: 1px solid var(
 /* step 2: presets */
 .choose { gap: 14px; }
 .choose .eyebrow { margin: 0; }
-.presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .preset { display: grid; gap: 6px; align-content: start; text-align: left; padding: 10px; border-radius: 16px; border: 2px solid var(--line); border-bottom-width: 4px;
   background: var(--card); color: var(--ink); min-height: 118px; }
 .preset.on { border-color: var(--indigo); box-shadow: 0 0 0 3px var(--indigo-soft); }

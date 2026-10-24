@@ -38,7 +38,7 @@ export function TripHead({ d, onBack, backLabel, onSearch }: { d: Detour; onBack
   );
 }
 
-/** Step 2: how you travel, when, and how much extra time (3 presets, each already planned). */
+/** Step 2: how you travel, when, and how much extra time (4 presets, each already planned). */
 export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => void }) {
   const [filters, setFilters] = useState(false);
   const n = filterCount(d.prefs);

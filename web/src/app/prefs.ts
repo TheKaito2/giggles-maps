@@ -26,7 +26,7 @@ export const DEFAULT_PREFS: Prefs = {
 };
 
 export const MAX_BUDGET = 240;
-export const MAX_STOPS = 6;   // the most stops one plan holds
+export const MAX_STOPS = 12;   // the most stops an edited plan can keep (= MAX_KEPT in plan-route)
 export const MEALS: { id: Meal; label: string; window: string }[] = [
   { id: "breakfast", label: "Breakfast", window: "07:00–09:30" },
   { id: "lunch", label: "Lunch", window: "11:30–13:30" },

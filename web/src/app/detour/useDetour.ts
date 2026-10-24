@@ -5,13 +5,14 @@ import { isGuest, useUser } from "../../lib/auth";
 import { choosePlan, planRoute, type RoutePlan } from "../../lib/api";
 import { DEFAULT_PREFS, MAX_BUDGET, MAX_STOPS, type Place, type Prefs, toRequest } from "../prefs";
 
-// Detour flow, Google-Maps style: browse the map -> pick where to -> pick how much time (Quick, Relaxed and Day out
+// Detour flow, Google-Maps style: browse the map -> pick where to -> pick how much time (Quick, Relaxed, Day out and Half day
 // are planned in parallel; none is picked until you tap one) -> results you can edit (remove or add stops).
 type Stage = "browse" | "choose" | "results";
 export const PRESETS = [
   { id: "quick", label: "Quick", min: 20, blurb: "A quick sight and a 7-Eleven stop" },
   { id: "relaxed", label: "Relaxed", min: 45, blurb: "The best along the way" },
   { id: "day", label: "Day out", min: 120, blurb: "Make a trip of it" },
+  { id: "half", label: "Half day", min: 240, blurb: "Room for a long wander" },
 ] as const;
 export type PresetId = (typeof PRESETS)[number]["id"] | "custom";
 type Result = RoutePlan | "loading" | { error: string };
@@ -73,14 +74,14 @@ export function useDetour(onError: (m: string) => void) {
       .then((r) => { if (id === request.current) setResults((all) => ({ ...all, [k]: r })); })
       .catch((e) => { if (id === request.current) { gated(e); setResults((all) => ({ ...all, [k]: { error: errorText(e) } })); } });
   };
-  // a new trip plans all three options at once (Relaxed first), plus a custom time if that's the one picked;
+  // a new trip plans all four options at once (Relaxed first), plus a custom time if that's the one picked;
   // the cards fill in as each returns
   useEffect(() => {
     const id = ++request.current;
     edit.current++; setEditing(false);   // an edit in flight belongs to the old trip
     setExclude([]); setChoice(null); setBump(0); setHidden([]); setResults({});
     if (stage === "browse" || !origin || !dest) return;
-    const ids: PresetId[] = ["relaxed", "quick", "day", ...(preset === "custom" ? ["custom" as const] : [])];
+    const ids: PresetId[] = ["relaxed", "quick", "day", "half", ...(preset === "custom" ? ["custom" as const] : [])];
     // detours need an account (v5): ask a guest to sign in instead of sending plans the server refuses
     if (guest) { setGate("sign_in_required"); setResults(Object.fromEntries(ids.map((k) => [k, { error: "Sign in to plan detours." }]))); return; }
     setResults(Object.fromEntries(ids.map((k) => [k, "loading"])));

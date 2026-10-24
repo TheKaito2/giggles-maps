@@ -20,6 +20,7 @@ interface NearPlace {
 }
 
 const MAX_BUDGET = 240; // 4-hour detours for everyone (Plus is cosmetic only)
+const MAX_KEPT = 12;    // stops an edit may keep (must_include)
 const CARD_CATEGORIES = new Set(["park", "viewpoint", "temple"]); // "Near this spot" cards sit under these
 const MAX_CARDS = 2;
 const QUICK_DWELL_MIN = 10; // time counted at each stop on a short (Quick) detour
@@ -70,7 +71,8 @@ serve(async (req) => {
   };
   // stops the user removed or swapped out: never offered again in this plan
   const exclude = new Set(ids(body.exclude, 30, "bad_exclude"));
-  const mustInclude = ids(body.must_include, 6, "bad_must_include").filter((id) => !exclude.has(id));
+  // the stops an edited plan keeps (a half day can hold 7+); the time budget still decides what fits
+  const mustInclude = ids(body.must_include, MAX_KEPT, "bad_must_include").filter((id) => !exclude.has(id));
 
   const db = admin();
   const { data: profile } = await db.from("profiles").select("plus_until, member_since").eq("id", user.id).maybeSingle();
