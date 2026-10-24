@@ -1043,3 +1043,4 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .modal.shop-modal, .shop, .shop section { grid-template-columns: minmax(0, 1fr); min-width: 0; }
 .shop { display: grid; }
 .preview.cover-prev.theme-classic { background: linear-gradient(135deg, #7b1e2b, #4a0f19); }
+.shop-tabs { justify-self: start; }

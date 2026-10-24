@@ -45,7 +45,7 @@ const NONE: never[] = [];
 export default function App() {
   const [tab, setTab] = useState<Tab>(() => readCodeParam("friend") ? "profile" : "map");
   const [friend, setFriend] = useState<string | null>(null);   // a friend's profile open in the Profile tab
-  const [overlay, setOverlay] = useState<"shop" | "avatar" | "ride" | "add" | null>(() => readCodeParam("trip") ? "ride" : null);
+  const [overlay, setOverlay] = useState<"shop" | "bag" | "avatar" | "ride" | "add" | null>(() => readCodeParam("trip") ? "ride" : null);
   const [chip, setChip] = useState<string | null>(null);
   const [nav, setNav] = useState<Waypoint[] | null>(null);   // turn-by-turn running
   const [look, setLookState] = useState<MapLook>(loadLook);   // map type + night map, remembered on this device
@@ -216,16 +216,16 @@ export default function App() {
           {tab === "quests" && <Quests profile={profile} refreshKey={refreshKey} onChange={refresh} onShop={() => setOverlay("shop")} />}
           {tab === "feed" && <Feed profile={profile} refreshKey={refreshKey} openFriend={(id) => { setFriend(id); setTab("profile"); }} goProfile={() => { setFriend(null); setTab("profile"); }} openPlace={(id) => { setPlace(id); setTab("map"); }} />}
           {tab === "profile" && <ProfileTab profile={profile} refreshKey={refreshKey} onChange={refresh} friend={friend} setFriend={setFriend}
-            editAvatar={() => setOverlay("avatar")} editName={() => setNameSheet(true)} openShop={() => setOverlay("shop")}
+            editAvatar={() => setOverlay("avatar")} editName={() => setNameSheet(true)} openShop={() => setOverlay("shop")} openBag={() => setOverlay("bag")}
             openPlace={(id) => { setPlace(id); setTab("map"); }} />}
         </main>
       )}
 
-      {overlay === "shop" && (
+      {(overlay === "shop" || overlay === "bag") && (
         <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="Shop" onClick={(e) => { if (e.target === e.currentTarget) setOverlay(null); }}>
           <div className="modal shop-modal">
             <header className="modal-head"><h2>Shop</h2><button type="button" className="icon-btn" onClick={() => setOverlay(null)} aria-label="Close"><X size={20} /></button></header>
-            <Shop profile={profile} coins={profile?.coins ?? 0} onChange={refresh} onAvatar={() => setOverlay("avatar")} />
+            <Shop profile={profile} coins={profile?.coins ?? 0} onChange={refresh} onAvatar={() => setOverlay("avatar")} start={overlay} />
           </div>
         </div>
       )}

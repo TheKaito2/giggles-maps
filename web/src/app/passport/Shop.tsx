@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Clock, Coins, Shirt, X } from "lucide-react";
+import { Backpack, Check, Clock, Coins, Shirt, ShoppingBag, X } from "lucide-react";
 import { ApiError } from "../../lib/supabase";
 import { buyItem, buySet, equip, getShop, getShopToday, type Profile, setAvatar, type ShopItem, type ShopKind, type ShopSet,
   type ShopToday } from "../../lib/api";
@@ -41,7 +41,10 @@ function Preview({ item, profile, big = false }: { item: ShopItem; profile: Prof
 }
 
 /** Cosmetics bought with earned coins (never real money): this week's set, today's picks, then everything by kind. Tap to try on. */
-export default function Shop({ profile, coins, onChange, onAvatar }: { profile: Profile | null; coins: number; onChange: () => void; onAvatar: () => void }) {
+export default function Shop({ profile, coins, onChange, onAvatar, start = "shop" }: {
+  profile: Profile | null; coins: number; onChange: () => void; onAvatar: () => void; start?: "shop" | "bag";
+}) {
+  const [view, setView] = useState(start);
   const [items, setItems] = useState<ShopItem[]>([]);
   const [today, setToday] = useState<ShopToday | null>(null);
   const [trying, setTrying] = useState<ShopItem | null>(null);
@@ -77,6 +80,12 @@ export default function Shop({ profile, coins, onChange, onAvatar }: { profile: 
     catch (e) { setMsg(ERR[e instanceof ApiError ? e.message : ""] ?? "Couldn't buy the set. Try again."); }
   };
 
+  // the bag: kinds where you own something beyond the free default (which stays listed, to switch back), wearing first
+  const bag = KINDS.map(({ kind, title }) => ({ kind, title, list: items.filter((i) => i.kind === kind && owns(i))
+    .sort((a, b) => Number(wearing(b)) - Number(wearing(a)) || a.price - b.price) }))
+    .filter((k) => k.list.some((i) => i.price > 0 || i.gacha_only));
+  const bagCount = bag.reduce((n, k) => n + k.list.filter((i) => i.price > 0 || i.gacha_only).length, 0);
+
   const tile = (i: ShopItem) => {   // a plain function, not a component: a component made here would remount every render
     const on = wearing(i), own = owns(i), r = rarityOf(i);
     return (
@@ -104,8 +113,27 @@ export default function Shop({ profile, coins, onChange, onAvatar }: { profile: 
         <span className="coin-balance num"><Coins size={18} aria-hidden /> {coins} coins</span>
         {!profile?.member && <span className="fine">Coins unlock with membership</span>}
       </div>
+      <div className="seg shop-tabs" role="tablist" aria-label="Shop or bag">
+        <button type="button" role="tab" aria-selected={view === "shop"} className={view === "shop" ? "on" : ""} onClick={() => setView("shop")}>
+          <ShoppingBag size={16} aria-hidden /> Shop</button>
+        <button type="button" role="tab" aria-selected={view === "bag"} className={view === "bag" ? "on" : ""} onClick={() => setView("bag")}>
+          <Backpack size={16} aria-hidden /> Bag{bagCount > 0 && <span className="num"> · {bagCount}</span>}</button>
+      </div>
       {msg && <p className="fine" role="status">{msg}</p>}
 
+      {view === "bag" ? (bag.length ? bag.map(({ kind, title, list }) => (
+        <section key={kind}>
+          <div className="row between"><h4 className="eyebrow">{title}</h4>
+            {kind === "avatar" && <button type="button" className="link" onClick={onAvatar}><Shirt size={14} aria-hidden /> Avatar builder</button>}</div>
+          <ul className="shop-grid">{list.map(tile)}</ul>
+        </section>
+      )) : (
+        <div className="empty glass">
+          <b>Your bag is empty</b>
+          <p className="fine">Covers, frames, flair, titles and avatar items you buy or win from Siam Si land here. Tap one to wear it.</p>
+          <button type="button" className="btn" onClick={() => setView("shop")}>Go to the shop</button>
+        </div>
+      )) : <>
       {featured && <SetCard s={featured} hero byKey={byKey} profile={profile} coins={coins} onBuy={getSet} onTry={setTrying} />}
 
       {picks.length > 0 && <section>
@@ -128,6 +156,7 @@ export default function Shop({ profile, coins, onChange, onAvatar }: { profile: 
           </ul>
         </section>
       ))}
+      </>}
 
       {trying && <TryOn item={trying} profile={profile} msg={msg} wearing={wearing(trying)} owns={owns(trying)} canBuy={canBuy(trying)} coins={coins}
         onAct={() => act(trying)} onClose={() => setTrying(null)} />}

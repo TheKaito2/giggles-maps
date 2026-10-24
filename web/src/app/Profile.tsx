@@ -1,7 +1,7 @@
 import SiamSi from "./fortune/SiamSi";
 import { demoOn, setDemo } from "../lib/demoGps";
 import { type ReactNode, useEffect, useState } from "react";
-import { ArrowLeft, BookOpen, Check, NotebookPen, Pencil, Plus, Settings, Share2, ShoppingBag, Sparkles, UserMinus, X, Zap } from "lucide-react";
+import { ArrowLeft, Backpack, BookOpen, Check, NotebookPen, Pencil, Plus, Settings, Share2, ShoppingBag, Sparkles, UserMinus, X, Zap } from "lucide-react";
 import { ApiError } from "../lib/supabase";
 import { getFriendPassport, getPassport, getProfilePage, levelProgress, nudge, type PassportPhoto, type PassportStamp, type Pin, type Profile,
   type ProfilePage, removeFriend, setShowcase } from "../lib/api";
@@ -73,10 +73,10 @@ function PinPicker({ page, stamps, onClose, onSaved }: { page: ProfilePage; stam
  * One profile page: a hero in your passport-cover colours with your province map, a showcase of 3 pins, quick actions
  * (Passport, Logbook, Shop, Siam Si), stats and badges. Mine keeps settings and account in a sheet; a friend's adds Nudge.
  */
-function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editName, onChange, openFriend, openPlace, openShop }: {
+function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editName, onChange, openFriend, openPlace, openShop, openBag }: {
   id: string; self: boolean; profile: Profile | null; refreshKey: number; onBack?: () => void;
   editAvatar?: () => void; editName?: () => void; onChange: () => void; openFriend?: (id: string) => void; openPlace?: (id: number) => void;
-  openShop?: () => void;
+  openShop?: () => void; openBag?: () => void;
 }) {
   const [page, setPage] = useState<ProfilePage | null>(null);
   const [book, setBook] = useState<{ stamps: PassportStamp[]; photos: PassportPhoto[] } | null>(null);
@@ -138,6 +138,7 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
         <button type="button" onClick={() => setSheet("book")} disabled={!book}><BookOpen size={24} aria-hidden /><span>Passport</span></button>
         <button type="button" onClick={() => setSheet("log")} disabled={!book}><NotebookPen size={24} aria-hidden /><span>Logbook</span></button>
         {self && <button type="button" onClick={openShop}><ShoppingBag size={24} aria-hidden /><span>Shop</span></button>}
+        {self && <button type="button" onClick={openBag}><Backpack size={24} aria-hidden /><span>Bag</span></button>}
         {self && <a href="#siamsi"><Sparkles size={24} aria-hidden /><span>Siam Si</span>{tickets > 0 && <b className="dot num">{tickets}</b>}</a>}
       </nav>
 
@@ -182,14 +183,14 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
 }
 
 /** Profile tab: mine, or a friend's when one is opened (from the feed, friends list or a link). */
-export default function ProfileTab({ profile, refreshKey, onChange, editAvatar, editName, friend, setFriend, openPlace, openShop }: {
+export default function ProfileTab({ profile, refreshKey, onChange, editAvatar, editName, friend, setFriend, openPlace, openShop, openBag }: {
   profile: Profile | null; refreshKey: number; onChange: () => void; editAvatar: () => void; editName: () => void;
-  friend: string | null; setFriend: (id: string | null) => void; openPlace: (id: number) => void; openShop: () => void;
+  friend: string | null; setFriend: (id: string | null) => void; openPlace: (id: number) => void; openShop: () => void; openBag: () => void;
 }) {
   const user = useUser();
   if (!user) return <div className="page-col"><p className="fine">Loading…</p></div>;
   return friend
     ? <ProfileView key={friend} id={friend} self={false} profile={profile} refreshKey={refreshKey} onBack={() => setFriend(null)} onChange={onChange} />
     : <ProfileView key="me" id={user.id} self profile={profile} refreshKey={refreshKey} editAvatar={editAvatar} editName={editName} onChange={onChange}
-        openFriend={(id) => { setFriend(id); scrollTo({ top: 0 }); }} openPlace={openPlace} openShop={openShop} />;
+        openFriend={(id) => { setFriend(id); scrollTo({ top: 0 }); }} openPlace={openPlace} openShop={openShop} openBag={openBag} />;
 }
