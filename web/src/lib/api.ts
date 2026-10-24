@@ -65,6 +65,7 @@ export interface ThemedPlan {
 export interface RoutePlan {
   route_id: string; routing: "valhalla" | "estimate"; mode: string; plus: boolean; member: boolean; level: number;
   base_min: number; total_min: number; extra_min: number; budget_min: number; max_budget_min: number;
+  max_stops?: number;   // the most stops this account's plans hold (10, members 15)
   candidates_considered: number;
   stops: RouteStop[]; geometry: [number, number][];
   base_geometry?: [number, number][];
@@ -137,7 +138,9 @@ export interface PlanRequest {
   include_unrated?: boolean;
   max_stops?: number;           // 1-6; omitted = Auto
   max_price?: 0 | 1 | 2 | 3;    // omitted = Any
-  must_include?: number[];      // up to 6 places the user picked or added
+  must_include?: number[];      // places the user picked or kept (10, members 15)
+  keep_order?: boolean;         // must_include is the order to keep, exactly
+  add?: number;                 // one more place, at its cheapest spot without moving the others
   exclude?: number[];           // stops the user removed or swapped out
   theme?: string;               // this plan comes first
   meals?: Meal[];               // meals to stop for; omitted = no food stop forced

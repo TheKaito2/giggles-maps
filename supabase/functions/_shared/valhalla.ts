@@ -62,8 +62,17 @@ export function haversineM(a: LatLng, b: LatLng): number {
 export interface RoadRoute { geometry: [number, number][]; legMin: number[]; travelMin: number; vertexMin?: number[] }
 export class RoutingError extends Error {}
 
+/** The routing server takes at most this many points per route (the public one: 10, so start + 8 stops + end). */
+export const MAX_LOCATIONS = Math.max(2, Number(env("VALHALLA_MAX_LOCATIONS")) || 10);
+/** A long trip in pieces of at most `max` points, each starting where the last ended. */
+export function pieces<T>(points: T[], max = MAX_LOCATIONS): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < points.length - 1; i += max - 1) out.push(points.slice(i, i + max));
+  return out;
+}
+
 export function createRouter(base: string, fetcher: typeof fetch = fetch) {
-  return async (points: LatLng[], mode: Mode): Promise<RoadRoute> => {
+  const piece = async (points: LatLng[], mode: Mode) => {
     const response = await fetcher(`${base.replace(/\/$/, "")}/route`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Client-Id": "giggles-maps.pages.dev" },
@@ -73,8 +82,13 @@ export function createRouter(base: string, fetcher: typeof fetch = fetch) {
     // keep the provider's reason ("Path distance exceeds the max distance limit", "No path could be found")
     if (!response.ok) throw new RoutingError(`route provider returned ${response.status}: ${String((await response.json().catch(() => null))?.error ?? "")}`);
     const data = await response.json();
-    const legs = data.trip?.legs;
-    if (data.trip?.status !== 0 || !Array.isArray(legs) || legs.length !== points.length - 1) throw new RoutingError("incomplete road route");
+    if (data.trip?.status !== 0 || !Array.isArray(data.trip?.legs)) throw new RoutingError("incomplete road route");
+    return data.trip.legs;
+  };
+  return async (points: LatLng[], mode: Mode): Promise<RoadRoute> => {
+    // more stops than one request takes: route the pieces at once and join their legs
+    const legs = (await Promise.all(pieces(points).map((p) => piece(p, mode)))).flat();
+    if (legs.length !== points.length - 1) throw new RoutingError("incomplete road route");
     const geometry: [number, number][] = [], legMin: number[] = [];
     let vertexMin: number[] | undefined = [];
     for (const leg of legs) {

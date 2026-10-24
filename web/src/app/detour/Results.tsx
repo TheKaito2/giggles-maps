@@ -5,7 +5,7 @@ import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, type R
 import { CHIPS } from "../ExploreChips";
 import { SkelRows } from "../Skeleton";
 import { GROUPS, kindOf } from "../kinds";
-import { budgetLabel, hhmm, MAX_STOPS, MEALS } from "../prefs";
+import { budgetLabel, hhmm, MEALS } from "../prefs";
 import { type Detour, PRESETS } from "./useDetour";
 import { arrive } from "./Choose";
 import PlanProgress from "./PlanProgress";
@@ -85,7 +85,7 @@ function StopRow({ s, i, d, sel, onOpen, onCheckin }: { s: RouteStop; i: number;
 
 /** Places you can add: the planner's suggestions or a map kind (convenience, gas, ATMs...) near the route, plus a search that also finds
  * places elsewhere. Rows are one height and the list keeps its size, so nothing moves under your pointer while you search or filter. */
-function AlongList({ places, d, full, limit, onAdded }: { places: AlongPlace[]; d: Detour; full: boolean; limit: number; onAdded?: () => void }) {
+function AlongList({ places, d, full, limit, at, onAdded }: { places: AlongPlace[]; d: Detour; full: boolean; limit: number; at?: number; onAdded?: () => void }) {
   const [q, setQ] = useState("");
   const [kind, setKind] = useState("suggested");
   const [byKind, setByKind] = useState<Row[] | null>(null);
@@ -116,7 +116,7 @@ function AlongList({ places, d, full, limit, onAdded }: { places: AlongPlace[]; 
     }).catch(() => live && setElsewhere([])), 300);
     return () => { live = false; clearTimeout(t); };
   }, [needle, kind, byKind]); // eslint-disable-line react-hooks/exhaustive-deps
-  const add = (id: number) => { d.addStop(id); onAdded?.(); };
+  const add = (id: number) => { d.addStop(id, at); onAdded?.(); };
   const row = (p: Row | FoundPlace, extra: string, off = false) => (
     <li key={`${off ? "e" : ""}${p.id}`}>
       <Thumb s={{ name: p.name, category: p.category ?? "", photo: "photo" in p ? p.photo ?? null : null }} size={40} />
@@ -146,7 +146,7 @@ function AlongList({ places, d, full, limit, onAdded }: { places: AlongPlace[]; 
           {elsewhere.map((p) => row(p, "off route", true))}
         </>}
       </ul>
-      {full && <p className="fine">That's {MAX_STOPS} stops, the most a plan holds. Remove one to add another.</p>}
+      {full && <p className="fine">That's {d.cap} stops, the most a plan holds.{d.response?.member ? "" : " Members can have 15."} Remove one to add another.</p>}
     </>
   );
 }
@@ -161,15 +161,18 @@ function Along({ places, d, full }: { places: AlongPlace[]; d: Detour; full: boo
   );
 }
 
-/** The sheet the + between stops opens: every place along the route, by kind; the planner fits the pick in the best order. */
-function AddStopSheet({ places, d, full, onClose }: { places: AlongPlace[]; d: Detour; full: boolean; onClose: () => void }) {
+/** The sheet the + between stops opens: every place along the route, by kind; the pick goes in that gap, right there. */
+function AddStopSheet({ places, d, full, at, onClose }: { places: AlongPlace[]; d: Detour; full: boolean; at: number; onClose: () => void }) {
+  const stops = d.plan?.stops ?? [];
+  const where = at === 0 ? `before ${stops[0]?.name ?? "your first stop"}` : at >= stops.length ? `after ${stops.at(-1)?.name ?? "your last stop"}`
+    : `between ${stops[at - 1].name} and ${stops[at].name}`;
   const box = useDialog(onClose);
   return (
     <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="Add a stop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal add-stop" ref={box} tabIndex={-1}>
-        <header className="modal-head"><span><h2>Add a stop</h2><span className="fine">We fit it in the best order on your route.</span></span>
+        <header className="modal-head"><span><h2>Add a stop</h2><span className="fine">It goes right here, {where}.</span></span>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button></header>
-        {places.length ? <AlongList places={places} d={d} full={full} limit={30} onAdded={onClose} /> : <p className="fine">No more places along this route.</p>}
+        {places.length ? <AlongList places={places} d={d} full={full} limit={30} at={at} onAdded={onClose} /> : <p className="fine">No more places along this route.</p>}
       </div>
     </div>
   );
@@ -182,7 +185,7 @@ const AddGap = ({ onAdd }: { onAdd: () => void }) =>
 /** Step 3: plan cards to compare, then the stops you can remove (the plan refills the gap) or add to. */
 export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour; selected: number | null; onOpen: (s: RouteStop) => void; onCheckin: (t: CheckinTarget) => void }) {
   const [details, setDetails] = useState(false);
-  const [adding, setAdding] = useState(false);   // the "Add a stop" sheet, from a + between stops
+  const [adding, setAdding] = useState<number | null>(null);   // the "Add a stop" sheet: the gap its + sits in (0 = before the first stop)
   const { response, plan } = d;
   const presetBar = (
     <div className="seg presets-mini" role="radiogroup" aria-label="Extra time">
@@ -245,14 +248,14 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
             ? "Couldn't check road times right now. Try again in a moment." : "No stops fit this much time. Try a longer option or fewer filters."}</p>
         : <ol className="stop-rows">
             {plan.stops.filter((s) => !d.hidden.includes(s.id)).map((s, i) => <Fragment key={s.id}>
-              {i === 0 && <AddGap onAdd={() => setAdding(true)} />}
+              {i === 0 && <AddGap onAdd={() => setAdding(0)} />}
               <StopRow s={s} i={i} d={d} sel={selected === s.id} onOpen={onOpen} onCheckin={onCheckin} />
-              <AddGap onAdd={() => setAdding(true)} />
+              <AddGap onAdd={() => setAdding(i + 1)} />
             </Fragment>)}
           </ol>}
-      {adding && <AddStopSheet places={current?.along ?? []} d={d} full={plan.stops.length >= MAX_STOPS} onClose={() => setAdding(false)} />}
+      {adding != null && <AddStopSheet places={current?.along ?? []} d={d} full={plan.stops.length >= d.cap} at={adding} onClose={() => setAdding(null)} />}
 
-      <Along places={current?.along ?? []} d={d} full={plan.stops.length >= MAX_STOPS} />
+      <Along places={current?.along ?? []} d={d} full={plan.stops.length >= d.cap} />
       <p className="fine">How stops are picked <Info label="How stops are picked">Stops are picked on quality, opening hours and how little time they
         add. Partner shops rank like everyone else.</Info></p>
     </div>

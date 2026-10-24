@@ -258,3 +258,13 @@ test("a boost puts a place ahead of an equally good one (members' partners first
   expect(base.order.map((s) => s.id)).not.toEqual(boosted.order.map((s) => s.id));
   expect(boosted.order.map((s) => s.id)).toContain(4);
 });
+
+test("a fixed order stays exactly as given; an extra pick slots in without moving it", () => {
+  // 3 before 2 is the long way round: the planner would swap them, the user's order must not be
+  const fixed = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 240, stops, travelMin, requiredIds: [3, 2], fixedIds: [3, 2], maxStops: 2 });
+  expect(fixed.order.map((s) => s.id)).toEqual([3, 2]);
+  const plus = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 240, stops, travelMin, requiredIds: [3, 2, 4], fixedIds: [3, 2], maxStops: 3 });
+  const ids = plus.order.map((s) => s.id);
+  expect(ids.filter((id) => id !== 4)).toEqual([3, 2]);
+  expect(ids).toContain(4);
+});

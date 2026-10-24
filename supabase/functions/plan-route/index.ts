@@ -21,7 +21,7 @@ interface NearPlace {
 }
 
 const MAX_BUDGET = 240; // 4-hour detours for everyone (Plus is cosmetic only)
-const MAX_KEPT = 12;    // stops an edit may keep (must_include)
+const STOP_CAP = { free: 10, member: 15 };   // the most stops a plan holds, generated or added by hand
 const CARD_CATEGORIES = new Set(["park", "viewpoint", "temple"]); // "Near this spot" cards sit under these
 const MAX_CARDS = 2;
 const QUICK_DWELL_MIN = 10; // time counted at each stop on a short (Quick) detour
@@ -75,12 +75,19 @@ serve(async (req) => {
   // stops the user removed or swapped out: never offered again in this plan
   const exclude = new Set(ids(body.exclude, 30, "bad_exclude"));
   // the stops an edited plan keeps (a half day can hold 7+); the time budget still decides what fits
-  const mustInclude = ids(body.must_include, MAX_KEPT, "bad_must_include").filter((id) => !exclude.has(id));
+  const mustInclude = ids(body.must_include, STOP_CAP.member, "bad_must_include").filter((id) => !exclude.has(id));
+  // keep_order: the kept stops stay in exactly this order (the + between two stops puts a place right there; removing
+  // keeps the rest as they were). add: one more place, at its cheapest spot without moving the others ("add along your route")
+  const fixedOrder = body.keep_order === true ? [...mustInclude] : undefined;
+  const addId = ids(body.add == null ? null : [body.add], 1, "bad_add")[0];
+  if (addId != null && !exclude.has(addId) && !mustInclude.includes(addId)) mustInclude.push(addId);
 
   const db = admin();
   const { data: profile } = await db.from("profiles").select("plus_until, member_since").eq("id", user.id).maybeSingle();
   const plus = !!profile?.plus_until && new Date(profile.plus_until) > new Date();
   const member = !!profile?.member_since;
+  const stopCap = member ? STOP_CAP.member : STOP_CAP.free;
+  if (mustInclude.length > stopCap) throw new HttpError(400, "stop_limit");
   // quotas: free accounts plan 3 destinations and make 10 edits a day; members are unlimited, everyone is rate-limited.
   // A detour is keyed by its destination (~100 m), so the 3 preset plans and preference changes count once; an edit by what it
   // keeps and removes, so the planner's own retries of one edit count once.
@@ -241,13 +248,13 @@ serve(async (req) => {
     // Giggle's picks: only places we hand-picked (Giggles Choice), for everyone, when any are along the way
     ...(choiceStops.some((st) => tierOf.get(st.id) === "choice") ? [{ id: "giggles", name: "Giggle's picks", only: choiceStops }] : []),
   ];
-  const prefs = { minRating, allowUnrated: includeUnrated, maxStops, requiredIds: mustInclude };
+  const prefs = { minRating, allowUnrated: includeUnrated, maxStops: maxStops ?? stopCap, requiredIds: mustInclude };
   for (const t of variants) {
     const pool = ("only" in t && t.only) || stops;
     const sightsWithin = (budget: number, keep?: number[], drop?: Set<number>) => planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin: budget,
       stops: drop ? pool.filter((st) => !drop.has(st.id)) : pool,
       // a refill keeps the road-checked stops (their meals already placed) and fills around them
-      travelMin, meals: keep ? [] : meals, ...prefs, requiredIds: keep ?? mustInclude, boost,
+      travelMin, meals: keep ? [] : meals, ...prefs, requiredIds: keep ?? mustInclude, fixedIds: fixedOrder && (keep ?? fixedOrder), boost,
       segments, theme: "theme" in t ? t.theme : undefined, weight: "weight" in t ? t.weight : undefined });
     // Quick: plan the sight leaving room for a pit stop, then add the cheapest store that fits; no store fits, the sight gets it all
     const sights = pitStops.length ? sightsWithin(budgetMin - PIT_RESERVE_MIN) : null;
@@ -296,7 +303,7 @@ serve(async (req) => {
       const legs = []; let at = 0;
       for (const s of t.plan.order) { legs.push(matrix[at][s.idx]); at = s.idx; }
       legs.push(matrix[at][1]);
-      t.etaMin = scheduleStops(t.plan.order, legs, startMin, t.plan.mealOf, t.plan.closedPicks).etaMin;
+      t.etaMin = scheduleStops(t.plan.order, legs, startMin, t.plan.mealOf, t.plan.requiredIds).etaMin;
       t.travelMin = legs.reduce((a, b) => a + b, 0);
       t.geometry = [origin, ...t.plan.order.map((s) => candidates[s.idx - 2]), dest].map((p) => [p.lng, p.lat]);
     }
@@ -413,7 +420,7 @@ serve(async (req) => {
     route_id: route.id, routing, mode, plus, member, level,
     base_min: Math.round(plan.baseMin), total_min: Math.round(plan.totalMin),
     extra_min: Math.round(plan.extraMin), budget_min: budgetMin, budget_auto: autoBudget, quick_stops: quickStops, ...split(themed[topIdx]),
-    max_budget_min: MAX_BUDGET,
+    max_budget_min: MAX_BUDGET, max_stops: stopCap,
     candidates_considered: candidates.length,
     stops: ordered, geometry, base_geometry: baseline?.geometry ?? [],
     warnings: [...new Set(warnings)],

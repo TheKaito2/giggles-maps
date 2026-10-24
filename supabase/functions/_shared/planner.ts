@@ -42,6 +42,7 @@ export interface PlanInput {
   theme?: Theme;        // default top_picks (no boost)
   weight?: (category: string, tier?: Tier) => number;   // overrides theme, e.g. the user's own mix of interests
   boost?: (id: number) => number;   // per-place multiplier on the score (partners for members); default 1
+  fixedIds?: number[];      // picks in an order the user set: placed exactly so, and never reordered (other stops slot in between)
   requiredIds?: number[];   // places the user picked; go in first, past the budget and maxStops if need be, skip the rating floor
   meals?: Meal[];       // meals the trip should cover, from mealsInTrip()
   segments?: number;    // spread stops over this many stretches of the route (0/undefined = off, e.g. city trips)
@@ -72,7 +73,8 @@ export function planDetour(input: PlanInput): Plan {
   // Local gems: independent and community places only
   const eligible = input.stops.filter((s) => (s.rating == null ? allowUnrated : s.rating >= minRating) && (theme !== "local" || isLocal(s)));
   const mealOf = new Map<number, Meal>();
-  const closedPicks = new Set<number>();   // picks the user added although they're closed then: hours don't apply to them
+  // the user's picks: opening hours never keep them out (one closed on arrival is flagged in closedPicks)
+  const picks = new Set(input.requiredIds ?? []);
 
   // Walk the order on the clock. Arriving early for a meal means waiting until the window opens
   // (the wait counts against the budget); arriving late for a meal, or outside opening hours, fails.
@@ -86,7 +88,7 @@ export function planDetour(input: PlanInput): Plan {
         if (t < from) t = from;
         if (!inMealWindow(meal, t) || t > to) ok = false;
       }
-      if (!closedPicks.has(s.id) && s.openMin != null && s.closeMin != null && (t < s.openMin || t + s.dwellMin > s.closeMin)) ok = false;
+      if (!picks.has(s.id) && s.openMin != null && s.closeMin != null && (t < s.openMin || t + s.dwellMin > s.closeMin)) ok = false;
       t += s.dwellMin;
       at = s.idx;
     }
@@ -103,6 +105,7 @@ export function planDetour(input: PlanInput): Plan {
   // reverse any segment that shortens the trip while staying open on arrival (shorter never breaks the budget, and picked
   // stops may already have taken the trip past it)
   const twoOpt = (o: Stop[]): Stop[] => {
+    if (input.fixedIds) return o;   // the user's order stands
     let best = o, improved = true;
     while (improved) {
       improved = false;
@@ -149,15 +152,18 @@ export function planDetour(input: PlanInput): Plan {
       / Math.sqrt(Math.max(added, 1));
   };
 
-  // phase 0a: the places the user picked, each at its cheapest position where it's open; no budget or stop cap.
-  // Closed wherever it goes? It still goes in (the user chose it), flagged closed
+  // phase 0a: the places the user picked, each at its cheapest position; no budget, stop cap or opening hours
   let order: Stop[] = [];
   const requiredIds = input.requiredIds ?? [];
   const unfitRequired: number[] = [];
-  for (const id of requiredIds) {
+  for (const id of input.fixedIds ?? []) {
     const s = input.stops.find((x) => x.id === id);
-    let ins = s ? bestInsert(order, s, mealOf, Infinity) : null;
-    if (s && !ins) { closedPicks.add(s.id); ins = bestInsert(order, s, mealOf, Infinity); }
+    if (s) order.push(s); else unfitRequired.push(id);
+  }
+  for (const id of requiredIds) {
+    if (input.fixedIds?.includes(id)) continue;
+    const s = input.stops.find((x) => x.id === id);
+    const ins = s ? bestInsert(order, s, mealOf, Infinity) : null;
     if (ins) order = ins.order; else unfitRequired.push(id);
   }
 
@@ -213,8 +219,18 @@ export function planDetour(input: PlanInput): Plan {
   }
 
   const totalMin = duration(order);
+  // picks that are closed when the plan gets there
+  const closedPicks: number[] = [];
+  let t = startMin, at = originIdx;
+  for (const s of order) {
+    t += travelMin(at, s.idx);
+    const meal = mealOf.get(s.id);
+    if (meal) t = Math.max(t, MEAL_WINDOWS[meal][0]);
+    if (picks.has(s.id) && s.openMin != null && s.closeMin != null && (t < s.openMin || t + s.dwellMin > s.closeMin)) closedPicks.push(s.id);
+    t += s.dwellMin; at = s.idx;
+  }
   return { order, baseMin, totalMin, extraMin: totalMin - baseMin, mealOf, lateMeals, missedMeals, requiredIds, unfitRequired,
-    closedPicks: [...closedPicks] };
+    closedPicks };
 }
 
 /**

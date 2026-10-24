@@ -58,3 +58,12 @@ test("no call pairs points further apart than the routing server allows", () => 
     for (const c of planCalls(points, onRoute(points, long), mode)) for (const s of c.sources) for (const t of c.targets.values()) expect(haversineM(points[s], t)).toBeLessThanOrEqual(limit);
   }
 });
+
+test("routes longer than the router's 10 points go in pieces that share their joins", async () => {
+  const { pieces } = await import("./valhalla.ts");
+  expect(pieces([1, 2, 3])).toEqual([[1, 2, 3]]);
+  expect(pieces(Array.from({ length: 10 }, (_, i) => i))).toHaveLength(1);
+  const p = pieces(Array.from({ length: 17 }, (_, i) => i));
+  expect(p).toEqual([[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [9, 10, 11, 12, 13, 14, 15, 16]]);
+  expect(p.reduce((n, x) => n + x.length - 1, 0)).toBe(16);   // every leg once
+});

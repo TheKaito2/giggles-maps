@@ -101,3 +101,12 @@ test("a pick the user added although it's closed then stays in on the real road"
     async (points) => ({ geometry: baseline.geometry, legMin: points.slice(1).map(() => 10), travelMin: 10 * (points.length - 1) }));
   assert.deepEqual(p.plan.order.map((s) => s.id), [1]);
 });
+
+test("a pick that turns out closed on the real road stays in, flagged closed", async () => {
+  // the estimate said open; the real road gets there at 700 + 50 = 750, after its 12:00 (720) close
+  const shut = { ...stop(1), openMin: 600, closeMin: 720 };
+  const p = await run({ ...proposal([shut]), requiredIds: [1] },
+    async (points) => ({ geometry: baseline.geometry, legMin: points.slice(1).map(() => 50), travelMin: 50 * (points.length - 1) }), 200);
+  assert.deepEqual(p.plan.order.map((s) => s.id), [1]);
+  assert.deepEqual(p.plan.closedPicks, [1]);
+});
