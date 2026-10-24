@@ -22,6 +22,7 @@ interface NearPlace {
 const MAX_BUDGET = 240; // v4: 4-hour detours for everyone (Plus is cosmetic only)
 const CARD_CATEGORIES = new Set(["park", "viewpoint", "temple"]); // "Near this spot" cards sit under these
 const MAX_CARDS = 2;
+const QUICK_DWELL_MIN = 10; // time counted at each stop on a short (Quick) detour
 const MAX_CANDIDATES = 22; // up to 5 per theme group, so every themed plan has its kind of stop to pick
 const MODES = new Set<Mode>(["pedestrian", "bicycle", "auto"]);
 const MIN_RATINGS = new Set([0, 3.5, 4, 4.5]);
@@ -98,6 +99,10 @@ serve(async (req) => {
     budgetMin = Math.min(MAX_BUDGET, budgetMin + 35 * meals.length);   // room to actually sit down and eat
   }
   const maxCandidates = shortTrip ? 16 : MAX_CANDIDATES;
+  // a short budget (Quick, +15) plans quick stops: about 10 minutes at each (a look, the photo, the stamp), whatever the
+  // place's usual visit time. Otherwise a 20-minute temple could never fit in 15 minutes and Quick came back empty.
+  const quickStops = budgetMin < 30 && !meals.length;
+  const dwellOf = (m: number) => quickStops ? Math.min(m, QUICK_DWELL_MIN) : m;
   const narrowed = interests.length > 0 || openOnly || noChains;   // the filters below drop places: fetch more first
   // spread stops along the way: 5 stretches on long drives, 3 on short ones, none inside a city block
   const directM = haversineM(origin, dest);
@@ -107,7 +112,8 @@ serve(async (req) => {
       p_geometry: baseline.geometry,
       p_radius_m: Math.min(20000, budgetMin * METERS_PER_MIN[mode] / 2),
       // over-fetch by the excluded count so removed stops don't eat the shortlist (they're dropped below)
-      p_budget_min: budgetMin, p_level: level, p_max_n: maxCandidates + exclude.size + (narrowed ? 20 : 0),
+      // quick stops: any place qualifies, since its time there is capped
+      p_budget_min: quickStops ? MAX_BUDGET : budgetMin, p_level: level, p_max_n: maxCandidates + exclude.size + (narrowed ? 20 : 0),
       p_per_group: (shortTrip ? 4 : 5) + Math.min(exclude.size, 3) + (narrowed ? 4 : 0), ...filters,
       p_meal_slots: meals.length ? 4 : 0,   // nearest restaurants always make the shortlist when a meal is asked for
       p_segments: SEGMENTS(),
@@ -167,7 +173,7 @@ serve(async (req) => {
   }
 
   const stops: Stop[] = candidates.map((c, i) => ({
-    idx: i + 2, id: c.id, category: c.category, rating: c.rating == null ? null : Number(c.rating), tier: c.tier ?? 2, dwellMin: c.dwell_min,
+    idx: i + 2, id: c.id, category: c.category, rating: c.rating == null ? null : Number(c.rating), tier: c.tier ?? 2, dwellMin: dwellOf(c.dwell_min),
     openMin: c.open_min, closeMin: c.close_min, frac: c.frac, local: c.local, otop: c.otop, community: c.community,
   }));
   const travelMin = (a: number, b: number) => matrix[a][b];
@@ -258,7 +264,7 @@ serve(async (req) => {
         id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng,
         is_partner: c.is_partner, is_demo: c.is_demo,
         rating: c.rating == null ? null : Number(c.rating), price_level: c.price_level, tier: c.tier ?? 2,
-        dwell_min: c.dwell_min, eta_min: eta, meal, meal_late: !!late, picked: mustInclude.includes(c.id),
+        dwell_min: s.dwellMin, eta_min: eta, meal, meal_late: !!late, picked: mustInclude.includes(c.id),
         // about how many minutes this stop adds (road detour + time there): what removing it would save
         extra_min: ((x) => Number.isFinite(x) ? Math.round(x) : null)(insertionCost(plan.order.map((o) => o.idx), s.idx, travelMin, s.dwellMin)),
         photo: photoOf.get(c.id) ?? null,
@@ -319,7 +325,7 @@ serve(async (req) => {
   return json({
     route_id: route.id, routing, mode, plus, member, level,
     base_min: Math.round(plan.baseMin), total_min: Math.round(plan.totalMin),
-    extra_min: Math.round(plan.extraMin), budget_min: budgetMin, budget_auto: autoBudget, ...split(themed[topIdx]),
+    extra_min: Math.round(plan.extraMin), budget_min: budgetMin, budget_auto: autoBudget, quick_stops: quickStops, ...split(themed[topIdx]),
     max_budget_min: MAX_BUDGET,
     candidates_considered: candidates.length,
     stops: ordered, geometry, base_geometry: baseline?.geometry ?? [],

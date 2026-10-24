@@ -7,7 +7,7 @@ import { DEFAULT_PREFS, type Place, type Prefs, toRequest } from "../prefs";
 // are planned in parallel; none is picked until you tap one) -> results you can edit (remove, swap or add stops).
 export type Stage = "browse" | "choose" | "results";
 export const PRESETS = [
-  { id: "quick", label: "Quick", min: 15, blurb: "A stop or two" },
+  { id: "quick", label: "Quick", min: 15, blurb: "A quick stop: photo and stamp" },
   { id: "relaxed", label: "Relaxed", min: 45, blurb: "The best along the way" },
   { id: "day", label: "Day out", min: 120, blurb: "Make a trip of it" },
 ] as const;
