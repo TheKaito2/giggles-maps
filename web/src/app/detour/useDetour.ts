@@ -6,7 +6,7 @@ import { choosePlan, planRoute, type RoutePlan } from "../../lib/api";
 import { DEFAULT_PREFS, MAX_BUDGET, MAX_STOPS, type Place, type Prefs, toRequest } from "../prefs";
 
 // Detour flow, Google-Maps style: browse the map -> pick where to -> pick how much time (Quick, Relaxed and Day out
-// are planned in parallel; none is picked until you tap one) -> results you can edit (remove, swap or add stops).
+// are planned in parallel; none is picked until you tap one) -> results you can edit (remove or add stops).
 type Stage = "browse" | "choose" | "results";
 export const PRESETS = [
   { id: "quick", label: "Quick", min: 20, blurb: "A quick sight and a 7-Eleven stop" },
@@ -47,7 +47,7 @@ export function useDetour(onError: (m: string) => void) {
   const [locating, setLocating] = useState(false);
   const request = useRef(0);   // preset plans in flight
   const [again, setAgain] = useState(0);   // bumped to plan the presets again (a rewarded ad lifted today's limit)
-  const edit = useRef(0);      // remove/swap/add re-plan in flight
+  const edit = useRef(0);      // remove/add re-plan in flight
 
   // same values = same object, so re-tapping a choice doesn't re-plan every preset
   const set = (patch: Partial<Prefs> | ((p: Prefs) => Partial<Prefs>)) => setPrefs((p) => {
@@ -140,9 +140,9 @@ export function useDetour(onError: (m: string) => void) {
     finally { if (id === edit.current) { setEditing(false); setHidden([]); } }
   };
   const ids = () => plan?.stops.map((s) => s.id) ?? [];
-  // one edit at a time: the next one builds on its result
+  // one edit at a time: the next one builds on its result. Removing keeps the others, rules this one out,
+  // and lets the planner fill the gap with its best replacement.
   const removeStop = (stop: number) => { if (editing) return; setHidden((h) => [...h, stop]); return replan(ids().filter((x) => x !== stop), [...exclude, stop]); };
-  // swap: keep the others, rule this one out, and let the planner pick its best replacement
   // adding means adding: stretch the time (to the next 15 min) when the place wouldn't fit what's left
   const addStop = (place: number, extraMin: number) => {
     if (editing) return;
