@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Giggles Maps</title>
-    <meta name="description" content="Tell Giggles Maps how much extra time you have and it fills it with Sakon Nakhon's best local stops. Shops pay only for verified visits." />
+    <meta name="description" content="Got spare time? Tell Giggles Maps where you're going and how many extra minutes you have. It fills them with local stops across all 77 provinces of Thailand." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,110 +12,143 @@
     <link rel="stylesheet" href="/src/styles/landing.css" />
   </head>
   <body>
-    <header class="nav wrap">
-      <a class="brand" href="/">Giggles <span>Maps</span></a>
-      <nav>
-        <a href="#shops">For shops</a>
-        <a class="btn small" href="/app/">Try it</a>
-      </nav>
+    <header class="nav" id="top">
+      <div class="wrap nav-row">
+        <a class="brand" href="/">Giggles <span>Maps</span></a>
+        <nav aria-label="Main">
+          <a class="nav-link" href="/shop/">For shops</a>
+          <a class="btn small" href="/app/">Open the app</a>
+        </nav>
+      </div>
     </header>
 
     <main>
-      <section class="hero wrap">
+      <section class="hero wrap" id="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Sakon Nakhon · สกลนคร</p>
-          <h1>Got 30 spare minutes? Spend them somewhere local.</h1>
-          <p class="lede">Tell us where you're going and how much extra time you're happy to add. Giggles Maps fills it with indigo cloth shops, cafés and temples worth the detour, and never goes over your limit.</p>
+          <h1>Got spare time? <em>Make it a trip.</em></h1>
+          <p class="lede">Say where you're going and how many extra minutes you have. We fill them with local stops.</p>
           <div class="cta">
             <a class="btn gold big" href="/app/">Plan a detour</a>
-            <a class="btn ghost big" href="/shop/">I run a shop</a>
+            <a class="text-link" href="/shop/">I run a shop →</a>
           </div>
         </div>
-
-        <figure class="ticket" aria-label="Example route">
-          <div class="ticket-head">
-            <span class="num">+32 / +45 min</span>
-            <span class="chip">Walk</span>
-          </div>
-          <ol class="ticket-stops">
-            <li><span class="dot a">A</span><div><b>Phu Phan Museum</b><small>Start · 10:00</small></div></li>
-            <li><span class="dot gold">1</span><div><b>Sri Khram indigo cloth</b><small class="num">10:17 · 20 min</small></div><span class="chip partner">Partner</span></li>
-            <li><span class="dot b">B</span><div><b>Wat Phra That Choeng Chum</b><small>Arrive · 11:12</small></div></li>
-          </ol>
-          <div class="ticket-stamp" aria-hidden="true">STAMPED<span>Indigo &amp; Silk</span></div>
-          <figcaption class="fine">Example route from the live app (real places, example partner).</figcaption>
+        <figure class="phone hero-phone">
+          <img src="/landing/map.webp" width="390" height="844" alt="Giggles Maps: a map of local stops and a Where to? search" />
         </figure>
       </section>
 
-      <section class="steps wrap" aria-labelledby="how">
-        <h2 id="how">How it works</h2>
+      <ul class="proof wrap" aria-label="Giggles Maps in numbers">
+        <li><b class="num">77</b> provinces</li>
+        <li><b class="num">110,000+</b> places</li>
+        <li><b>Free</b> to start</li>
+      </ul>
+
+      <section class="steps wrap" id="how" aria-labelledby="how-h">
+        <h2 id="how-h">How it works</h2>
         <ol class="step-list">
-          <li><span class="step-n">1</span><h3>Set your extra time</h3><p>Start, destination, and the minutes you'll allow on top. 0 to 240.</p></li>
-          <li><span class="step-n">2</span><h3>Get a route that fits</h3><p>Real walking or driving times. Best stops first, open when you arrive. Your limit is a hard limit.</p></li>
-          <li><span class="step-n">3</span><h3>Check in, collect stamps</h3><p>A selfie plus GPS stamps your passport, earns XP and gives you a free coupon spin. Finish a trail to earn the badge.</p></li>
+          <li><span class="step-n">1</span><h3>Pick where</h3><p>Search any place in Thailand.</p></li>
+          <li><span class="step-n">2</span><h3>Pick the extra time</h3><p>Three options, each already planned. We never go over.</p></li>
+          <li><span class="step-n">3</span><h3>Go and check in</h3><p>A selfie at the stop stamps your passport.</p></li>
         </ol>
       </section>
 
-      <section class="trails wrap" aria-labelledby="trails">
-        <h2 id="trails">Trails to collect</h2>
-        <div class="trail-grid">
-          <article><h3>Temple Trail</h3><p>3 temples in the city.</p></article>
-          <article><h3>Café Hopper</h3><p>3 local cafés.</p></article>
-          <article><h3>Indigo &amp; Silk</h3><p>2 craft shops or night markets.</p></article>
-          <article><h3>City Explorer</h3><p>3 parks, museums or viewpoints.</p></article>
-        </div>
+      <section class="collect wrap" id="collect" aria-labelledby="collect-h">
+        <h2 id="collect-h">Collect Thailand</h2>
+        <article class="feature">
+          <div class="feature-copy">
+            <h3 class="c-indigo">Stamp all 77 provinces.</h3>
+            <p>Every check-in stamps your passport. Fill the map one province at a time.</p>
+          </div>
+          <figure class="phone"><img src="/landing/profile.webp" width="390" height="844" loading="lazy" alt="Profile with level, XP, provinces and stamps" /></figure>
+        </article>
+        <article class="feature">
+          <div class="feature-copy">
+            <h3 class="c-marigold">Quests open chests.</h3>
+            <p>Daily and weekly quests pay XP and coins.</p>
+          </div>
+          <figure class="phone"><img src="/landing/quests.webp" width="390" height="844" loading="lazy" alt="Quests page with daily and weekly quests" /></figure>
+        </article>
+        <article class="feature">
+          <div class="feature-copy">
+            <h3 class="c-good">Beat your friends this week.</h3>
+            <p>A weekly board for XP, provinces and temples. Fresh start every Monday.</p>
+          </div>
+          <figure class="phone"><img src="/landing/board.webp" width="390" height="844" loading="lazy" alt="Weekly leaderboard podium" /></figure>
+        </article>
+        <article class="feature">
+          <div class="feature-copy">
+            <h3 class="c-stamp">Shake for your fortune.</h3>
+            <p>Check-ins earn Siam Si shakes. Draw a stick for coins, XP boosts or a rare item.</p>
+          </div>
+          <figure class="phone"><img src="/landing/siamsi.webp" width="390" height="844" loading="lazy" alt="Siam Si fortune cup full of sticks" /></figure>
+        </article>
       </section>
 
-      <section class="promise wrap" aria-labelledby="promise">
-        <h2 id="promise">The route is never for sale.</h2>
-        <div class="promise-grid">
-          <p><b>Quality first.</b> Stops are picked by rating, variety and how well they fit your extra time. Temples, parks and free spots make the cut on merit.</p>
-          <p><b>No paid placement.</b> Shops that pay us rank exactly like everyone else. Paying never moves a shop up or onto your route.</p>
-          <p><b>Labelled anyway.</b> A shop that pays per visit still shows a Partner label, so you always know.</p>
+      <section class="plans wrap" id="plans" aria-labelledby="plans-h">
+        <h2 id="plans-h">Pick your plan</h2>
+        <div class="plan-grid">
+          <div class="plan">
+            <h3>Free</h3>
+            <p class="price num">฿0</p>
+            <ul><li>3 detours a day</li><li>Stamps, quests, Siam Si</li><li>With ads</li></ul>
+          </div>
+          <div class="plan">
+            <h3>Plus</h3>
+            <p class="price"><span class="num">฿59</span> <small>/ month</small></p>
+            <ul><li>No ads</li><li>+20 coins a day</li><li>The Plus shelf</li></ul>
+          </div>
+          <div class="plan best">
+            <h3>Membership <span class="chip">Best value</span></h3>
+            <p class="price"><span class="num">฿349</span> <small>once</small></p>
+            <ul><li>No ads, forever</li><li>Unlimited detours</li><li>Partner stops first</li><li>3 months of Plus</li></ul>
+          </div>
         </div>
+        <p class="fine">Paid partners are always labelled. Free routes stay in quality order.</p>
       </section>
 
-      <section id="shops" class="shops wrap" aria-labelledby="shops-h">
+      <section class="shops wrap" id="shops" aria-labelledby="shops-h">
         <div>
-          <p class="eyebrow">For shops</p>
-          <h2 id="shops-h">Pay only when a traveller is at your counter.</h2>
-          <p class="lede">Signing up is free and never changes your ranking. You get control of your listing, deals on your card, visitor numbers and (soon) bookings. A visit counts when the traveller scans your counter QR sticker, is within 60 m, takes a selfie, and saw your shop on their route in the last 3 hours. Once per person per 30 days. No visit, no charge.</p>
+          <h2 id="shops-h">Run a shop or café?</h2>
+          <p>List it free. Partners (<span class="num">฿299</span>/month) show first on members' routes and take bookings.</p>
         </div>
-        <div class="price-grid">
-          <div class="price"><span class="fine">Pay per visit</span><b class="num">your bid, from ฿5</b><span class="fine">Prepaid credit: ฿500 · ฿1,000 · ฿3,000. Dispute any charge within 7 days.</span></div>
-          <div class="price"><span class="fine">Homestays, guides, boat trips</span><b class="num">10–20%</b><span class="fine">Commission on bookings. Coming after the pilot.</span></div>
-        </div>
-        <p class="fine">Also: coupons in the free spin after each check-in, and trails sponsored by the province. Pilot pricing; we're testing it with Sakon Nakhon shops now.</p>
-        <a class="btn" href="/shop/">See the shop dashboard</a>
+        <a class="btn big" href="/shop/">See the shop side</a>
       </section>
 
-      <section class="plus wrap" aria-labelledby="plus-h">
-        <div>
-          <p class="eyebrow">For travellers</p>
-          <h2 id="plus-h">Free to use. Members unlock more of the city.</h2>
-        </div>
-        <div class="plus-cols">
-          <div><b>Free</b><span class="fine">Quality routes up to +240 min, stamps, trails, XP, free coupon spins.</span></div>
-          <div class="plus-col"><b>Member · <span class="num">฿349 once</span></b><span class="fine">Your level unlocks places: hidden gems from level 2, member perks at shops from level 4, events from level 6.</span></div>
-          <div class="plus-col"><b>Plus · <span class="num">฿59 / month</span></b><span class="fine">Looks only: passport themes, name flair, premium share cards, a stamp every month. Never unlocks places.</span></div>
-        </div>
-        <a class="btn gold" href="/app/">Try it free</a>
+      <section class="faq wrap" id="faq" aria-labelledby="faq-h">
+        <h2 id="faq-h">Questions</h2>
+        <details>
+          <summary>Is it free?</summary>
+          <p>Yes. Sign in for 3 detours a day, or watch a short ad for one more. Membership removes the limit.</p>
+        </details>
+        <details>
+          <summary>How does check-in work? What about my photos?</summary>
+          <p>At the stop, take a selfie; GPS confirms you're there. Selfies are private and deleted after 30 days.</p>
+        </details>
+        <details>
+          <summary>What does "Partner" mean?</summary>
+          <p>A shop that pays ฿299 a month. It shows first on members' routes and always carries a Partner label. Giggles Choice partners are hand-picked by application.</p>
+        </details>
+        <details>
+          <summary>Which areas does it cover?</summary>
+          <p>All 77 provinces of Thailand, with more than 110,000 places.</p>
+        </details>
       </section>
 
-      <section class="why wrap" aria-labelledby="why">
-        <h2 id="why">Why Sakon Nakhon</h2>
-        <div class="facts">
-          <div><b class="num">1,975,801</b><span>visitors in 2025</span></div>
-          <div><b class="num">฿3.4B</b><span>visitor spending in 2025</span></div>
-          <div><b class="num">75</b><span>official attractions</span></div>
-        </div>
-        <p class="fine">Source: Ministry of Tourism and Sports via the Sakon Nakhon provincial open-data catalog.</p>
+      <section class="final wrap" aria-labelledby="final-h">
+        <h2 id="final-h">Your next detour is a few taps away.</h2>
+        <a class="btn gold big" href="/app/">Plan a detour</a>
       </section>
     </main>
 
     <footer class="foot wrap fine">
-      <span>Giggles Maps · built for the All for One University hackathon.</span>
-      <span>Selfies are private and deleted after 30 days. Places © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.</span>
+      <span>Giggles Maps · <a href="/privacy.html">Privacy</a></span>
+      <span>Places © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.</span>
     </footer>
+
+    <script>
+      // compact sticky bar once the hero has scrolled away
+      new IntersectionObserver(([e]) => document.getElementById("top").classList.toggle("compact", !e.isIntersecting))
+        .observe(document.getElementById("hero"));
+    </script>
   </body>
 </html>
