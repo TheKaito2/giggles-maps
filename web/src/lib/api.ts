@@ -66,6 +66,7 @@ export interface RoutePlan {
   route_id: string; routing: "valhalla" | "estimate"; mode: string; plus: boolean; member: boolean; level: number;
   base_min: number; total_min: number; extra_min: number; budget_min: number; max_budget_min: number;
   max_stops?: number;   // the most stops this account's plans hold (10, members 15)
+  start_min?: number;   // when this plan leaves (minutes after midnight): the stops' times count from it
   candidates_considered: number;
   stops: RouteStop[]; geometry: [number, number][];
   base_geometry?: [number, number][];

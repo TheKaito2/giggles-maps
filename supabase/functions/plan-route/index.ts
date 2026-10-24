@@ -417,7 +417,7 @@ serve(async (req) => {
     route_id: route.id, routing, mode, plus, member, level,
     base_min: Math.round(plan.baseMin), total_min: Math.round(plan.totalMin),
     extra_min: Math.round(plan.extraMin), budget_min: budgetMin, budget_auto: autoBudget, quick_stops: quickStops, ...split(themed[topIdx]),
-    max_budget_min: MAX_BUDGET, max_stops: stopCap,
+    max_budget_min: MAX_BUDGET, max_stops: stopCap, start_min: startMin,
     candidates_considered: candidates.length,
     stops: ordered, geometry, base_geometry: baseline?.geometry ?? [],
     warnings: [...new Set(warnings)],

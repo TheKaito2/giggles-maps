@@ -18,7 +18,8 @@ export interface Prefs {
 export interface Pick { id: number; name: string }
 
 const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
-export const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(Math.round(m) % 60).padStart(2, "0")}`;
+// rounded first, so 10:59.6 reads 11:00, not 10:00
+export const hhmm = (m: number) => { const r = Math.round(m); return `${String(Math.floor(r / 60) % 24).padStart(2, "0")}:${String(r % 60).padStart(2, "0")}`; };
 
 export const DEFAULT_PREFS: Prefs = {
   mode: "auto", depart: "now", time: hhmm(Math.max(nowMin(), 9 * 60)), budget: "auto",

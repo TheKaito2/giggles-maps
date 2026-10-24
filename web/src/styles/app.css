@@ -1109,6 +1109,9 @@ p.chase { margin: 0; }
 .stop-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
 .stop-meta > b { font: 700 var(--fs-label)/var(--lh-label) var(--font-data); color: var(--ink); }
 .stop-meta > b.extra { color: var(--indigo); }
+.stop-leg { color: var(--ink-2); }
+.dest-row { padding: 6px 0 6px 28px; }
+.stop-num.dest { background: var(--ink); }
 
 /* + between stops (detour Results): appears next to the stop you hover; faint but there on touch screens */
 .add-gap { height: 0; position: relative; z-index: 2; display: flex; justify-content: center; list-style: none; }
