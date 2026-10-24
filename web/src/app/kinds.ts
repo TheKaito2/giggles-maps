@@ -63,3 +63,9 @@ const FROM_CATEGORY: Record<string, string> = { food: "restaurant", craft: "craf
 export const kindOf = (kind?: string | null, category?: string | null) =>
   KINDS[kind ?? ""] ?? KINDS[FROM_CATEGORY[category ?? ""] ?? category ?? ""] ?? KINDS.attraction;
 export const colourOf = (kind?: string | null, category?: string | null) => GROUPS[kindOf(kind, category).group].colour;
+/** The KINDS key kindOf resolves to: the map's pin icon name ("k-<key>"), so a place with no kind still gets an icon. */
+export const kindIdOf = (kind?: string | null, category?: string | null): string => {
+  if (kind && KINDS[kind]) return kind;
+  const fromCat = FROM_CATEGORY[category ?? ""] ?? category ?? "";
+  return KINDS[fromCat] ? fromCat : "attraction";
+};

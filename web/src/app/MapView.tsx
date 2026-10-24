@@ -3,7 +3,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { type LatLng, mapPlaces, type MapPlace, type RouteStop, type Stop, type TripMember } from "../lib/api";
 import { addPinIcons } from "./pinIcons";
-import { colourOf } from "./kinds";
+import { colourOf, kindIdOf } from "./kinds";
 import { isNight, type MapLook, offlineStyle, styleUrl } from "./mapLayers";
 import { useTheme } from "../lib/theme";
 import { SAKON } from "../lib/demoGps";
@@ -91,11 +91,20 @@ export default function MapView({ origin, dest, stops, geometry, alternates = NO
     m.on("style.load", () => {   // also after a skin, night or offline change, which drops every source and layer
       // our own place pins replace the basemap's POI icons
       for (const l of m.getStyle().layers ?? []) if (l.id.startsWith("poi")) m.setLayoutProperty(l.id, "visibility", "none");
+      // street, town and area names in English where OpenStreetMap has it (the app is in English; Thai-only labels lost
+      // visitors), Thai otherwise. Road numbers and other non-name labels are left alone.
+      for (const l of m.getStyle().layers ?? []) {
+        if (l.type !== "symbol" || l.id.startsWith("poi")) continue;
+        const field = JSON.stringify(m.getLayoutProperty(l.id, "text-field") ?? "");
+        if (field.includes("name") && !field.includes("ref")) {
+          m.setLayoutProperty(l.id, "text-field", ["to-string", ["coalesce", ["get", "name:en"], ["get", "name_en"], ["get", "name:latin"], ["get", "name"]]]);
+        }
+      }
       m.addSource("gm-pois", { type: "geojson", data: poisRef.current });
       addPinIcons(m).then(() => {
         if (m.getLayer("gm-pois") || !m.getSource("gm-pois")) return;
         m.addLayer({ id: "gm-pois", type: "symbol", source: "gm-pois", layout: {
-          "icon-image": ["concat", "k-", ["get", "kind"]], "icon-allow-overlap": false, "symbol-sort-key": ["get", "rank"],
+          "icon-image": ["concat", "k-", ["get", "icon"]], "icon-allow-overlap": false, "symbol-sort-key": ["get", "rank"],
           "text-field": ["step", ["zoom"], "", 15, ["get", "name"]], "text-size": 12, "text-offset": [0, 1.3], "text-anchor": "top",
           "text-optional": true, "text-max-width": 9, "text-font": ["Noto Sans Regular"],
         }, paint: { "text-color": lookRef.current.night ? "#e3eafa" : ["get", "colour"],   // at night the kind colours were too dark to read
@@ -117,7 +126,7 @@ export default function MapView({ origin, dest, stops, geometry, alternates = NO
       mapPlaces(b.getWest(), b.getSouth(), b.getEast(), b.getNorth(), m.getZoom(), kindsRef.current).then((list) => {
         if (id !== pinRequest.current) return;
         poisRef.current = { type: "FeatureCollection", features: list.map((p, i) => ({ type: "Feature",
-          properties: { ...p, rank: i, colour: colourOf(p.kind, p.category) },
+          properties: { ...p, rank: i, colour: colourOf(p.kind, p.category), icon: kindIdOf(p.kind, p.category) },
           geometry: { type: "Point", coordinates: [p.lng, p.lat] } })) };
         (m.getSource("gm-pois") as maplibregl.GeoJSONSource | undefined)?.setData(poisRef.current);
       }).catch(() => undefined);
