@@ -5,6 +5,7 @@ import { type LatLng, mapPlaces, type MapPlace, type RouteStop, type Stop, type 
 import { addPinIcons } from "./pinIcons";
 import { colourOf } from "./kinds";
 import { isNight, type MapLook, offlineStyle, styleUrl } from "./mapLayers";
+import { useTheme } from "../lib/theme";
 import { SAKON } from "../lib/demoGps";
 
 interface Props {
@@ -47,7 +48,7 @@ const pin = (cls: string, text: string, label: string) => {
 
 export default function MapView({ origin, dest, stops, geometry, alternates = NO_ALTS, focus = null, estimated = false, picking, onPick, onSelectStop,
   nearby = [], here = null, inZone = [], members = [], skin = "liberty", look = { night: "auto" }, kinds = null, onPlace }: Props) {
-  const night = isNight(look.night);
+  const night = isNight(look.night, useTheme() === "dark");
   const [online, setOnline] = useState(navigator.onLine);
   const lookRef = useRef({ night });
   lookRef.current = { night };

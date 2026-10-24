@@ -1,11 +1,12 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { CalendarCheck, ChevronLeft, ChevronRight, Crown, LogIn, LogOut, RotateCcw, ShieldCheck, Sparkles, Trash2, Volume2, Wand2, X } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight, Crown, LogIn, LogOut, RotateCcw, ShieldCheck, Sparkles, SunMoon, Trash2, Volume2, Wand2, X } from "lucide-react";
 import { callFn, ensureSession, supabase } from "../lib/supabase";
 import { type Booking, cancelBooking, getMonthlyStamps, myBookings, PRICES, type Profile } from "../lib/api";
 import { isNative, purchase, purchaseErrorText, restorePurchases } from "../lib/native";
 import { isGuest, useUser } from "../lib/auth";
 import { demoOn, setDemo } from "../lib/demoGps";
 import { setSound, soundOn } from "../lib/sfx";
+import { type Appearance, setAppearance, useAppearance } from "../lib/theme";
 import Avatar from "./social/Avatar";
 import SignIn from "./SignIn";
 import AdminEdits from "./AdminEdits";
@@ -13,10 +14,11 @@ import Info from "./Info";
 
 // Settings, iOS / Android style: an account card, then short titled groups of rows. Switches act at once; anything bigger
 // opens its own page inside the sheet (‹ back). Destructive actions sit last and ask first.
-type Page = "home" | "membership" | "plus" | "bookings" | "signin" | "admin" | "delete";
+type Page = "home" | "appearance" | "membership" | "plus" | "bookings" | "signin" | "admin" | "delete";
 const BOOKING_STATUS: Record<Booking["status"], string> = { requested: "Waiting for the shop", accepted: "Confirmed", declined: "Declined",
   completed: "Done", cancelled: "Cancelled" };
 const monthName = (m: string) => new Date(`${m}T00:00:00+07:00`).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+const LOOKS: { id: Appearance; label: string }[] = [{ id: "light", label: "Light" }, { id: "dark", label: "Dark" }, { id: "auto", label: "Auto" }];
 const shortDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
 /** One row: a coloured icon tile, a label, an optional value, and a chevron (or a control on the right). */
@@ -53,6 +55,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [stamps, setStamps] = useState<string[]>([]);
   const [sound, setSoundState] = useState(soundOn);
+  const look = useAppearance();
 
   const [paidMsg] = useState(() => new URLSearchParams(location.search).get("paid") === "success"
     ? "Payment received. It switches on in a few seconds (PromptPay can take a minute)." : "");
@@ -86,7 +89,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
     } catch { setMsg("Couldn't delete the account. Try again."); }
   };
 
-  const TITLES: Record<Page, string> = { home: "Settings", membership: "Membership", plus: "Giggles Plus", bookings: "Your bookings",
+  const TITLES: Record<Page, string> = { home: "Settings", appearance: "Appearance", membership: "Membership", plus: "Giggles Plus", bookings: "Your bookings",
     signin: "Sign in", admin: "Admin", delete: "Delete account" };
   const open = bookings.filter((b) => b.status === "requested" || b.status === "accepted").length;
 
@@ -127,6 +130,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
         </Group>
 
         <Group title="App" foot="Switching demo mode reloads the app.">
+          <Row icon={<SunMoon size={17} />} tone="night" label="Appearance" value={LOOKS.find((l) => l.id === look)!.label} onClick={() => go("appearance")} />
           <Row icon={<Volume2 size={17} />} tone="marigold" label="Sounds">
             <input type="checkbox" role="switch" className="switch" checked={sound} aria-label="Sounds for chests and Siam Si"
               onChange={(e) => { setSound(e.target.checked); setSoundState(e.target.checked); }} />
@@ -148,6 +152,17 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
           <Row icon={<Trash2 size={17} />} tone="bad" label="Delete account" danger onClick={() => go("delete")} />
         </Group>
         <p className="fine set-legal"><a href="/privacy.html">Privacy</a> · Giggles Maps</p>
+      </div>}
+
+      {page === "appearance" && <div className="set-page" key="appearance">
+        <div className="looks" role="radiogroup" aria-label="Appearance">
+          {LOOKS.map((l) => <button key={l.id} type="button" role="radio" aria-checked={look === l.id} className={`look-opt${look === l.id ? " on" : ""}`}
+            onClick={() => setAppearance(l.id)}>
+            <span className={`look-phone look-${l.id}`} aria-hidden><i /><i /><i /></span>
+            <b>{l.label}</b>
+          </button>)}
+        </div>
+        <p className="fine set-foot">Auto follows your phone: light by day, dark when your phone switches to dark. The map goes dark with it.</p>
       </div>}
 
       {page === "membership" && <div className="set-page" key="membership">

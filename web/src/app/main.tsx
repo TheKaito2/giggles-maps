@@ -6,6 +6,7 @@ import App from "./App";
 import { installDemoGps } from "../lib/demoGps";
 import { installHScroll } from "../lib/hscroll";
 import { isNative, openSite } from "../lib/native";
+import { installTheme } from "../lib/theme";
 
 if (isNative) {
   document.documentElement.classList.add("native");   // the iOS app: safe-area tweaks in app.css
@@ -15,6 +16,7 @@ if (isNative) {
     if (a) { e.preventDefault(); openSite(a.getAttribute("href")!); }
   });
 }
+installTheme();     // Settings > Appearance: light, dark or follow the phone
 installHScroll();   // mouse users: arrows and wheel for sideways rows
 installDemoGps();   // demo mode (Profile) fakes the location for everything that reads it
 import Debug from "./Debug";

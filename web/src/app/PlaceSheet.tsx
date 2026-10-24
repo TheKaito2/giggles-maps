@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Bookmark, BookmarkCheck, CalendarCheck, Camera, Clock, Crown, ExternalLink, Flag, Globe, MapPin, Navigation, Pencil, Phone, Share2, Star, X } from "lucide-react";
+import { Bookmark, BookmarkCheck, CalendarCheck, Camera, Clock, Coins, Crown, ExternalLink, Flag, Globe, ImagePlus, MapPin, Navigation, Pencil, Phone, Share2,
+  Sparkles, Star, Trash2, X } from "lucide-react";
 import { errCode } from "../lib/supabase";
-import { createList, deleteReview, getMyLists, getPlaceExtras, getPlacePage, type PlaceExtras, type PlacePage, photoUrls, reportReview,
-  type PartnerTier, placesTiers, type SavedList, savePlace, shopPhotoUrl, SITE, suggestEdit, TIER_NAME, writeReview } from "../lib/api";
+import { addPlacePhoto, createList, deletePlacePhoto, deleteReview, getMyLists, getPlaceExtras, getPlacePage, type PlaceExtras, type PlacePage, type PlacePhoto,
+  photoUrls, placePhotoUrl, reportPlacePhoto, reportReview, REVIEW_SHAKE_CHARS, type PartnerTier, placesTiers, type SavedList, savePlace, shopPhotoUrl, SITE,
+  suggestEdit, TIER_NAME, writeReview } from "../lib/api";
+import { shrinkPhoto } from "../lib/photo";
 import BookingSheet from "./BookingSheet";
 import { GROUPS, kindOf } from "./kinds";
 import { openNow } from "./hours";
@@ -69,8 +72,20 @@ function EditForm({ page, onDone }: { page: PlacePage; onDone: (msg: string) => 
 }
 
 /** Google-Maps-style place page: photos, rating, actions, details, busy times, verified reviews, suggest an edit. */
-export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
+const PHOTO_ERR: Record<string, string> = {
+  check_in_first: "Check in here first: photos on a place come from people who've been.",
+  photo_limit: "That's the most photos you can add here (3 per place, 20 a day).",
+  bad_photo: "That photo didn't upload properly. Try again.",
+  already_added: "You added that photo already.",
+};
+const photoSrc = (ph: PlacePhoto, urls: Record<string, string>) => ph.url?.startsWith("shop-photos/") ? shopPhotoUrl(ph.url)
+  : ph.url?.startsWith("place-photos/") ? placePhotoUrl(ph.url) : ph.url ?? (ph.path ? urls[ph.path] : undefined);
+const photoCredit = (ph: PlacePhoto) => ph.source === "wikimedia" ? `${ph.credit} · ${ph.licence} · Wikimedia` : ph.source === "owner" ? "From the owner"
+  : `by ${ph.mine ? "you" : ph.credit}`;
+
+export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoins }: {
   id: number; onClose: () => void; onDirections: (p: PlacePage) => void; onCheckin: (p: PlacePage) => void;
+  onCoins?: () => void;   // coins or a Siam Si shake earned here: the top bar refreshes
 }) {
   const [page, setPage] = useState<PlacePage | null>(null);
   const [extras, setExtras] = useState<PlaceExtras | null>(null);
@@ -80,6 +95,7 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState("");
   const [msg, setMsg] = useState("");
+  const [adding, setAdding] = useState(false);
   // a late answer for the previous pin must not land on this one
   const shown = useRef(id);
   shown.current = id;
@@ -106,8 +122,25 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
   const share = async () => {
     if (await shareOrCopy(page.name, `${SITE}/app/?place=${page.id}`) === "copied") setMsg("Link copied.");
   };
-  const submitReview = () => writeReview(page.id, rating, body).then(() => { setMsg("Review saved."); load(); })
-    .catch((e) => setMsg(errCode(e) === "check_in_first" ? "Check in here first: reviews are from verified visits only." : "Couldn't save the review."));
+  const submitReview = () => writeReview(page.id, rating, body).then((r) => {
+    setMsg(r.shake ? "Review saved. +1 Siam Si shake for writing it: shake it on your Profile." : r.xp ? `Review saved. +${r.xp} XP.` : "Review saved.");
+    if (r.shake || r.xp) onCoins?.();
+    load();
+  }).catch((e) => setMsg(errCode(e) === "check_in_first" ? "Check in here first: reviews are from verified visits only." : "Couldn't save the review."));
+  const addPhoto = async (file: File | undefined) => {
+    if (!file) return;
+    setAdding(true); setMsg("");
+    try {
+      const r = await addPlacePhoto(page.id, await shrinkPhoto(file));
+      setMsg(r.coins_earned ? `Photo added. +${r.coins_earned} coins for your first photo here.` : "Photo added. Thanks!");
+      if (r.coins_earned) onCoins?.();
+      load();
+    } catch (e) { setMsg(PHOTO_ERR[errCode(e)] ?? (e instanceof Error && !errCode(e) ? e.message : "Couldn't add the photo. Try again.")); }
+    finally { setAdding(false); }
+  };
+  const removePhoto = (ph: PlacePhoto) => { if (confirm("Remove your photo from this place?")) deletePlacePhoto(ph).then(load).catch(() => setMsg("Couldn't remove it. Try again.")); };
+  const reportPhoto = (ph: PlacePhoto) => reportPlacePhoto(ph.id!).then(() => setMsg("Reported. Thanks: three reports hide a photo until we check it."))
+    .catch(() => setMsg("Couldn't report it. Try again."));
   const peak = page.busy ? Math.max(...page.busy, 1) : 1;
   const hourNow = new Date().getHours();
 
@@ -117,9 +150,12 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
       {page.photos.length > 0 && (
         <ul className="photo-strip" aria-label="Photos">
           {page.photos.map((ph, i) => {
-            const src = ph.url?.startsWith("shop-photos/") ? shopPhotoUrl(ph.url) : ph.url ?? (ph.path ? urls[ph.path] : undefined);
-            return <li key={i}>{src ? <img src={src} alt={`${page.name} photo ${i + 1}`} loading="lazy" /> : <div className="ph" />}
-              <span className="photo-credit">{ph.source === "wikimedia" ? `${ph.credit} · ${ph.licence} · Wikimedia` : ph.source === "owner" ? "From the owner" : `by ${ph.credit}`}</span></li>;
+            const src = photoSrc(ph, urls);
+            return <li key={ph.id ?? ph.url ?? ph.path ?? i}>{src ? <img src={src} alt={`${page.name} photo ${i + 1}`} loading="lazy" /> : <div className="ph" />}
+              <span className="photo-credit">{photoCredit(ph)}</span>
+              {ph.source === "traveller" && ph.id != null && (ph.mine
+                ? <button type="button" className="photo-act" onClick={() => removePhoto(ph)} aria-label="Remove your photo"><Trash2 size={14} /></button>
+                : <button type="button" className="photo-act" onClick={() => reportPhoto(ph)} aria-label="Report this photo"><Flag size={14} /></button>)}</li>;
           })}
         </ul>
       )}
@@ -152,6 +188,11 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
           {page.saved_in.length ? <BookmarkCheck size={15} aria-hidden /> : <Bookmark size={15} aria-hidden />} {page.saved_in.length ? "Saved" : "Save"}</button>
         <button type="button" className="btn soft small" onClick={share}><Share2 size={15} aria-hidden /> Share</button>
         {page.detour && <button type="button" className="btn soft small" onClick={() => onCheckin(page)}><Camera size={15} aria-hidden /> Check in</button>}
+        {page.stamped && <label className={`btn soft small${adding ? " busy" : ""}`} aria-disabled={adding}>
+          {adding ? <span className="spinner" style={{ width: 14, height: 14 }} aria-hidden /> : <ImagePlus size={15} aria-hidden />}
+          {adding ? "Adding…" : "Add photo"}{page.photo_reward && !adding && <span className="chip reward-chip"><Coins size={11} aria-hidden /> +10</span>}
+          <input type="file" accept="image/*" className="sr-only" disabled={adding} onChange={(e) => { void addPhoto(e.target.files?.[0]); e.target.value = ""; }} />
+        </label>}
       </div>
       {menu === "save" && <SaveMenu page={page} onClose={() => setMenu(null)} onChange={load} />}
       {menu === "book" && <BookingSheet place={page.id} name={page.name} onClose={() => setMenu(null)} onDone={(m) => { setMenu(null); setMsg(m); }} />}
@@ -211,6 +252,8 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
           <form className="review-form stack" onSubmit={(e) => { e.preventDefault(); if (rating) submitReview(); }}>
             <Stars value={rating} onPick={setRating} size={26} />
             <textarea className="text-in" rows={3} maxLength={1000} value={body} placeholder="What was it like? (optional)" onChange={(e) => setBody(e.target.value)} />
+            {page.review_shake && <p className={`fine shake-hint${body.trim().length >= REVIEW_SHAKE_CHARS ? " ready" : ""}`}><Sparkles size={13} aria-hidden />
+              {body.trim().length >= REVIEW_SHAKE_CHARS ? "This review earns a Siam Si shake." : `Write ${REVIEW_SHAKE_CHARS - body.trim().length} more characters to earn a Siam Si shake.`}</p>}
             <div className="row">
               <button className="btn small" type="submit" disabled={!rating}>{page.reviews.some((r) => r.mine) ? "Update review" : "Post review · +20 XP"}</button>
               {page.reviews.some((r) => r.mine) && <button type="button" className="link" onClick={() => deleteReview(page.id).then(() => { setRating(0); setBody(""); load(); })}>Delete</button>}

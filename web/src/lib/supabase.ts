@@ -15,13 +15,18 @@ const dropDeletedUser = (async () => {
 })().catch(() => { /* offline: keep the session */ });
 
 // Anyone can try the app instantly: sign in anonymously, upgrade to email later.
+// One guest sign-up at a time: on a first visit every screen asks for a session at once, and each racing sign-up would make
+// its own guest account (and spend the per-IP sign-up limit, which a room on one Wi-Fi shares).
+let starting: Promise<Session> | null = null;
 export async function ensureSession(): Promise<Session> {
   await dropDeletedUser;
   const { data } = await supabase.auth.getSession();
   if (data.session) return data.session;
-  const { data: anon, error } = await supabase.auth.signInAnonymously();
-  if (error || !anon.session) throw new Error("Could not start a session. Check your connection and try again.");
-  return anon.session;
+  starting ??= supabase.auth.signInAnonymously().then(({ data: anon, error }) => {
+    if (error || !anon.session) throw new Error("Could not start a session. Check your connection and try again.");
+    return anon.session;
+  }).finally(() => { starting = null; });
+  return starting;
 }
 
 // Signing out leaves no session, and screens wait for a user: start a fresh guest right away.

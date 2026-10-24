@@ -1,9 +1,9 @@
 import SiamSi from "./fortune/SiamSi";
 import { type ReactNode, useEffect, useState } from "react";
-import { ArrowLeft, Award, Backpack, BookOpen, Camera, Crown, Check, Map as MapIcon, NotebookPen, Pencil, Plus, Settings, Share2, ShoppingBag, Sparkles, Stamp,
+import { ArrowLeft, Award, Backpack, BookOpen, Camera, ChevronRight, Crown, Check, Gift, Map as MapIcon, NotebookPen, Pencil, Plus, Settings, Share2, ShoppingBag, Sparkles, Stamp,
   UserMinus, X, Zap } from "lucide-react";
 import { errCode } from "../lib/supabase";
-import { getFriendPassport, getPassport, getProfilePage, levelProgress, nudge, type PassportPhoto, type PassportStamp, type Pin, type Profile,
+import { getFriendPassport, getPassport, getProfilePage, levelProgress, nudge, pendingLevels, type PassportPhoto, type PassportStamp, type Pin, type Profile,
   type ProfilePage, removeFriend, setShowcase, type TripMemory } from "../lib/api";
 import { useUser } from "../lib/auth";
 import { useDialog } from "../lib/useDialog";
@@ -15,12 +15,13 @@ import Logbook from "./passport/Logbook";
 import ProvinceMap from "./passport/ProvinceMap";
 import ShareSheet from "./share/ShareSheet";
 import SettingsSheet from "./Settings";
+import LevelRewards from "./LevelRewards";
 import SavedLists from "./SavedLists";
 import { SkelProfile } from "./Skeleton";
 import { STAMP_TIER } from "../lib/format";
 
 const month = (iso?: string | null) => iso ? new Date(iso).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "";
-type Sheet = "book" | "log" | "settings" | "pins" | "share" | null;
+type Sheet = "book" | "log" | "settings" | "pins" | "share" | "levels" | null;
 
 function PinView({ p }: { p: Pin }) {
   return p.type === "badge"
@@ -98,6 +99,8 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
   for (const s of book?.stamps ?? []) if (s.province_id != null) counts.set(s.province_id, (counts.get(s.province_id) ?? 0) + 1);
   const { into, span } = levelProgress(page.xp);
   const tickets = self ? profile?.fortuneTickets ?? 0 : 0;
+  const waiting = self && profile ? pendingLevels(profile) : [];
+  const perks = self ? profile?.perks : undefined;
 
   return (
     <div className="page-col stack profile">
@@ -118,6 +121,8 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
           <span className="hero-level"><b className="num">Level {page.level}</b>
             {span ? <><progress value={into} max={span} aria-label={`${into} of ${span} XP to level ${page.level + 1}`} /><span className="num">{span - into} XP to go</span></>
               : <span>Max level</span>}</span>
+          {perks && perks.chosen.length > 0 && <button type="button" className="perk-chips link" onClick={() => setSheet("levels")} aria-label="Your level perks">
+            {perks.luck > 0 && <span className="chip">Luck +{perks.luck * 10}%</span>}{perks.coins > 0 && <span className="chip">Coins +{perks.coins * 10}%</span>}</button>}
           {page.crowns.length > 0 && <span className="row tight crowns">{page.crowns.map((c) =>
             <span key={c.id} className="crown-chip" title={`${c.visits} visit-days in 90 days`}><Crown size={13} aria-hidden /> {c.name_en} champion</span>)}</span>}
           <span className="hero-meta">Joined {month(page.joined)} · {page.friends} {page.friends === 1 ? "friend" : "friends"}</span>
@@ -129,6 +134,12 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
           <UserMinus size={14} aria-hidden /> Remove</button>
       </div>}
       {msg && <p className="fine" role="status">{msg}</p>}
+
+      {waiting.length > 0 && <button type="button" className="level-ready" onClick={() => setSheet("levels")}>
+        <span className="gift" aria-hidden><Gift size={24} /></span>
+        <span className="grow"><b>Level {waiting[0]} reward ready</b><br /><span className="fine">Pick +10% luck or +10% coins, for good{waiting.length > 1 ? ` · ${waiting.length} waiting` : ""}</span></span>
+        <ChevronRight size={20} aria-hidden />
+      </button>}
 
       {self && page.showcase.length > 0 && <div className="row between showcase-head"><h4 className="eyebrow">Showcase</h4>
         <button type="button" className="link" onClick={() => setSheet("pins")}>Edit</button></div>}
@@ -168,6 +179,7 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
           <SettingsSheet refreshKey={refreshKey} profile={profile} onChange={onChange} onClose={() => setSheet(null)} />
         </Modal>
       )}
+      {sheet === "levels" && profile && <LevelRewards profile={profile} onChange={onChange} onClose={() => setSheet(null)} />}
       {sheet === "pins" && book && <PinPicker page={page} stamps={book.stamps} onClose={() => setSheet(null)} onSaved={() => setAgain((n) => n + 1)} />}
       {sheet === "log" && book && <Logbook owner={page.nickname} stamps={book.stamps} onClose={() => setSheet(null)} />}
       {sheet === "share" && <ShareSheet hasPlus={!!profile?.plusUntil} onClose={() => setSheet(null)}

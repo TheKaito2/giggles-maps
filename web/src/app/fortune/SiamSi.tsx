@@ -22,8 +22,8 @@ export default function SiamSi({ profile, onChange, onShop }: { profile: Profile
     <section className="siam-si glass" aria-labelledby="siamsi-title">
       <div className="row between">
         <h3 id="siamsi-title"><Sparkles size={18} aria-hidden /> Siam Si <span className="fine" lang="th">เซียมซี</span>
-          <Info label="About Siam Si">Every new place you check in at gives a shake. Quests, new provinces and riding along give bonus shakes
-            (keep up to 5).</Info></h3>
+          <Info label="About Siam Si">Every new place you check in at gives a shake. Quests, new provinces, riding along and writing a review give
+            bonus shakes (keep up to 5).</Info></h3>
         <button type="button" className="btn gold small" disabled={!tickets} onClick={() => setOpen(true)}>
           {tickets ? `Shake · ${tickets}` : "No shakes"}</button>
       </div>
@@ -33,7 +33,7 @@ export default function SiamSi({ profile, onChange, onShop }: { profile: Profile
         {onShop && <button type="button" className="link" onClick={onShop}><ShoppingBag size={14} aria-hidden /> Wear your prizes</button>}
       </div>
       {more && <>
-        <OddsTable />
+        <OddsTable luck={profile?.perks.luck ?? 0} />
         {history === null ? <SkelRows n={3} avatar={0} /> : history.length === 0 ? <p className="fine">No shakes yet.</p> : (
           <ul className="shake-history">
             {history.map((h) => <li key={h.id} className={`r-${h.rarity}`}>
@@ -43,7 +43,7 @@ export default function SiamSi({ profile, onChange, onShop }: { profile: Profile
           </ul>
         )}
       </>}
-      {open && <Fortune onClose={() => { setOpen(false); onChange(); }} onShaken={() => undefined} name={profile?.nickname ?? undefined} hasPlus={!!profile?.plusUntil} />}
+      {open && <Fortune onClose={() => { setOpen(false); onChange(); }} onShaken={() => undefined} name={profile?.nickname ?? undefined} hasPlus={!!profile?.plusUntil} luck={profile?.perks.luck ?? 0} />}
     </section>
   );
 }

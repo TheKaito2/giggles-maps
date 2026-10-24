@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { Bell, Camera, Coins, LocateFixed, Map as MapIcon, MapPin, Navigation, Swords, Trophy, UserRound, X } from "lucide-react";
+import { Bell, Camera, Coins, LocateFixed, Map as MapIcon, Navigation, Swords, Trophy, UserRound, X } from "lucide-react";
 import { ensureSession, supabase } from "../lib/supabase";
-import { addFriend, adFree, type CheckinTarget, getProfile, type LatLng, levelFor, levelProgress, plusDaily, type Profile, readCodeParam, readScanParam } from "../lib/api";
+import { addFriend, adFree, type CheckinTarget, getProfile, type LatLng, levelFor, levelProgress, pendingLevels, plusDaily, type Profile, readCodeParam, readScanParam } from "../lib/api";
 import Sheet, { type Snap } from "./detour/Sheet";
 import WhereTo from "./detour/WhereTo";
 import Choose, { TripHead } from "./detour/Choose";
@@ -169,7 +169,7 @@ export default function App() {
   return (
     <div className={`app-shell tab-${tab}`}>
       <nav className="tabbar" aria-label="Sections">
-        <a className="brand" href="/"><span className="brand-mark" aria-hidden><MapPin size={18} /></span><span className="brand-word">giggles <span>maps</span></span></a>
+        <a className="brand" href="/"><img className="brand-mark" src="/logo.svg" alt="" width={36} height={36} /><span className="brand-word">giggles <span>maps</span></span></a>
         {TABS.map((t) => (
           <button key={t.id} type="button" className={tab === t.id ? "on" : ""} aria-current={tab === t.id ? "page" : undefined}
             onClick={() => { setTab(t.id); if (t.id === "profile") setFriend(null); }}>
@@ -178,10 +178,10 @@ export default function App() {
         ))}
       </nav>
       <header className="topbar">
-        <a className="brand mobile-only" href="/" aria-label="Giggles Maps home"><span className="brand-mark" aria-hidden><MapPin size={16} /></span></a>
+        <a className="brand mobile-only" href="/" aria-label="Giggles Maps home"><img className="brand-mark" src="/logo.svg" alt="" width={32} height={32} /></a>
         <div className="stat-chips">
           <button type="button" className="stat-chip level" onClick={() => setTab("profile")}
-            style={{ ["--p" as string]: span ? into / span : 1 }}><span className="sr-only">Level </span><span className="ring"><b>{level}</b></span><span className="num">{profile?.xp ?? 0} XP</span></button>
+            style={{ ["--p" as string]: span ? into / span : 1 }}><span className="sr-only">Level </span><span className="ring"><b>{level}</b>{profile && pendingLevels(profile).length > 0 && <i className="ring-dot" aria-label="Level reward ready" />}</span><span className="num">{profile?.xp ?? 0} XP</span></button>
           <button type="button" className="stat-chip provinces" onClick={() => { setFriend(null); setTab("profile"); setPassport(true); }}
             aria-label={`${profile?.provinces ?? 0}/77 provinces, open your passport`}>
             <MapIcon size={18} aria-hidden /><span className="num">{profile?.provinces ?? 0}/77</span></button>
@@ -212,7 +212,7 @@ export default function App() {
             </div>
             {place && <Suspense fallback={null}><PlaceSheet id={place} onClose={() => setPlace(null)}
               onDirections={(p) => { setPlace(null); d.goTo({ point: { lat: p.lat, lng: p.lng }, name: p.name }); }}
-              onCheckin={checkInAt} /></Suspense>}
+              onCheckin={checkInAt} onCoins={refresh} /></Suspense>}
             {(zoneStop || paused) && (
               <div className="map-actions">
                 {zoneStop && !zoneStop.stamped ? (
@@ -300,7 +300,7 @@ export default function App() {
 
       </Suspense>
       {checkin && <Suspense fallback={null}>
-        <CheckIn target={checkin.target} initialCode={checkin.code} hasPlus={!!profile?.plusUntil} nickname={profile?.nickname} onClose={() => setCheckin(null)} onDone={() => { liveTrip.checkedIn(checkin.target.id); refresh(); }} />
+        <CheckIn target={checkin.target} initialCode={checkin.code} hasPlus={!!profile?.plusUntil} luck={profile?.perks.luck} nickname={profile?.nickname} onClose={() => setCheckin(null)} onDone={() => { liveTrip.checkedIn(checkin.target.id); refresh(); }} />
       </Suspense>}
     </div>
   );

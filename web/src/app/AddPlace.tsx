@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { errCode } from "../lib/supabase";
 import { nominate, suggestEdit, uploadSelfie } from "../lib/api";
+import { shrinkPhoto } from "../lib/photo";
 import { KINDS } from "./kinds";
 
 const LOCAL_KINDS = ["otop", "community_enterprise", "craft", "souvenir", "market", "night_market", "restaurant", "cafe", "bakery", "dessert"];
@@ -25,7 +26,7 @@ export default function AddPlace({ onClose }: { onClose: () => void }) {
     navigator.geolocation.getCurrentPosition((pos) => {
       const here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       if (local) {
-        uploadSelfie(photo!).then((path) => nominate({ name: name.trim(), kind, otop: kind === "otop", community: kind === "community_enterprise", photo: path, at: here }))
+        shrinkPhoto(photo!).then(uploadSelfie).then((path) => nominate({ name: name.trim(), kind, otop: kind === "otop", community: kind === "community_enterprise", photo: path, at: here }))
           .then(() => setMsg("Nominated! When two other travellers confirm it on the spot, it goes on the map and you get +100 XP."))
           .catch((e) => setMsg(errCode(e) === "sign_in_required" ? "Sign in on your Profile first: nominations need a real account."
             : errCode(e) === "already_listed" ? "That shop is already listed or nominated here."

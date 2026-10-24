@@ -31,18 +31,21 @@ serve(async (req) => {
     await revokeApple(body.apple_authorization_code).catch((e) => console.error("apple revoke", e)); // never blocks deletion
   }
   const db = admin();
+  // Every bucket keeps a person's files under their own folder: check-in photos, photos added to place pages, shop photos.
   // list returns at most 1000 names per call: page through them all, then remove page by page.
   // Storage errors are logged and never block deletion.
-  const paths: string[] = [];
-  for (let offset = 0; ; offset += 1000) {
-    const { data: files, error: listErr } = await db.storage.from("selfies").list(user.id, { limit: 1000, offset });
-    if (listErr) console.error("selfie list", listErr);
-    paths.push(...(files ?? []).map((f) => `${user.id}/${f.name}`));
-    if ((files?.length ?? 0) < 1000) break;
-  }
-  for (let i = 0; i < paths.length; i += 1000) {
-    const { error: rmErr } = await db.storage.from("selfies").remove(paths.slice(i, i + 1000));
-    if (rmErr) console.error("selfie remove", rmErr);
+  for (const bucket of ["selfies", "place-photos", "shop-photos"]) {
+    const paths: string[] = [];
+    for (let offset = 0; ; offset += 1000) {
+      const { data: files, error: listErr } = await db.storage.from(bucket).list(user.id, { limit: 1000, offset });
+      if (listErr) console.error(bucket, "list", listErr);
+      paths.push(...(files ?? []).map((f) => `${user.id}/${f.name}`));
+      if ((files?.length ?? 0) < 1000) break;
+    }
+    for (let i = 0; i < paths.length; i += 1000) {
+      const { error: rmErr } = await db.storage.from(bucket).remove(paths.slice(i, i + 1000));
+      if (rmErr) console.error(bucket, "remove", rmErr);
+    }
   }
   const { error } = await db.auth.admin.deleteUser(user.id); // cascades profile, check-ins, badges
   if (error) throw error;

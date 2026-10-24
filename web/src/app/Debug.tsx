@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import Badges from "./Badges";
 import { drawCard } from "./share/cards";
 import { type Card, DESIGNS, type Design } from "./share/designs";
-import type { Badge } from "../lib/api";
+import type { Badge, Profile } from "../lib/api";
+import LevelRewards from "./LevelRewards";
 
 const ICONS = ["map", "landmark", "stamp", "camera", "utensils", "temple", "users", "car", "trophy", "star", "pin"];
 const BADGES: Badge[] = ICONS.map((icon, i) => ({ slug: icon, name_en: `${icon[0].toUpperCase()}${icon.slice(1)} badge`, name_th: "เหรียญ", icon,
@@ -39,6 +40,9 @@ function Cards() {
 export default function Debug({ what }: { what: string }) {
   const features = useProvinces();
   if (what === "cards") return <Cards />;
+  // the level-reward picker at level 4 with one luck pick made: /app/?debug=levels
+  if (what === "levels") return <LevelRewards onChange={() => undefined} onClose={() => undefined} profile={{ xp: 1600, nickname: "Ploy", look: {}, avatar: {},
+    perks: { luck: 1, coins: 0, chosen: [{ level: 2, perk: "luck" }] } } as unknown as Profile} />;
   if (what === "medals") return <div className="page-col" style={{ overflow: "auto", height: "100%" }}><Badges list={BADGES} shareAs={{ name: "Ploy", hasPlus: true }} /></div>;
   if (what === "avatars") return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 12, padding: 16, overflow: "auto", height: "100%" }}>

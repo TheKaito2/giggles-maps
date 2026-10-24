@@ -70,6 +70,7 @@ export default function LayersButton({ look, setLook }: { look: MapLook; setLook
         <header className="modal-head"><h2 id="layers-title">Map</h2>
           <button type="button" className="icon-btn" onClick={() => setOpen(false)} aria-label="Close"><X size={20} /></button></header>
         <b>Night map</b>
+        <p className="fine">Auto: dark when the app is in dark mode, and after 18:30.</p>
         <div className="seg" role="radiogroup" aria-label="Night map">
           {NIGHTS.map((n) => <button key={n.id} type="button" role="radio" aria-checked={look.night === n.id} className={look.night === n.id ? "on" : ""}
             onClick={() => setLook({ night: n.id })}>{n.label}</button>)}

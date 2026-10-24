@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Backpack, Check, Clock, Coins, Shirt, ShoppingBag, Vault, X } from "lucide-react";
+import { Backpack, Check, Clock, Coins, Lock, Shirt, ShoppingBag, Vault, X } from "lucide-react";
 import { errCode } from "../../lib/supabase";
-import { buyItem, buySet, equip, getShop, getShopToday, KIND_NAME, type Profile, setAvatar, type ShopItem, type ShopKind, type ShopSet,
+import { buyItem, buySet, equip, getShop, getShopToday, KIND_NAME, levelFor, type Profile, setAvatar, type ShopItem, type ShopKind, type ShopSet,
   type ShopToday } from "../../lib/api";
 import { AvatarSvg, type Slot } from "../avatar/parts";
 import { useDialog } from "../../lib/useDialog";
@@ -15,6 +15,7 @@ const ERR: Record<string, string> = {
   plus_only: "This comes with Plus.",
   not_enough_coins: "Not enough coins yet. Stamps, quests and level-ups earn more.",
   already_owned: "You already have this.",
+  level_reward: "A level reward: it's yours when you reach its level.",
 };
 // the same names as Siam Si sticks: price sets the rarity, Siam Si-only items are Legendary
 // above Legendary, the Vault: saved up for, never drawn from Siam Si or shown as a daily pick (both cap by price)
@@ -30,7 +31,7 @@ const left = (iso: string) => {
 };
 
 /** A small picture of the item, worn by you where that makes sense (avatar items on your avatar, flair on your name). */
-function Preview({ item, profile, big = false }: { item: ShopItem; profile: Profile | null; big?: boolean }) {
+export function Preview({ item, profile, big = false }: { item: ShopItem; profile: Profile | null; big?: boolean }) {
   const name = profile?.nickname ?? "Explorer";
   if (item.kind === "avatar") {
     const [slot, part] = item.id.split(":");
@@ -62,13 +63,15 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
   useEffect(load, []);
   useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 60_000); return () => clearInterval(t); }, []);
   const plus = !!profile?.plusUntil;
-  const owns = (i: ShopItem) => i.price === 0 || (plus && i.plus) || !!profile?.owned.includes(key(i));
+  const level = levelFor(profile?.xp ?? 0);
+  const free = (i: ShopItem) => i.price === 0 && i.level_req == null;   // the defaults everyone has (Classic cover, plain name...)
+  const owns = (i: ShopItem) => i.level_req != null ? level >= i.level_req : free(i) || (plus && i.plus) || !!profile?.owned.includes(key(i));
   const wearing = (i: ShopItem) => {
     if (i.kind === "avatar") { const [slot, part] = i.id.split(":"); return profile?.avatar?.[slot as Slot] === part; }
-    return (profile?.look[i.kind] ?? (i.price === 0 ? i.id : null)) === i.id;
+    return (profile?.look[i.kind] ?? (free(i) ? i.id : null)) === i.id;
   };
   const byKey = new Map(items.map((i) => [key(i), i]));
-  const canBuy = (i: ShopItem) => owns(i) || (!i.plus_only && coins >= i.price);
+  const canBuy = (i: ShopItem) => owns(i) || (!i.plus_only && i.level_req == null && coins >= i.price);
 
   const act = async (i: ShopItem) => {
     setMsg("");
@@ -88,8 +91,8 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
   // the bag: kinds where you own something beyond the free default (which stays listed, to switch back), wearing first
   const bag = KINDS.map(({ kind, title }) => ({ kind, title, list: items.filter((i) => i.kind === kind && owns(i))
     .sort((a, b) => Number(wearing(b)) - Number(wearing(a)) || a.price - b.price) }))
-    .filter((k) => k.list.some((i) => i.price > 0 || i.gacha_only));
-  const bagCount = bag.reduce((n, k) => n + k.list.filter((i) => i.price > 0 || i.gacha_only).length, 0);
+    .filter((k) => k.list.some((i) => !free(i)));
+  const bagCount = bag.reduce((n, k) => n + k.list.filter((i) => !free(i)).length, 0);
 
   const tile = (i: ShopItem) => {   // a plain function, not a component: a component made here would remount every render
     const on = wearing(i), own = owns(i), r = rarityOf(i);
@@ -102,6 +105,7 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
         <span className="tile-foot">
           {on ? <span className="chip on"><Check size={13} aria-hidden /> On</span> : own ? <span className="chip">Owned</span>
             : i.plus_only ? <span className="chip plus-chip">Plus</span>
+            : i.level_req != null ? <span className="chip level-chip"><Lock size={12} aria-hidden /> Level {i.level_req}</span>
             : <span className={`coin-price num${canBuy(i) ? "" : " short"}`}><Coins size={13} aria-hidden /> {i.price.toLocaleString()}</span>}
           {r && <span className={`rarity r-${r}`}>{r}</span>}
         </span>
@@ -168,6 +172,11 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
         <ul className="shop-grid today">{picks.map(tile)}</ul>
       </section>}
 
+      <section>
+        <div className="row between"><h4 className="eyebrow">Level rewards</h4><span className="fine">Never sold: reach the level</span></div>
+        <ul className="shop-grid today">{items.filter((i) => i.level_req != null).sort((a, b) => a.level_req! - b.level_req!).map(tile)}</ul>
+      </section>
+
       {sets.length > 1 && <section>
         <h4 className="eyebrow">More sets</h4>
         <div className="set-list">{sets.slice(1).map((s) => <SetCard key={s.id} s={s} byKey={byKey} profile={profile} coins={coins} onBuy={getSet} onTry={setTrying} />)}</div>
@@ -178,7 +187,7 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
           <div className="row between"><h4 className="eyebrow">{title}</h4>
             {kind === "avatar" && <button type="button" className="link" onClick={onAvatar}><Shirt size={14} aria-hidden /> Avatar builder</button>}</div>
           <ul className="shop-grid">
-            {items.filter((i) => i.kind === kind && !i.plus_only && !inVault(i) && (!i.gacha_only || owns(i))).map(tile)}
+            {items.filter((i) => i.kind === kind && !i.plus_only && i.level_req == null && !inVault(i) && (!i.gacha_only || owns(i))).map(tile)}
           </ul>
         </section>
       ))}
@@ -208,12 +217,14 @@ function TryOn({ item, profile, msg, wearing, owns, canBuy, coins, onAct, onClos
         <div className="try-stage"><Preview item={item} profile={profile} big /></div>
         {item.gacha_only && <p className="fine">Siam Si only: won from a fortune stick, never sold.</p>}
         {item.plus_only && !owns && <p className="fine">On the Plus shelf: yours while you have Plus, never sold.</p>}
+        {item.level_req != null && <p className="fine">A level reward: yours from level {item.level_req} on, never sold.</p>}
         {msg && <p className="fine" role="status">{msg}</p>}
         {wearing ? <button type="button" className="btn" disabled><Check size={16} aria-hidden /> Wearing it</button>
           : owns ? <button type="button" className="btn" onClick={onAct}>Wear it</button>
           : item.plus_only ? <button type="button" className="btn" disabled>Comes with Plus</button>
+          : item.level_req != null ? <button type="button" className="btn" disabled><Lock size={16} aria-hidden /> Reach level {item.level_req}</button>
           : <button type="button" className="btn gold" disabled={!canBuy} onClick={onAct}><Coins size={16} aria-hidden /> Buy for {item.price.toLocaleString()} and wear</button>}
-        {!owns && !canBuy && !item.plus_only && <p className="fine">{(item.price - coins).toLocaleString()} more coins to go.</p>}
+        {!owns && !canBuy && !item.plus_only && item.level_req == null && <p className="fine">{(item.price - coins).toLocaleString()} more coins to go.</p>}
       </div>
     </div>
   );

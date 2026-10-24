@@ -280,13 +280,24 @@ export interface Profile {
   look: Look; title: string | null; owned: string[];   // owned = "kind:id" bought with coins
   avatar: AvatarLook; joined: string | null; coins: number; provinces: number; isAdmin: boolean;
   fortuneTickets: number; xpBoostUntil: Date | null;   // Siam Si: bonus shakes waiting, x1.5 stamp XP until
+  perks: Perks;   // level rewards picked so far
 }
+/** Level rewards: one permanent +10% pick per level from 2 up (choose_level_perk). */
+export type Perk = "luck" | "coins";
+export interface Perks { luck: number; coins: number; chosen: { level: number; perk: Perk }[] }
+/** Levels reached whose reward hasn't been picked yet, lowest first. */
+export const pendingLevels = (p: Pick<Profile, "xp" | "perks">) => {
+  const done = new Set(p.perks.chosen.map((c) => c.level));
+  return Array.from({ length: Math.max(0, levelFor(p.xp) - 1) }, (_, i) => i + 2).filter((l) => !done.has(l));
+};
+export const chooseLevelPerk = (level: number, perk: Perk) => rpc<Perks>("choose_level_perk", { p_level: level, p_perk: perk });
 
 /** The row the `me` database function returns. */
 interface MeRow {
   member: boolean; xp: number; plus_until: string | null; look: Look | null; nickname: string | null; colour: string | null;
   friend_code: string | null; on_leaderboard: boolean | null; title: string | null; owned: string[] | null; avatar: AvatarLook | null;
   joined: string | null; coins: number | null; provinces: number | null; is_admin: boolean; fortune_tickets: number | null; xp_boost_until: string | null;
+  perks: Perks | null;
 }
 export async function getProfile(): Promise<Profile> {
   const data = await rpc<MeRow | null>("me");
@@ -299,6 +310,7 @@ export async function getProfile(): Promise<Profile> {
     onLeaderboard: data?.on_leaderboard ?? true, look, title: data?.title ?? null, owned: data?.owned ?? [],
     avatar: data?.avatar ?? {}, joined: data?.joined ?? null, coins: data?.coins ?? 0, provinces: data?.provinces ?? 0, isAdmin: !!data?.is_admin,
     fortuneTickets: data?.fortune_tickets ?? 0, xpBoostUntil: data?.xp_boost_until ? new Date(data.xp_boost_until) : null,
+    perks: data?.perks ?? { luck: 0, coins: 0, chosen: [] },
   };
 }
 
@@ -364,7 +376,8 @@ export type ShopKind = "theme" | "flair" | "map" | "frame" | "title" | "avatar";
 export const KIND_NAME: Record<ShopKind, string> = { theme: "Passport cover", frame: "Photo frame", avatar: "Avatar item", flair: "Name flair", title: "Title", map: "Map skin" };
 export interface ShopItem { kind: ShopKind; id: string; name_en: string; name_th: string; price: number; plus: boolean; sort: number;
   gacha_only: boolean;   // Siam Si prizes: never sold
-  plus_only: boolean }   // the Plus shelf: worn with Plus, never sold
+  plus_only: boolean;    // the Plus shelf: worn with Plus, never sold
+  level_req: number | null }   // a level reward: yours (free) from that level on, never sold
 export async function getShop(): Promise<ShopItem[]> {
   const { data, error } = await supabase.from("shop_items").select("*").order("sort");
   if (error) throw new ApiError(error.message);
@@ -452,12 +465,14 @@ export async function mapPlaces(w: number, s: number, e: number, n: number, zoom
 
 // ---------- place page: reviews, photos, lists, edits ----------
 export interface PlaceReview { who: Who; rating: number; body: string | null; at: string; mine: boolean }
-export interface PlacePhoto { url?: string; path?: string; credit: string | null; licence?: string | null; source: "wikimedia" | "owner" | "checkin" }
+export interface PlacePhoto { id?: number; url?: string; path?: string; credit: string | null; licence?: string | null;
+  source: "wikimedia" | "owner" | "checkin" | "traveller"; mine?: boolean }
 export interface PlacePage {
   id: number; name: string; name_th: string | null; kind: string | null; category: string; tier: number; lat: number; lng: number;
   opening_hours: string | null; phone: string | null; website: string | null; address: string | null;
   local: boolean; otop: boolean; community: boolean; detour: boolean;
   rating: number | null; review_count: number; reviews: PlaceReview[]; checked_in: boolean; stamped: boolean;
+  photo_reward: boolean; review_shake: boolean;   // your first photo here still pays coins; a written review still earns a shake
   photos: PlacePhoto[]; busy: number[] | null; saved_in: string[];
   regular: { who: Who; visits: number; friend: boolean; mine: boolean } | null;   // most visit-days here in 60 days (2+)
 }
@@ -465,7 +480,26 @@ export async function getPlacePage(id: number): Promise<PlacePage | null> {
   const real = await rpc<PlacePage | null>("place_page", { p_id: id }), d = demo();
   return d && real ? (await d).demoPlacePage(real) : real;
 }
-export const writeReview = (place: number, rating: number, body: string) => rpc<void>("write_review", { p_place: place, p_rating: rating, p_body: body });
+/** A written review (20+ characters) of a place earns one bonus Siam Si shake there, once. */
+export const REVIEW_SHAKE_CHARS = 20;
+export const writeReview = (place: number, rating: number, body: string) =>
+  rpc<{ xp: number; shake: boolean; tickets: number }>("write_review", { p_place: place, p_rating: rating, p_body: body });
+/** Add a photo of a place you have a stamp at to its page; your first one there pays coins. Removes the upload if the add fails. */
+export async function addPlacePhoto(place: number, photo: Blob): Promise<{ coins_earned: number; coins: number }> {
+  const s = await ensureSession();
+  const path = `${s.user.id}/${place}-${Date.now()}.jpg`;
+  const { error } = await supabase.storage.from("place-photos").upload(path, photo, { contentType: "image/jpeg" });
+  if (error) throw new Error("Photo upload failed. Try again.");
+  try { return await rpc<{ coins_earned: number; coins: number }>("add_place_photo", { p_place: place, p_path: path }); }
+  catch (e) { await supabase.storage.from("place-photos").remove([path]); throw e; }
+}
+export async function deletePlacePhoto(photo: PlacePhoto) {
+  await rpc<void>("delete_place_photo", { p_id: photo.id });
+  if (photo.url) await supabase.storage.from("place-photos").remove([photo.url.replace(/^place-photos\//, "")]);
+}
+export const reportPlacePhoto = (id: number) => rpc<void>("report_place_photo", { p_id: id });
+/** Public URL of a traveller's place photo ("place-photos/<uid>/<file>"). */
+export const placePhotoUrl = (url: string) => supabase.storage.from("place-photos").getPublicUrl(url.replace(/^place-photos\//, "")).data.publicUrl;
 export const deleteReview = (place: number) => rpc<void>("delete_review", { p_place: place });
 export const reportReview = (user: string, place: number) => rpc<void>("report_review", { p_user: user, p_place: place });
 export const setPublicPhoto = (checkin: string, isPublic: boolean) => rpc<void>("set_public_photo", { p_checkin: checkin, p_public: isPublic });

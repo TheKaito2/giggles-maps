@@ -38,9 +38,9 @@ const BILLING_TEXT: Partial<Record<Billing, string>> = {
 
 type Step = "consent" | "camera" | "working" | "result" | "error";
 
-interface Props { target: CheckinTarget; initialCode?: string; hasPlus: boolean; nickname?: string | null; onClose: () => void; onDone: (r: CheckinResult) => void }
+interface Props { target: CheckinTarget; initialCode?: string; hasPlus: boolean; luck?: number; nickname?: string | null; onClose: () => void; onDone: (r: CheckinResult) => void }
 
-export default function CheckIn({ target, initialCode, hasPlus, nickname, onClose, onDone }: Props) {
+export default function CheckIn({ target, initialCode, hasPlus, luck = 0, nickname, onClose, onDone }: Props) {
   const [step, setStep] = useState<Step>(readConsent() ? "camera" : "consent");
   const provinces = useProvinces();
   const [demo, setDemo] = useState(false);
@@ -220,7 +220,8 @@ export default function CheckIn({ target, initialCode, hasPlus, nickname, onClos
               <p key={c.slug} className="challenge-done">✓ Quest done: {c.title}. Open its chest in Quests <span className="num">(+{c.xp} XP · +{c.coins} coins)</span></p>
             ))}
             {!!result.xp_gained && <p className="xp-gain num">+{result.xp_gained} XP · {result.coins ?? 0} coins</p>}
-            {result.level_up && <p className="badge-earned">Level up! You're now level {result.level}.</p>}
+            {result.level_up && <p className="badge-earned">Level up! You're now level {result.level}. Pick your level reward on your Profile:
+              +10% luck or +10% coins, for good.</p>}
 
             {result.status === "approved" && result.rewarded && (
               <button type="button" className="btn soft" onClick={() => setSharing(true)}>Share your stamp</button>
@@ -242,7 +243,7 @@ export default function CheckIn({ target, initialCode, hasPlus, nickname, onClos
         )}
       </div>
       {sharing && result && <ShareSheet hasPlus={hasPlus} onClose={() => setSharing(false)} options={shareOptions(result)} />}
-      {fortuneOpen && result && <Fortune checkin={result.checkin_id} name={nickname ?? undefined} hasPlus={hasPlus} onClose={() => setFortuneOpen(false)} onShaken={() => setShaken(true)} />}
+      {fortuneOpen && result && <Fortune checkin={result.checkin_id} name={nickname ?? undefined} hasPlus={hasPlus} luck={luck} onClose={() => setFortuneOpen(false)} onShaken={() => setShaken(true)} />}
     </div>
   );
 }

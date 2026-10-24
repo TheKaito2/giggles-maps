@@ -14,8 +14,9 @@ export function loadLook(): MapLook {
 export function saveLook(look: MapLook) { try { localStorage.setItem(KEY, JSON.stringify(look)); } catch { /* private mode: not remembered */ } }
 
 // ponytail: fixed 18:30-06:00 for Thailand, sunset times if the app goes beyond the tropics
-export const isNight = (night: Night, d = new Date()) =>
-  night === "on" || (night === "auto" && (d.getHours() * 60 + d.getMinutes() >= 18 * 60 + 30 || d.getHours() < 6));
+/** Auto: night when the app is in dark mode, or after dark (18:30-06:00). */
+export const isNight = (night: Night, dark = document.documentElement.dataset.theme === "dark", d = new Date()) =>
+  night === "on" || (night === "auto" && (dark || d.getHours() * 60 + d.getMinutes() >= 18 * 60 + 30 || d.getHours() < 6));
 
 /** Online basemap: the coin-shop skin by day, OpenFreeMap's dark style at night. */
 export const styleUrl = (skin: string, night: boolean) =>

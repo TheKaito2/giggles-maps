@@ -15,25 +15,41 @@
 @font-face { font-family: "Mali"; src: url("/fonts/Mali-700-thai.woff2") format("woff2"); font-weight: 700; font-display: swap; unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC; }
 @font-face { font-family: "Mali"; src: url("/fonts/Mali-700-latin-ext.woff2") format("woff2"); font-weight: 700; font-display: swap; unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 @font-face { font-family: "Mali"; src: url("/fonts/Mali-700-latin.woff2") format("woff2"); font-weight: 700; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-/* Giggles Maps tokens. Direction: travel passport meets Sakon Nakhon indigo (kram) cloth.
-   Indigo ink for structure, marigold for money/partner, stamp red for badges. */
+/* Giggles Maps tokens. Direction: a bright blue sky with fluffy clouds (day), a moonlit night sky (dark).
+   Sky blue for structure and actions, sunshine gold for coins and partners, stamp red for badges.
+   Theme: <html data-theme="light|dark">, set before first paint by the inline script in app/index.html and kept in sync by
+   lib/theme.ts (Settings > Appearance: Auto follows the phone). Pages without the script (landing, shop) stay light. */
 :root {
-  --paper: #f3f4f9;
+  --paper: #eef6ff;          /* page background: the haze at the bottom of the sky */
   --card: #ffffff;
-  --ink: #161b3d;
-  --ink-2: #4a5078;
-  --line: #d9dcea;
-  --indigo: #27348b;
-  --indigo-soft: #e3e7f8;
-  --on-indigo: #ffffff;
-  --marigold: #e9a400;
-  --marigold-soft: #fff3d1;
-  --stamp: #d1452f;
-  --good: #1b7f52;
-  --sky: #1f6fb2;
-  --grape: #7b3fb0;
-  --bad: #b3261e;
-  --shadow: 0 1px 2px rgb(22 27 61 / 0.06), 0 6px 20px rgb(22 27 61 / 0.08);
+  --ink: #0e2440;
+  --ink-2: #4b6283;
+  --line: #d4e4f5;
+  --brand: #0a72d6;          /* sky blue that still carries white text (4.8:1) */
+  --brand-soft: #e0efff;
+  --brand-edge: #0656a6;     /* chunky buttons' pressed-in bottom edge */
+  --on-brand: #ffffff;
+  --marigold: #ffb400;       /* the sun */
+  --marigold-soft: #fff4d1;
+  --gold-ink: #835b00;       /* gold text on light backgrounds */
+  --tier2-ink: #4f5a70;      /* silver and bronze stop tiers, as text */
+  --tier1-ink: #8a5428;
+  --stamp: #dd4b36;
+  --good: #128552;
+  --good-soft: #e2f5ea;
+  --sky: #0b8bd3;
+  --grape: #7448d6;
+  --grape-soft: #f1eaff;
+  --grape-ink: #5a2fb2;
+  --bad: #c0281f;
+  --shadow: 0 1px 2px rgb(14 36 64 / 0.06), 0 6px 20px rgb(14 60 110 / 0.09);
+  /* the sky itself: page tops, heroes, the splash */
+  --sky-top: #5db7ff;
+  --sky-mid: #a9dbff;
+  --cloud: #ffffff;
+  --cloud-shade: #dcefff;
+  --sky-art: url(/sky-day.svg);
+  color-scheme: light;
 
   --font-display: "Mali", "LINE Seed Sans TH", system-ui, sans-serif;
   --font-body: "LINE Seed Sans TH", "Noto Sans Thai", system-ui, sans-serif;
@@ -51,20 +67,35 @@
   --fs-caption: 13px;  --lh-caption: 1.45;   /* .fine, meta, help text */
   --fs-micro: 11px;    --lh-micro: 1.3;      /* .eyebrow, rarity and tier tags: uppercase, tracked, never sentences */
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --paper: #0f1226; --card: #181c38; --ink: #eceefa; --ink-2: #a9aed0; --line: #2c3158;
-    --indigo: #9eacff; --indigo-soft: #232a55; --on-indigo: #0f1226; --marigold: #ffc53d; --marigold-soft: #3a2f10;
-    --stamp: #ff7a63; --good: #5fd39b; --sky: #7cc3ff; --grape: #c9a2ff; --bad: #ff8a80;
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
-    color-scheme: dark;
-  }
-}
 :root[data-theme="dark"] {
-  --paper: #0f1226; --card: #181c38; --ink: #eceefa; --ink-2: #a9aed0; --line: #2c3158;
-  --indigo: #9eacff; --indigo-soft: #232a55; --on-indigo: #0f1226; --marigold: #ffc53d; --marigold-soft: #3a2f10;
-  --stamp: #ff7a63; --good: #5fd39b; --sky: #7cc3ff; --grape: #c9a2ff; --bad: #ff8a80;
+  --paper: #081330;          /* night sky */
+  --card: #111e40;
+  --ink: #e8f1ff;
+  --ink-2: #9db1d4;
+  --line: #22365f;
+  --brand: #6cb8ff;
+  --brand-soft: #15305c;
+  --brand-edge: #2b67ad;
+  --on-brand: #04122b;
+  --marigold: #ffc94a;       /* the moon */
+  --marigold-soft: #352a0d;
+  --gold-ink: #ffd877;
+  --tier2-ink: #b9c3d8;
+  --tier1-ink: #e3a877;
+  --stamp: #ff806b;
+  --good: #5fd39b;
+  --good-soft: #10342a;
+  --sky: #7cc8ff;
+  --grape: #b99bff;
+  --grape-soft: #251d4d;
+  --grape-ink: #d6c5ff;
+  --bad: #ff8a80;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+  --sky-top: #142a63;
+  --sky-mid: #0d1d47;
+  --cloud: #2a3f72;
+  --cloud-shade: #1c2f5c;
+  --sky-art: url(/sky-night.svg);
   color-scheme: dark;
 }
 
@@ -76,22 +107,22 @@ h1 { font-size: var(--fs-display); line-height: var(--lh-display); font-weight: 
 h2 { font: 800 var(--fs-title)/var(--lh-title) var(--font-body); }
 h3 { font: 700 var(--fs-headline)/var(--lh-headline) var(--font-body); }
 p { margin: 0; }
-a { color: var(--indigo); text-underline-offset: 3px; }
+a { color: var(--brand); text-underline-offset: 3px; }
 button { font: inherit; cursor: pointer; }
 :focus-visible { outline: 3px solid var(--marigold); outline-offset: 2px; border-radius: 6px; }
 .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 999px;
-  padding: 12px 20px; font: 700 var(--fs-label)/var(--lh-label) var(--font-body); background: var(--indigo); color: var(--on-indigo); text-decoration: none;
+  padding: 12px 20px; font: 700 var(--fs-label)/var(--lh-label) var(--font-body); background: var(--brand); color: var(--on-brand); text-decoration: none;
   transition: transform .12s ease, filter .12s ease; }
 .btn:hover { filter: brightness(1.08); }
 .btn:active { transform: scale(.97); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
-.btn.ghost { background: transparent; color: var(--indigo); box-shadow: inset 0 0 0 2px var(--indigo); }
+.btn.ghost { background: transparent; color: var(--brand); box-shadow: inset 0 0 0 2px var(--brand); }
 .btn.gold { background: var(--marigold); color: #241a00; }
 
 .chip { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-caption); font-weight: 700; padding: 2px 9px;
-  border-radius: 999px; background: var(--indigo-soft); color: var(--indigo); white-space: nowrap; }
+  border-radius: 999px; background: var(--brand-soft); color: var(--brand); white-space: nowrap; }
 .chip.partner { background: var(--marigold-soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--marigold); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
