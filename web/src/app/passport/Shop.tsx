@@ -100,7 +100,7 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
   const tile = (i: ShopItem) => {   // a plain function, not a component: a component made here would remount every render
     const on = wearing(i), own = owns(i), r = rarityOf(i);
     return (
-      <li key={key(i)} className={`${on ? "on " : ""}${r ? `r-${r}` : ""}`}>
+      <li key={key(i)} className={`${on ? "on " : ""}${r ? `r-${r}` : ""}${i.level_req != null && !own ? " locked" : ""}`}>
         <button type="button" className="tile-try" onClick={() => setTrying(i)} aria-label={`Try on ${i.name_en}`}>
           <Preview item={i} profile={profile} />
           <span className="tile-kind">{KIND_NAME[i.kind]}</span>

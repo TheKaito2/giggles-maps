@@ -25,7 +25,7 @@
   --ink: #0e2440;
   --ink-2: #4b6283;
   --line: #d4e4f5;
-  --brand: #0a72d6;          /* sky blue that still carries white text (4.8:1) */
+  --brand: #0864c0;          /* sky blue that reads on white (5.8:1) and on --brand-soft chips (5.0:1) */
   --brand-soft: #e0efff;
   --brand-edge: #0656a6;     /* chunky buttons' pressed-in bottom edge */
   --on-brand: #ffffff;
@@ -33,6 +33,7 @@
   --marigold-soft: #fff4d1;
   --gold-ink: #835b00;       /* gold text on light backgrounds */
   --tier2-ink: #4f5a70;      /* silver and bronze stop tiers, as text */
+  --focus: #0656a6;          /* keyboard focus ring: 7:1 on white, clear on gold buttons too */
   --tier1-ink: #8a5428;
   --stamp: #dd4b36;
   --good: #128552;
@@ -82,6 +83,7 @@
   --marigold-soft: #352a0d;
   --gold-ink: #ffd877;
   --tier2-ink: #b9c3d8;
+  --focus: #ffd877;
   --tier1-ink: #e3a877;
   --stamp: #ff806b;
   --good: #5fd39b;
@@ -110,7 +112,8 @@ h3 { font: 700 var(--fs-headline)/var(--lh-headline) var(--font-body); }
 p { margin: 0; }
 a { color: var(--brand); text-underline-offset: 3px; }
 button { font: inherit; cursor: pointer; }
-:focus-visible { outline: 3px solid var(--marigold); outline-offset: 2px; border-radius: 6px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+::placeholder { color: var(--ink-2); opacity: .9; }
 .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 999px;

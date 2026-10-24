@@ -6,7 +6,7 @@
     <title>Giggles Maps</title>
     <meta name="theme-color" content="#ffffff" />
     <!-- Appearance before the first paint (same key and rule as src/lib/theme.ts): a dark phone never flashes a light app -->
-    <script>try{var a=localStorage.getItem("gm-appearance");document.documentElement.dataset.theme=a==="light"||a==="dark"?a:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
+    <script>try{var a=localStorage.getItem("gm-appearance");var t=a==="light"||a==="dark"?a:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;document.querySelector('meta[name="theme-color"]').content=t==="dark"?"#111e40":"#ffffff"}catch(e){document.documentElement.dataset.theme="light"}</script>
     <meta name="description" content="Tell Giggles Maps where you're going and how many extra minutes you have. It fills them with local stops across Thailand." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

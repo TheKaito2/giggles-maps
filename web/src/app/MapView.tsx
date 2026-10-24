@@ -98,14 +98,16 @@ export default function MapView({ origin, dest, stops, geometry, alternates = NO
           "icon-image": ["concat", "k-", ["get", "kind"]], "icon-allow-overlap": false, "symbol-sort-key": ["get", "rank"],
           "text-field": ["step", ["zoom"], "", 15, ["get", "name"]], "text-size": 12, "text-offset": [0, 1.3], "text-anchor": "top",
           "text-optional": true, "text-max-width": 9, "text-font": ["Noto Sans Regular"],
-        }, paint: { "text-color": ["get", "colour"], "text-halo-color": lookRef.current.night ? "#1c1f26" : "#ffffff", "text-halo-width": 1.6 } }, "route-casing");
+        }, paint: { "text-color": lookRef.current.night ? "#e3eafa" : ["get", "colour"],   // at night the kind colours were too dark to read
+          "text-halo-color": lookRef.current.night ? "#1c1f26" : "#ffffff", "text-halo-width": 1.6 } }, "route-casing");
       }).catch((e) => console.error("place pin icons failed", e));
       m.addSource("alternates", { type: "geojson", data: altRef.current });
       m.addLayer({ id: "alternates", type: "line", source: "alternates", paint: { "line-color": "#8a93ad", "line-width": 5, "line-opacity": 0.45 },
         layout: { "line-cap": "round", "line-join": "round" } });
       m.addSource("route", { type: "geojson", data: lineRef.current }); // picks up a route planned before the style loaded
-      m.addLayer({ id: "route-casing", type: "line", source: "route", paint: { "line-color": "#ffffff", "line-width": 9, "line-opacity": 0.9 }, layout: { "line-cap": "round", "line-join": "round" } });
-      m.addLayer({ id: "route", type: "line", source: "route", paint: { "line-color": "#27348b", "line-width": 5 }, layout: { "line-cap": "round", "line-join": "round" } });
+      m.addLayer({ id: "route-casing", type: "line", source: "route", paint: { "line-color": lookRef.current.night ? "#0b1530" : "#ffffff", "line-width": 9, "line-opacity": 0.9 }, layout: { "line-cap": "round", "line-join": "round" } });
+      m.addLayer({ id: "route", type: "line", source: "route", paint: { "line-color": lookRef.current.night ? "#6cb8ff" : "#0864c0", "line-width": 5 },
+        layout: { "line-cap": "round", "line-join": "round" } });
       m.setPaintProperty("route", "line-dasharray", estimatedRef.current ? [2, 2] : [1, 0]);
       m.setPaintProperty("route-casing", "line-dasharray", estimatedRef.current ? [2, 2] : [1, 0]);
     });

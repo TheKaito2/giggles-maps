@@ -107,6 +107,11 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
     if (mine) { setRating(mine.rating); setBody(mine.body ?? ""); }
   }).catch(() => setMsg("Couldn't load this place."));
   useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape" && !document.querySelector("[aria-modal=true]")) onClose(); };
+    document.addEventListener("keydown", esc);
+    return () => document.removeEventListener("keydown", esc);
+  }, [onClose]);
+  useEffect(() => {
     setPage(null); setExtras(null); setMenu(null); setMsg(""); setRating(0); setBody(""); load();
     getPlaceExtras(id).then((x) => { if (shown.current === id) setExtras(x); }).catch(() => undefined);
     setTier(null); placesTiers([id]).then((m) => { if (shown.current === id) setTier(m.get(id) ?? null); }).catch(() => undefined);
