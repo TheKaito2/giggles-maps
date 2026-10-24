@@ -17,6 +17,9 @@ you're OK with: it plans a route through the best local stops on the way, across
 viewpoints, cafés, OTOP craft shops), ranked on quality only. At each stop you check in with a photo and collect passport
 stamps, XP, coins and Siam Si fortune sticks. Shops pay only for visits that really happened.
 
+<p align="center"><img src="docs/assets/hype.gif" width="80%" alt="Giggles Maps in 10 seconds" /><br />
+  <sub><a href="docs/assets/hype.mp4">Watch the 10-second clip with sound</a></sub></p>
+
 <p align="center">
   <img src="docs/assets/screens/map.png" width="19%" alt="Map with local stops" />
   <img src="docs/assets/screens/place.png" width="19%" alt="A place page" />
@@ -125,4 +128,5 @@ Offline province maps are Protomaps packs in the R2 bucket `giggles-maps-offline
 ## Credits
 
 Place data and routing © OpenStreetMap contributors (ODbL) · map tiles: OpenFreeMap, Protomaps ·
-fonts: LINE Seed Sans TH, Mali, IBM Plex Mono (SIL OFL 1.1) · icons: Lucide (ISC).
+fonts: LINE Seed Sans TH, Mali, IBM Plex Mono (SIL OFL 1.1) · icons: Lucide (ISC) · clip music: "Whimsy Groove" by
+Kevin MacLeod (incompetech.com), CC BY 4.0.
