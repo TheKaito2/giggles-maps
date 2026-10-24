@@ -6,6 +6,7 @@ import ShareSheet, { type CardOption } from "./share/ShareSheet";
 import { BILLING_TEXT, type CheckinResult, type CheckinTarget, REASON_TEXT, setPhoto, setPublicPhoto, uploadSelfie, verifyCheckin } from "../lib/api";
 import { Spinner } from "./Skeleton";
 import ProvinceStamp from "./passport/ProvinceStamp";
+import { checkinClient, checkinFix } from "../lib/native";
 import { useProvinces } from "./passport/useProvinces";
 
 const TIER_NAME = { 3: "Landmark", 2: "Worth a visit", 1: "Everyday" } as const;
@@ -14,9 +15,6 @@ const readConsent = () => { try { return localStorage.getItem(CONSENT_KEY) === "
 const saveConsent = () => { try { localStorage.setItem(CONSENT_KEY, "yes"); } catch { /* storage blocked: ask again next time */ } };
 
 type Step = "consent" | "camera" | "working" | "result" | "error";
-
-const getPosition = () => new Promise<GeolocationPosition>((ok, fail) =>
-  navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }));
 
 interface Props { target: CheckinTarget; initialCode?: string; hasPlus: boolean; nickname?: string | null; onClose: () => void; onDone: (r: CheckinResult) => void }
 
@@ -61,11 +59,10 @@ export default function CheckIn({ target, initialCode, hasPlus, nickname, onClos
     setStep("working");
     stream.current?.getTracks().forEach((t) => t.stop());
     try {
-      let lat = target.lat, lng = target.lng, accuracy = 5;
+      let lat = target.lat, lng = target.lng, accuracy = 5, isMock = false;
       if (!demo) {
         setStatus("Getting your location…");
-        const pos = await getPosition().catch(() => { throw new Error("We need your location to check in. Allow location access and try again."); });
-        ({ latitude: lat, longitude: lng, accuracy } = pos.coords);
+        ({ lat, lng, accuracy, isMock } = await checkinFix().catch(() => { throw new Error("We need your location to check in. Allow location access and try again."); }));
       }
       setStatus("Uploading photo…");
       const blob = await new Promise<Blob>((ok, fail) => canvas.toBlob((b) => (b ? ok(b) : fail(new Error("Couldn't read the photo."))), "image/jpeg", 0.82));
@@ -74,7 +71,8 @@ export default function CheckIn({ target, initialCode, hasPlus, nickname, onClos
       setStatus("Checking…");
       const r = await verifyCheckin({
         place_id: target.id, lat, lng, accuracy_m: accuracy, selfie_path: path,
-        qr_code: code.trim() || null, client: { platform: "web", demo: demo || demoOn() },   // demo mode: the location is faked
+        qr_code: code.trim() || null,   // demo mode: the location is faked
+        client: { ...await checkinClient(target.id, lat, lng, path, demo || demoOn()), is_mock: isMock },
       });
       if (caption.trim() && r.status !== "rejected") await setPhoto(r.checkin_id, false, caption).catch(() => undefined);
       if (sharePublic && r.status !== "rejected") await setPublicPhoto(r.checkin_id, true).catch(() => undefined);

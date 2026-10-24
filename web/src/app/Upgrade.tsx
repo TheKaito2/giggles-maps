@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Gift, Infinity as Unlimited, Sparkles, X } from "lucide-react";
-import { getPlanUsage, PRICES, type PlanUsage, startCheckout } from "../lib/api";
+import { getPlanUsage, PRICES, type PlanUsage } from "../lib/api";
+import { purchase } from "../lib/native";
 import { ApiError } from "../lib/supabase";
 import { useDialog } from "../lib/useDialog";
 import { isGuest, useUser } from "../lib/auth";
@@ -20,7 +21,7 @@ const TITLE: Record<Why, string> = {
  *  "Remove ads" offers membership or Plus. */
 export default function Upgrade({ gate, onClose, onRewarded }: { gate: Why; onClose: () => void; onRewarded?: () => void }) {
   const box = useDialog(onClose);
-  const guest = isGuest(useUser());
+  const user = useUser(), guest = isGuest(user);
   const [usage, setUsage] = useState<PlanUsage | null>(null);
   const [msg, setMsg] = useState("");
   const [watching, setWatching] = useState(false);
@@ -30,11 +31,13 @@ export default function Upgrade({ gate, onClose, onRewarded }: { gate: Why; onCl
   useEffect(() => { if (gate === "sign_in_required" && !guest) onClose(); }, [guest]); // eslint-disable-line react-hooks/exhaustive-deps
   const buy = async (kind: "membership" | "plus") => {
     setMsg("");
-    try { location.href = (await startCheckout({ kind })).url; }
+    try { if (await purchase(kind, user?.id)) { setMsg("Thanks! It switches on in a moment."); setTimeout(onClose, 1500); } }
     catch (e) {
       const code = e instanceof ApiError ? e.code : "";
       setMsg(code === "already_member" ? "You're already a member." : code === "sign_in_required" ? "Sign in first so it stays with your account."
-        : code === "payments_not_configured" ? "Payments aren't switched on yet." : "Couldn't start checkout. Try again.");
+        : code === "payments_not_configured" ? "Payments aren't switched on yet."
+        : code === "purchase_on_another_account" || code === "subscription_on_another_account" ? "This Apple ID bought it for another Giggles account."
+        : "Couldn't finish the purchase. Try again.");
     }
   };
   return (

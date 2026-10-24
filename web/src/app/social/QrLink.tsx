@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { Copy, Share2 } from "lucide-react";
+import { isNative, shareLink } from "../../lib/native";
 
 /** LINE-style "my QR": a link that opens the app and adds you. Phone cameras scan it, no in-app scanner needed. */
 export default function QrLink({ url, label }: { url: string; label: string }) {
@@ -13,7 +14,7 @@ export default function QrLink({ url, label }: { url: string; label: string }) {
       {src && <img src={src} width={160} height={160} alt={label} />}
       <div className="row">
         <button type="button" className="btn soft" onClick={copy}><Copy size={15} aria-hidden /> {copied ? "Copied" : "Copy link"}</button>
-        {"share" in navigator && <button type="button" className="btn soft" onClick={() => navigator.share({ url, title: "Giggles Maps" }).catch(() => undefined)}>
+        {(isNative || "share" in navigator) && <button type="button" className="btn soft" onClick={() => shareLink("Giggles Maps", url)}>
           <Share2 size={15} aria-hidden /> Share</button>}
       </div>
     </div>

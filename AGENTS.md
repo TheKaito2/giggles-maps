@@ -12,7 +12,7 @@ Giggles Maps fills the extra time a traveller allows on a trip in Sakon Nakhon, 
 |---|---|---|
 | Backend (Supabase: Postgres + PostGIS, Auth, Storage, Edge Functions) | `supabase/` | Krist |
 | Web: landing, web app, shop dashboard | `web/` | Krist |
-| iOS app (SwiftUI, reference for Android behaviour) | `ios/` | Krist |
+| iOS app (the web app in a Capacitor shell + Swift plugins, see `ios/README.md`) | `ios/` | Krist |
 | **Android app (Kotlin + Jetpack Compose)** | **`android/`** | **Android collaborator** |
 | Docs | `docs/` | shared |
 

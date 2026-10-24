@@ -3,6 +3,7 @@ import { useDialog } from "../../lib/useDialog";
 import { Download, Lock, Share2, X } from "lucide-react";
 import { type Card, DESIGNS, type Design, drawCard } from "./cards";
 import Info from "../Info";
+import { isNative, shareFiles } from "../../lib/native";
 
 export interface CardOption { id: string; label: string; card: Card }
 
@@ -42,9 +43,7 @@ export default function ShareSheet({ options, hasPlus, onClose }: { options: Car
   const name = `giggles-${option.id}.png`;
   const share = async () => {
     if (!blob) return;
-    const file = new File([blob], name, { type: "image/png" });
-    if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file] }).catch(() => { /* closed the share sheet */ });
-    else save(blob, name);
+    if (!await shareFiles([new File([blob], name, { type: "image/png" })])) save(blob, name);
   };
   const sticker = option.card.kind === "sticker" || option.card.kind === "stats";
 
@@ -79,7 +78,7 @@ export default function ShareSheet({ options, hasPlus, onClose }: { options: Car
         {msg && <p className="fine" role="alert">{msg}</p>}
         <div className="row">
           <button type="button" className="btn grow" onClick={share} disabled={!blob}><Share2 size={16} aria-hidden /> Share</button>
-          <button type="button" className="btn soft" onClick={() => blob && save(blob, name)} disabled={!blob}><Download size={16} aria-hidden /> Save</button>
+          <button type="button" className="btn soft" onClick={() => blob && (isNative ? share() : save(blob, name))} disabled={!blob}><Download size={16} aria-hidden /> Save</button>
         </div>
       </div>
     </div>

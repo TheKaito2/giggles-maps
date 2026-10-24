@@ -9,6 +9,7 @@ import Avatar from "./social/Avatar";
 import VerifyLocal from "./VerifyLocal";
 import { SkelLines, SkelQuests, Spinner } from "./Skeleton";
 import Info from "./Info";
+import { buzz } from "../lib/native";
 
 const GROUPS: { kind: Challenge["kind"]; title: string; resets?: "day" | "week" }[] = [
   { kind: "daily", title: "Daily quests", resets: "day" }, { kind: "weekly", title: "Weekly quests", resets: "week" },
@@ -59,12 +60,12 @@ function ChestOpen({ quest, onClose, onClaimed }: { quest: Challenge; onClose: (
     let live = true;
     const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const wait = new Promise((r) => setTimeout(r, calm ? 0 : 1100));
-    navigator.vibrate?.([40, 60, 40, 60, 40]);
+    buzz("shake");
     const stop = rattle("chest");
     Promise.all([claimQuest(quest.slug), wait]).then(([r]) => {
       stop();
       if (!live) return;
-      setReward(r); onClaimed(); navigator.vibrate?.(120); chestOpen();
+      setReward(r); onClaimed(); buzz("done"); chestOpen();
     }).catch((e) => { stop(); if (live) setError(e instanceof ApiError && e.message === "not_ready" ? "This chest was already opened." : "Couldn't open the chest. Try again."); });
     return () => { live = false; stop(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

@@ -1408,3 +1408,8 @@ p.chase { margin: 0; }
 .tier-ladder li.now { background: var(--paper); color: var(--ink); outline: 2px solid var(--marigold); }
 .ladder-bar { width: 90px; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
 .ladder-bar i { display: block; height: 100%; background: var(--marigold); border-radius: inherit; }
+
+/* ── iOS app (Capacitor): the web view runs edge to edge, so clear the status bar ─────────────────────── */
+html.native .topbar { padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
+html.native .sheet-backdrop { padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
+html.native .sheet-backdrop > .modal { max-height: 100%; }

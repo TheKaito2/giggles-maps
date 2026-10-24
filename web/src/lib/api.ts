@@ -221,7 +221,7 @@ export async function stopsNear(p: LatLng, radiusM = 1500): Promise<Stop[]> {
 
 export const verifyCheckin = (p: {
   place_id: number; lat: number; lng: number; accuracy_m: number; selfie_path: string;
-  qr_code: string | null; client: { platform: "web"; demo: boolean };
+  qr_code: string | null; client: { platform: "web" | "ios"; demo: boolean; attest?: string; is_mock?: boolean };
 }) => callFn<CheckinResult>("verify-checkin", p);
 
 // Stripe Checkout (web only). Returns the hosted payment page URL.

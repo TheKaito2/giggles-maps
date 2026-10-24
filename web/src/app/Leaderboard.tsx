@@ -7,6 +7,7 @@ import ProvinceStamp from "./passport/ProvinceStamp";
 import { useProvinces } from "./passport/useProvinces";
 import { SkelBoard, SkelChamps } from "./Skeleton";
 import Info from "./Info";
+import { shareLink } from "../lib/native";
 
 const METRICS: { id: BoardMetric; label: string; unit: (n: number) => string }[] = [
   { id: "xp", label: "XP", unit: () => "XP" },
@@ -92,8 +93,7 @@ export default function Leaderboard({ profile, onChange }: { profile: Profile | 
   const invite = async () => {
     const url = `${SITE}/app/?friend=${profile?.friendCode ?? ""}`;
     const text = "Race me on Giggles Maps: stamps, provinces and weekly prizes.";
-    if (navigator.share) await navigator.share({ title: "Giggles Maps", text, url }).catch(() => undefined);
-    else await navigator.clipboard?.writeText(`${text} ${url}`);
+    if (!await shareLink("Giggles Maps", url, text)) await navigator.clipboard?.writeText(`${text} ${url}`);
   };
 
   return (

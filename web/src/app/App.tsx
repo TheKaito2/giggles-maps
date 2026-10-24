@@ -9,7 +9,8 @@ import WhereTo from "./detour/WhereTo";
 import Choose, { TripHead } from "./detour/Choose";
 import Results from "./detour/Results";
 import { useDetour } from "./detour/useDetour";
-import { resumeSignIn, useUser } from "../lib/auth";
+import { listenForAuthCallback, resumeSignIn, useUser } from "../lib/auth";
+import { deliverPurchases, liveTrip } from "../lib/native";
 import { useStops } from "./useStops";
 import Nickname from "./social/Nickname";
 import RideAlong, { useTrip } from "./social/RideAlong";
@@ -32,6 +33,7 @@ import { loadLook, type MapLook, saveLook } from "./mapLayers";
 import ExploreChips, { CHIPS } from "./ExploreChips";
 import DemoBar from "./DemoBar";
 import { demoOn, onDemoChange } from "../lib/demoGps";
+import { buzz } from "../lib/native";
 
 
 type Tab = "map" | "board" | "quests" | "feed" | "profile";
@@ -100,7 +102,7 @@ export default function App() {
   // walking into a stop's zone you haven't stamped: a buzz, so the check-in card gets noticed
   const buzzed = useRef<number | null>(null);
   useEffect(() => {
-    if (zoneStop && !zoneStop.stamped && buzzed.current !== zoneStop.id) navigator.vibrate?.([60, 40, 60]);
+    if (zoneStop && !zoneStop.stamped && buzzed.current !== zoneStop.id) buzz("tap");
     buzzed.current = zoneStop?.id ?? null;
   }, [zoneStop?.id, zoneStop?.stamped]);
   const checkInAt = (s: { id: number; name: string; lat: number; lng: number }) =>
@@ -128,7 +130,11 @@ export default function App() {
       .catch(() => setNotice("Couldn't add that friend code. It may be your own or mistyped."));
   }, [pendingFriend, profile?.nickname]);
   // back from Google/Apple: finish sign-in if linking to the guest account wasn't possible
-  useEffect(() => { resumeSignIn().then((m) => { if (m) { setNotice(m); setTab("profile"); } }); }, []);
+  useEffect(() => {
+    const show = (m: string | null) => { if (m) { setNotice(m); setTab("profile"); } };
+    resumeSignIn().then(show);
+    listenForAuthCallback(show);   // iOS app only
+  }, []);
 
   // QR sticker at a shop counter opens /app/?scan=<place>-<code> straight into check-in
   useEffect(() => {
@@ -157,6 +163,7 @@ export default function App() {
   }, []);
 
   const refresh = () => setRefreshKey((k) => k + 1);
+  useEffect(() => deliverPurchases(refresh), []); // eslint-disable-line react-hooks/exhaustive-deps   iOS: App Store purchases not yet on the server
   const level = levelFor(profile?.xp ?? 0);
   const { into, span } = levelProgress(profile?.xp ?? 0);
   return (
@@ -234,7 +241,7 @@ export default function App() {
               backLabel={d.stage === "results" ? "Back to time options" : "Close this trip"} onSearch={() => setSnap("full")} />}
             foot={d.stage === "results" && plan && plan.stops.length > 0 && (
               <button type="button" className="btn big find" onClick={() => { setPaused(null); setNav([...plan.stops.map((st) => ({ lat: st.lat, lng: st.lng, name: st.name, id: st.id })),
-                { ...d.dest!.point, name: d.dest!.name }]); }}><Navigation size={18} aria-hidden /> Start · {plan.stops.length} stop{plan.stops.length === 1 ? "" : "s"}</button>
+                { ...d.dest!.point, name: d.dest!.name }]); liveTrip.start(plan.stops, d.dest!.name); }}><Navigation size={18} aria-hidden /> Start · {plan.stops.length} stop{plan.stops.length === 1 ? "" : "s"}</button>
             )}>
             {error && <p className="error" role="alert">{error}<button type="button" className="icon-btn" onClick={() => setError("")} aria-label="Dismiss"><X size={16} /></button></p>}
             {d.stage === "browse" && <WhereTo near={nearby.here} onPick={(point, name) => d.goTo({ point, name })} pickOnMap={() => { setPicking("dest"); setSnap("peek"); }}
@@ -269,7 +276,7 @@ export default function App() {
         onRewarded={d.gate === "detour_limit" ? d.replanAll : () => setNotice("5 more changes for today. Make that change again.")} />}
       {adSheet && <Upgrade gate="ads" onClose={() => setAdSheet(false)} />}
       <DemoWelcome />
-      {nav && <Navigate waypoints={nav} mode={d.prefs.mode} onClose={() => setNav(null)}
+      {nav && <Navigate waypoints={nav} mode={d.prefs.mode} onClose={() => { setNav(null); liveTrip.end(); }}
         onCheckin={(stop, rest) => { setNav(null); setPaused(rest.length ? rest : null); if (stop.id != null) checkInAt({ ...stop, id: stop.id }); }} />}
       {etaToken && <EtaView token={etaToken} onClose={() => setEtaToken(null)} />}
       {overlay === "avatar" && profile && <AvatarBuilder profile={profile} onClose={() => setOverlay(null)} onSaved={() => { setOverlay(null); refresh(); }} />}
@@ -289,7 +296,7 @@ export default function App() {
       )}
 
       {checkin && (
-        <CheckIn target={checkin.target} initialCode={checkin.code} hasPlus={!!profile?.plusUntil} nickname={profile?.nickname} onClose={() => setCheckin(null)} onDone={refresh} />
+        <CheckIn target={checkin.target} initialCode={checkin.code} hasPlus={!!profile?.plusUntil} nickname={profile?.nickname} onClose={() => setCheckin(null)} onDone={() => { liveTrip.checkedIn(checkin.target.id); refresh(); }} />
       )}
     </div>
   );

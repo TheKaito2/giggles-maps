@@ -8,6 +8,7 @@ import { say } from "./thai";
 import { isNight, loadLook, styleUrl } from "../mapLayers";
 import { metres } from "../useStops";
 import { Spinner } from "../Skeleton";
+import { buzz, shareLink } from "../../lib/native";
 
 export interface Waypoint extends LatLng { name: string; id?: number }   // id: a place you can check in at
 const ARRIVE_M = 50;   // this close to a stop counts as there: the arrival card comes up
@@ -101,7 +102,7 @@ export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
     const next = left[0];
     if (!here || !next || greeted.current.has(next) || metres(here, next) > ARRIVE_M) return;
     greeted.current.add(next); setAtStop(next);
-    navigator.vibrate?.([80, 60, 80]);
+    buzz("done");
     speak(lang === "th" ? `ถึง ${next.name} แล้ว` : `You've arrived at ${next.name}`);
   }, [here, left]); // eslint-disable-line react-hooks/exhaustive-deps
   // demo mode: drive along the route to the next stop in a few seconds, so the map, the voice and the arrival card all play out
@@ -187,8 +188,7 @@ export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
       if (here) await tripPing(here).catch(() => undefined);
       const url = `${SITE}/app/?eta=${token}`;
       setShare(url);
-      if (typeof navigator.share === "function") navigator.share({ title: `My trip to ${dest.name}`, url }).catch(() => undefined);
-      else navigator.clipboard?.writeText(url).then(() => setMsg("Link copied: anyone with it can follow your trip until you stop."));
+      if (!await shareLink(`My trip to ${dest.name}`, url)) navigator.clipboard?.writeText(url).then(() => setMsg("Link copied: anyone with it can follow your trip until you stop."));
     } catch { setMsg("Couldn't start sharing."); }
   };
   const end = () => { if (share) stopEta().catch(() => undefined); onClose(); };

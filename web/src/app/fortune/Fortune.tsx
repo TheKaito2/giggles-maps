@@ -5,6 +5,7 @@ import { ApiError } from "../../lib/supabase";
 import { type Rarity, type Shake, shakeFortune } from "../../lib/api";
 import { FORTUNES } from "./fortunes";
 import { rattle, reveal, stickDrop } from "../../lib/sfx";
+import { buzz } from "../../lib/native";
 
 export const RARITY: Record<Rarity, { en: string; th: string }> = {
   common: { en: "Common", th: "ธรรมดา" }, rare: { en: "Rare", th: "หายาก" },
@@ -67,7 +68,7 @@ export default function Fortune({ checkin, onClose, onShaken, name = "Explorer",
   const go = async () => {
     if (started.current) return;
     started.current = true; setError(""); setPhase("shaking");
-    navigator.vibrate?.([60, 40, 60, 40, 60]);
+    buzz("shake");
     hush.current = rattle("sticks");
     const wait = new Promise((r) => timers.current.push(window.setTimeout(r, calm() ? 0 : 1300)));
     try {
@@ -75,7 +76,7 @@ export default function Fortune({ checkin, onClose, onShaken, name = "Explorer",
       if (checkin) setUsedCheckin(true);
       hush.current();
       setShake(s); onShaken(s);
-      setPhase("stick"); stickDrop(); navigator.vibrate?.(s.rarity === "legendary" ? [120, 60, 220] : 80);
+      setPhase("stick"); stickDrop(); buzz(s.rarity === "legendary" ? "big" : "tap");
       timers.current.push(window.setTimeout(() => setPhase("card"), calm() ? 0 : 900));
     } catch (e) {
       hush.current(); setPhase("ready");

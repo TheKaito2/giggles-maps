@@ -1,0 +1,66 @@
+# Giggles Maps iOS: the web app (web/, built with `npm run build:app`) inside a Capacitor shell, plus native plugins
+# (App/Plugins) and the widgets extension (Live Activity + Passport widget). Regenerate with `xcodegen` in ios/App.
+name: App
+options:
+  bundleIdPrefix: com.kristpaul
+  deploymentTarget:
+    iOS: "17.0"
+packages:
+  CapApp-SPM:
+    path: CapApp-SPM
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: 97BS2K8UQ2
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  App:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes: [public, capacitor.config.json, config.xml, "*.storekit"]
+      - path: App/public
+        type: folder
+        buildPhase: resources
+      - path: App/capacitor.config.json
+        buildPhase: resources
+      - path: App/config.xml
+        buildPhase: resources
+      - ../Shared
+    configFiles:
+      Debug: ../debug.xcconfig
+    dependencies:
+      - package: CapApp-SPM
+        product: CapApp-SPM
+      - target: GigglesWidgets
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kristpaul.gigglesmaps
+        PRODUCT_NAME: App
+        INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: App/App.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
+        LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+  GigglesWidgets:
+    type: app-extension
+    platform: iOS
+    sources: [../GigglesWidgets, ../Shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kristpaul.gigglesmaps.widgets
+        INFOPLIST_FILE: ../GigglesWidgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ../GigglesWidgets/GigglesWidgets.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+schemes:
+  App:
+    build:
+      targets:
+        App: all
+    run:
+      config: Debug
+      storeKitConfiguration: App/GigglesPlus.storekit

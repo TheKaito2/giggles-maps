@@ -9,6 +9,7 @@ import { openNow } from "./hours";
 import Avatar from "./social/Avatar";
 import { SkelLines, SkelPlace } from "./Skeleton";
 import Info from "./Info";
+import { shareLink } from "../lib/native";
 
 const ago = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
@@ -97,10 +98,9 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
   if (!page) return <aside className="place-sheet glass" aria-busy="true"><button type="button" className="icon-btn sheet-close" onClick={onClose} aria-label="Close"><X size={18} /></button>{msg ? <p className="fine">{msg}</p> : <SkelPlace />}</aside>;
   const k = kindOf(page.kind, page.category);
   const open = openNow(page.opening_hours);
-  const share = () => {
+  const share = async () => {
     const url = `${SITE}/app/?place=${page.id}`;
-    if (typeof navigator.share === "function") navigator.share({ title: page.name, url }).catch(() => undefined);
-    else navigator.clipboard?.writeText(url).then(() => setMsg("Link copied."));
+    if (!await shareLink(page.name, url)) navigator.clipboard?.writeText(url).then(() => setMsg("Link copied."));
   };
   const submitReview = () => writeReview(page.id, rating, body).then(() => { setMsg("Review saved."); load(); })
     .catch((e) => setMsg(e instanceof ApiError && e.code === "check_in_first" ? "Check in here first: reviews are from verified visits only." : "Couldn't save the review."));

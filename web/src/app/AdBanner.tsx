@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Ban, Sparkles, Store } from "lucide-react";
+import { openSite } from "../lib/native";
 
 // v5: the banner everyone sees except members and Plus. Google AdSense fills it once VITE_ADSENSE_CLIENT and VITE_ADSENSE_SLOT are
 // set; until then it shows our own ads. Never on the map (directions, the detour planner, check-in): only on the other tabs.
@@ -38,7 +39,7 @@ export default function AdBanner({ page, onRemove }: { page: string; onRemove: (
       <span className="ad-label">Ad</span>
       {CLIENT && SLOT
         ? <ins key={page} ref={slot} className="adsbygoogle ad-slot" data-ad-client={CLIENT} data-ad-slot={SLOT} data-ad-format="horizontal" data-full-width-responsive="true" />
-        : <button type="button" className="ad-house" onClick={() => ad.act === "partner" ? location.assign("/shop/") : onRemove()}>
+        : <button type="button" className="ad-house" onClick={() => ad.act === "partner" ? openSite("/shop/") : onRemove()}>
             <span className="ad-icon">{ad.icon}</span>
             <span className="person-main"><b>{ad.title}</b><span className="fine">{ad.sub}</span></span>
           </button>}

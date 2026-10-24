@@ -1,7 +1,8 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { CalendarCheck, ChevronLeft, ChevronRight, Crown, LogIn, LogOut, ShieldCheck, Sparkles, Trash2, Volume2, Wand2, X } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight, Crown, LogIn, LogOut, RotateCcw, ShieldCheck, Sparkles, Trash2, Volume2, Wand2, X } from "lucide-react";
 import { ApiError, callFn, ensureSession, supabase } from "../lib/supabase";
-import { type Booking, cancelBooking, getMonthlyStamps, myBookings, PRICES, type Profile, startCheckout } from "../lib/api";
+import { type Booking, cancelBooking, getMonthlyStamps, myBookings, PRICES, type Profile } from "../lib/api";
+import { isNative, purchase, restorePurchases } from "../lib/native";
 import { isGuest, useUser } from "../lib/auth";
 import { demoOn, setDemo } from "../lib/demoGps";
 import { setSound, soundOn } from "../lib/sfx";
@@ -73,12 +74,14 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
   const go = (p: Page) => { setMsg(""); setPage(p); };
   const buy = async (kind: "plus" | "membership") => {
     setMsg("");
-    try { location.href = (await startCheckout({ kind })).url; }
+    try { if (await purchase(kind, user?.id)) { setMsg("Thanks! It switches on in a moment."); setTimeout(onChange, 1500); } }
     catch (e) {
       const code = e instanceof ApiError ? e.code : "";
       setMsg(code === "sign_in_required" ? "Sign in first so it stays with your account."
         : code === "already_member" ? "You're already a member."
-        : code === "payments_not_configured" ? "Payments aren't switched on yet." : "Couldn't start checkout. Try again.");
+        : code === "payments_not_configured" ? "Payments aren't switched on yet."
+        : code === "purchase_on_another_account" || code === "subscription_on_another_account" ? "This Apple ID bought it for another Giggles account."
+        : "Couldn't finish the purchase. Try again.");
     }
   };
   const deleteAccount = async () => {
@@ -124,6 +127,9 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
         <Group title="Your plan">
           <Row icon={<Crown size={17} />} tone="marigold" label="Membership" value={member ? "Lifetime" : `฿${PRICES.membership} once`} onClick={() => go("membership")} />
           <Row icon={<Sparkles size={17} />} tone="grape" label="Giggles Plus" value={plusUntil ? `Until ${shortDate(plusUntil)}` : `฿${PRICES.plus}/month`} onClick={() => go("plus")} />
+          {isNative && !guest && <Row icon={<RotateCcw size={17} />} tone="slate" label="Restore purchases" onClick={() => restorePurchases()
+            .then((n) => { setMsg(n ? "Purchases restored." : "Nothing to restore on this Apple ID."); onChange(); })
+            .catch(() => setMsg("Couldn't restore. Try again."))} />}
           {bookings.length > 0 && <Row icon={<CalendarCheck size={17} />} tone="good" label="Bookings" value={open ? `${open} open` : bookings.length} onClick={() => go("bookings")} />}
         </Group>
 
@@ -163,12 +169,12 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
         {!member && (guest
           ? <button type="button" className="btn" onClick={() => go("signin")}><LogIn size={16} aria-hidden /> Sign in first</button>
           : <button type="button" className="btn gold" onClick={() => buy("membership")}>Become a member · ฿{PRICES.membership}</button>)}
-        <p className="fine">Card or PromptPay.</p>
+        {!isNative && <p className="fine">Card or PromptPay.</p>}
       </div>}
 
       {page === "plus" && <div className="set-page" key="plus">
         <div className="set-hero t-grape"><Sparkles size={28} aria-hidden /><b>{plusUntil ? `Plus until ${shortDate(plusUntil)}` : `฿${PRICES.plus} a month`}</b>
-          <span className="fine">{plusUntil ? "Every Plus perk is on." : "No auto-renew: it simply runs out."}</span></div>
+          <span className="fine">{plusUntil ? "Every Plus perk is on." : isNative ? "Renews monthly. Cancel any time in your Apple ID settings." : "No auto-renew: it simply runs out."}</span></div>
         <ul className="perks">
           <li>No ads</li>
           <li>+20 coins every day you open the app</li>
@@ -178,8 +184,8 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
         {plusUntil && stamps.length > 0 && <div className="field"><span>Monthly stamps</span>
           <div className="month-stamps">{stamps.map((m) => <span key={m} className="month-stamp">{monthName(m)}</span>)}</div></div>}
         {guest ? <button type="button" className="btn" onClick={() => go("signin")}><LogIn size={16} aria-hidden /> Sign in first</button>
-          : <button type="button" className="btn gold" onClick={() => buy("plus")}>{plusUntil ? "Add 30 days" : "Get Plus"} · ฿{PRICES.plus}</button>}
-        <p className="fine">Card or PromptPay.</p>
+          : <button type="button" className="btn gold" onClick={() => buy("plus")} disabled={isNative && !!plusUntil}>{plusUntil ? isNative ? "You have Plus" : "Add 30 days" : "Get Plus"} · ฿{PRICES.plus}</button>}
+        {!isNative && <p className="fine">Card or PromptPay.</p>}
       </div>}
 
       {page === "bookings" && <div className="set-page" key="bookings">

@@ -82,6 +82,9 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
       attributionControl: { compact: true, customAttribution: "Routing: Valhalla" },
     });
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    // follow the box, not just the window: the iOS app's web view settles its size after the map is made
+    const sized = new ResizeObserver(() => m.resize());
+    sized.observe(box.current!);
     m.on("click", (e) => { if (pickingRef.current) pickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng }); });
     m.on("style.load", () => {   // also after a skin, night or offline change, which drops every source and layer
       // our own place pins replace the basemap's POI icons
@@ -128,7 +131,7 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
     m.on("mouseleave", "gm-pois", () => { m.getCanvas().style.cursor = pickingRef.current ? "crosshair" : ""; });
     reloadPins.current = loadPins;
     map.current = m;
-    return () => { clearTimeout(t); m.remove(); };
+    return () => { clearTimeout(t); sized.disconnect(); m.remove(); };
   }, []);
   const reloadPins = useRef<() => void>(() => undefined);
   useEffect(() => { reloadPins.current(); }, [kinds]);

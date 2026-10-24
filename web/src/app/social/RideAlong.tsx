@@ -8,6 +8,7 @@ import Album from "../passport/Album";
 import QrLink from "./QrLink";
 import { Spinner } from "../Skeleton";
 import Info from "../Info";
+import { shareFiles } from "../../lib/native";
 
 const POLL_MS = 15_000;
 const PING_MS = 30_000;
@@ -94,8 +95,7 @@ export default function RideAlong({ trip: t, profile }: { trip: TripState; profi
         const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click();
         await new Promise((r) => setTimeout(r, 300)); URL.revokeObjectURL(a.href);
       } };
-      if (!navigator.canShare?.({ files })) await download();
-      else await navigator.share({ files }).catch((e: Error) => e.name === "AbortError" ? undefined : download());   // Safari may refuse after the wait
+      if (!await shareFiles(files)) await download();
     } catch { setAlbumMsg("Couldn't save the photos. Try again."); } finally { setSaving(false); }
   };
   const openCard = async () => {

@@ -1,5 +1,8 @@
 # Giggles Maps: iOS vs Android capability guide
 
+> Since 2026-10-24 the iOS app is the web app in a Capacitor shell (`ios/README.md`); the iOS APIs below are what its
+> Swift plugins use. The same approach could replace the native Android app later.
+
 For the Android developer mirroring the iOS app. Both apps talk to the same Supabase backend (Postgres + PostGIS, Auth, Storage, Edge Functions), so anything the server decides (routing, ranking, check-in verification, billing, badges) is already shared. This doc covers what each phone can do on its own and which API to reach for.
 
 Parity column:

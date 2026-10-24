@@ -1,0 +1,66 @@
+{
+  "sourceLanguage": "en",
+  "version": "1.0",
+  "strings": {
+    "CFBundleDisplayName": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giggles Maps"
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giggles Maps ถ่ายรูปหนึ่งรูปเมื่อคุณเช็คอินที่จุดแวะ"
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryUsageDescription": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกรูปจากคลังภาพสำหรับการเช็คอิน"
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตำแหน่งใช้ตั้งจุดเริ่มของเส้นทาง และยืนยันว่าคุณอยู่ที่จุดแวะเมื่อเช็คอิน"
+          }
+        }
+      }
+    },
+    "NSLocationAlwaysAndWhenInUseUsageDescription": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ระหว่างทริป Giggles Maps จะแจ้งเมื่อคุณถึงจุดแวะ แม้โทรศัพท์อยู่ในกระเป๋า"
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryAddUsageDescription": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บันทึกการ์ดแชร์ของคุณลงในรูปภาพ"
+          }
+        }
+      }
+    }
+  }
+}
