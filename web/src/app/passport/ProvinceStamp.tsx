@@ -5,8 +5,18 @@ import { type ProvinceFeature, regionOf, ringsOf } from "./useProvinces";
 const ART = new Set<string>();
 const SHAPES = ["circle", "rect", "octagon", "oval", "scallop"] as const;
 
-/** The province outline fitted into a box, as one SVG path (longitude scaled by latitude so shapes aren't stretched). */
+/** The province outline fitted into a box, as one SVG path (longitude scaled by latitude so shapes aren't stretched).
+ *  Cached: a passport draws all 77 stamps on every render, and each outline walks thousands of points. */
+const outlines = new Map<string, string>();
 function outline(f: ProvinceFeature, x: number, y: number, w: number, h: number) {
+  const key = `${f.id}:${x},${y},${w},${h}`;
+  const hit = outlines.get(key);
+  if (hit) return hit;
+  const d = drawOutline(f, x, y, w, h);
+  outlines.set(key, d);
+  return d;
+}
+function drawOutline(f: ProvinceFeature, x: number, y: number, w: number, h: number) {
   const rings = ringsOf(f.geometry);
   const pts = rings.flat();
   const lat0 = pts.reduce((s, p) => s + p[1], 0) / pts.length;

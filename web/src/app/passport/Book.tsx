@@ -97,7 +97,11 @@ function Page({ n, children, className = "" }: { n?: number; children: ReactNode
  * The passport as a book you flip through: cover, ID page, Thailand map, the 77 province visa pages, place stamps,
  * photos. Two pages side by side on wide screens, one page on phones. Buttons, arrow keys or swipe turn the pages.
  */
-export default function Book({ owner, theme = "classic", frame = "none", stamps, photos, trips = [], shareAs, onClose }: {
+// one shared empty list: a fresh [] default on every render re-ran the photo effect below after each render (setUrls ->
+// render -> new [] -> effect ...), which froze a friend's passport (friends' passports come without trips)
+const NO_TRIPS: TripMemory[] = [];
+
+export default function Book({ owner, theme = "classic", frame = "none", stamps, photos, trips = NO_TRIPS, shareAs, onClose }: {
   owner: BookOwner; theme?: string; frame?: string; stamps: PassportStamp[]; photos: PassportPhoto[]; trips?: TripMemory[]; shareAs?: ShareAs;
   onClose: () => void;
 }) {
