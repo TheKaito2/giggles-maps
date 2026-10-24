@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Giggles Maps: 10-second hype</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #3ea8ff; }
+      #root { position: relative; width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <!-- Giggles Maps, 10 s: the sky opens on the question, the real planner answers it, a montage of the game, the logo lands.
+         Music: "Whimsy Groove" by Kevin MacLeod (incompetech.com), CC BY 4.0 (the 10.5 s from 0:29.02 used here). Effects: freesound.org (CC0), Kenney UI Audio (CC0). -->
+    <div data-hf-id="hf-199x" id="root" data-composition-id="main" data-start="0" data-duration="10" data-width="1920" data-height="1080">
+      <div data-hf-id="hf-5slx" id="hook" data-composition-id="hook" data-composition-src="compositions/hook.html" data-start="0" data-duration="1.714"
+        data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div data-hf-id="hf-qjer" id="choose" data-composition-id="choose" data-composition-src="compositions/choose.html" data-start="1.714" data-duration="2.286"
+        data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div data-hf-id="hf-4i6b" id="route" data-composition-id="route" data-composition-src="compositions/route.html" data-start="4" data-duration="1.714"
+        data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div data-hf-id="hf-8u5y" id="montage" data-composition-id="montage" data-composition-src="compositions/montage.html" data-start="5.714" data-duration="1.714"
+        data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div data-hf-id="hf-baxz" id="endcard" data-composition-id="endcard" data-composition-src="compositions/endcard.html" data-start="7.428" data-duration="2.572"
+        data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+
+      <audio data-hf-id="hf-5a2g" id="music" class="clip" src="assets/music.mp3" data-start="0" data-duration="10" data-media-start="0" data-volume="0.8"
+        data-fade-out="0.8" data-track-index="2"></audio>
+      <audio data-hf-id="hf-0ebf" id="sfx-whoosh-a" class="clip" src="assets/sfx/whoosh2.wav" data-start="1.43" data-duration="0.63" data-volume="0.7" data-track-index="3"></audio>
+      <audio data-hf-id="hf-o3zh" id="sfx-click" class="clip" src="assets/sfx/click.wav" data-start="3.01" data-duration="0.09" data-volume="1" data-track-index="5"></audio>
+      <audio data-hf-id="hf-onrd" id="sfx-whoosh-b" class="clip" src="assets/sfx/whoosh1.wav" data-start="3.88" data-duration="0.67" data-volume="0.8" data-track-index="3"></audio>
+      <audio data-hf-id="hf-y2re" id="sfx-whoosh-c" class="clip" src="assets/sfx/whoosh3.wav" data-start="5.42" data-duration="0.7" data-volume="0.6" data-track-index="3"></audio>
+      <audio data-hf-id="hf-fgul" id="sfx-pop-a" class="clip" src="assets/sfx/pop1.wav" data-start="6.15" data-duration="0.05" data-volume="0.8" data-track-index="3"></audio>
+      <audio data-hf-id="hf-0t6a" id="sfx-pop-b" class="clip" src="assets/sfx/pop2.wav" data-start="6.58" data-duration="0.05" data-volume="0.8" data-track-index="5"></audio>
+      <audio data-hf-id="hf-isbj" id="sfx-pop-c" class="clip" src="assets/sfx/pop1.wav" data-start="7.01" data-duration="0.05" data-volume="0.8" data-track-index="3"></audio>
+      <audio data-hf-id="hf-32cz" id="sfx-riser" class="clip" src="assets/sfx/riser.wav" data-start="6.46" data-duration="1.41" data-media-start="5.27" data-volume="0.55" data-track-index="4"></audio>
+    </div>
+    <script>
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>

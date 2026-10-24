@@ -1,0 +1,31 @@
+<template>
+  <style>
+    @font-face { font-family: "Mali"; src: url("assets/fonts/Mali-700-latin.woff2") format("woff2"); font-weight: 700; }
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    .mt-shot { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 90px; }
+    .mt-label { width: 760px; font: 700 118px/1.05 "Mali", sans-serif; color: #fff; text-shadow: 0 4px 24px rgb(0 0 0 / .12); }
+    .mt-card { height: 900px; border-radius: 34px; overflow: hidden; box-shadow: 0 34px 80px -24px rgb(0 0 0 / .45); background: #fff; }
+    .mt-card img { height: 100%; width: auto; display: block; }
+    #mt-a { background: linear-gradient(160deg, #3ea8ff, #0a72d6); }
+    #mt-b { background: linear-gradient(160deg, #ffcf4a, #ff9f1a); }
+    #mt-b .mt-label { color: #3a2400; text-shadow: none; }
+    #mt-c { background: linear-gradient(160deg, #5fd39b, #128552); }
+    #mt-d { background: linear-gradient(160deg, #a58bff, #6a46e0); }
+    #mt-c .mt-card { height: 620px; }
+    #mt-d .mt-card { height: 860px; }
+  </style>
+  <div data-hf-id="hf-2pzc" id="root" data-composition-id="montage" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-ypjd" id="mt-a" class="mt-shot clip" data-layout-allow-overflow data-start="0" data-duration="0.43"><div data-hf-id="hf-eugu" class="mt-card"><img data-hf-id="hf-v7we" src="assets/card-1.png" alt="A landmark stamp share card" /></div></div>
+    <div data-hf-id="hf-enzn" id="mt-b" class="mt-shot clip" data-layout-allow-overflow data-start="0.43" data-duration="0.43"><div data-hf-id="hf-a2zm" class="mt-card"><img data-hf-id="hf-iq1q" src="assets/card-5.png" alt="A Legendary Siam Si fortune stick" /></div></div>
+    <div data-hf-id="hf-ojmv" id="mt-c" class="mt-shot clip" data-layout-allow-overflow data-start="0.86" data-duration="0.43"><div data-hf-id="hf-ahan" class="mt-card"><img data-hf-id="hf-9mdq" src="assets/shot-podium.png" alt="The leaderboard podium" /></div></div>
+    <div data-hf-id="hf-crm3" id="mt-d" class="mt-shot clip" data-layout-allow-overflow data-start="1.29" data-duration="0.424"><div data-hf-id="hf-avlo" class="mt-card"><img data-hf-id="hf-02fc" src="assets/levels.png" alt="The level reward picker: +10% luck or +10% coins" /></div></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    // each shot is a real screen from the app: it whips in from the right and sharpens; colour-flood hard cuts between, on the beat
+    [["#mt-a", 0], ["#mt-b", 0.43], ["#mt-c", 0.86], ["#mt-d", 1.29]].forEach(([id, t]) => {
+      tl.fromTo(`${id} .mt-card`, { x: 240, filter: "blur(12px)" }, { x: 0, filter: "blur(0px)", duration: 0.2, ease: "expo.out" }, t);
+    });
+    window.__timelines["montage"] = tl;
+  </script>
+</template>

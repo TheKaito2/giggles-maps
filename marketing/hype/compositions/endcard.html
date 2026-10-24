@@ -1,0 +1,53 @@
+<template>
+  <style>
+    @font-face { font-family: "Mali"; src: url("assets/fonts/Mali-700-latin.woff2") format("woff2"); font-weight: 700; }
+    @font-face { font-family: "Seed"; src: url("assets/fonts/LINESeedSansTH_A_Bd.woff2") format("woff2"); font-weight: 700; }
+    #root { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(180deg, #3ea8ff 0%, #8fd0ff 55%, #e2f3ff 100%); }
+    #end-sky { position: absolute; left: -100px; right: -100px; top: 560px; height: 600px; }
+    #end-sky img { width: 100%; height: 100%; object-fit: cover; object-position: top; transform: scaleX(-1); }
+    #end-lockup { position: absolute; left: 0; right: 0; top: 150px; display: grid; justify-items: center; gap: 10px; }
+    #end-logo { width: 300px; height: 300px; overflow: visible; filter: drop-shadow(0 22px 26px rgb(10 80 160 / .35)); }
+    #end-word { font: 700 132px/1.05 "Mali", sans-serif; color: #0e2440; }
+    #end-word span { color: #0656a6; }
+    #end-tag { font: 700 42px/1.3 "Seed", sans-serif; color: #12355e; }
+    #end-url { margin-top: 18px; padding: 16px 34px; border-radius: 999px; background: #0a72d6; color: #fff; font: 700 36px/1 "Seed", sans-serif;
+      box-shadow: 0 8px 0 #0656a6; }
+  </style>
+  <div data-hf-id="hf-32ii" id="root" data-composition-id="endcard" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-yd20" id="end-sky" class="clip" data-layout-allow-overflow data-start="0" data-duration="2.572"><img data-hf-id="hf-dz0i" src="assets/sky-day.svg" alt="" /></div>
+    <div data-hf-id="hf-geuu" id="end-lockup" class="clip" data-start="0" data-duration="2.572" data-layout-allow-overlap>
+      <svg data-hf-id="hf-mc6p" id="end-logo" viewBox="0 0 64 64" aria-label="Giggles Maps logo">
+        <defs data-hf-id="hf-mh0t"><linearGradient data-hf-id="hf-c3z3" id="end-pin-fill" x1="0" y1="0" x2="0" y2="1"><stop data-hf-id="hf-1wv6" offset="0" stop-color="#5db7ff" /><stop data-hf-id="hf-4hxf" offset="1" stop-color="#0a72d6" /></linearGradient></defs>
+        <g data-hf-id="hf-u0oc" id="end-pin">
+          <path data-hf-id="hf-g1oj" d="M32 3C19.8 3 11 12 11 23.6 11 38 32 58 32 58s21-20 21-34.4C53 12 44.2 3 32 3z" fill="url(#end-pin-fill)" />
+          <path data-hf-id="hf-q8db" d="M20 14.5c2.6-4 7-6.5 12-6.5" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".45" />
+          <circle data-hf-id="hf-nn8l" cx="25.2" cy="22" r="3.4" fill="#fff" /><circle data-hf-id="hf-c4c5" cx="38.8" cy="22" r="3.4" fill="#fff" />
+          <circle data-hf-id="hf-68np" cx="20.4" cy="28.2" r="2.6" fill="#ff8fab" opacity=".85" /><circle data-hf-id="hf-db8c" cx="43.6" cy="28.2" r="2.6" fill="#ff8fab" opacity=".85" />
+          <path data-hf-id="hf-tioj" d="M25 28.6c3.6 5 10.4 5 14 0" stroke="#fff" stroke-width="3.2" stroke-linecap="round" fill="none" />
+        </g>
+        <g data-hf-id="hf-pw1e" id="end-cloud">
+          <g data-hf-id="hf-slrf" fill="#8ccaff" stroke="#8ccaff" stroke-width="3.2"><rect data-hf-id="hf-xmrr" x="12" y="50" width="40" height="10" rx="5" /><circle data-hf-id="hf-pych" cx="21" cy="51" r="6.6" /><circle data-hf-id="hf-9rim" cx="31.5" cy="47.4" r="8.4" /><circle data-hf-id="hf-148j" cx="42.5" cy="50" r="7" /></g>
+          <g data-hf-id="hf-6ioo" fill="#fff"><rect data-hf-id="hf-3yxz" x="12" y="50" width="40" height="10" rx="5" /><circle data-hf-id="hf-fktx" cx="21" cy="51" r="6.6" /><circle data-hf-id="hf-6utu" cx="31.5" cy="47.4" r="8.4" /><circle data-hf-id="hf-2mmr" cx="42.5" cy="50" r="7" /></g>
+          <path data-hf-id="hf-d5oo" d="M19 56.6c5 1.8 21 1.8 26 0" stroke="#d6ebff" stroke-width="2.4" stroke-linecap="round" fill="none" />
+        </g>
+      </svg>
+      <div data-hf-id="hf-t995" id="end-word">giggles <span data-hf-id="hf-4yfe">maps</span></div>
+      <div data-hf-id="hf-3iat" id="end-tag">Got spare time? Make it a trip.</div>
+      <div data-hf-id="hf-5hzh" id="end-url">giggles-maps.pages.dev</div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo("#end-sky img", { y: 160 }, { y: 0, duration: 0.8, ease: "expo.out" }, 0);
+    // the cloud floats up, then the pin drops onto it and squashes as it lands
+    tl.fromTo("#end-cloud", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: "expo.out" }, 0);
+    tl.fromTo("#end-pin", { y: -90 }, { y: 0, duration: 0.34, ease: "power3.in" }, 0.04);
+    tl.fromTo("#end-pin", { scaleY: 1, scaleX: 1 }, { scaleY: 0.86, scaleX: 1.08, duration: 0.07, ease: "power2.out", transformOrigin: "50% 90%" }, 0.38);
+    tl.to("#end-pin", { scaleY: 1, scaleX: 1, duration: 0.35, ease: "elastic.out(1, 0.5)" }, 0.45);
+    // then the name wipes in under the landing, and the line and the address follow; all hold to the end
+    tl.fromTo("#end-word", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.3, ease: "power3.out" }, 0.4);
+    tl.fromTo("#end-tag", { opacity: 0, filter: "blur(8px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.16, ease: "power4.out" }, 0.5);
+    tl.fromTo("#end-url", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.3, ease: "back.out(1.6)" }, 0.5);
+    window.__timelines["endcard"] = tl;
+  </script>
+</template>

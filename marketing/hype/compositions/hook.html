@@ -1,0 +1,32 @@
+<template>
+  <style>
+    @font-face { font-family: "Mali"; src: url("assets/fonts/Mali-700-latin.woff2") format("woff2"); font-weight: 700; }
+    #root { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(180deg, #3ea8ff 0%, #8fd0ff 55%, #e2f3ff 100%); }
+    .hook-cloud { position: absolute; top: 60px; width: 2000px; height: 520px; }
+    #hook-cl { left: -520px; }
+    #hook-cr { right: -520px; }
+    #hook-cr img { transform: scaleX(-1); }
+    .hook-cloud img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+    #hook-title { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 34px;
+      font: 700 132px/1.1 "Mali", sans-serif; color: #0e2440; }
+    #hook-title span { display: block; }
+    #hook-title .hl { color: #0656a6; }
+  </style>
+  <div data-hf-id="hf-ktv8" id="root" data-composition-id="hook" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-32v2" id="hook-cl" class="hook-cloud clip" data-layout-allow-overflow data-start="0" data-duration="1.714"><img data-hf-id="hf-dz0i" src="assets/sky-day.svg" alt="" /></div>
+    <div data-hf-id="hf-lr3c" id="hook-cr" class="hook-cloud clip" data-layout-allow-overflow data-start="0" data-duration="1.714"><img data-hf-id="hf-ip5f" src="assets/sky-day-b.svg" alt="" /></div>
+    <div data-hf-id="hf-qge9" id="hook-title" class="clip" data-start="0" data-duration="1.714" data-layout-allow-overlap>
+      <span data-hf-id="hf-bzyq" id="hook-w1">Got</span><span data-hf-id="hf-4x36" id="hook-w2" class="hl">20</span><span data-hf-id="hf-0urh" id="hook-w3">spare</span><span data-hf-id="hf-l1qv" id="hook-w4">minutes?</span>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    // the clouds start closed over the middle and part, like opening the sky
+    tl.fromTo("#hook-cl img", { x: 520, scale: 1.3 }, { x: -140, scale: 1, duration: 1.7, ease: "power2.inOut" }, 0);
+    tl.fromTo("#hook-cr img", { x: -520, scale: 1.3 }, { x: 140, scale: 1, duration: 1.7, ease: "power2.inOut" }, 0);
+    // the line: each word blurs in, then holds dead still
+    tl.fromTo("#hook-title span", { opacity: 0, filter: "blur(10px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.16, stagger: 0.09, ease: "power4.out" }, 0.22);
+    tl.to("#hook-title span", { opacity: 0, filter: "blur(8px)", duration: 0.14, stagger: 0.03, ease: "power3.in" }, 1.56);
+    window.__timelines["hook"] = tl;
+  </script>
+</template>

@@ -1,0 +1,32 @@
+<template>
+  <style>
+    @font-face { font-family: "Mali"; src: url("assets/fonts/Mali-700-latin.woff2") format("woff2"); font-weight: 700; }
+    #root { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(180deg, #e9f6ff 0%, #ffffff 100%); }
+    #route-title { position: absolute; left: 0; right: 0; top: 70px; display: flex; justify-content: center; gap: 0 24px;
+      font: 700 76px/1.1 "Mali", sans-serif; color: #0e2440; }
+    #route-title span { display: block; }
+    #route-title .hl { color: #0a72d6; }
+    .route-win { position: absolute; border-radius: 36px; overflow: hidden; background: #fff;
+      box-shadow: 0 30px 80px -24px rgb(10 80 160 / .42), 0 0 0 2px rgb(255 255 255 / .9); }
+    .route-win img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+    #route-map { left: 170px; top: 230px; width: 820px; height: 723px; }
+    #route-rows { left: 1060px; top: 210px; width: 700px; height: 754px; }
+  </style>
+  <div data-hf-id="hf-idnk" id="root" data-composition-id="route" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-4ctl" id="route-title" class="clip" data-start="0" data-duration="1.714"><span data-hf-id="hf-l5rd">Real</span><span data-hf-id="hf-m7u0">stops.</span><span data-hf-id="hf-syrl" class="hl">Real</span><span data-hf-id="hf-4fr9" class="hl">times.</span></div>
+    <div data-hf-id="hf-14vi" id="route-map" class="route-win clip" data-layout-allow-overflow data-start="0" data-duration="1.714"><img data-hf-id="hf-8xwq" src="assets/shot-map.png" alt="The planned route through 4 stops on the map" /></div>
+    <div data-hf-id="hf-mpaz" id="route-rows" class="route-win clip" data-layout-allow-overflow data-start="0" data-duration="1.714"><img data-hf-id="hf-u4up" src="assets/shot-rows.png" alt="Each stop with its arrival, drive, time there and leave time" /></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    // out of the zoom: the plan arrives large and blurred and settles
+    tl.fromTo("#route-map", { scale: 1.35, opacity: 0, filter: "blur(12px)" }, { scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.45, ease: "expo.out" }, 0);
+    tl.fromTo("#route-rows", { x: 300, opacity: 0, filter: "blur(10px)" }, { x: 0, opacity: 1, filter: "blur(0px)", duration: 0.5, ease: "expo.out" }, 0.18);
+    tl.fromTo("#route-title span", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.13, stagger: 0.07, ease: "power4.out" }, 0.3);
+    // the rows scroll on to show every stop's times, like the app does
+    tl.fromTo("#route-rows img", { y: 0 }, { y: -90, duration: 0.8, ease: "power2.inOut" }, 0.7);
+    // whip out to the left into the montage
+    tl.to(["#route-map", "#route-rows", "#route-title"], { x: -420, opacity: 0, filter: "blur(14px)", duration: 0.2, ease: "power3.in" }, 1.5);
+    window.__timelines["route"] = tl;
+  </script>
+</template>
