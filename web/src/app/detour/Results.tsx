@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ChevronDown, MoreHorizontal, Plus, Repeat, Trash2, Camera, X } from "lucide-react";
+import { ChevronDown, MoreHorizontal, Plus, Repeat, Search, Trash2, Camera, X } from "lucide-react";
 import { useDialog } from "../../lib/useDialog";
-import { type AlongPlace, type CheckinTarget, KIND_NAME, type Meal, type RouteStop } from "../../lib/api";
+import { type AlongPlace, type CheckinTarget, type FoundPlace, KIND_NAME, type Meal, type RouteStop, searchPlaces } from "../../lib/api";
 import { GROUPS, kindOf } from "../kinds";
 import { budgetLabel, hhmm, MEALS } from "../prefs";
 import { type Detour, PRESETS } from "./useDetour";
@@ -81,17 +81,39 @@ function StopRow({ s, i, d, sel, onOpen, onCheckin }: { s: RouteStop; i: number;
   );
 }
 
-/** Places along the route you can add, by kind, cheapest first: the inline list (8) and the "Add a stop" sheet (all). */
+/** Places along the route you can add, cheapest first, with a search box and a kind filter. Typing also finds places elsewhere
+ * (not on the route list: they may add more time). Every row is the same height, so Add never moves. Inline (8) and in the sheet (30). */
 function AlongList({ places, d, full, limit, onAdded }: { places: AlongPlace[]; d: Detour; full: boolean; limit: number; onAdded?: () => void }) {
-  const [picked, setGroup] = useState("all");
+  const [q, setQ] = useState("");
+  const [kind, setKind] = useState("all");
+  const [elsewhere, setElsewhere] = useState<FoundPlace[]>([]);
   const groups = ALONG_GROUPS.filter((g) => g.id === "all" || places.some((p) => g.cats.includes(p.category)));
-  const group = groups.some((g) => g.id === picked) ? picked : "all";   // a re-plan can leave the chosen kind empty
-  const list = places.filter((p) => group === "all" || ALONG_GROUPS.find((g) => g.id === group)!.cats.includes(p.category)).slice(0, limit);
+  const group = groups.some((g) => g.id === kind) ? kind : "all";   // a re-plan can leave the chosen kind empty
+  const needle = q.trim().toLowerCase();
+  const fits = (category?: string) => group === "all" || ALONG_GROUPS.find((g) => g.id === group)!.cats.includes(category ?? "");
+  const list = places.filter((p) => fits(p.category) && (!needle || p.name.toLowerCase().includes(needle) || (p.name_th ?? "").includes(q.trim()))).slice(0, limit);
+  // 2+ letters: also search everywhere near the destination, after a short pause
+  useEffect(() => {
+    if (needle.length < 2) { setElsewhere([]); return; }
+    let live = true;
+    const t = setTimeout(() => searchPlaces(q.trim(), d.dest?.point).then((r) => {
+      if (!live) return;
+      const taken = new Set([...places.map((p) => p.id), ...(d.plan?.stops.map((s) => s.id) ?? [])]);
+      const stopKinds = new Set(ALONG_GROUPS.flatMap((g) => g.cats));   // places worth a detour, not pharmacies or banks
+      setElsewhere(r.filter((x) => x.id != null && !taken.has(x.id) && stopKinds.has(x.category ?? "") && fits(x.category)).slice(0, 6));
+    }).catch(() => live && setElsewhere([])), 300);
+    return () => { live = false; clearTimeout(t); };
+  }, [needle, group]); // eslint-disable-line react-hooks/exhaustive-deps
+  const add = (id: number, extra: number) => { d.addStop(id, extra); onAdded?.(); };
   return (
     <>
-      <div className="chips-scroll" role="radiogroup" aria-label="Kind of place">
-        {groups.map((g) => <button key={g.id} type="button" role="radio" aria-checked={group === g.id} className={`pill ${group === g.id ? "on" : ""}`}
-          onClick={() => setGroup(g.id)}>{g.label}</button>)}
+      <div className="along-controls">
+        <label className="along-search"><Search size={16} aria-hidden />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search places" aria-label="Search places to add" /></label>
+        <label className="along-kind">
+          <select value={group} onChange={(e) => setKind(e.target.value)} aria-label="Kind of place">
+            {groups.map((g) => <option key={g.id} value={g.id}>{g.id === "all" ? "All kinds" : g.label}</option>)}
+          </select></label>
       </div>
       <ul className="along-list">
         {list.map((p) => (
@@ -100,7 +122,18 @@ function AlongList({ places, d, full, limit, onAdded }: { places: AlongPlace[]; 
             <span className="stop-text"><b>{p.name}</b>
               <span className="stop-meta"><b className="num extra">+{p.extra_min} min</b>
                 <span className="fine">{kindOf(null, p.category).en}{p.rating != null && ` · ★ ${p.rating.toFixed(1)}`}</span></span></span>
-            <button type="button" className="btn soft small" disabled={full || d.editing} onClick={() => { d.addStop(p.id, p.extra_min); onAdded?.(); }}
+            <button type="button" className="btn soft small add-btn" disabled={full || d.editing} onClick={() => add(p.id, p.extra_min)}
+              aria-label={`Add ${p.name}`}><Plus size={15} aria-hidden /> Add</button>
+          </li>
+        ))}
+        {!list.length && !elsewhere.length && <li className="along-empty fine">{needle ? "Nothing matches along your route." : "Nothing of this kind along your route."}</li>}
+        {elsewhere.length > 0 && <li className="along-sep eyebrow">Elsewhere</li>}
+        {elsewhere.map((p) => (
+          <li key={`e${p.id}`}>
+            <Thumb s={{ name: p.name, category: p.category ?? "", photo: null }} size={40} />
+            <span className="stop-text"><b>{p.name}</b>
+              <span className="stop-meta"><b className="num extra off">off route</b><span className="fine">{kindOf(p.kind, p.category).en}</span></span></span>
+            <button type="button" className="btn soft small add-btn" disabled={full || d.editing} onClick={() => add(p.id!, 15)}
               aria-label={`Add ${p.name}`}><Plus size={15} aria-hidden /> Add</button>
           </li>
         ))}

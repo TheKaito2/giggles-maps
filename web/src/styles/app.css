@@ -1227,3 +1227,20 @@ p.chase { margin: 0; }
 @media (hover: none) { .add-here { opacity: .55; transform: none; } }
 .modal.add-stop { width: min(520px, 100%); }
 .add-stop .along-list { max-height: 60vh; overflow-y: auto; }
+
+/* along list: search + kind filter, one row height, Add pinned right; the sheet keeps one size */
+.along-controls { display: flex; gap: 8px; }
+.along-search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 40px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--ink-2); }
+.along-search input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; color: var(--ink); outline: none; }
+.along-search:focus-within { border-color: var(--indigo); }
+.along-kind select { height: 40px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--ink); font: 700 var(--fs-label)/1 var(--font-body); padding: 0 10px; }
+.along-list li { height: 56px; }
+.along-list .stop-text { flex: 1; min-width: 0; }
+.along-list .stop-text > b, .along-list .stop-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.along-list .stop-meta { flex-wrap: nowrap; }
+.along-list .add-btn { flex: none; width: 76px; justify-content: center; }
+.along-list .along-sep { height: auto; margin: 6px 0 0; }
+.along-list .along-empty { height: auto; padding: 12px 0; }
+.stop-meta > b.off { color: var(--ink-2); }
+.modal.add-stop { height: min(640px, 86vh); grid-template-rows: auto auto minmax(0, 1fr) auto; align-content: start; }
+.add-stop .along-list { max-height: none; overflow-y: auto; align-content: start; }
