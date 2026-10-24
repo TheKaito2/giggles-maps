@@ -1,10 +1,11 @@
-import { Coffee, CreditCard, Fuel, Gem, Hospital, Hotel, Landmark, UtensilsCrossed } from "lucide-react";
+import { Coffee, CreditCard, Fuel, Gem, Hospital, Hotel, Landmark, ShoppingBasket, UtensilsCrossed } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export const CHIPS: { id: string; label: string; icon: LucideIcon; kinds: string[] }[] = [
   { id: "food", label: "Restaurants", icon: UtensilsCrossed, kinds: ["restaurant", "fast_food"] },
   { id: "local", label: "OTOP & local", icon: Gem, kinds: ["otop", "community_enterprise", "craft", "souvenir", "market", "night_market"] },
   { id: "coffee", label: "Coffee", icon: Coffee, kinds: ["cafe", "bakery", "dessert"] },
+  { id: "convenience", label: "Convenience", icon: ShoppingBasket, kinds: ["convenience"] },   // 7-Eleven, FamilyMart, Lotus's go...
   { id: "sights", label: "Sights", icon: Landmark, kinds: ["temple", "museum", "viewpoint", "attraction", "waterfall", "beach", "park", "national_park", "art"] },
   { id: "hotels", label: "Hotels", icon: Hotel, kinds: ["hotel", "guesthouse"] },
   { id: "gas", label: "Gas", icon: Fuel, kinds: ["fuel", "ev_charging"] },
