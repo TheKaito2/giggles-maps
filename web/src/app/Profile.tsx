@@ -175,7 +175,8 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
       {sheet === "log" && book && <Logbook owner={page.nickname} stamps={book.stamps} onClose={() => setSheet(null)} />}
       {sheet === "share" && <ShareSheet hasPlus={!!profile?.plusUntil} onClose={() => setSheet(null)}
         options={[{ id: "progress", label: "Provinces", card: { kind: "progress", name: page.nickname, visited: new Set(counts.keys()) } }]} />}
-      {sheet === "book" && book && <Book onClose={() => setSheet(null)} stamps={book.stamps} photos={book.photos} trips={book.trips} theme={look.theme} frame={look.frame}
+      {sheet === "book" && book && <Book onClose={() => setSheet(null)} stamps={book.stamps} photos={book.photos} trips={book.trips}
+        shareAs={self ? { name: page.nickname, hasPlus: !!profile?.plusUntil } : undefined} theme={look.theme} frame={look.frame}
         owner={{ nickname: page.nickname, colour: page.colour, avatar, title: page.title, level: page.level,
           xp: page.xp, joined: page.joined, code: self ? page.friend_code : null }} />}
     </div>

@@ -877,7 +877,7 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .demo-toggle > span { display: grid; gap: 2px; }
 
 /* share sheet (cards drawn on canvas in share/cards.ts) */
-.share-backdrop { z-index: 120; }
+.share-backdrop { z-index: 160; }   /* above the passport and its photo window */
 .modal.share-sheet { width: min(440px, 100%); }
 .share-kinds { overflow-x: auto; max-width: 100%; }
 .share-preview { display: grid; place-items: center; background: repeating-conic-gradient(#0000 0 25%, rgb(0 0 0 / .05) 0 50%) 0 0 / 18px 18px; border-radius: 16px; padding: 12px; }
