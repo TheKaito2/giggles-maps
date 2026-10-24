@@ -91,7 +91,7 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
   const doNudge = () => nudge(id).then(() => setMsg(`Nudged ${page?.nickname}. They'll see it in their feed.`))
     .catch((e) => setMsg(e instanceof ApiError && e.code === "already_nudged" ? "You nudged them today already." : "Couldn't nudge. Try again."));
 
-  if (!page) return <div className="page-col">{onBack && <button type="button" className="link" onClick={onBack}><ArrowLeft size={16} /> Back</button>}{msg ? <p className="fine">{msg}</p> : <SkelProfile />}</div>;
+  if (!page) return <div className="page-col">{onBack && <button type="button" className="link" onClick={onBack}><ArrowLeft size={16} /> Back</button>}{msg ? <p className="fine">{msg}</p> : <SkelProfile self={self} theme={self ? profile?.look?.theme : undefined} />}</div>;
   const look = self ? profile?.look ?? page.look : page.look;
   const avatar = self ? profile?.avatar : page.avatar;
   const counts = new Map<number, number>();
@@ -193,7 +193,7 @@ export default function ProfileTab({ profile, refreshKey, onChange, editAvatar, 
   friend: string | null; setFriend: (id: string | null) => void; openPlace: (id: number) => void; openShop: () => void; openBag: () => void;
 }) {
   const user = useUser();
-  if (!user) return <SkelProfile />;
+  if (!user) return <div className="page-col"><SkelProfile /></div>;
   return friend
     ? <ProfileView key={friend} id={friend} self={false} profile={profile} refreshKey={refreshKey} onBack={() => setFriend(null)} onChange={onChange} />
     : <ProfileView key="me" id={user.id} self profile={profile} refreshKey={refreshKey} editAvatar={editAvatar} editName={editName} onChange={onChange}

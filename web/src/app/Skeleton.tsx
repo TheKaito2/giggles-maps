@@ -23,14 +23,38 @@ export function SkelRows({ n = 4, avatar = 40, square = false }: { n?: number; a
   );
 }
 
-/** Feed posts: who, what, and a big picture. */
+/** One line of text at a type size (or the surrounding one), keeping the surrounding line height like the real text does:
+ *  as tall as the real line, with a bar in it. */
+const T = ({ w = "100%", fs }: { w?: string | number; fs?: string }) =>
+  <span className="skel-txt" style={{ width: w, ...(fs && { fontSize: `var(--fs-${fs})` }) }}><span className="skel" /></span>;
+const many = (n: number) => Array.from({ length: n }, (_, i) => i);
+
+// The placeholders below are built from the real screens' own classes, so they take the same space as what replaces them.
+
+/** Feed posts: who, what happened, and the reaction row. */
 export function SkelPosts({ n = 2 }: { n?: number }) {
   return (
-    <ul className="skel-posts" role="status" aria-label="Loading">
-      {Array.from({ length: n }, (_, i) => (
-        <li key={i}>
-          <span className="skel-head"><Bar w={44} h={44} round /><span className="skel-text"><Bar w="70%" h={13} /><Bar w="25%" h={10} /></span></span>
-          <Bar h={180} />
+    <ul className="feed" role="status" aria-label="Loading">
+      {many(n).map((i) => (
+        <li key={i} className="feed-item">
+          <header><Bar w={44} h={44} round /><span className="person-main"><T w="70%" /><T w="25%" fs="caption" /></span></header>
+          <div className="feed-body"><Bar w={64} h={64} round /><T w="40%" fs="label" /></div>
+          <footer className="feed-react">{many(3).map((j) => <Bar key={j} w={52} h={36} />)}</footer>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Quest rows: chest, name, progress bar, reward. */
+export function SkelQuests({ n = 3 }: { n?: number }) {
+  return (
+    <ul className="quest-list" role="status" aria-label="Loading">
+      {many(n).map((i) => (
+        <li key={i} className="quest">
+          <Bar w={44} h={39} />
+          <div className="quest-main"><T w="60%" /><T w="40%" fs="caption" /><span className="quest-bar" /></div>
+          <span className="quest-reward"><T w={52} /><T w={52} /></span>
         </li>
       ))}
     </ul>
@@ -54,21 +78,49 @@ export function SkelBlock({ h = 120, radius = 18 }: { h?: number; radius?: numbe
 /** Top-3 podium plus a few rows. */
 export function SkelBoard() {
   return (
-    <div className="skel-board" role="status" aria-label="Loading">
-      <div className="skel-podium">{[60, 76, 60].map((s, i) => <span key={i}><Bar w={s} h={s} round /><Bar w={56} h={10} /><Bar w={80} h={[52, 72, 40][i]} /></span>)}</div>
-      <SkelRows n={3} />
+    <div className="stack" role="status" aria-label="Loading">
+      <ol className="podium">
+        {[2, 1, 3].map((r) => (
+          <li key={r} className={`place-${r}`}>
+            <div className="podium-who"><Bar w={r === 1 ? 76 : 60} h={r === 1 ? 76 : 60} round /><T w={64} /><T w={48} fs="caption" /></div>
+            <span className="podium-block skel" />
+          </li>
+        ))}
+      </ol>
+      <ol className="board">
+        {many(3).map((i) => (
+          <li key={i} className="board-row">
+            <span className="rank" /><Bar w={40} h={40} round />
+            <span className="person-main"><T w="45%" /><T w="65%" fs="caption" /></span><T w={56} fs="label" />
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
 
-/** A profile page: hero, showcase, quick buttons, stats. */
-export function SkelProfile() {
+/** Province champion cards. */
+export function SkelChamps() {
   return (
-    <div className="page-col stack" role="status" aria-label="Loading">
-      <SkelBlock h={200} radius={24} />
-      <SkelTiles n={3} h={110} min={90} />
-      <SkelTiles n={4} h={64} min={64} />
-      <SkelBlock h={120} />
+    <ul className="champ-row" role="status" aria-label="Loading">
+      {many(3).map((i) => <li key={i} className="champ"><Bar w={72} h={72} round /><T w="70%" fs="label" /><T w="60%" fs="caption" /><T w="80%" fs="caption" /></li>)}
+    </ul>
+  );
+}
+
+/** A profile page: hero in the cover colours, showcase, quick buttons, stats. */
+export function SkelProfile({ theme = "classic", self = true }: { theme?: string; self?: boolean }) {
+  return (
+    <div className="stack profile" role="status" aria-label="Loading">
+      <header className={`profile-hero cover-bg theme-${theme} skel-hero`}>
+        <Bar w={112} h={112} round />
+        <span className="profile-id"><T w="55%" fs="display" /><T w="80%" fs="label" /><T w="60%" fs="caption" /></span>
+      </header>
+      <section className="showcase">
+        {many(3).map((i) => <span key={i} className="show-pin"><Bar w={54} h={54} round /><T w="70%" fs="caption" /><T w="40%" fs="caption" /></span>)}
+      </section>
+      <div className="profile-actions">{many(self ? 5 : 2).map((i) => <span key={i}><Bar w={24} h={24} /><T w="60%" fs="caption" /></span>)}</div>
+      <ul className="stat-strip">{many(6).map((i) => <li key={i}><T w={44} fs="headline" /><T w={60} fs="caption" /></li>)}</ul>
     </div>
   );
 }

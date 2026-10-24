@@ -5,7 +5,7 @@ import { type Board, type BoardMetric, type BoardPeriod, type BoardRow, type Boa
 import Avatar from "./social/Avatar";
 import ProvinceStamp from "./passport/ProvinceStamp";
 import { useProvinces } from "./passport/useProvinces";
-import { SkelBoard, SkelTiles } from "./Skeleton";
+import { SkelBoard, SkelChamps } from "./Skeleton";
 import Info from "./Info";
 
 const METRICS: { id: BoardMetric; label: string; unit: (n: number) => string }[] = [
@@ -150,7 +150,7 @@ export default function Leaderboard({ profile, onChange }: { profile: Profile | 
 
       <h3><Crown size={18} aria-hidden /> Province champions <Info label="About province champions">Whoever checks in around a province on the most
         different days in 90 days wears its crown. One check-in a day counts, wherever you go in the province.</Info></h3>
-      {champs === null ? <SkelTiles n={3} h={150} min={150} /> : <Champions list={champs} />}
+      {champs === null ? <SkelChamps /> : <Champions list={champs} />}
 
       <label className="toggle">
         <input type="checkbox" checked={profile?.onLeaderboard ?? true} onChange={(e) => setMe({ onLeaderboard: e.target.checked }).then(onChange)} />
