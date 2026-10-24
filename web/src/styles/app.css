@@ -1009,11 +1009,12 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .stat-strip { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 2px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--card); }
 .stat-strip li { --c: var(--ink-2); display: grid; gap: 2px; padding: 12px 14px; border-right: 2px solid var(--paper); border-bottom: 2px solid var(--paper); }
 .stat-strip li:nth-child(3n) { border-right: 0; } .stat-strip li:nth-child(n + 4) { border-bottom: 0; }
-/* the number leads (title size) in its stat's colour, the same colours as the top bar; the label is quiet, with the icon in that colour */
-.stat-strip b { font: 800 var(--fs-title)/var(--lh-title) var(--font-data); color: var(--c); }
+/* icon + number lead (title size) in the stat's colour, the same colours as the top bar; the label sits small in the top corner */
+.stat-strip b { display: inline-flex; align-items: center; gap: 6px; font: 800 var(--fs-title)/var(--lh-title) var(--font-data); color: var(--c); }
+.stat-strip b svg { flex: none; } .stat-strip b small { margin-left: -5px; align-self: flex-end; padding-bottom: 3px; }
+.stat-strip li > span:last-child { order: -1; justify-self: end; }
 .stat-strip small { font-size: var(--fs-caption); font-weight: 700; color: var(--ink-2); }
 .stat-strip span { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-caption); font-weight: 700; color: var(--ink-2); }
-.stat-strip span svg { color: var(--c); }
 .stat-strip .s-xp { --c: var(--indigo); } .stat-strip .s-provinces { --c: var(--good); } .stat-strip .s-stamps { --c: var(--stamp); }
 .stat-strip .s-photos { --c: var(--sky); } .stat-strip .s-badges { --c: var(--grape); } .stat-strip .s-rank { --c: #b07c00; }
 .profile-actions > .primary { background: var(--indigo); border-color: color-mix(in srgb, var(--indigo) 60%, #000); color: var(--on-indigo); }

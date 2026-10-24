@@ -150,12 +150,12 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
       </nav>
 
       <ul className="stat-strip">
-        <li className="s-xp"><b className="num">{page.xp}</b><span><Zap size={14} aria-hidden />XP</span></li>
-        <li className="s-provinces"><b className="num">{page.provinces}<small>/77</small></b><span><MapIcon size={14} aria-hidden />Provinces</span></li>
-        <li className="s-stamps"><b className="num">{page.stamps}</b><span><Stamp size={14} aria-hidden />Stamps</span></li>
-        <li className="s-photos"><b className="num">{page.photos}</b><span><Camera size={14} aria-hidden />Photos</span></li>
-        <li className="s-badges"><b className="num">{page.badges.filter((b) => b.tier > 0).length}</b><span><Award size={14} aria-hidden />Badges</span></li>
-        <li className="s-rank"><b className="num">{page.rank ? `#${page.rank}` : "–"}</b><span><Crown size={14} aria-hidden />Rank</span></li>
+        <li className="s-xp"><b className="num"><Zap size={20} aria-hidden />{page.xp}</b><span>XP</span></li>
+        <li className="s-provinces"><b className="num"><MapIcon size={20} aria-hidden />{page.provinces}<small>/77</small></b><span>Provinces</span></li>
+        <li className="s-stamps"><b className="num"><Stamp size={20} aria-hidden />{page.stamps}</b><span>Stamps</span></li>
+        <li className="s-photos"><b className="num"><Camera size={20} aria-hidden />{page.photos}</b><span>Photos</span></li>
+        <li className="s-badges"><b className="num"><Award size={20} aria-hidden />{page.badges.filter((b) => b.tier > 0).length}</b><span>Badges</span></li>
+        <li className="s-rank"><b className="num"><Crown size={20} aria-hidden />{page.rank ? `#${page.rank}` : "–"}</b><span>Rank</span></li>
       </ul>
 
       {self && <div id="siamsi"><SiamSi profile={profile} onChange={onChange} onShop={openShop} /></div>}
