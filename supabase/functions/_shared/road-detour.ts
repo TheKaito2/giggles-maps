@@ -82,7 +82,7 @@ export async function verifyRoadPlan(input: {
         extraMin: Math.max(0, clock.totalMin - input.baseline.travelMin),
         missedMeals: [...new Set([...input.plan.missedMeals, ...lostMeals])],
         unfitRequired: input.plan.requiredIds.filter((id) => !order.some((s) => s.id === id)) },
-        geometry: road.geometry, etaMin: clock.etaMin, travelMin: road.legMin.reduce((a, b) => a + b, 0), adjusted,
+        geometry: road.geometry, etaMin: clock.etaMin, travelMin: road.legMin.reduce((a, b) => a + b, 0), legs: road.legMin, adjusted,
         failed: routeErrors > 0 && !order.length && input.plan.order.length > 0 };
     }
     if (!order.length) throw new Error("invalid_baseline_route");

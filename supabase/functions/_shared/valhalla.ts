@@ -22,7 +22,14 @@ const post = async (path: string, body: unknown) => {
 
 // minutes between every pair of points. The public server caps a request at 100 location pairs,
 // so send source rows in chunks that stay under it (own server: raise MATRIX_MAX_PAIRS).
-const MAX_PAIRS = Math.max(25, Number(env("MATRIX_MAX_PAIRS")) || 100);
+export const MAX_PAIRS = Math.max(25, Number(env("MATRIX_MAX_PAIRS")) || 100);
+
+/** Road minutes from each source to each target, one call (sources x targets must stay within MAX_PAIRS). */
+export async function pairsMinutes(sources: LatLng[], targets: LatLng[], mode: Mode): Promise<number[][]> {
+  const loc = (p: LatLng) => ({ lat: p.lat, lon: p.lng });
+  const d = await post("sources_to_targets", { sources: sources.map(loc), targets: targets.map(loc), costing: mode });
+  return d.sources_to_targets.map((row: { time: number | null }[]) => row.map((c) => (c.time == null ? Infinity : c.time / 60)));
+}
 
 export async function matrixMinutes(points: LatLng[], mode: Mode): Promise<number[][]> {
   const locs = points.map((p) => ({ lat: p.lat, lon: p.lng }));
@@ -51,7 +58,8 @@ export function haversineM(a: LatLng, b: LatLng): number {
   return 2 * r * Math.asin(Math.sqrt(h));
 }
 
-export interface RoadRoute { geometry: [number, number][]; legMin: number[]; travelMin: number }
+/** vertexMin: minutes from the start to each geometry vertex (from the turn-by-turn steps), when the router gave them */
+export interface RoadRoute { geometry: [number, number][]; legMin: number[]; travelMin: number; vertexMin?: number[] }
 export class RoutingError extends Error {}
 
 export function createRouter(base: string, fetcher: typeof fetch = fetch) {
@@ -67,16 +75,43 @@ export function createRouter(base: string, fetcher: typeof fetch = fetch) {
     const legs = data.trip?.legs;
     if (data.trip?.status !== 0 || !Array.isArray(legs) || legs.length !== points.length - 1) throw new RoutingError("incomplete road route");
     const geometry: [number, number][] = [], legMin: number[] = [];
+    let vertexMin: number[] | undefined = [];
     for (const leg of legs) {
       if (!Number.isFinite(leg.summary?.time) || leg.summary.time < 0 || typeof leg.shape !== "string") throw new RoutingError("invalid road route");
       const line = decodePolyline6(leg.shape);
       if (line.length < 2) throw new RoutingError("missing road geometry");
+      const times = vertexMin && stepTimes(line, leg.maneuvers);
+      if (times) vertexMin!.push(...(geometry.length ? times.slice(1).map((t) => t + vertexMin!.at(-1)!) : times));
+      else vertexMin = undefined;
       geometry.push(...(geometry.length ? line.slice(1) : line));
       legMin.push(leg.summary.time / 60);
     }
-    return { geometry, legMin, travelMin: legMin.reduce((sum, n) => sum + n, 0) };
+    return { geometry, legMin, travelMin: legMin.reduce((sum, n) => sum + n, 0), vertexMin };
   };
 }
+/** Minutes from the leg's start to each vertex: each step's time spread over its vertices by distance. Null when
+ *  the steps don't cover the line. */
+function stepTimes(line: [number, number][], steps: unknown): number[] | null {
+  if (!Array.isArray(steps)) return null;
+  const at = (k: number) => ({ lng: line[k][0], lat: line[k][1] });
+  const t = new Array<number>(line.length).fill(NaN);
+  t[0] = 0;
+  let clock = 0;
+  for (const m of steps as { time?: number; begin_shape_index?: number; end_shape_index?: number }[]) {
+    const b = m.begin_shape_index, e = m.end_shape_index;
+    if (!Number.isInteger(b) || !Number.isInteger(e) || b! < 0 || e! >= line.length || e! < b! || !Number.isFinite(m.time)) return null;
+    let len = 0;
+    for (let k = b!; k < e!; k++) len += haversineM(at(k), at(k + 1));
+    let done = 0;
+    for (let k = b!; k < e!; k++) {
+      done += haversineM(at(k), at(k + 1));
+      t[k + 1] = clock + (len > 0 ? (done / len) : 1) * m.time! / 60;
+    }
+    clock += m.time! / 60;
+  }
+  return t.every(Number.isFinite) ? t : null;
+}
+
 export function decodePolyline6(str: string): [number, number][] {
   const out: [number, number][] = [];
   let i = 0, lat = 0, lng = 0;

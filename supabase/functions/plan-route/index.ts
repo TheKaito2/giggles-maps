@@ -3,6 +3,7 @@ import { type Meal, MEAL_WINDOWS } from "../_shared/meals.ts";
 import { insertBest, insertionCost, type Plan, planDetour, type Stop } from "../_shared/planner.ts";
 import { fitsInterests, independent, isInterest, mixWeight, type Tier, THEMES, toTheme } from "../_shared/themes.ts";
 import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan } from "../_shared/road-detour.ts";
+import { corridorMatrix } from "../_shared/corridor.ts";
 import { createRouter, estimateMinutes, haversineM, type LatLng, matrixMinutes, METERS_PER_MIN, type Mode, type RoadRoute } from "../_shared/valhalla.ts";
 
 interface Candidate {
@@ -26,6 +27,7 @@ const MAX_CARDS = 2;
 const QUICK_DWELL_MIN = 10; // time counted at each stop on a short (Quick) detour
 const PIT_DWELL_MIN = 5;    // a convenience-store pit stop on a Quick detour: snacks, a drink, the toilet
 const PIT_RESERVE_MIN = 7;  // kept free for it while the sight is chosen (5 there + a little driving)
+const REFILL_MIN = 10;     // a road-checked plan with this much of its time left tries for another stop
 const MAX_CANDIDATES = 22; // up to 5 per theme group, so every themed plan has its kind of stop to pick
 const MODES = new Set<Mode>(["pedestrian", "bicycle", "auto"]);
 const MIN_RATINGS = new Set([0, 3.5, 4, 4.5]);
@@ -123,7 +125,9 @@ serve(async (req) => {
   const { data: cands, error } = baseline
     ? await db.rpc("route_detour_candidates", {
       p_geometry: baseline.geometry,
-      p_radius_m: Math.min(20000, budgetMin * METERS_PER_MIN[mode] / 2),
+      // out and back off the road at town speed (x1.3 for the bends), with time left to look round: on long trips the
+      // wider band only filled the shortlist with places the time can't reach
+      p_radius_m: Math.min(20000, shortTrip ? budgetMin * METERS_PER_MIN[mode] / 2 : Math.max(budgetMin - 10, 5) * METERS_PER_MIN[mode] / 2.6),
       // over-fetch by the excluded count so removed stops don't eat the shortlist (they're dropped below)
       // quick stops: any place qualifies, since its time there is capped
       p_budget_min: quickStops ? MAX_BUDGET : budgetMin, p_level: level, p_max_n: maxCandidates + exclude.size + (narrowed ? 20 : 0),
@@ -190,9 +194,11 @@ serve(async (req) => {
       matrix = roadMatrix;
     } catch (error) { console.error("local matrix failed", error); warnings.push("matrix_unavailable"); }
   }
-  // Long trips use an estimated matrix to propose orders, NEVER to approve a road detour.
-  // Calibrate proposals to the known direct road duration; verify complete routes below.
-  if (baseline && (!shortTrip || warnings.includes("matrix_unavailable"))) {
+  // Long trips: off the route + along it + back on, with real road times for stops near each other (corridor.ts).
+  // Still only proposals: complete routes are verified below.
+  if (baseline && !shortTrip) matrix = (await corridorMatrix(points, baseline, mode)).matrix;
+  // a short trip whose road matrix failed: straight lines scaled to the known direct road time
+  if (baseline && shortTrip && warnings.includes("matrix_unavailable")) {
     const scale = matrix[0][1] > 0 ? baseline.travelMin / matrix[0][1] : 1;
     matrix = matrix.map((row) => row.map((minutes) => minutes * scale));
   }
@@ -219,7 +225,8 @@ serve(async (req) => {
 
   // one plan per theme from the same shortlist + matrix; drop themed plans identical to an earlier one
   const seen = new Set<string>();
-  let themed: { id: string; name: string; plan: Plan; geometry?: [number, number][]; etaMin?: number[]; travelMin?: number }[] = [];
+  let themed: { id: string; name: string; plan: Plan; geometry?: [number, number][]; etaMin?: number[]; travelMin?: number;
+    refill?: (keep: number[], drop: Set<number>) => Plan }[] = [];
   // "Your mix" (the user's interest chips) leads; the themed plans follow as alternatives
   const choiceStops = stops.filter((st) => tierOf.get(st.id) === "choice" || mustInclude.includes(st.id));
   const variants = [
@@ -230,8 +237,11 @@ serve(async (req) => {
   ];
   const prefs = { minRating, allowUnrated: includeUnrated, maxStops, requiredIds: mustInclude };
   for (const t of variants) {
-    const sightsWithin = (budget: number) => planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin: budget, stops: ("only" in t && t.only) || stops,
-      travelMin, meals, ...prefs, boost,
+    const pool = ("only" in t && t.only) || stops;
+    const sightsWithin = (budget: number, keep?: number[], drop?: Set<number>) => planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin: budget,
+      stops: drop ? pool.filter((st) => !drop.has(st.id)) : pool,
+      // a refill keeps the road-checked stops (their meals already placed) and fills around them
+      travelMin, meals: keep ? [] : meals, ...prefs, requiredIds: keep ?? mustInclude, boost,
       segments, theme: "theme" in t ? t.theme : undefined, weight: "weight" in t ? t.weight : undefined });
     // Quick: plan the sight leaving room for a pit stop, then add the cheapest store that fits; no store fits, the sight gets it all
     const sights = pitStops.length ? sightsWithin(budgetMin - PIT_RESERVE_MIN) : null;
@@ -241,16 +251,36 @@ serve(async (req) => {
     if (t.id === "giggles" && !plan.order.some((st) => tierOf.get(st.id) === "choice")) continue;   // no Choice place fits the time
     if (dropsIfDuplicate(t.id) && seen.has(stopsKey)) continue;
     seen.add(stopsKey);
-    themed.push({ id: t.id, name: t.name, plan });
+    // Quick plans have no refill: their pit stop isn't in the sight pool, and little time is left to fill
+    themed.push({ id: t.id, name: t.name, plan, refill: quickStops ? undefined : (keep, drop) => sightsWithin(budgetMin, keep, drop) });
   }
-  // up to 12 routing calls per request, shared by all plans: one per plan plus retries when a long route times out
-  const verification = boundedRouter(routeRoad, 12);
+  // up to 18 routing calls per request, shared by all plans: one per plan, retries when a long route times out, refills
+  const verification = boundedRouter(routeRoad, 18);
   const verifiedKeys = new Set<string>();
   const verifiedPlans: typeof themed = [];
   for (const t of themed) {
     if (baseline) {
-      const verified = await verifyRoadPlan({ plan: t.plan, origin, dest, candidates, mode,
-        baseline, startMin, budgetMin, route: verification.route });
+      const check = (plan: Plan) => verifyRoadPlan({ plan, origin, dest, candidates, mode, baseline, startMin, budgetMin, route: verification.route });
+      // real road minutes replace the estimates for these legs, for the refill and the plans after this one
+      const learn = (v: Awaited<ReturnType<typeof check>>) => {
+        const path = [0, ...v.plan.order.map((s) => s.idx), 1];
+        v.legs.forEach((min, i) => { matrix[path[i]][path[i + 1]] = min; });
+      };
+      let verified = await check(t.plan);
+      if (!verified.failed) learn(verified);
+      // time left over on the real roads (stops dropped, or the estimates ran long): fill it from what's left, never a
+      // dropped stop again, keeping every stop that passed; the refill must pass the road check too, or the first result stands
+      if (t.refill && !verified.failed && budgetMin - verified.plan.extraMin >= REFILL_MIN) {
+        const kept = verified.plan.order;
+        const drop = new Set(t.plan.order.filter((s) => !kept.includes(s)).map((s) => s.id));
+        const more = t.refill(kept.map((s) => s.id), drop);
+        if (more.order.length > kept.length) {
+          const again = await check({ ...more, mealOf: verified.plan.mealOf, lateMeals: verified.plan.lateMeals,
+            missedMeals: verified.plan.missedMeals, requiredIds: verified.plan.requiredIds });
+          if (!again.failed) learn(again);
+          if (!again.failed && again.plan.order.length > kept.length && kept.every((s) => again.plan.order.some((o) => o.id === s.id))) verified = again;
+        }
+      }
       t.plan = verified.plan; t.geometry = verified.geometry; t.etaMin = verified.etaMin; t.travelMin = verified.travelMin;
       if (verified.failed) warnings.push("some_detours_unavailable");
       // an alternative plan the routing server couldn't check at all isn't worth a tab; Top picks always stays
