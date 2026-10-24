@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en" data-resolution="portrait">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>Giggles Maps: 10-second hype, vertical</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #3ea8ff; }
+      #root { position: relative; width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <!-- The 9:16 cut for Reels, TikTok and Shorts: same beats, music and effects as ../hype (its assets folder is a link to that one), scenes laid out tall.
+         Giggles Maps, 10 s: the sky opens on the question, the real planner answers it, a montage of the game, the logo lands.
+         Music: "Whimsy Groove" by Kevin MacLeod (incompetech.com), CC BY 4.0 (the 10.5 s from 0:29.02 used here). Effects: freesound.org (CC0), Kenney UI Audio (CC0). -->
+    <div data-hf-id="hf-v99x" id="root" data-composition-id="vmain" data-start="0" data-duration="10" data-width="1080" data-height="1920">
+      <div data-hf-id="hf-vslx" id="vhook" data-composition-id="vhook" data-composition-src="compositions/v-hook.html" data-start="0" data-duration="1.714"
+        data-track-index="1" data-track-kind="graphics" data-width="1080" data-height="1920"></div>
+      <div data-hf-id="hf-vjer" id="vchoose" data-composition-id="vchoose" data-composition-src="compositions/v-choose.html" data-start="1.714" data-duration="2.286"
+        data-track-index="1" data-track-kind="graphics" data-width="1080" data-height="1920"></div>
+      <div data-hf-id="hf-vi6b" id="vroute" data-composition-id="vroute" data-composition-src="compositions/v-route.html" data-start="4" data-duration="1.714"
+        data-track-index="1" data-track-kind="graphics" data-width="1080" data-height="1920"></div>
+      <div data-hf-id="hf-vu5y" id="vmontage" data-composition-id="vmontage" data-composition-src="compositions/v-montage.html" data-start="5.714" data-duration="1.714"
+        data-track-index="1" data-track-kind="graphics" data-width="1080" data-height="1920"></div>
+      <div data-hf-id="hf-vaxz" id="vendcard" data-composition-id="vendcard" data-composition-src="compositions/v-endcard.html" data-start="7.428" data-duration="2.572"
+        data-track-index="1" data-track-kind="graphics" data-width="1080" data-height="1920"></div>
+
+      <audio data-hf-id="hf-va2g" id="music" class="clip" src="assets/music.mp3" data-start="0" data-duration="10" data-media-start="0" data-volume="0.8"
+        data-fade-out="0.8" data-track-index="2"></audio>
+      <audio data-hf-id="hf-vebf" id="sfx-whoosh-a" class="clip" src="assets/sfx/whoosh2.wav" data-start="1.43" data-duration="0.63" data-volume="0.7" data-track-index="3"></audio>
+      <audio data-hf-id="hf-v3zh" id="sfx-click" class="clip" src="assets/sfx/click.wav" data-start="3.01" data-duration="0.09" data-volume="1" data-track-index="5"></audio>
+      <audio data-hf-id="hf-vnrd" id="sfx-whoosh-b" class="clip" src="assets/sfx/whoosh1.wav" data-start="3.88" data-duration="0.67" data-volume="0.8" data-track-index="3"></audio>
+      <audio data-hf-id="hf-v2re" id="sfx-whoosh-c" class="clip" src="assets/sfx/whoosh3.wav" data-start="5.42" data-duration="0.7" data-volume="0.6" data-track-index="3"></audio>
+      <audio data-hf-id="hf-vgul" id="sfx-pop-a" class="clip" src="assets/sfx/pop1.wav" data-start="6.15" data-duration="0.05" data-volume="0.8" data-track-index="3"></audio>
+      <audio data-hf-id="hf-vt6a" id="sfx-pop-b" class="clip" src="assets/sfx/pop2.wav" data-start="6.58" data-duration="0.05" data-volume="0.8" data-track-index="5"></audio>
+      <audio data-hf-id="hf-vsbj" id="sfx-pop-c" class="clip" src="assets/sfx/pop1.wav" data-start="7.01" data-duration="0.05" data-volume="0.8" data-track-index="3"></audio>
+      <audio data-hf-id="hf-v2cz" id="sfx-riser" class="clip" src="assets/sfx/riser.wav" data-start="6.46" data-duration="1.41" data-media-start="5.27" data-volume="0.55" data-track-index="4"></audio>
+    </div>
+    <script>
+      window.__timelines["vmain"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>

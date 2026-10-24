@@ -1,0 +1,35 @@
+<template>
+  <style>
+    @font-face { font-family: "Mali"; src: url("assets/fonts/Mali-700-latin.woff2") format("woff2"); font-weight: 700; }
+    #root { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(180deg, #e9f6ff 0%, #ffffff 100%); }
+    /* one sentence a line: wrapping by width split it as "Real stops. Real / times." */
+    #vroute-title { position: absolute; left: 60px; right: 60px; top: 130px; display: grid; justify-items: center;
+      font: 700 104px/1.1 "Mali", sans-serif; color: #0e2440; }
+    #vroute-title .vl { display: flex; gap: 0 28px; }
+    #vroute-title span { display: block; }
+    #vroute-title .hl { color: #0a72d6; }
+    .vroute-win { position: absolute; border-radius: 40px; overflow: hidden; background: #fff;
+      box-shadow: 0 30px 80px -24px rgb(10 80 160 / .42), 0 0 0 2px rgb(255 255 255 / .9); }
+    .vroute-win img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+    #vroute-map { left: 70px; top: 440px; width: 940px; height: 800px; }
+    #vroute-rows { left: 70px; top: 1290px; width: 940px; height: 560px; }
+    #vroute-rows img { height: auto; }
+  </style>
+  <div id="root" data-composition-id="vroute" data-width="1080" data-height="1920">
+    <div id="vroute-title" class="clip" data-start="0" data-duration="1.714"><div class="vl"><span>Real</span><span>stops.</span></div><div class="vl"><span class="hl">Real</span><span class="hl">times.</span></div></div>
+    <div id="vroute-map" class="vroute-win clip" data-layout-allow-overflow data-start="0" data-duration="1.714"><img src="assets/shot-map.png" alt="The planned route through 5 stops on the map" /></div>
+    <div id="vroute-rows" class="vroute-win clip" data-layout-allow-overflow data-start="0" data-duration="1.714"><img src="assets/shot-rows.png" alt="Each stop with its arrival, drive, time there and leave time" /></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    // out of the zoom: the plan arrives large and blurred and settles
+    tl.fromTo("#vroute-map", { scale: 1.35, opacity: 0, filter: "blur(12px)" }, { scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.45, ease: "expo.out" }, 0);
+    tl.fromTo("#vroute-rows", { y: 300, opacity: 0, filter: "blur(10px)" }, { y: 0, opacity: 1, filter: "blur(0px)", duration: 0.5, ease: "expo.out" }, 0.18);
+    tl.fromTo("#vroute-title span", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.13, stagger: 0.07, ease: "power4.out" }, 0.3);
+    // the rows scroll on to show every stop's times, like the app does
+    tl.fromTo("#vroute-rows img", { y: 0 }, { y: -320, duration: 0.8, ease: "power2.inOut" }, 0.7);
+    // whip out upward into the montage
+    tl.to(["#vroute-map", "#vroute-rows", "#vroute-title"], { y: -420, opacity: 0, filter: "blur(14px)", duration: 0.2, ease: "power3.in" }, 1.5);
+    window.__timelines["vroute"] = tl;
+  </script>
+</template>

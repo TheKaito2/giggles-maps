@@ -1,0 +1,29 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    .vmt-shot { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+    .vmt-card { border-radius: 40px; overflow: hidden; box-shadow: 0 34px 80px -24px rgb(0 0 0 / .45); background: #fff; }
+    .vmt-card img { display: block; }
+    #vmt-a .vmt-card img, #vmt-b .vmt-card img { height: 1560px; width: auto; }
+    #vmt-c .vmt-card img { width: 960px; height: auto; }
+    #vmt-d .vmt-card img { height: 1480px; width: auto; }
+    #vmt-a { background: linear-gradient(160deg, #3ea8ff, #0a72d6); }
+    #vmt-b { background: linear-gradient(160deg, #ffcf4a, #ff9f1a); }
+    #vmt-c { background: linear-gradient(160deg, #5fd39b, #128552); }
+    #vmt-d { background: linear-gradient(160deg, #a58bff, #6a46e0); }
+  </style>
+  <div id="root" data-composition-id="vmontage" data-width="1080" data-height="1920">
+    <div id="vmt-a" class="vmt-shot clip" data-layout-allow-overflow data-start="0" data-duration="0.43"><div class="vmt-card"><img src="assets/card-1.png" alt="A landmark stamp share card" /></div></div>
+    <div id="vmt-b" class="vmt-shot clip" data-layout-allow-overflow data-start="0.43" data-duration="0.43"><div class="vmt-card"><img src="assets/card-5.png" alt="A Legendary Siam Si fortune stick" /></div></div>
+    <div id="vmt-c" class="vmt-shot clip" data-layout-allow-overflow data-start="0.86" data-duration="0.43"><div class="vmt-card"><img src="assets/shot-podium.png" alt="The leaderboard podium" /></div></div>
+    <div id="vmt-d" class="vmt-shot clip" data-layout-allow-overflow data-start="1.29" data-duration="0.424"><div class="vmt-card"><img src="assets/levels.png" alt="The level reward picker: +10% luck or +10% coins" /></div></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    // each shot is a real screen from the app: it whips in from below and sharpens; colour-flood hard cuts between, on the beat
+    [["#vmt-a", 0], ["#vmt-b", 0.43], ["#vmt-c", 0.86], ["#vmt-d", 1.29]].forEach(([id, t]) => {
+      tl.fromTo(`${id} .vmt-card`, { y: 240, filter: "blur(12px)" }, { y: 0, filter: "blur(0px)", duration: 0.2, ease: "expo.out" }, t);
+    });
+    window.__timelines["vmontage"] = tl;
+  </script>
+</template>

@@ -1,0 +1,49 @@
+<template>
+  <style>
+    @font-face { font-family: "Mali"; src: url("assets/fonts/Mali-700-latin.woff2") format("woff2"); font-weight: 700; }
+    @font-face { font-family: "Seed"; src: url("assets/fonts/LINESeedSansTH_A_Bd.woff2") format("woff2"); font-weight: 700; }
+    #root { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(180deg, #d9efff 0%, #f2f9ff 100%); }
+    #vchoose-copy { position: absolute; left: 90px; right: 90px; top: 280px; display: grid; gap: 22px; }
+    #vchoose-eyebrow { font: 700 34px/1.2 "Seed", sans-serif; letter-spacing: .14em; color: #0a72d6; }
+    #vchoose-title { font: 700 128px/1.06 "Mali", sans-serif; color: #0e2440; display: flex; flex-wrap: wrap; gap: 0 30px; }
+    #vchoose-title span { display: block; }
+    /* the app's time options, 900 px wide: everything inside scales 900/700 from the landscape cut */
+    #vchoose-stage { position: absolute; left: 90px; top: 720px; width: 900px; height: 962px; transform-origin: 23.5% 74%; }
+    #vchoose-shot { position: absolute; inset: 0; border-radius: 48px; overflow: hidden; background: #fff;
+      box-shadow: 0 30px 80px -20px rgb(10 80 160 / .45), 0 0 0 2px rgb(255 255 255 / .9); }
+    #vchoose-shot img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+    #vchoose-pick { position: absolute; left: 17px; top: 477px; width: 414px; height: 441px; border-radius: 34px;
+      box-shadow: 0 0 0 7px #0a72d6, 0 0 0 19px rgb(10 114 214 / .18); }
+    #vchoose-cursor { position: absolute; left: 0; top: 0; width: 96px; height: 96px; }
+  </style>
+  <div id="root" data-composition-id="vchoose" data-width="1080" data-height="1920">
+    <div id="vchoose-copy" class="clip" data-start="0" data-duration="2.286">
+      <div id="vchoose-eyebrow">PICK THE EXTRA TIME</div>
+      <div id="vchoose-title"><span>Make</span><span>it</span><span>a</span><span>trip.</span></div>
+    </div>
+    <div id="vchoose-stage" class="clip" data-layout-allow-overflow data-start="0" data-duration="2.286">
+      <div id="vchoose-shot"><img src="assets/shot-choose.png" alt="Giggles Maps time options: Quick +20 min, Relaxed +45 min, Day out +2 h, Half day +4 h" /></div>
+      <div id="vchoose-pick"></div>
+    </div>
+    <svg id="vchoose-cursor" class="clip" data-start="0" data-duration="2.286" viewBox="0 0 24 24">
+      <path d="M4 2l15 9.2-6.6 1.4 3.9 7.3-3 1.6-3.9-7.4L4.9 18z" fill="#0e2440" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" />
+    </svg>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    // the real time options rise from below, slightly large, and settle
+    tl.fromTo("#vchoose-stage", { y: 260, scale: 1.08, opacity: 0, filter: "blur(14px)" }, { y: 0, scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.55, ease: "expo.out" }, 0);
+    tl.fromTo("#vchoose-eyebrow", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "power4.out" }, 0.12);
+    tl.fromTo("#vchoose-title span", { color: "#c4d7ee" }, { color: "#0e2440", duration: 0.12, stagger: 0.08, ease: "none" }, 0.2);
+    // a cursor comes in and picks "Day out"; the card takes the app's selected style
+    tl.fromTo("#vchoose-cursor", { x: 1100, y: 1990 }, { x: 297, y: 1409, duration: 0.55, ease: "power3.out" }, 0.75);
+    tl.fromTo("#vchoose-pick", { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.22, ease: "back.out(2)" }, 1.36);
+    tl.to("#vchoose-cursor", { scale: 0.86, duration: 0.07, ease: "power2.in", transformOrigin: "10% 10%" }, 1.3);
+    tl.to("#vchoose-cursor", { scale: 1, duration: 0.12, ease: "power2.out" }, 1.37);
+    // zoom through the picked card into the plan
+    tl.to("#vchoose-cursor", { opacity: 0, duration: 0.1 }, 1.8);
+    tl.to("#vchoose-copy", { opacity: 0, filter: "blur(10px)", duration: 0.25, ease: "power3.in" }, 1.83);
+    tl.to("#vchoose-stage", { scale: 3.2, filter: "blur(8px)", duration: 0.45, ease: "power3.in" }, 1.84);
+    window.__timelines["vchoose"] = tl;
+  </script>
+</template>

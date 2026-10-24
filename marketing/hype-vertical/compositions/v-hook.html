@@ -1,0 +1,32 @@
+<template>
+  <style>
+    @font-face { font-family: "Mali"; src: url("assets/fonts/Mali-700-latin.woff2") format("woff2"); font-weight: 700; }
+    #root { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(180deg, #3ea8ff 0%, #8fd0ff 55%, #e2f3ff 100%); }
+    .vhook-cloud { position: absolute; top: 150px; width: 1700px; height: 640px; }
+    #vhook-cl { left: -620px; }
+    #vhook-cr { right: -620px; }
+    #vhook-cr img { transform: scaleX(-1); }
+    .vhook-cloud img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+    #vhook-title { position: absolute; left: 70px; right: 70px; top: 760px; display: flex; flex-wrap: wrap; justify-content: center; gap: 0 34px;
+      font: 700 150px/1.12 "Mali", sans-serif; color: #0e2440; text-align: center; }
+    #vhook-title span { display: block; }
+    #vhook-title .hl { color: #0656a6; }
+  </style>
+  <div id="root" data-composition-id="vhook" data-width="1080" data-height="1920">
+    <div id="vhook-cl" class="vhook-cloud clip" data-layout-allow-overflow data-start="0" data-duration="1.714"><img src="assets/sky-day.svg" alt="" /></div>
+    <div id="vhook-cr" class="vhook-cloud clip" data-layout-allow-overflow data-start="0" data-duration="1.714"><img src="assets/sky-day-b.svg" alt="" /></div>
+    <div id="vhook-title" class="clip" data-start="0" data-duration="1.714" data-layout-allow-overlap>
+      <span>Got</span><span class="hl">20</span><span>spare</span><span>minutes?</span>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    // the clouds start closed over the middle and part, like opening the sky
+    tl.fromTo("#vhook-cl img", { x: 560, scale: 1.3 }, { x: -120, scale: 1, duration: 1.7, ease: "power2.inOut" }, 0);
+    tl.fromTo("#vhook-cr img", { x: -560, scale: 1.3 }, { x: 120, scale: 1, duration: 1.7, ease: "power2.inOut" }, 0);
+    // the line: each word blurs in, then holds dead still
+    tl.fromTo("#vhook-title span", { opacity: 0, filter: "blur(10px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.16, stagger: 0.09, ease: "power4.out" }, 0.22);
+    tl.to("#vhook-title span", { opacity: 0, filter: "blur(8px)", duration: 0.14, stagger: 0.03, ease: "power3.in" }, 1.56);
+    window.__timelines["vhook"] = tl;
+  </script>
+</template>

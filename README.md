@@ -18,7 +18,7 @@ viewpoints, cafés, OTOP craft shops), ranked on quality, with paid Partners alw
 stamps, XP, coins and Siam Si fortune sticks. Shops pay only for visits that really happened.
 
 <p align="center"><img src="docs/assets/hype.gif" width="80%" alt="Giggles Maps in 10 seconds" /><br />
-  <sub><a href="docs/assets/hype.mp4">Watch the 10-second clip with sound</a></sub></p>
+  <sub><a href="docs/assets/hype.mp4">Watch the 10-second clip with sound</a> · <a href="docs/assets/hype-9x16.mp4">vertical cut for Reels and TikTok</a></sub></p>
 
 <p align="center">
   <img src="docs/assets/screens/map.png" width="19%" alt="Map with local stops" />
@@ -81,6 +81,7 @@ ios/        the iOS app: Capacitor shell, Swift plugins, widgets
 android/    native Android app (Kotlin + Compose), see android/AGENTS.md
 supabase/   migrations, Edge Functions, SQL tests
 docs/       architecture, API contract, platforms, monetization, gamification
+marketing/  the 10-second hype clip in HyperFrames: hype/ (16:9) and hype-vertical/ (9:16)
 ```
 
 ## Run it
