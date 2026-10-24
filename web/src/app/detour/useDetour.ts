@@ -15,15 +15,16 @@ export const PRESETS = [
   { id: "half", label: "Half day", min: 240, blurb: "Room for a long wander" },
 ] as const;
 export type PresetId = (typeof PRESETS)[number]["id"] | "custom";
-type Result = RoutePlan | "loading" | { error: string; gate?: boolean };   // gate: sign in or upgrade, not worth a retry
+type Result = RoutePlan | "loading" | { error: string; gate?: Gate };   // gate: sign in or upgrade, not worth a retry
 // v5: why a plan was refused, for the sign-in / membership sheet
-export type Gate = "sign_in_required" | "detour_limit" | "edit_limit";
-const GATES = new Set<string>(["sign_in_required", "detour_limit", "edit_limit"]);
+export type Gate = "sign_in_required" | "sign_in_edits" | "detour_limit" | "edit_limit";
+const GATES = new Set<string>(["sign_in_required", "sign_in_edits", "detour_limit", "edit_limit"]);
 
 const errorText = (e: unknown) => {
   const code = errCode(e);
   return code === "routing_unavailable" ? "Couldn't find a road route. Try another way to travel, or retry in a moment."
     : code === "sign_in_required" ? "Guests try one detour a day. Sign in free for 3."
+    : code === "sign_in_edits" ? "Guests get 3 changes a day. Sign in free for 10."
     : code === "detour_limit" ? "That's today's 3 free detours."
     : code === "edit_limit" ? "That's today's 10 free changes."
     : code === "slow_down" ? "Lots of plans at once. Wait a moment, then try again."
@@ -46,6 +47,10 @@ export function useDetour(onError: (m: string) => void) {
   const [exclude, setExclude] = useState<number[]>([]);
   const [editing, setEditing] = useState(false);
   const [hidden, setHidden] = useState<number[]>([]);   // removed stops, hidden at once while the route recalculates
+  // you put the stops in your own order (a drag, a + between two): edits keep it. A new plan (another time option, plan
+  // card or destination) starts from the planner's order again.
+  const [manual, setManual] = useState(false);
+  useEffect(() => setManual(false), [preset, choice, dest]);
   const [locating, setLocating] = useState(false);
   const request = useRef(0);   // preset plans in flight
   const [again, setAgain] = useState(0);   // bumped to plan the presets again (a rewarded ad lifted today's limit)
@@ -73,7 +78,7 @@ export function useDetour(onError: (m: string) => void) {
     setResults((all) => ({ ...all, [k]: "loading" }));
     planRoute(toRequest({ ...prefs, budget: budgetOf(k) }, origin.point, dest.point))
       .then((r) => { if (id === request.current) setResults((all) => ({ ...all, [k]: r })); })
-      .catch((e) => { if (id === request.current) { gated(e); setResults((all) => ({ ...all, [k]: { error: errorText(e), gate: GATES.has(errCode(e)) } })); } });
+      .catch((e) => { if (id === request.current) { gated(e); setResults((all) => ({ ...all, [k]: { error: errorText(e), gate: GATES.has(errCode(e)) ? errCode(e) as Gate : undefined } })); } });
   };
   // a new trip plans all four options at once (Relaxed first), plus a custom time if that's the one picked;
   // the cards fill in as each returns
@@ -101,7 +106,9 @@ export function useDetour(onError: (m: string) => void) {
   const choosePreset = (id: PresetId) => {
     edit.current++; setPreset(id); setChoice(null); setExclude([]); setEditing(false); setHidden([]);
     const r = results[id];
-    if (!r || (typeof r === "object" && "error" in r)) planPreset(id, request.current);
+    // a refused plan (sign in, daily limit) would be refused again: show why instead of asking the server
+    if (r && typeof r === "object" && "gate" in r && r.gate) setGate(r.gate);
+    else if (!r || (typeof r === "object" && "error" in r)) planPreset(id, request.current);
   };
   // a new custom time changes the trip, and the effect above plans it; the same time again just picks it
   const pickCustom = (min: number | "auto") => {
@@ -121,7 +128,7 @@ export function useDetour(onError: (m: string) => void) {
   // edits re-plan the shown preset: kept stops stay in (must_include), removed ones stay out (exclude), and the planner works
   // out the best order again. Kept stops always stay, past the preset's time if need be: the time only shapes the generated
   // plans, it never refuses a stop you chose. `fixed`: keep exactly this order (a place added in a gap goes right there).
-  const replan = async (keep: number[], out: number[], fixed = false): Promise<void> => {
+  const replan = async (keep: number[], out: number[], fixed: boolean | number[] = false): Promise<void> => {
     if (!origin || !dest || !response || !preset) return;
     const id = ++edit.current;
     setEditing(true);
@@ -140,16 +147,19 @@ export function useDetour(onError: (m: string) => void) {
   const ids = () => plan?.stops.map((s) => s.id) ?? [];
   // one edit at a time: the next one builds on its result. Removing keeps the others, rules this one out,
   // and lets the planner fill the gap with its best replacement.
-  const removeStop = (stop: number) => { if (editing) return; setHidden((h) => [...h, stop]); return replan(ids().filter((x) => x !== stop), [...exclude, stop]); };
+  // Once you've set the order yourself (a drag or a + between stops), later edits keep it.
+  const removeStop = (stop: number) => { if (editing) return; setHidden((h) => [...h, stop]); return replan(ids().filter((x) => x !== stop), [...exclude, stop], manual); };
   // a stop dragged to a new place: the route goes in exactly this order
-  const reorder = (order: number[]) => { if (editing) return; return replan(order, exclude, true); };
+  const reorder = (order: number[]) => { if (editing) return; setManual(true); return replan(order, exclude, true); };
   // adding means adding: the place goes in even when the trip runs past the preset's time. `at`: the gap it goes in
   // (the + between two stops, 0 = before the first): the route goes through it right there; none = "add along your
   // route", and the planner fits it in the best order
   const addStop = (place: number, at?: number) => {
     if (editing) return;
     const keep = ids(), out = exclude.filter((x) => x !== place);
-    return at == null ? replan([...keep, place], out) : replan([...keep.slice(0, at), place, ...keep.slice(at)], out, true);
+    if (at == null) return replan([...keep, place], out, manual ? keep : false);
+    setManual(true);
+    return replan([...keep.slice(0, at), place, ...keep.slice(at)], out, true);
   };
 
   return {

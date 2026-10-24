@@ -141,7 +141,7 @@ export interface PlanRequest {
   max_stops?: number;           // 1-6; omitted = Auto
   max_price?: 0 | 1 | 2 | 3;    // omitted = Any
   must_include?: number[];      // places the user picked or kept (10, members 15)
-  keep_order?: boolean;         // must_include is the order to keep, exactly
+  keep_order?: boolean | number[];   // true: must_include is the order, exactly; a list: those keep their order, the rest fit in
   exclude?: number[];           // stops the user removed or swapped out
   theme?: string;               // this plan comes first
   meals?: Meal[];               // meals to stop for; omitted = no food stop forced

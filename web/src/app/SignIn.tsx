@@ -30,7 +30,7 @@ export default function SignIn({ why }: { why?: string }) {
         <button className="btn ghost" disabled={busy}>Email me a link</button>
       </form>
       {msg && <p className="fine" role="status">{msg}</p>}
-      <p className="fine">Your stamps and coupons move to your account.</p>
+      <p className="fine">Your stamps, coins and photos move to your account.</p>
     </div>
   );
 }

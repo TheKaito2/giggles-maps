@@ -144,6 +144,8 @@ export default function App() {
   // "Later" on the name sheet holds for 3 days, not just this visit (it opened on every tab before)
   const [nameLater, setNameLater] = useState(() => { try { return Number(localStorage.getItem("gm-name-later")) > Date.now(); } catch { return false; } });
   const [notice, setNotice] = useState("");
+  // a notice goes away by itself after 8 s (it sits above pop-ups; "location is off" used to stay over the Shop for good)
+  useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(""), 8000); return () => clearTimeout(t); }, [notice]);
   const [pendingFriend, setPendingFriend] = useState(() => readCodeParam("friend"));
 
   // ride-along QR: /app/?trip=CODE joins straight away
@@ -243,7 +245,7 @@ export default function App() {
               <LayersButton look={look} setLook={setLook} />
               {!nearby.watching && <button type="button" className="map-tool" onClick={nearby.start} aria-label="Show stops near me"><LocateFixed size={20} /></button>}
             </div>
-            {place && <Boundary><Suspense fallback={null}><PlaceSheet id={place} onClose={() => setPlace(null)}
+            {place && <Boundary onClose={() => setPlace(null)}><Suspense fallback={null}><PlaceSheet id={place} onClose={() => setPlace(null)}
               onDirections={(p) => { setPlace(null); d.goTo({ point: { lat: p.lat, lng: p.lng }, name: p.name }); }}
               onCheckin={checkInAt} onCoins={refresh} /></Suspense></Boundary>}
             {(zoneStop || paused) && (
@@ -298,7 +300,7 @@ export default function App() {
         </main>
       )}
 
-      <Boundary><Suspense fallback={null}>
+      <Boundary onClose={() => { setOverlay(null); d.setGate(null); setAdSheet(false); setNav(null); setEtaToken(null); setNameSheet(false); setNameLater(true); }}><Suspense fallback={null}>
       {(overlay === "shop" || overlay === "bag") && (
         <Modal label="Shop" className="shop-modal" onClose={() => setOverlay(null)}>
           <header className="modal-head"><h2>Shop</h2><button type="button" className="icon-btn" onClick={() => setOverlay(null)} aria-label="Close"><X size={20} /></button></header>
@@ -328,7 +330,7 @@ export default function App() {
       )}
 
       </Suspense></Boundary>
-      {checkin && <Boundary><Suspense fallback={null}>
+      {checkin && <Boundary onClose={() => setCheckin(null)}><Suspense fallback={null}>
         <CheckIn target={checkin.target} initialCode={checkin.code} hasPlus={!!profile?.plusUntil} luck={profile?.perks.luck} nickname={profile?.nickname} onClose={() => setCheckin(null)} onDone={() => { liveTrip.checkedIn(checkin.target.id); refresh(); }} />
       </Suspense></Boundary>}
     </div>

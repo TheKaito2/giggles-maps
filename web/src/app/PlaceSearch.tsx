@@ -65,7 +65,7 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions, 
     // addresses (Photon, fair use): 3+ letters, a short pause, the previous request cancelled
     const t2 = text.length >= 3 ? setTimeout(() => {
       searchAddresses(text, near, abort.signal).then((r) => {
-        if (id > shown.current.addresses && id <= request.current) { shown.current.addresses = id; setAddresses(r.slice(0, 4)); }
+        if (id > shown.current.addresses && id <= request.current) { shown.current.addresses = id; setAddresses(r.filter((a) => /[\p{L}\p{N}]/u.test(a.name)).slice(0, 4)); }   // not "-" or "]"
         if (id === request.current) setSettled((x) => ({ ...x, addresses: text }));
       }).catch(() => undefined);   // cancelled or Photon down: places still show
     }, 300) : undefined;

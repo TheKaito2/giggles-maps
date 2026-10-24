@@ -12,6 +12,7 @@ type Why = Gate | "ads";
 const TITLE: Record<Why, string> = {
   ads: "Go ad-free",
   sign_in_required: "Sign in to plan more detours",
+  sign_in_edits: "Sign in to keep changing it",
   detour_limit: "That's today's free detours",
   edit_limit: "That's today's free changes",
 };
@@ -27,7 +28,8 @@ export default function Upgrade({ gate, onClose, onRewarded }: { gate: Why; onCl
   const adKind = gate === "detour_limit" ? "detour" : gate === "edit_limit" ? "edit" : null;
   useEffect(() => { if (gate === "detour_limit" || gate === "edit_limit") getPlanUsage().then(setUsage).catch(() => undefined); }, [gate]);
   // signed in from this sheet: the detour plans itself now
-  useEffect(() => { if (gate === "sign_in_required" && !guest) onClose(); }, [guest]); // eslint-disable-line react-hooks/exhaustive-deps
+  const signIn = gate === "sign_in_required" || gate === "sign_in_edits";
+  useEffect(() => { if (signIn && !guest) onClose(); }, [guest]); // eslint-disable-line react-hooks/exhaustive-deps
   const buy = async (kind: "membership" | "plus") => {
     setMsg("");
     try { if (await purchase(kind, user?.id)) { setMsg("Thanks! It switches on in a moment."); setTimeout(onClose, 1500); } }
@@ -38,8 +40,10 @@ export default function Upgrade({ gate, onClose, onRewarded }: { gate: Why; onCl
       <div className="modal upgrade" ref={box} tabIndex={-1}>
         <header className="modal-head"><h2>{TITLE[gate]}</h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button></header>
-        {gate === "sign_in_required" || (gate === "ads" && guest) ? <>
-          <p className="fine">{gate === "ads" ? "Sign in first, so it stays with your account." : "Guests try one detour a day; a free account plans 3. Your stamps and photos come with you."}</p>
+        {signIn || (gate === "ads" && guest) ? <>
+          <p className="fine">{gate === "ads" ? "Sign in first, so it stays with your account."
+            : gate === "sign_in_edits" ? "Guests get 3 changes a day; a free account makes 10. Your stamps, coins and photos come with you."
+            : "Guests try one detour a day; a free account plans 3. Your stamps, coins and photos come with you."}</p>
           <SignIn />
         </> : <>
           {usage && <div className="usage-row">

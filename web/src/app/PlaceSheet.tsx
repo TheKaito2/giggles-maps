@@ -96,6 +96,7 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
   const [body, setBody] = useState("");
   const [msg, setMsg] = useState("");
   const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);   // one review save at a time (a double tap sent two, the second hid "+1 shake")
   // a late answer for the previous pin must not land on this one
   const shown = useRef(id);
   shown.current = id;
@@ -122,17 +123,24 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
     if (photoKey) photoUrls(photoKey.split("|")).then(setUrls).catch(() => undefined);
   }, [photoKey]);
 
-  if (!page) return <aside className="place-sheet glass" aria-busy="true"><button type="button" className="icon-btn sheet-close" onClick={onClose} aria-label="Close"><X size={18} /></button>{msg ? <p className="fine">{msg}</p> : <SkelPlace />}</aside>;
+  if (!page) return <aside className="place-sheet glass" aria-busy="true"><button type="button" className="icon-btn sheet-close" onClick={onClose} aria-label="Close"><X size={18} /></button>{msg ? <p className="fine place-msg">{msg}</p> : <SkelPlace />}</aside>;
   const k = kindOf(page.kind, page.category);
   const open = openNow(page.opening_hours);
   const share = async () => {
     if (await shareOrCopy(page.name, `${SITE}/app/?place=${page.id}`) === "copied") setMsg("Link copied.");
   };
-  const submitReview = () => writeReview(page.id, rating, body).then((r) => {
-    setMsg(r.shake ? "Review saved. +1 Siam Si shake for writing it: shake it on your Profile." : r.xp ? `Review saved. +${r.xp} XP.` : "Review saved.");
-    if (r.shake || r.xp) onCoins?.();
-    load();
-  }).catch((e) => setMsg(errCode(e) === "check_in_first" ? "Check in here first: reviews are from verified visits only." : "Couldn't save the review."));
+  const submitReview = () => {
+    if (saving) return;
+    setSaving(true);
+    writeReview(page.id, rating, body).then((r) => {
+      setMsg(r.shake ? "Review saved. +1 Siam Si shake for writing it: shake it on your Profile." : r.xp ? `Review saved. +${r.xp} XP.` : "Review saved.");
+      if (r.shake || r.xp) onCoins?.();
+      load();
+    }).catch((e) => setMsg(errCode(e) === "check_in_first" ? "Check in here first: reviews are from verified visits only." : "Couldn't save the review."))
+      .finally(() => setSaving(false));
+  };
+  // counted like the server does (characters, not UTF-16 units: an emoji is one, not two)
+  const reviewLen = [...body.trim()].length, toGo = REVIEW_SHAKE_CHARS - reviewLen;
   const addPhoto = async (file: File | undefined) => {
     if (!file) return;
     setAdding(true); setMsg("");
@@ -246,10 +254,10 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
           <form className="review-form stack" onSubmit={(e) => { e.preventDefault(); if (rating) submitReview(); }}>
             <Stars value={rating} onPick={setRating} size={26} />
             <textarea className="text-in" rows={3} maxLength={1000} value={body} placeholder="What was it like? (optional)" onChange={(e) => setBody(e.target.value)} />
-            {page.review_shake && <p className={`fine shake-hint${body.trim().length >= REVIEW_SHAKE_CHARS ? " ready" : ""}`}><Sparkles size={13} aria-hidden />
-              {body.trim().length >= REVIEW_SHAKE_CHARS ? "This review earns a Siam Si shake." : `Write ${REVIEW_SHAKE_CHARS - body.trim().length} more characters to earn a Siam Si shake.`}</p>}
+            {page.review_shake && <p className={`fine shake-hint${toGo <= 0 ? " ready" : ""}`}><Sparkles size={13} aria-hidden />
+              {toGo <= 0 ? "This review earns a Siam Si shake." : `Write ${toGo} more character${toGo === 1 ? "" : "s"} to earn a Siam Si shake.`}</p>}
             <div className="row">
-              <button className="btn small" type="submit" disabled={!rating}>{page.reviews.some((r) => r.mine) ? "Update review" : "Post review · +20 XP"}</button>
+              <button className="btn small" type="submit" disabled={!rating || saving}>{page.reviews.some((r) => r.mine) ? "Update review" : "Post review · +20 XP"}</button>
               {page.reviews.some((r) => r.mine) && <button type="button" className="link" onClick={() => deleteReview(page.id).then(() => { setRating(0); setBody(""); load(); })}>Delete</button>}
             </div>
           </form>

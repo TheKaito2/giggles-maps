@@ -48,8 +48,9 @@ export default function FriendsSection({ profile, onOpen }: { profile: Profile |
       <div className="row between"><h3>Friends</h3><span className="fine">Your code <b className="num">{profile?.friendCode}</b></span></div>
       <div className="row">
         <form className="row add-friend grow" onSubmit={(e) => { e.preventDefault(); add(); }}>
-          <input className="text-in code-in" value={code} maxLength={8} placeholder="Friend code" aria-label="Friend code" autoCapitalize="characters"
-            onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />
+          {/* no maxLength: it cut a pasted "  admvvg9l  " to 8 characters before the spaces were stripped */}
+          <input className="text-in code-in" value={code} placeholder="Friend code" aria-label="Friend code" autoCapitalize="characters"
+            onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))} />
           <button className="btn" type="submit" disabled={code.length !== 8}><UserPlus size={16} aria-hidden /> Add</button>
         </form>
         <button type="button" className="btn soft" onClick={() => setShowQr((s) => !s)}>{showQr ? "Hide my QR" : "My QR"}</button>

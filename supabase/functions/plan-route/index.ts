@@ -75,8 +75,11 @@ serve(async (req) => {
   const exclude = new Set(ids(body.exclude, 30, "bad_exclude"));
   // the stops an edited plan keeps (a half day can hold 7+); the time budget still decides what fits
   const mustInclude = ids(body.must_include, STOP_CAP.member, "bad_must_include").filter((id) => !exclude.has(id));
-  // keep_order: the kept stops stay in exactly this order (the + between two stops puts a place right there)
-  const fixedOrder = body.keep_order === true ? [...mustInclude] : undefined;
+  // keep_order: true = must_include is the order, exactly (the + between two stops puts a place right there). A list = those
+  // stops keep that order and the rest of must_include goes where it fits best ("add along your route" after you dragged
+  // stops into your own order: it used to re-sort them all)
+  const fixedOrder = body.keep_order === true ? [...mustInclude]
+    : Array.isArray(body.keep_order) ? ids(body.keep_order, STOP_CAP.member, "bad_keep_order").filter((id) => mustInclude.includes(id)) : undefined;
 
   const db = admin();
   const { data: profile } = await db.from("profiles").select("plus_until, member_since").eq("id", user.id).maybeSingle();
@@ -91,11 +94,11 @@ serve(async (req) => {
   const edit = mustInclude.length > 0 || exclude.size > 0;
   const quotaKey = edit ? `${destKey}|${[...mustInclude].sort((a, b) => a - b).join(".")}|${[...exclude].sort((a, b) => a - b).join(".")}` : destKey;
   // (an "edit" of a destination not planned today counts as a new detour; the database decides)
-  // guests get a taste (1 destination and 3 changes a day), then "sign in to plan more" (403)
+  // guests get a taste (1 destination and 3 changes a day), then "sign in to plan more" (403, sign_in_required / sign_in_edits)
   const { data: allowed, error: qErr } = await db.rpc("plan_allowed", { p_user: user.id, p_edit: edit, p_key: quotaKey, p_dest: destKey, p_member: member,
     p_guest: !!user.is_anonymous });
   if (qErr) throw qErr;
-  if (allowed === "sign_in_required") throw new HttpError(403, allowed);
+  if (allowed === "sign_in_required" || allowed === "sign_in_edits") throw new HttpError(403, allowed);   // edits: its 3 changes
   if (allowed !== "ok") throw new HttpError(429, allowed);
   // exclusive places are gone; the candidate queries still take a level and every place is level 0
   const { data: level, error: lErr } = await db.rpc("unlock_level", { p_user: user.id });

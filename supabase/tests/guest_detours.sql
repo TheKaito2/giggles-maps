@@ -14,7 +14,7 @@ begin
   r := public.plan_allowed(g, true, 'A|1', 'A', false, true); insert into t_out values ('guest: change 1', r = 'ok', r);
   r := public.plan_allowed(g, true, 'A|2', 'A', false, true); insert into t_out values ('guest: change 2', r = 'ok', r);
   r := public.plan_allowed(g, true, 'A|3', 'A', false, true); insert into t_out values ('guest: change 3', r = 'ok', r);
-  r := public.plan_allowed(g, true, 'A|4', 'A', false, true); insert into t_out values ('guest: change 4', r = 'sign_in_required', r);
+  r := public.plan_allowed(g, true, 'A|4', 'A', false, true); insert into t_out values ('guest: change 4', r = 'sign_in_edits', r);
   r := public.plan_allowed(f, false, 'A', 'A', false);        insert into t_out values ('free: destination 1 (old 5-argument call)', r = 'ok', r);
   r := public.plan_allowed(f, false, 'B', 'B', false);        insert into t_out values ('free: destination 2', r = 'ok', r);
   r := public.plan_allowed(f, false, 'C', 'C', false);        insert into t_out values ('free: destination 3', r = 'ok', r);

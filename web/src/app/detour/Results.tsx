@@ -73,7 +73,7 @@ function StopRow({ s, i, d, sel, dragging, travel, roadMin, onDrag, onStep, onOp
   const tags = badges(s);
   return (
     <li className={`stop-row${sel ? " sel" : ""}${dragging ? " dragging" : ""}`} id={`stop-${s.id}`}>
-      <button type="button" className="drag-handle" aria-label={`Move ${s.name}: hold and drag, or use the arrow keys`} disabled={d.editing}
+      <button type="button" className="drag-handle" aria-label={`Move ${s.name}: hold and drag, or use the arrow keys`} aria-disabled={d.editing}
         onPointerDown={onDrag} onKeyDown={(e) => { if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); onStep(e.key === "ArrowUp" ? -1 : 1); } }}>
         <GripVertical size={16} aria-hidden /></button>
       <button type="button" className="stop-main" onClick={() => onOpen(s)}>
@@ -274,7 +274,9 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
       <div className="stack results">
         {presetBar}
         {r && typeof r === "object" && "error" in r
-          ? <p className="fine" role="status">{r.error} <button type="button" className="link" onClick={() => d.preset && d.retry(d.preset)}>Try again</button></p>
+          ? <p className="fine" role="status">{r.error} {r.gate
+              ? <button type="button" className="link" onClick={() => d.setGate(r.gate!)}>{r.gate.startsWith("sign_in") ? "Sign in" : "See options"}</button>
+              : <button type="button" className="link" onClick={() => d.preset && d.retry(d.preset)}>Try again</button>}</p>
           : <PlanProgress />}
       </div>
     );

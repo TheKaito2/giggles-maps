@@ -20,6 +20,11 @@ export const dialogsOpen = () => open.length;
 export const quietPop = () => quiet;
 /** Go back one history entry without it counting as the user pressing Back. */
 export function quietBack() { skipPop++; history.back(); }
+// A dialog closed by its own button gives its history entry back, but only after the current tap's effects have run: when
+// another dialog opens in the same tap (Layers -> Offline maps, Shop -> Avatar), it takes that entry over instead. Going
+// back at once was wrong there: history.back() is async, so it landed after the new dialog's pushState and popped the
+// new dialog's entry, and the next Back left the app.
+let handOver = 0;   // entries given back this tap and not yet taken over (two dialogs can close in one tap)
 
 /**
  * For a modal: focus moves into it on open and stays inside while you Tab, Escape closes it, the phone's or browser's Back
@@ -36,7 +41,8 @@ export function useDialog<T extends HTMLElement = HTMLDivElement>(onClose: () =>
     const me = { close: () => close.current(), closedByBack: () => { byBack = true; close.current(); } };
     open.push(me);
     box.current?.focus();
-    history.pushState({ ...history.state, gmDialog: open.length, gmLoad: LOAD }, "");
+    const entry = { ...history.state, gmDialog: open.length, gmLoad: LOAD };
+    if (handOver) { handOver--; history.replaceState(entry, ""); } else history.pushState(entry, "");
     const keys = (e: KeyboardEvent) => {
       if (open.at(-1) !== me) return;
       if (e.key === "Escape") { e.stopPropagation(); me.close(); return; }
@@ -53,7 +59,10 @@ export function useDialog<T extends HTMLElement = HTMLDivElement>(onClose: () =>
     return () => {
       document.removeEventListener("keydown", keys);
       open.splice(open.indexOf(me), 1);
-      if (!byBack && history.state?.gmDialog && ours(history.state)) quietBack();   // closed by its own button: drop the entry it added
+      if (!byBack && history.state?.gmDialog && ours(history.state)) {   // closed by its own button: drop the entry it added
+        handOver++;
+        queueMicrotask(() => { if (handOver) { handOver--; quietBack(); } });
+      }
       back?.focus();
     };
   }, []);
