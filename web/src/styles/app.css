@@ -1113,3 +1113,24 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 @keyframes reward-pop { from { opacity: 0; transform: translateY(16px) scale(.7); } to { opacity: 1; transform: none; } }
 .chest-hint { margin: 0; opacity: .8; }
 @media (prefers-reduced-motion: reduce) { .chest.ready, .chest-big .chest, .chest-rays, .reward-pop, .claim-btn { animation: none !important; } }
+
+/* passport: stamps open their photos */
+.stamp-btn { position: relative; border: 0; padding: 0; background: none; font: inherit; color: inherit; cursor: pointer; transition: transform .18s ease, filter .18s ease; }
+.entry.landmark.stamp-btn { border: 1.4cqw double #8a6200; background: rgb(247 239 220 / .75); }
+.stamp-btn:hover, .stamp-btn:focus-visible { transform: scale(1.06) translateY(-1cqw); filter: drop-shadow(0 1.5cqw 2cqw rgb(70 50 20 / .3)); z-index: 2; }
+.stamp-btn:focus-visible { outline: .6cqw solid var(--indigo); outline-offset: .6cqw; }
+.stamp-tag { position: absolute; left: 50%; bottom: -1cqw; translate: -50% 0; display: inline-flex; align-items: center; gap: 1cqw; white-space: nowrap;
+  padding: .8cqw 2.4cqw; border-radius: 99px; background: var(--indigo); color: #fff; font: 700 2.6cqw var(--font-body); letter-spacing: 0;
+  opacity: 0; transform: translateY(1cqw) scale(.9); transition: opacity .15s, transform .15s; pointer-events: none; }
+.stamp-btn:hover .stamp-tag, .stamp-btn:focus-visible .stamp-tag { opacity: 1; transform: none; }
+@media (hover: none) { .stamp-tag { opacity: .9; transform: none; } }   /* touch: always show the hint */
+.stamp-photos-backdrop { z-index: 140; place-items: center; }
+.modal.stamp-photos { width: min(720px, 100%); }
+.stamp-photo-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.stamp-photo-grid button { width: 100%; display: grid; gap: 4px; padding: 0; border: 0; background: none; text-align: left; cursor: zoom-in; }
+.stamp-photo-grid img, .stamp-photo-grid .ph { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; background: var(--paper); display: block; transition: transform .15s; }
+.stamp-photo-grid button:hover img { transform: scale(1.03); }
+.stamp-photo-grid .fine { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stamp-photo-big { margin: 0; display: grid; gap: 8px; }
+.stamp-photo-big img { width: 100%; max-height: 62vh; object-fit: contain; border-radius: 14px; background: #111; }
+.stamp-photo-big .row { justify-content: space-between; align-items: center; }

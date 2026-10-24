@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Camera, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useDialog } from "../../lib/useDialog";
 import { type PassportPhoto, type PassportStamp, photoUrls, type TripMemory } from "../../lib/api";
 import type { AvatarLook } from "../avatar/parts";
 import Avatar from "../social/Avatar";
@@ -13,6 +14,47 @@ export interface BookOwner {
 }
 const STAMPS_PER_PAGE = 8, PLACES_PER_PAGE = 3, PHOTOS_PER_PAGE = 4, TRIPS_PER_PAGE = 2;
 const TIER = { 3: "LANDMARK", 2: "WORTH A VISIT", 1: "EVERYDAY" } as const;
+interface Album { title: string; sub: string; photos: PassportPhoto[] }
+
+/** Every photo from one province or landmark, opened from its stamp. Tap a photo to see it large. */
+function StampPhotos({ album, urls, onClose }: { album: Album; urls: Record<string, string>; onClose: () => void }) {
+  const box = useDialog(onClose);
+  const [big, setBig] = useState<number | null>(null);
+  const p = big != null ? album.photos[big] : null;
+  const step = (d: number) => setBig((i) => i == null ? i : (i + d + album.photos.length) % album.photos.length);
+  return (
+    <div className="sheet-backdrop stamp-photos-backdrop" role="dialog" aria-modal="true" aria-label={`Photos: ${album.title}`}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal stamp-photos" ref={box} tabIndex={-1}
+        onKeyDown={(e) => { if (p && e.key === "ArrowRight") step(1); if (p && e.key === "ArrowLeft") step(-1); }}>
+        <header className="modal-head">
+          <span><h2>{album.title}</h2><span className="fine">{album.sub} · {album.photos.length} {album.photos.length === 1 ? "photo" : "photos"}</span></span>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button>
+        </header>
+        {p ? (
+          <figure className="stamp-photo-big">
+            {urls[p.path] ? <img src={urls[p.path]} alt={p.caption ?? `Photo at ${p.place}`} /> : <div className="ph" />}
+            <figcaption><b>{p.place}</b> · {day(p.at)}{p.caption && <> · {p.caption}</>}</figcaption>
+            <div className="row">
+              <button type="button" className="btn soft small" onClick={() => setBig(null)}>All photos</button>
+              {album.photos.length > 1 && <span className="row">
+                <button type="button" className="icon-btn" onClick={() => step(-1)} aria-label="Previous photo"><ChevronLeft /></button>
+                <span className="num fine">{big! + 1} / {album.photos.length}</span>
+                <button type="button" className="icon-btn" onClick={() => step(1)} aria-label="Next photo"><ChevronRight /></button>
+              </span>}
+            </div>
+          </figure>
+        ) : album.photos.length ? (
+          <ul className="stamp-photo-grid">
+            {album.photos.map((x, i) => <li key={x.checkin_id}><button type="button" onClick={() => setBig(i)} aria-label={`Open photo at ${x.place}, ${day(x.at)}`}>
+              {urls[x.path] ? <img src={urls[x.path]} alt="" loading="lazy" /> : <span className="ph" />}
+              <span className="fine">{x.place}</span></button></li>)}
+          </ul>
+        ) : <p className="fine">No photos here yet: they come from your check-ins, unless you hid them.</p>}
+      </div>
+    </div>
+  );
+}
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
 const chunk = <T,>(xs: T[], n: number) => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
 // machine-readable zone, passport style: letters, digits and "<" only, 30 characters a line
@@ -33,6 +75,7 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
   const [spread, setSpread] = useState(() => matchMedia("(min-width: 860px)").matches);
   const [at, setAt] = useState(0);   // leaves turned
   const [urls, setUrls] = useState<Record<string, string>>({});
+  const [album, setAlbum] = useState<Album | null>(null);   // a stamp's photos, open over the book
   useEffect(() => {
     const m = matchMedia("(min-width: 860px)");
     const on = () => { setSpread(m.matches); setAt(0); };
@@ -109,11 +152,20 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
       <Page key={`visa-${i}`} n={3 + i} className="visa">
         <h3 className="page-h">VISAS · {regionOf(list[0].properties.iso).en.toUpperCase()} <span>{regionOf(list[0].properties.iso).th}</span></h3>
         <div className="visa-grid">
-          {list.map((f) => <div key={f.id} className="visa-slot" style={{ translate: `${(f.id * 13) % 9 - 4}% ${(f.id * 7) % 9 - 4}%` }}>
-            {firstIn.has(f.id) && urls[provincePhoto.get(f.id) ?? ""] && <img className="visa-photo" src={urls[provincePhoto.get(f.id)!]} alt=""
-              style={{ rotate: `${(f.id % 7) - 3 + (f.id % 2 ? 8 : -8)}deg` }} loading="lazy" />}
-            <ProvinceStamp f={f} earnedAt={firstIn.get(f.id) ?? null} size={160} />
-          </div>)}
+          {list.map((f) => {
+            const style = { translate: `${(f.id * 13) % 9 - 4}% ${(f.id * 7) % 9 - 4}%` };
+            const inner = <>
+              {firstIn.has(f.id) && urls[provincePhoto.get(f.id) ?? ""] && <img className="visa-photo" src={urls[provincePhoto.get(f.id)!]} alt=""
+                style={{ rotate: `${(f.id % 7) - 3 + (f.id % 2 ? 8 : -8)}deg` }} loading="lazy" />}
+              <ProvinceStamp f={f} earnedAt={firstIn.get(f.id) ?? null} size={160} />
+            </>;
+            if (!firstIn.has(f.id)) return <div key={f.id} className="visa-slot" style={style}>{inner}</div>;
+            const pics = photos.filter((p) => p.province_id === f.id);
+            return <button key={f.id} type="button" className="visa-slot stamp-btn" style={style} aria-label={`${f.properties.name_en}: ${pics.length} photo${pics.length === 1 ? "" : "s"}`}
+              onClick={() => setAlbum({ title: f.properties.name_en, sub: f.properties.name_th.replace(/^จังหวัด/, ""), photos: pics })}>
+              {inner}<span className="stamp-tag"><Camera size={12} aria-hidden /> {pics.length ? `${pics.length} photo${pics.length === 1 ? "" : "s"}` : "No photos"}</span>
+            </button>;
+          })}
         </div>
       </Page>
     )),
@@ -127,10 +179,15 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
         {list.map((s, j) => <li key={s.place_id} className={`landmark-row${j % 2 ? " flip" : ""}`}>
           {s.photo && <figure className="print" style={{ rotate: `${j % 2 ? 4 : -4}deg` }}>
             {urls[s.photo] ? <img src={urls[s.photo]} alt={`Photo at ${s.name}`} loading="lazy" /> : <div className="ph" />}</figure>}
-          <div className="entry landmark" style={{ rotate: `${(s.place_id % 13) - 6}deg` }}>
-            <span className="entry-tier">{TIER[s.tier]}</span><b>{s.name}</b>{s.name_th && <span className="th">{s.name_th}</span>}
-            <span className="num band">{day(s.earned_at)}</span>
-          </div>
+          {(() => {
+            const pics = photos.filter((p) => p.place_id === s.place_id);
+            return <button type="button" className="entry landmark stamp-btn" style={{ rotate: `${(s.place_id % 13) - 6}deg` }}
+              aria-label={`${s.name}: ${pics.length} photo${pics.length === 1 ? "" : "s"}`} onClick={() => setAlbum({ title: s.name, sub: s.name_th ?? "Landmark", photos: pics })}>
+              <span className="entry-tier">{TIER[s.tier]}</span><b>{s.name}</b>{s.name_th && <span className="th">{s.name_th}</span>}
+              <span className="num band">{day(s.earned_at)}</span>
+              <span className="stamp-tag"><Camera size={12} aria-hidden /> {pics.length ? `${pics.length} photo${pics.length === 1 ? "" : "s"}` : "No photos"}</span>
+            </button>;
+          })()}
         </li>)}
       </ul>
     </Page>));
@@ -169,7 +226,7 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
   const go = (d: number) => setAt((a) => Math.max(0, Math.min(last, a + d)));
 
   useEffect(() => {
-    const key = (e: KeyboardEvent) => { if (e.key === "ArrowRight") go(1); else if (e.key === "ArrowLeft") go(-1); else if (e.key === "Escape") onClose(); };
+    const key = (e: KeyboardEvent) => { if (album) return; if (e.key === "ArrowRight") go(1); else if (e.key === "ArrowLeft") go(-1); else if (e.key === "Escape") onClose(); };
     addEventListener("keydown", key);
     return () => removeEventListener("keydown", key);
   });
@@ -194,6 +251,7 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
           );
         })}
       </div>
+      {album && <StampPhotos album={album} urls={urls} onClose={() => setAlbum(null)} />}
       <div className="book-nav">
         <button type="button" className="btn soft" onClick={() => go(-1)} disabled={at === 0} aria-label="Previous page"><ChevronLeft size={18} /></button>
         <span className="num" aria-live="polite">{label}</span>

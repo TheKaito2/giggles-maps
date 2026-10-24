@@ -178,7 +178,7 @@ export const setPhoto = async (checkinId: string, hidden: boolean, caption?: str
 
 export interface PassportStamp { place_id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3;
   province_id: number | null; event: string | null; earned_at: string; photo: string | null }
-export interface PassportPhoto { checkin_id: string; path: string; caption: string | null; place: string; province_id: number | null; at: string }
+export interface PassportPhoto { checkin_id: string; path: string; caption: string | null; place: string; province_id: number | null; place_id?: number; at: string }
 export interface Challenge { slug: string; kind: "daily" | "weekly" | "province" | "collection" | "friend"; title_en: string; title_th: string;
   have: number; need: number; xp: number; coins: number; claimed: boolean; period?: string }
 /** A ride-along you shared: its 3 memory photos (first, middle and last of the album). */
