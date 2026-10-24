@@ -175,6 +175,12 @@ serve(async (req) => {
     const { data: tiers, error: tErr } = await db.rpc("places_tiers", { p_ids: candidates.map((c) => c.id) });
     if (tErr) console.error("partner tiers failed", tErr);
     for (const t of (tiers ?? []) as { id: number; tier: "partner" | "choice" }[]) tierOf.set(t.id, t.tier);
+    // demo mode only: the pretend partners (demo_partners) count too, so the demo shows badges and the Giggle's plan
+    if (body.demo === true) {
+      const { data: demo, error: dErr } = await db.from("demo_partners").select("place_id, tier").in("place_id", candidates.map((c) => c.id));
+      if (dErr) console.error("demo partners failed", dErr);
+      for (const d of (demo ?? []) as { place_id: number; tier: "partner" | "choice" }[]) if (!tierOf.has(d.place_id)) tierOf.set(d.place_id, d.tier);
+    }
   }
   const boost = member ? (id: number) => tierOf.get(id) === "choice" ? 2 : tierOf.get(id) === "partner" ? 1.5 : 1 : undefined;
   const points: LatLng[] = [origin, dest, ...candidates.map((c) => ({ lat: c.lat, lng: c.lng }))];

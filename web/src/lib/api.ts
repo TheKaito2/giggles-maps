@@ -1,5 +1,10 @@
 import type { AvatarLook } from "../app/avatar/parts";
 import { ApiError, callFn, ensureSession, supabase } from "./supabase";
+import { demoOn } from "./demoGps";
+
+// Demo mode mixes a pretend community (src/demo) into what the server returns. Loaded only while demo mode is on, so real
+// users never download it or see it.
+const demo = () => demoOn() ? import("../demo") : null;
 
 export interface LatLng { lat: number; lng: number }
 
@@ -162,7 +167,7 @@ export async function searchAddresses(query: string, near?: LatLng | null, signa
   }));
 }
 
-export const planRoute = (p: PlanRequest) => callFn<RoutePlan>("plan-route", p);
+export const planRoute = (p: PlanRequest) => callFn<RoutePlan>("plan-route", demoOn() ? { ...p, demo: true } : p);   // demo: pretend partners too
 
 export async function uploadSelfie(blob: Blob): Promise<string> {
   const session = await ensureSession();
@@ -245,7 +250,8 @@ export async function placesTiers(ids: number[]): Promise<Map<number, PartnerTie
   if (!ids.length) return new Map();
   const { data, error } = await supabase.rpc("places_tiers", { p_ids: ids.slice(0, 300) });
   if (error) throw error;
-  return new Map((data as { id: number; tier: PartnerTier }[]).map((t) => [t.id, t.tier]));
+  const real = new Map((data as { id: number; tier: PartnerTier }[]).map((t) => [t.id, t.tier])), d = demo();
+  return d ? (await d).demoTiersFor(ids, real) : real;
 }
 
 // bookings through Giggles Maps (partner places only); the shop pays a flat fee once you check in
@@ -310,12 +316,19 @@ export interface Card { id: string; nickname: string; colour: string; xp: number
   look: Look; title: string | null; rank?: number; avatar?: AvatarLook; joined?: string }
 export interface Who { id: string; nickname: string; colour: string; avatar: AvatarLook; level: number }
 export interface Social { friends: Card[]; incoming: Card[]; outgoing: Card[] }
-export const getSocial = () => rpc<Social>("social");
+export async function getSocial(): Promise<Social> {
+  const real = await rpc<Social>("social"), d = demo();
+  return d ? (await d).demoSocial(real) : real;
+}
 export const addFriend = (code: string) => rpc<"friends" | "requested">("add_friend", { p_code: code });
 export const answerFriend = (from: string, accept: boolean) => rpc<void>("answer_friend", { p_from: from, p_accept: accept });
-export const removeFriend = (id: string) => rpc<void>("remove_friend", { p_id: id });
+export const removeFriend = async (id: string) => { if (!id.startsWith("demo-")) await rpc<void>("remove_friend", { p_id: id }); };
 export interface FriendPassport { card: Card; stamps: PassportStamp[]; photos: PassportPhoto[]; provinces: PassportData["provinces"] }
-export const getFriendPassport = (id: string) => rpc<FriendPassport>("friend_passport", { p_id: id });
+export async function getFriendPassport(id: string): Promise<FriendPassport> {
+  const d = demo();
+  if (d && id.startsWith("demo-")) { const p = (await d).demoPassport(id); if (p) return p; }
+  return rpc<FriendPassport>("friend_passport", { p_id: id });
+}
 export const getLeaderboard = () => rpc<{ top: Card[]; me: Card | null; total: number }>("leaderboard");
 export type BoardScope = "everyone" | "friends";
 export type BoardPeriod = "week" | "all";
@@ -324,12 +337,17 @@ export type BoardRow = Card & { rank: number | null; value: number };
 /** One board: top 50, your row (rank null when you've scored nothing yet), and the player just above you (the chase). */
 export interface Board { scope: BoardScope; period: BoardPeriod; metric: BoardMetric; ends: string | null;
   top: BoardRow[]; me: BoardRow | null; next: BoardRow | null; total: number }
-export const getBoard = (scope: BoardScope, period: BoardPeriod, metric: BoardMetric) =>
-  rpc<Board>("board", { p_scope: scope, p_period: period, p_metric: metric });
+export async function getBoard(scope: BoardScope, period: BoardPeriod, metric: BoardMetric): Promise<Board> {
+  const real = await rpc<Board>("board", { p_scope: scope, p_period: period, p_metric: metric }), d = demo();
+  return d ? (await d).demoBoard(real, scope, period, metric) : real;
+}
 /** Per province, who visited on the most different days in 90 days; `need` = visit-days for you to take it. */
 export interface Champion { province: { id: number; iso: string; name_en: string; name_th: string }; champion: Who; visits: number;
   mine: boolean; my_visits: number; need: number }
-export const getChampions = () => rpc<Champion[]>("province_champions");
+export async function getChampions(): Promise<Champion[]> {
+  const real = await rpc<Champion[]>("province_champions"), d = demo();
+  return d ? (await d).demoChampionsMerged(real) : real;
+}
 /** Places of some map kinds (convenience, fuel, atm...) nearest a route line, with how far off it they are. */
 export interface RoutePlace { id: number; name: string; name_th: string | null; category: string; kind: string | null; lat: number; lng: number;
   tier: number; rating: number | null; distance_m: number }
@@ -371,7 +389,11 @@ export type Pin = ({ type: "badge" } & Badge) | { type: "stamp"; id: number; nam
 export interface ProfilePage extends Omit<Card, "rank"> { friend_code: string | null; photos: number; friends: number; rank: number | null; badges: Badge[];
   showcase: Pin[]; crowns: { id: number; name_en: string; name_th: string; visits: number }[] }
 export const setShowcase = (pins: { type: "badge" | "stamp"; id: string }[]) => rpc<unknown>("set_showcase", { p: pins });
-export const getProfilePage = (id: string) => rpc<ProfilePage>("profile_of", { p_id: id });
+export async function getProfilePage(id: string): Promise<ProfilePage> {
+  const d = demo();
+  if (d && id.startsWith("demo-")) { const p = (await d).demoProfile(id); if (p) return p; }
+  return rpc<ProfilePage>("profile_of", { p_id: id });
+}
 
 export type Reaction = "heart" | "fire" | "clap" | "wow";
 export interface FeedItem {
@@ -382,12 +404,30 @@ export interface FeedItem {
   photo: string | null; caption: string | null; reactions: Partial<Record<Reaction, number>>; my_reaction: Reaction | null; comments: number;
 }
 export interface Comment { id: number; body: string; at: string; mine: boolean; who: Who }
-export const getComments = (activity: number) => rpc<Comment[]>("comments_of", { p_activity: activity });
-export const addComment = (activity: number, body: string) => rpc<Comment>("comment", { p_activity: activity, p_body: body });
+// pretend posts (negative ids) keep their comments and reactions on this device
+const demoAdded = new Map<number, Comment[]>();
+export async function getComments(activity: number): Promise<Comment[]> {
+  const d = demo();
+  if (d && activity < 0) return [...(await d).demoCommentsFor(activity), ...(demoAdded.get(activity) ?? [])];
+  return rpc<Comment[]>("comments_of", { p_activity: activity });
+}
+export async function addComment(activity: number, body: string): Promise<Comment> {
+  if (activity < 0) {
+    const p = await getProfile();
+    const c: Comment = { id: -Date.now(), body, at: new Date().toISOString(), mine: true,
+      who: { id: "me", nickname: p.nickname ?? "You", colour: p.colour, avatar: p.avatar, level: levelFor(p.xp) } };
+    demoAdded.set(activity, [...(demoAdded.get(activity) ?? []), c]);
+    return c;
+  }
+  return rpc<Comment>("comment", { p_activity: activity, p_body: body });
+}
 export const deleteComment = (id: number) => rpc<void>("delete_comment", { p_id: id });
-export const getFeed = (scope: "all" | "friends" | "me" = "all") => rpc<FeedItem[]>("feed", { p_scope: scope });
-export const react = (id: number, emoji: Reaction | null) => rpc<void>("react", { p_activity: id, p_emoji: emoji });
-export const nudge = (friend: string) => rpc<void>("nudge", { p_friend: friend });
+export async function getFeed(scope: "all" | "friends" | "me" = "all"): Promise<FeedItem[]> {
+  const real = await rpc<FeedItem[]>("feed", { p_scope: scope }), d = demo();
+  return d ? (await d).demoFeedMerged(real, scope) : real;
+}
+export const react = async (id: number, emoji: Reaction | null) => { if (id > 0) await rpc<void>("react", { p_activity: id, p_emoji: emoji }); };
+export const nudge = async (friend: string) => { if (!friend.startsWith("demo-")) await rpc<void>("nudge", { p_friend: friend }); };
 
 export interface FriendQuest { partner: Who; week: string; me: number; them: number }
 export const getFriendQuest = () => rpc<FriendQuest | null>("friend_quest");
@@ -417,7 +457,10 @@ export interface PlacePage {
   photos: PlacePhoto[]; busy: number[] | null; saved_in: string[];
   regular: { who: Who; visits: number; friend: boolean; mine: boolean } | null;   // most visit-days here in 60 days (2+)
 }
-export const getPlacePage = (id: number) => rpc<PlacePage | null>("place_page", { p_id: id });
+export async function getPlacePage(id: number): Promise<PlacePage | null> {
+  const real = await rpc<PlacePage | null>("place_page", { p_id: id }), d = demo();
+  return d && real ? (await d).demoPlacePage(real) : real;
+}
 export const writeReview = (place: number, rating: number, body: string) => rpc<void>("write_review", { p_place: place, p_rating: rating, p_body: body });
 export const deleteReview = (place: number) => rpc<void>("delete_review", { p_place: place });
 export const reportReview = (user: string, place: number) => rpc<void>("report_review", { p_user: user, p_place: place });

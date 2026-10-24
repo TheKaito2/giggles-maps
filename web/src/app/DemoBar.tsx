@@ -11,7 +11,8 @@ export default function DemoBar() {
   if (hidden) return null;
   return (
     <div className="demo-bar" role="status">
-      <b>Demo mode</b><span className="fine">Start directions, then use the Demo button to drive to each stop.</span>
+      <b>Demo mode</b><span className="fine">Start directions, then use the Demo button to drive to each stop. Other travellers, reviews and
+        partners you see are pretend.</span>
       <button type="button" className="icon-btn" aria-label="Hide this note (demo mode stays on)" title="Hide (demo mode stays on)"
         onClick={() => { try { localStorage.setItem(HIDDEN, "1"); } catch { /* hidden for now only */ } setHidden(true); }}><X size={16} /></button>
     </div>

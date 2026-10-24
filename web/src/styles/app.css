@@ -1298,3 +1298,8 @@ p.chase { margin: 0; }
 .ad-icon.big { width: 64px; height: 64px; border-radius: 20px; }
 .rewarded-bar { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
 .rewarded-bar > span { display: block; height: 100%; background: var(--marigold); transition: width .25s linear; }
+
+/* first-visit demo welcome (DemoWelcome.tsx) */
+.modal.demo-welcome { width: min(420px, 100%); }
+.demo-welcome-actions { display: grid; gap: 10px; }
+.demo-welcome-actions .btn { width: 100%; }

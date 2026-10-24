@@ -16,6 +16,7 @@ import RideAlong, { useTrip } from "./social/RideAlong";
 import Leaderboard from "./Leaderboard";
 import AdBanner from "./AdBanner";
 import Upgrade from "./Upgrade";
+import DemoWelcome from "./DemoWelcome";
 import Quests from "./Quests";
 import Feed from "./Feed";
 import ProfileTab from "./Profile";
@@ -267,6 +268,7 @@ export default function App() {
       {d.gate && tab === "map" && <Upgrade gate={d.gate} onClose={() => d.setGate(null)}
         onRewarded={d.gate === "detour_limit" ? d.replanAll : () => setNotice("5 more changes for today. Make that change again.")} />}
       {adSheet && <Upgrade gate="ads" onClose={() => setAdSheet(false)} />}
+      <DemoWelcome />
       {nav && <Navigate waypoints={nav} mode={d.prefs.mode} onClose={() => setNav(null)}
         onCheckin={(stop, rest) => { setNav(null); setPaused(rest.length ? rest : null); if (stop.id != null) checkInAt({ ...stop, id: stop.id }); }} />}
       {etaToken && <EtaView token={etaToken} onClose={() => setEtaToken(null)} />}
