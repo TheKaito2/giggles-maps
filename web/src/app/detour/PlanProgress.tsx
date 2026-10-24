@@ -22,8 +22,6 @@ export default function PlanProgress({ editing = false }: { editing?: boolean })
     <div className={`plan-progress${editing ? " small" : ""}`} role="status" aria-live="polite">
       <span className="plan-step" key={step}><span className="spinner" aria-hidden /> {steps[step][1]}…</span>
       <span className="plan-bar" aria-hidden><span style={{ width: `${pct}%` }} /></span>
-      {!editing && <ol className="plan-steps" aria-hidden>{steps.slice(0, -1).map(([, label], i) =>
-        <li key={label} className={i < step ? "done" : i === step ? "now" : ""}>{label}</li>)}</ol>}
     </div>
   );
 }
