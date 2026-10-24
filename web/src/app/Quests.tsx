@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Clock, Users, Zap } from "lucide-react";
+import { Clock, Sparkles, Users, Zap } from "lucide-react";
+import { useDialog } from "../lib/useDialog";
 import { ApiError } from "../lib/supabase";
-import { type Challenge, claimQuests, type FriendQuest, getFriendQuest, getPassport, getSocial, nudge, type Profile, setFriendQuest,
+import { type Challenge, claimQuest, type FriendQuest, type QuestReward, getFriendQuest, getPassport, getSocial, nudge, type Profile, setFriendQuest,
   type Card } from "../lib/api";
 import Avatar from "./social/Avatar";
 import VerifyLocal from "./VerifyLocal";
@@ -19,10 +20,10 @@ function left(resets: "day" | "week") {
   return h >= 24 ? `${Math.floor(h / 24)}d ${h % 24}h` : `${h}h`;
 }
 
-/** Treasure chest: closed while in progress, open and glowing once claimed. */
-function Chest({ open }: { open: boolean }) {
+/** Treasure chest: closed while in progress, wobbling when ready to claim, open and glowing once claimed. */
+function Chest({ open, ready = false, size = 44 }: { open: boolean; ready?: boolean; size?: number }) {
   return (
-    <svg viewBox="0 0 64 56" width="44" height="40" className={`chest${open ? " open" : ""}`} aria-hidden>
+    <svg viewBox="0 0 64 56" width={size} height={size * 56 / 64} className={`chest${open ? " open" : ""}${ready ? " ready" : ""}`} aria-hidden>
       <rect x="6" y="24" width="52" height="28" rx="5" fill="#c97d2b" /><rect x="6" y="24" width="52" height="7" fill="#a8621c" />
       <g className="lid"><path d="M6 24 C6 8 58 8 58 24 Z" fill="#e0953a" /><rect x="28" y="16" width="8" height="12" rx="2" fill="#f2c230" /></g>
       <rect x="27" y="30" width="10" height="10" rx="2" fill="#f2c230" />
@@ -31,16 +32,55 @@ function Chest({ open }: { open: boolean }) {
   );
 }
 
-function Quest({ c }: { c: Challenge }) {
+function Quest({ c, onClaim }: { c: Challenge; onClaim: (c: Challenge) => void }) {
+  const ready = !c.claimed && c.have >= c.need;
   return (
-    <li className={`quest${c.claimed ? " done" : ""}`}>
-      <Chest open={c.claimed} />
+    <li className={`quest${c.claimed ? " done" : ""}${ready ? " ready" : ""}`}>
+      <Chest open={c.claimed} ready={ready} />
       <div className="quest-main">
         <b>{c.title_en}</b><span className="fine">{c.title_th}</span>
-        <div className="quest-bar"><span style={{ width: `${(100 * c.have) / c.need}%` }} /><em className="num">{c.have} / {c.need}</em></div>
+        <div className="quest-bar"><span style={{ width: `${Math.min(100, (100 * c.have) / c.need)}%` }} /><em className="num">{Math.min(c.have, c.need)} / {c.need}</em></div>
       </div>
-      <span className="quest-reward num">{c.claimed ? "Claimed" : <>+{c.xp} XP<br />+{c.coins} coins</>}</span>
+      {ready ? <button type="button" className="btn gold small claim-btn" onClick={() => onClaim(c)}>Claim</button>
+        : <span className="quest-reward num">{c.claimed ? "Claimed" : <>+{c.xp} XP<br />+{c.coins} coins</>}</span>}
     </li>
+  );
+}
+
+/** The chest ceremony: it shakes while the claim goes through, bursts open, and the rewards pop out. */
+function ChestOpen({ quest, onClose, onClaimed }: { quest: Challenge; onClose: () => void; onClaimed: () => void }) {
+  const box = useDialog(onClose);
+  const [reward, setReward] = useState<QuestReward | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let live = true;
+    const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const wait = new Promise((r) => setTimeout(r, calm ? 0 : 1100));
+    navigator.vibrate?.([40, 60, 40, 60, 40]);
+    Promise.all([claimQuest(quest.slug), wait]).then(([r]) => {
+      if (!live) return;
+      setReward(r); onClaimed(); navigator.vibrate?.(120);
+    }).catch((e) => live && setError(e instanceof ApiError && e.message === "not_ready" ? "This chest was already opened." : "Couldn't open the chest. Try again."));
+    return () => { live = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="chest-stage" role="dialog" aria-modal="true" aria-labelledby="chest-title" ref={box} tabIndex={-1}>
+      <h2 id="chest-title" className="chest-title">{quest.title_en}<span lang="th">{quest.title_th}</span></h2>
+      <div className={`chest-big${reward ? " burst" : error ? "" : " shaking"}`}>
+        {reward && <span className="chest-rays" aria-hidden />}
+        <Chest open={!!reward} size={200} />
+      </div>
+      {reward ? (
+        <div className="chest-rewards" role="status">
+          <span className="reward-pop num" style={{ animationDelay: ".05s" }}>+{reward.xp} XP</span>
+          {reward.member ? <span className="reward-pop num" style={{ animationDelay: ".2s" }}>+{reward.coins} coins</span>
+            : <span className="reward-pop fine" style={{ animationDelay: ".2s" }}>Coins come with membership</span>}
+          <span className="reward-pop" style={{ animationDelay: ".35s" }}><Sparkles size={18} aria-hidden /> +1 Siam Si shake</span>
+          {reward.level_up && <span className="reward-pop level" style={{ animationDelay: ".5s" }}>Level up! Level {reward.level}</span>}
+        </div>
+      ) : <p className="chest-hint" role="status">{error || "Opening…"}</p>}
+      {(reward || error) && <button type="button" className="btn big" onClick={onClose}>{reward ? "Nice!" : "Close"}</button>}
+    </div>
   );
 }
 
@@ -49,12 +89,10 @@ export default function Quests({ profile, refreshKey, onChange, onShop }: { prof
   const [list, setList] = useState<Challenge[]>([]);
   const [fq, setFq] = useState<FriendQuest | null | undefined>(undefined);
   const [friends, setFriends] = useState<Card[]>([]);
-  const [opened, setOpened] = useState<string[]>([]);
+  const [opening, setOpening] = useState<Challenge | null>(null);
   const [msg, setMsg] = useState("");
 
   const load = async () => {
-    const claimed = await claimQuests().catch(() => []);   // opening the tab opens any finished chests
-    if (claimed.length) { setOpened(claimed.map((c) => c.title)); onChange(); }
     const [p, q] = await Promise.all([getPassport(), getFriendQuest()]);
     setList(p.challenges); setFq(q);
     if (!q) getSocial().then((s) => setFriends(s.friends)).catch(() => undefined);
@@ -64,13 +102,13 @@ export default function Quests({ profile, refreshKey, onChange, onShop }: { prof
   const pair = (id: string) => setFriendQuest(id).then(load)
     .catch((e) => setMsg(e instanceof ApiError && e.code === "already_paired" ? "One of you already has a partner this week." : "Couldn't start the quest."));
   const fqDone = list.find((c) => c.slug === "friend-quest");
+  const ready = list.filter((c) => !c.claimed && c.have >= c.need).length;
 
   return (
     <div className="page-col stack">
-      <header className="page-hero quests-hero"><Chest open={opened.length > 0} /><h1>Quests</h1>
+      <header className="page-hero quests-hero"><Chest open={false} ready={ready > 0} /><h1>Quests</h1>
         <p className="fine">Finish quests to open chests full of XP and coins{profile?.member ? "" : " (coins and levels come with membership)"}.</p></header>
-      {opened.length > 0 && <p className="hint chest-pop" role="status">Chest opened: {opened.join(", ")}
-        {profile?.member && <button type="button" className="link" onClick={onShop}>Spend your coins</button>}</p>}
+      {ready > 0 && <p className="hint chest-pop" role="status">{ready === 1 ? "A chest is" : `${ready} chests are`} ready to open: tap Claim.</p>}
       {msg && <p className="fine" role="status">{msg}</p>}
 
       <VerifyLocal />
@@ -85,6 +123,7 @@ export default function Quests({ profile, refreshKey, onChange, onShop }: { prof
           <p className="fine center">Collect 10 new stamps between you this week. Both get +150 XP and +40 coins.</p>
           <div className="quest-bar big"><span style={{ width: `${Math.min(100, 10 * (fq.me + fq.them))}%` }} /><em className="num">{Math.min(10, fq.me + fq.them)} / 10</em></div>
           {fqDone?.claimed ? <p className="badge-earned center">Quest complete!</p>
+            : fqDone && fqDone.have >= fqDone.need ? <button type="button" className="btn gold claim-btn" onClick={() => setOpening(fqDone)}>Claim your chest</button>
             : <button type="button" className="btn soft" onClick={() => nudge(fq.partner.id).then(() => setMsg(`Nudged ${fq.partner.nickname}.`))
                 .catch(() => setMsg("You nudged them today already."))}><Zap size={15} aria-hidden /> Nudge {fq.partner.nickname}</button>}
         </> : friends.length ? <>
@@ -101,10 +140,12 @@ export default function Quests({ profile, refreshKey, onChange, onShop }: { prof
         return (
           <section key={g.kind}>
             <div className="row between"><h3>{g.title}</h3>{g.resets && <span className="chip"><Clock size={12} aria-hidden /> {left(g.resets)}</span>}</div>
-            <ul className="quest-list">{items.map((c) => <Quest key={`${c.slug}-${c.period ?? ""}`} c={c} />)}</ul>
+            <ul className="quest-list">{items.map((c) => <Quest key={`${c.slug}-${c.period ?? ""}`} c={c} onClaim={setOpening} />)}</ul>
           </section>
         );
       })}
+      {opening && <ChestOpen quest={opening} onClaimed={() => { load().catch(() => undefined); onChange(); }} onClose={() => setOpening(null)} />}
+      {profile?.member && <button type="button" className="link center" onClick={onShop}>Spend your coins in the shop</button>}
     </div>
   );
 }

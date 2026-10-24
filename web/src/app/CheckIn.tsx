@@ -186,7 +186,7 @@ export default function CheckIn({ target, initialCode, hasPlus, nickname, onClos
               {r === "level_locked" && result.required_level ? `Needs member level ${result.required_level}.` : REASON_TEXT[r] ?? r}
             </p>)}
             {result.challenges?.map((c) => (
-              <p key={c.slug} className="challenge-done">✓ {c.title} <span className="num">+{c.xp} XP · +{c.coins} coins</span></p>
+              <p key={c.slug} className="challenge-done">✓ Quest done: {c.title}. Open its chest in Quests <span className="num">(+{c.xp} XP · +{c.coins} coins)</span></p>
             ))}
             {!!result.xp_gained && (result.member
               ? <p className="xp-gain num">+{result.xp_gained} XP · {result.coins ?? 0} coins</p>

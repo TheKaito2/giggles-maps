@@ -328,7 +328,10 @@ export const nudge = (friend: string) => rpc<void>("nudge", { p_friend: friend }
 export interface FriendQuest { partner: Who; week: string; me: number; them: number }
 export const getFriendQuest = () => rpc<FriendQuest | null>("friend_quest");
 export const setFriendQuest = (friend: string) => rpc<void>("set_friend_quest", { p_friend: friend });
-export const claimQuests = () => rpc<{ slug: string; title: string; xp: number; coins: number }[]>("claim_quests");
+export interface QuestReward { slug: string; title: string; title_th: string; xp: number; coins: number; member: boolean; level: number;
+  level_up: boolean; fortune_tickets: number }
+/** Claim one finished quest (its chest opens): errors with `not_ready` if it isn't finished or was claimed already. */
+export const claimQuest = (slug: string) => rpc<QuestReward>("claim_quest", { p_slug: slug });
 
 export interface MapPlace { id: number; name: string; name_th: string | null; kind: string | null; category: string; tier: number;
   lat: number; lng: number; local: boolean; otop: boolean; community: boolean }

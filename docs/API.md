@@ -212,6 +212,11 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
   - `comments_of(p_activity)` → `[{ id, body, at, mine, who }]`, oldest first.
   - `delete_comment(p_id)`: the author or the post's owner.
   - `feed()` items carry `comments` (count); a comment on someone else's post adds a `comment` item that only the two of you see.
+- `claim_quest(p_slug)` → `{ slug, title, title_th, xp, coins, member, level, level_up, fortune_tickets }` (migration 057). Quests are
+  claimed by hand: a finished quest waits until you claim it, and check-ins only list it in `challenges` with `ready: true`.
+  Error `not_ready` if it isn't finished or is already claimed.
+- `passport_v2()` also returns `trips`: each ride-along you shared, with its 3 memory photos (first, middle and last of the album).
+  People who were on the trip can still see those 3 after it ends (`can_see_photo`, migration 056).
 - `set_showcase(p)`: up to 3 `{type: 'badge'|'stamp', id}` you've earned (`not_earned`, `bad_showcase`); `profile_of` returns them as `showcase`.
 - Shop sets and daily picks (migration 054):
   - `shop_today()` → `{ ends, picks: [{kind, id}] x6, sets: [{ id, name_en, name_th, blurb_en, items: ['kind:id'], full, price }] }`.

@@ -1085,3 +1085,31 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .trip-memory h4 { margin: 0 0 3cqw; font: 700 3.6cqw var(--font-display); display: flex; justify-content: space-between; color: #4a3b1e; }
 .trip-memory h4 span { font: 600 2.6cqw var(--font-data); opacity: .7; }
 .print-grid.three { grid-template-columns: repeat(3, 1fr); gap: 3cqw; }
+
+/* quests: claim by hand, chest ceremony */
+.quest.ready { border-color: var(--marigold); background: linear-gradient(90deg, #fff8e1, var(--card)); }
+.chest.ready { animation: chest-wobble 1.6s ease-in-out infinite; transform-origin: 50% 90%; }
+@keyframes chest-wobble { 0%, 60%, 100% { transform: rotate(0); } 68% { transform: rotate(-7deg); } 76% { transform: rotate(6deg); } 84% { transform: rotate(-4deg); } 92% { transform: rotate(2deg); } }
+.claim-btn { animation: pop .4s cubic-bezier(.2, 1.6, .4, 1) both; }
+.chest-stage { position: fixed; inset: 0; z-index: 130; display: grid; place-content: center; justify-items: center; gap: 18px; padding: 24px; text-align: center;
+  background: radial-gradient(circle at 50% 40%, #3a2a6b, #140c2e 70%); color: #fff; }
+.chest-title { display: grid; gap: 4px; font: 800 24px var(--font-display); } .chest-title span { font: 600 15px var(--font-body); opacity: .75; }
+.chest-big { position: relative; display: grid; place-items: center; width: 260px; height: 230px; }
+.chest-big .chest { position: relative; z-index: 1; filter: drop-shadow(0 10px 18px rgb(0 0 0 / .45)); }
+.chest-big.shaking .chest { animation: chest-shake .5s ease-in-out infinite; }
+@keyframes chest-shake { 0%, 100% { transform: rotate(0) translateY(0); } 25% { transform: rotate(-6deg) translateY(-3px); } 75% { transform: rotate(6deg) translateY(-3px); } }
+.chest-big.burst .chest { animation: chest-jump .5s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes chest-jump { 0% { transform: scale(.9); } 60% { transform: scale(1.12) translateY(-10px); } 100% { transform: scale(1); } }
+.chest-big.burst .lid { transform: rotate(-38deg) translateY(-8px); }
+.chest-rays { position: absolute; inset: -40px; border-radius: 50%; background: repeating-conic-gradient(rgb(255 210 63 / .55) 0 8deg, transparent 8deg 22deg);
+  mask: radial-gradient(circle, #000 25%, transparent 70%); animation: rays-in .6s ease-out both, rays-spin 12s linear infinite; }
+@keyframes rays-in { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: scale(1); } }
+@keyframes rays-spin { to { rotate: 360deg; } }
+.chest-rewards { display: grid; gap: 8px; justify-items: center; }
+.reward-pop { display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 999px; background: rgb(255 255 255 / .12); font: 800 20px var(--font-body);
+  color: #ffd23f; animation: reward-pop .45s cubic-bezier(.2, 1.6, .4, 1) both; }
+.reward-pop.fine { font-size: 14px; color: #fff; }
+.reward-pop.level { background: #ffd23f; color: #241a00; }
+@keyframes reward-pop { from { opacity: 0; transform: translateY(16px) scale(.7); } to { opacity: 1; transform: none; } }
+.chest-hint { margin: 0; opacity: .8; }
+@media (prefers-reduced-motion: reduce) { .chest.ready, .chest-big .chest, .chest-rays, .reward-pop, .claim-btn { animation: none !important; } }

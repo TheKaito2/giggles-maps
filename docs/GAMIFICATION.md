@@ -155,3 +155,14 @@ provinces N/77 and coins; tapping coins opens the Shop.
   - a ride-along trip card.
   - Classic is free; Postcard, Night neon and Indigo cloth come with Plus.
 - **Ride-along album:** stays with the group. Save all and a trip card; nothing goes to the feed.
+
+## Quests are claimed by hand (migration 057)
+A finished quest's chest wobbles in the Quests tab until you tap **Claim**. Then the chest shakes, bursts open and shows the
+XP, coins and bonus Siam Si shake. Check-ins only say a quest is ready.
+
+## Passport photos (migration 056)
+- **Visa pages:** a province's visa shows your first photo there, tucked behind the stamp.
+- **Landmark pages:** each landmark stamp sits beside its check-in photo.
+- **Memories:** every check-in photo, no longer capped at 48.
+- **Ride-alongs page:** 3 photos from each trip's album (first, middle and last). People who were on the trip keep seeing those 3
+  after it ends.
