@@ -1,6 +1,6 @@
 import type { LatLng } from "./api";
 
-// Demo mode: the app's location is wherever you put it (tap the map, or fast-forward to the next stop), so it can be
+// Demo mode: the app's location is wherever you put it (directions' Demo button drives you to the next stop), so it can be
 // shown anywhere. It stands in for navigator.geolocation itself, so everything that reads the location (stops near
 // you, check-in, turn-by-turn) follows it without knowing. Check-ins made with it are marked demo on the server.
 const ON = "gm-demo", AT = "gm-demo-at";

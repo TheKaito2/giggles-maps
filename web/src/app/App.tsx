@@ -28,7 +28,7 @@ import LayersButton from "./LayersButton";
 import { loadLook, type MapLook, saveLook } from "./mapLayers";
 import ExploreChips, { CHIPS } from "./ExploreChips";
 import DemoBar from "./DemoBar";
-import { demoOn, moveTo, onDemoChange } from "../lib/demoGps";
+import { demoOn, onDemoChange } from "../lib/demoGps";
 
 
 type Tab = "map" | "board" | "quests" | "feed" | "profile";
@@ -184,8 +184,7 @@ export default function App() {
               alternates={alternates} focus={focus} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop}
               nearby={nearby.stops} here={nearby.here} inZone={nearby.inZone.map((s) => s.id)}
               members={trip.trip?.members ?? NONE} skin={profile?.look.map ?? "liberty"} look={look}
-              kinds={d.stage === "browse" ? CHIPS.find((c) => c.id === chip)?.kinds ?? null : null} onPlace={(p) => setPlace(p.id)}
-              onTap={demoOn() ? moveTo : undefined} />
+              kinds={d.stage === "browse" ? CHIPS.find((c) => c.id === chip)?.kinds ?? null : null} onPlace={(p) => setPlace(p.id)} />
             {demoOn() && <DemoBar />}
             {d.stage === "browse" && <ExploreChips active={chip} onPick={setChip} />}
             <div className="map-tools">

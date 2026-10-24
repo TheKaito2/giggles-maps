@@ -18,7 +18,6 @@ interface Props {
   estimated?: boolean;
   picking: "origin" | "dest" | null;
   onPick: (p: LatLng) => void;
-  onTap?: (p: LatLng) => void;   // a tap on the map that isn't picking a start or destination (demo mode: move there)
   onSelectStop: (id: number) => void;
   nearby?: Stop[];        // PokéStop-style places around the user
   here?: LatLng | null;   // the user's live position
@@ -48,7 +47,7 @@ const pin = (cls: string, text: string, label: string) => {
 };
 
 export default function MapView({ origin, dest, stops, geometry, baseGeometry = NO_LINES, alternates = NO_ALTS, focus = null, estimated = false, picking, onPick, onSelectStop,
-  nearby = [], here = null, inZone = [], members = [], skin = "liberty", look = { night: "auto" }, kinds = null, onPlace, onTap }: Props) {
+  nearby = [], here = null, inZone = [], members = [], skin = "liberty", look = { night: "auto" }, kinds = null, onPlace }: Props) {
   const night = isNight(look.night);
   const [online, setOnline] = useState(navigator.onLine);
   const lookRef = useRef({ night });
@@ -69,8 +68,6 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
   const markers = useRef<maplibregl.Marker[]>([]);
   const pickRef = useRef(onPick);
   pickRef.current = onPick;
-  const tapRef = useRef(onTap);
-  tapRef.current = onTap;
   const pickingRef = useRef(picking);
   pickingRef.current = picking;
   const lineRef = useRef<GeoJSON.FeatureCollection>({ type: "FeatureCollection", features: [] });
@@ -85,11 +82,7 @@ export default function MapView({ origin, dest, stops, geometry, baseGeometry = 
       attributionControl: { compact: true, customAttribution: "Routing: Valhalla" },
     });
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-    m.on("click", (e) => {
-      const p = { lat: e.lngLat.lat, lng: e.lngLat.lng };
-      if (pickingRef.current) pickRef.current(p);
-      else if (!m.queryRenderedFeatures(e.point, { layers: m.getLayer("gm-pois") ? ["gm-pois"] : [] }).length) tapRef.current?.(p);   // pins open their page
-    });
+    m.on("click", (e) => { if (pickingRef.current) pickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng }); });
     m.on("style.load", () => {   // also after a skin, night or offline change, which drops every source and layer
       // our own place pins replace the basemap's POI icons
       for (const l of m.getStyle().layers ?? []) if (l.id.startsWith("poi")) m.setLayoutProperty(l.id, "visibility", "none");
