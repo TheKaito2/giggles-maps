@@ -286,6 +286,11 @@ export const getBoard = (scope: BoardScope, period: BoardPeriod, metric: BoardMe
 export interface Champion { province: { id: number; iso: string; name_en: string; name_th: string }; champion: Who; visits: number;
   mine: boolean; my_visits: number; need: number }
 export const getChampions = () => rpc<Champion[]>("province_champions");
+/** Places of some map kinds (convenience, fuel, atm...) nearest a route line, with how far off it they are. */
+export interface RoutePlace { id: number; name: string; name_th: string | null; category: string; kind: string | null; lat: number; lng: number;
+  tier: number; rating: number | null; distance_m: number }
+export const routePlaces = (geometry: [number, number][], kinds: string[]) =>
+  rpc<RoutePlace[]>("route_places", { p_geometry: geometry, p_kinds: kinds, p_max_n: 20 });
 
 export interface TripMember { id: string; me: boolean; owner: boolean; nickname: string; colour: string; lat: number | null; lng: number | null }
 export interface TripPhoto { checkin_id: string; path: string; caption: string | null; place: string; at: string; nickname: string; colour: string }

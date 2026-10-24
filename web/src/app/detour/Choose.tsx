@@ -97,7 +97,7 @@ export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => voi
               <Icon size={14} aria-hidden /> {i.label}</button>;
           })}
         </div>
-        <p className="fine summary-line" aria-live="polite">{filterSummary(d.prefs)}</p>
+        <p className="fine summary-line" aria-live="polite" title={filterSummary(d.prefs)}>{filterSummary(d.prefs)}</p>
       </div>
       <div className="row between">
         <label className="custom-time fine">Other time

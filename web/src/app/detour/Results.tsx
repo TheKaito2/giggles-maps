@@ -1,9 +1,11 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ChevronDown, MoreHorizontal, Plus, Repeat, Search, Trash2, Camera, X } from "lucide-react";
 import { useDialog } from "../../lib/useDialog";
-import { type AlongPlace, type CheckinTarget, type FoundPlace, KIND_NAME, type Meal, type RouteStop, searchPlaces } from "../../lib/api";
+import { type AlongPlace, type CheckinTarget, type FoundPlace, KIND_NAME, type Meal, type RouteStop, routePlaces, searchPlaces } from "../../lib/api";
+import { CHIPS } from "../ExploreChips";
+import { SkelRows } from "../Skeleton";
 import { GROUPS, kindOf } from "../kinds";
-import { budgetLabel, hhmm, INTERESTS, MEALS } from "../prefs";
+import { budgetLabel, hhmm, MEALS } from "../prefs";
 import { type Detour, PRESETS } from "./useDetour";
 import { arrive } from "./Choose";
 import PlanProgress from "./PlanProgress";
@@ -36,15 +38,11 @@ function badges(s: RouteStop): { text: string; cls: string; title?: string }[] {
   return all.slice(0, 2);
 }
 
-// the same kinds as the "What kind of stops?" chips (prefs INTERESTS), with the planner's own rules (supabase _shared/themes.ts)
-const KIND_CATS: Record<string, string[]> = { culture: ["temple", "museum", "art"], nature: ["park", "viewpoint"], food: ["food", "market"],
-  cafes: ["cafe"], shopping: ["craft", "market"], landmarks: [] };
-const ALONG_GROUPS: { id: string; label: string; fits: (category: string, tier?: number) => boolean }[] = [
-  { id: "all", label: "All kinds", fits: () => true },
-  ...INTERESTS.map((k) => ({ id: k.id, label: k.label,
-    fits: (category: string, tier?: number) => k.id === "landmarks" ? tier === 3 : KIND_CATS[k.id].includes(category) })),
-];
-const STOP_CATS = new Set(Object.values(KIND_CATS).flat());   // places worth a detour (search "elsewhere" skips pharmacies, banks...)
+// "Suggested" is the planner's own list (exact minutes); the rest are the map's chips, places of those kinds nearest the route
+const STOP_CATS = new Set(["temple", "museum", "art", "park", "viewpoint", "food", "market", "cafe", "craft"]);   // "elsewhere" in Suggested
+const SPEED_M_PER_MIN = { pedestrian: 80, bicycle: 250, auto: 500 } as const;   // town speeds, for an off-route estimate
+interface Row { id: number; name: string; name_th: string | null; category: string; kind: string | null; photo: string | null;
+  extra: number; estimate: boolean; rating: number | null }
 
 function StopRow({ s, i, d, sel, onOpen, onCheckin }: { s: RouteStop; i: number; d: Detour; sel: boolean; onOpen: (s: RouteStop) => void; onCheckin: (t: CheckinTarget) => void }) {
   const [menu, setMenu] = useState(false);
@@ -82,61 +80,68 @@ function StopRow({ s, i, d, sel, onOpen, onCheckin }: { s: RouteStop; i: number;
   );
 }
 
-/** Places along the route you can add, cheapest first, with a search box and a kind filter. Typing also finds places elsewhere
- * (not on the route list: they may add more time). Every row is the same height, so Add never moves. Inline (8) and in the sheet (30). */
+/** Places you can add: the planner's suggestions or a map kind (convenience, gas, ATMs...) near the route, plus a search that also finds
+ * places elsewhere. Rows are one height and the list keeps its size, so nothing moves under your pointer while you search or filter. */
 function AlongList({ places, d, full, limit, onAdded }: { places: AlongPlace[]; d: Detour; full: boolean; limit: number; onAdded?: () => void }) {
   const [q, setQ] = useState("");
-  const [kind, setKind] = useState("all");
+  const [kind, setKind] = useState("suggested");
+  const [byKind, setByKind] = useState<Row[] | null>(null);
   const [elsewhere, setElsewhere] = useState<FoundPlace[]>([]);
-  const groups = ALONG_GROUPS.filter((g) => g.id === "all" || places.some((p) => g.fits(p.category, p.tier)));
-  const group = groups.some((g) => g.id === kind) ? kind : "all";   // a re-plan can leave the chosen kind empty
+  const chip = CHIPS.find((c) => c.id === kind);
+  const inPlan = new Set(d.plan?.stops.map((s) => s.id) ?? []);
+  const geometry = d.plan?.geometry;
+  // a map kind: its places nearest the route, minutes estimated from how far off the road they are (+5 there)
+  useEffect(() => {
+    if (!chip || !geometry) { setByKind(null); return; }
+    let live = true;
+    setByKind(null);
+    routePlaces(geometry, chip.kinds).then((r) => live && setByKind(r.filter((x) => !inPlan.has(x.id)).map((x) => ({ ...x, photo: null, estimate: true,
+      extra: Math.round((2 * x.distance_m) / SPEED_M_PER_MIN[d.prefs.mode]) + 5 })))).catch(() => live && setByKind([]));
+    return () => { live = false; };
+  }, [kind, geometry]); // eslint-disable-line react-hooks/exhaustive-deps
   const needle = q.trim().toLowerCase();
-  const fits = (category?: string, tier?: number) => ALONG_GROUPS.find((g) => g.id === group)!.fits(category ?? "", tier);
-  const list = places.filter((p) => fits(p.category, p.tier) && (!needle || p.name.toLowerCase().includes(needle) || (p.name_th ?? "").includes(q.trim()))).slice(0, limit);
+  const all: Row[] = chip ? byKind ?? [] : places.map((p) => ({ ...p, kind: null, photo: p.photo, extra: p.extra_min, estimate: false }));
+  const list = all.filter((p) => !needle || p.name.toLowerCase().includes(needle) || (p.name_th ?? "").includes(q.trim())).slice(0, limit);
   // 2+ letters: also search everywhere near the destination, after a short pause
   useEffect(() => {
     if (needle.length < 2) { setElsewhere([]); return; }
     let live = true;
     const t = setTimeout(() => searchPlaces(q.trim(), d.dest?.point).then((r) => {
       if (!live) return;
-      const taken = new Set([...places.map((p) => p.id), ...(d.plan?.stops.map((s) => s.id) ?? [])]);
-      setElsewhere(r.filter((x) => x.id != null && !taken.has(x.id) && STOP_CATS.has(x.category ?? "") && fits(x.category, x.tier)).slice(0, 6));
+      const shown = new Set([...all.map((p) => p.id), ...inPlan]);
+      setElsewhere(r.filter((x) => x.id != null && !shown.has(x.id) && (chip ? chip.kinds.includes(x.kind ?? "") : STOP_CATS.has(x.category ?? ""))).slice(0, 6));
     }).catch(() => live && setElsewhere([])), 300);
     return () => { live = false; clearTimeout(t); };
-  }, [needle, group]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [needle, kind, byKind]); // eslint-disable-line react-hooks/exhaustive-deps
   const add = (id: number, extra: number) => { d.addStop(id, extra); onAdded?.(); };
+  const row = (p: Row | FoundPlace, extra: string, off = false) => (
+    <li key={`${off ? "e" : ""}${p.id}`}>
+      <Thumb s={{ name: p.name, category: p.category ?? "", photo: "photo" in p ? p.photo ?? null : null }} size={40} />
+      <span className="stop-text"><b>{p.name}</b>
+        <span className="stop-meta"><b className={`num extra${off ? " off" : ""}`}>{extra}</b>
+          <span className="fine">{kindOf(p.kind ?? null, p.category ?? "").en}{p.rating != null && ` · ★ ${p.rating.toFixed(1)}`}</span></span></span>
+      <button type="button" className="btn soft small add-btn" disabled={full || d.editing} onClick={() => add(p.id!, "extra" in p ? p.extra : 15)}
+        aria-label={`Add ${p.name}`}><Plus size={15} aria-hidden /> Add</button>
+    </li>
+  );
   return (
     <>
       <div className="along-controls">
         <label className="along-search"><Search size={16} aria-hidden />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search places" aria-label="Search places to add" /></label>
         <label className="along-kind">
-          <select value={group} onChange={(e) => setKind(e.target.value)} aria-label="Kind of place">
-            {groups.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
+          <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Kind of place">
+            <option value="suggested">Suggested</option>
+            {CHIPS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select></label>
       </div>
       <ul className="along-list">
-        {list.map((p) => (
-          <li key={p.id}>
-            <Thumb s={p} size={40} />
-            <span className="stop-text"><b>{p.name}</b>
-              <span className="stop-meta"><b className="num extra">+{p.extra_min} min</b>
-                <span className="fine">{kindOf(null, p.category).en}{p.rating != null && ` · ★ ${p.rating.toFixed(1)}`}</span></span></span>
-            <button type="button" className="btn soft small add-btn" disabled={full || d.editing} onClick={() => add(p.id, p.extra_min)}
-              aria-label={`Add ${p.name}`}><Plus size={15} aria-hidden /> Add</button>
-          </li>
-        ))}
-        {!list.length && !elsewhere.length && <li className="along-empty fine">{needle ? "Nothing matches along your route." : "Nothing of this kind along your route."}</li>}
-        {elsewhere.length > 0 && <li className="along-sep eyebrow">Elsewhere</li>}
-        {elsewhere.map((p) => (
-          <li key={`e${p.id}`}>
-            <Thumb s={{ name: p.name, category: p.category ?? "", photo: null }} size={40} />
-            <span className="stop-text"><b>{p.name}</b>
-              <span className="stop-meta"><b className="num extra off">off route</b><span className="fine">{kindOf(p.kind, p.category).en}</span></span></span>
-            <button type="button" className="btn soft small add-btn" disabled={full || d.editing} onClick={() => add(p.id!, 15)}
-              aria-label={`Add ${p.name}`}><Plus size={15} aria-hidden /> Add</button>
-          </li>
-        ))}
+        {chip && byKind === null ? <li className="along-empty"><SkelRows n={3} avatar={40} square /></li> : <>
+          {list.map((p) => row(p, `${p.estimate ? "~" : ""}+${p.extra} min`))}
+          {!list.length && !elsewhere.length && <li className="along-empty fine">{needle ? "Nothing matches near your route." : "None near your route."}</li>}
+          {elsewhere.length > 0 && <li className="along-sep eyebrow">Elsewhere</li>}
+          {elsewhere.map((p) => row(p, "off route", true))}
+        </>}
       </ul>
       {full && <p className="fine">That's {MAX_STOPS} stops, the most a plan holds. Remove one to add another.</p>}
     </>
