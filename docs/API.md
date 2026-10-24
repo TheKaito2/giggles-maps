@@ -52,6 +52,12 @@ Request
   - `include_unrated`: default **true**: unrated places (`rating: null`, most of the OpenStreetMap import) join routes, scored below rated ones (as 3.5/5). `false` = rated places only.
   - `must_include`: up to 6 place ids the user picked or added (from `search_places` or a plan's `along`). They go into every plan when they fit the budget, opening hours and `max_stops`, even below the rating floor; the rest are listed in each plan's `unfit_required`. Stops have `picked: true`. 400 `bad_must_include`.
   - `exclude`: up to 30 place ids never to use (stops the user removed or swapped out). 400 `bad_exclude`.
+  - `keep_order` (optional): `true` = `must_include` is the route order, exactly; a list of stop ids = those stops keep that
+    order and the rest of `must_include` is inserted where it fits best (400 `bad_keep_order` if it isn't a list of ids).
+    The web app sends `true` after a drag or a + between two stops, and the current order as a list for "add along your
+    route" once you've set the order yourself.
+  - Places with no listed opening hours are planned inside the usual hours for their kind (temples 06:00–18:00, parks
+    05:00–20:00, night and walking-street markets 17:00–23:00, …; `_shared/usual-hours.ts`).
   - Editing a plan, the way the web app does it: remove = `must_include` the other current stops + `exclude` the removed one; swap = the same (the planner picks the best replacement); add = `must_include` the current stops + the new place, with more `budget_min` when it doesn't fit. Send `theme` to keep the plan you were on first.
   - Each stop has `extra_min` (about how many minutes it adds: road detour + time there; null if unknown) and `photo` (a URL or null). Each plan has `along`: up to 30 shortlist places it left out, cheapest first, `{ id, name, name_th, category, lat, lng, tier, rating, local, otop, community, photo, extra_min }` (an estimate: "about +X min").
   - `max_stops`: 1–6 stops per plan; omitted = no cap. Meal stops count. 400 `bad_max_stops`.
@@ -84,8 +90,8 @@ Response
   render it dashed and label it as approximate. Other baseline outages return
   503 `routing_unavailable`. Road detours include verified leg times, dwell and
   meal waiting within the budget. See `THAILAND-ROUTING.md` for rollout.
-- Guests (anonymous sessions) try it: 1 detour (destination) and 3 edits a Bangkok day, then 403 `sign_in_required`
-  (migration 073; show "sign in free for 3", not a retry). Free accounts: 3 detours (destinations) and 10 edits a Bangkok
+- Guests (anonymous sessions) try it: 1 detour (destination) and 3 edits a Bangkok day, then 403 `sign_in_required` for a
+  second destination or 403 `sign_in_edits` for a 4th edit (migrations 073, 080; show the sign-in sheet, not a retry). Free accounts: 3 detours (destinations) and 10 edits a Bangkok
   day (429 `detour_limit` / `edit_limit`); a request with `must_include` or `exclude` is an edit. Everyone: 20 plans a minute,
   members 300 and free accounts 100 a day (429 `slow_down`). An edit of a destination not planned today counts as a detour. `my_plan_usage()` reports today's counts.
 - Stops are chosen by quality (rating, variety, fit inside the budget). For members, paid tiers score higher: Giggles Choice ×2,
