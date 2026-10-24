@@ -26,6 +26,11 @@ labelled. Free users still get the quality order.
   - A detour = one destination (rounded to ~100 m). The 3 time options and preference changes for it count once.
   - A change = one edit (add, remove or swap a stop). The planner's own retries of that edit count once.
   - Over the limit: `429 detour_limit` / `edit_limit`; the app shows today's usage and offers membership.
+  - **Or watch an ad:** +1 detour (at the detour limit) or +5 changes (at the change limit), up to 3 ads a day, so at most 6 free
+    detours a day. Google Ad Manager's web rewarded format fills it once `VITE_GAM_REWARDED_UNIT` is set (AdSense has no
+    rewarded ads); until then it is our own 15-second ad. Web rewards can't be verified by Google, so the server pays out only
+    15 s or more after the ad started (`start_ad_reward` / `claim_ad_reward`). On iOS, AdMob's server-side verification can
+    replace this.
 
 ### Membership: ฿349 once
 - No ads, forever.

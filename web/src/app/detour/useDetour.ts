@@ -46,6 +46,7 @@ export function useDetour(onError: (m: string) => void) {
   const [hidden, setHidden] = useState<number[]>([]);   // removed stops, hidden at once while the route recalculates
   const [locating, setLocating] = useState(false);
   const request = useRef(0);   // preset plans in flight
+  const [again, setAgain] = useState(0);   // bumped to plan the presets again (a rewarded ad lifted today's limit)
   const edit = useRef(0);      // remove/swap/add re-plan in flight
 
   // same values = same object, so re-tapping a choice doesn't re-plan every preset
@@ -87,7 +88,7 @@ export function useDetour(onError: (m: string) => void) {
     // a short pause first: tapping several filter chips in a row sends one round of plans, not one per tap
     const t = setTimeout(() => { for (const k of ids) planPreset(k, id); }, 400);
     return () => clearTimeout(t);
-  }, [origin, dest, prefs, stage === "browse", guest]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [origin, dest, prefs, stage === "browse", guest, again]); // eslint-disable-line react-hooks/exhaustive-deps
   const retry = (k: PresetId) => guest ? setGate("sign_in_required") : planPreset(k, request.current);
 
   const goTo = async (place: Place) => {
@@ -154,7 +155,7 @@ export function useDetour(onError: (m: string) => void) {
 
   return {
     stage, setStage, origin, setOrigin, dest, setDest, prefs, set, results, preset, setPreset: choosePreset, choice, setChoice, plan, response,
-    editing, locating, bump, hidden, retry, notify: onError, gate, setGate, goTo, close, pickCustom, budgetOf, removeStop, swapStop, addStop,
+    editing, locating, bump, hidden, retry, notify: onError, gate, setGate, replanAll: () => setAgain((n) => n + 1), goTo, close, pickCustom, budgetOf, removeStop, swapStop, addStop,
     swap: () => { if (origin && dest) { setOrigin(dest); setDest(origin); } },
   };
 }

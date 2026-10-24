@@ -1285,3 +1285,13 @@ p.chase { margin: 0; }
 .member-card h3, .plus-card h3 { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
 .booking { padding: 14px; border-radius: 16px; }
 .booking-fields { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 10px; }
+.btn.watch-ad { display: flex; justify-content: center; align-items: center; gap: 8px; }
+.btn.watch-ad .fine { color: inherit; opacity: .75; }
+.modal.rewarded { width: min(420px, 100%); display: grid; gap: 14px; justify-items: stretch; position: relative; }
+.modal.rewarded > .ad-label { justify-self: start; }
+.rewarded-card { display: grid; justify-items: center; gap: 8px; text-align: center; padding: 22px 12px; border-radius: 18px;
+  background: linear-gradient(160deg, var(--marigold-soft), var(--card)); border: 2px solid var(--line); }
+.rewarded-card b { font: 800 var(--fs-title)/var(--lh-title) var(--font-display); }
+.ad-icon.big { width: 64px; height: 64px; border-radius: 20px; }
+.rewarded-bar { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.rewarded-bar > span { display: block; height: 100%; background: var(--marigold); transition: width .25s linear; }

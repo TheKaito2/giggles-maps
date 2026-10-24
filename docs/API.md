@@ -302,7 +302,8 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
 | `place_for_checkin(p_id)` | anyone | `{id, name, lat, lng, is_partner, is_demo}` for a QR deep link |
 | `shop_overview(p_shop)` | shop owner / demo shop | wallet, per place: bid, QR code, last scan, impressions and visits (30 days) |
 | `dispute_visit(p_visit, p_reason)` | shop owner / demo shop | refunds a charged visit within 7 days |
-| `my_plan_usage()` | signed in | `{member, detours, edits, max_detours, max_edits}` for today (Bangkok) |
+| `my_plan_usage()` | signed in | `{member, detours, edits, max_detours, max_edits, ads_left}` for today (Bangkok); the maxima include ad rewards |
+| `start_ad_reward(p_kind)`, `claim_ad_reward(p_id)` | signed in, not members | a rewarded ad at the limit: `detour` (+1 detour) or `edit` (+5 changes) today. Claim ≥ 15 s after the start. Errors `ad_limit` (3 a day), `too_soon`, `not_needed` (members), `not_found` |
 | `plus_daily()` | signed in | 20 the first call each Bangkok day while Plus is active, else 0 (the coins join `coins_of`) |
 | `places_tiers(p_ids bigint[])` | anyone | `[{id, tier}]` for places with a live paid tier (`partner` / `choice`) |
 | `request_booking(p_place, p_day, p_party, p_note)` | signed in | booking id. Errors `sign_in_required`, `not_bookable`, `bad_day`, `bad_party`, `too_many_bookings`, `already_booked` |

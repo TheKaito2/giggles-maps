@@ -230,8 +230,13 @@ export const PRICES = { membership: 349, plus: 59, partner: 299, choice: 799, bo
 export const adFree = (p: Profile | null) => !!p && (p.member || !!p.plusUntil);
 
 // detours planned / edits made today (free accounts: 3 and 10 a day)
-export interface PlanUsage { member: boolean; detours: number; edits: number; max_detours: number; max_edits: number }
+export interface PlanUsage { member: boolean; detours: number; edits: number; max_detours: number; max_edits: number;
+  ads_left: number }   // rewarded ads still available today (each: +1 detour or +5 changes)
 export const getPlanUsage = () => rpc<PlanUsage>("my_plan_usage");
+// watch an ad at the limit: start, then claim at least 15 s later (the server checks the time)
+export type AdReward = "detour" | "edit";
+export const startAdReward = (kind: AdReward) => rpc<number>("start_ad_reward", { p_kind: kind });
+export const claimAdReward = (id: number) => rpc<void>("claim_ad_reward", { p_id: id });
 // Plus: +20 coins the first time you open the app each day (0 when already collected or no Plus)
 export const plusDaily = () => rpc<number>("plus_daily");
 

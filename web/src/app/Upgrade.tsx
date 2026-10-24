@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Infinity as Unlimited, Sparkles, X } from "lucide-react";
+import { Gift, Infinity as Unlimited, Sparkles, X } from "lucide-react";
 import { getPlanUsage, PRICES, type PlanUsage, startCheckout } from "../lib/api";
 import { ApiError } from "../lib/supabase";
 import { useDialog } from "../lib/useDialog";
 import { isGuest, useUser } from "../lib/auth";
 import type { Gate } from "./detour/useDetour";
 import SignIn from "./SignIn";
+import RewardedAd from "./RewardedAd";
 
 type Why = Gate | "ads";
 const TITLE: Record<Why, string> = {
@@ -17,11 +18,13 @@ const TITLE: Record<Why, string> = {
 
 /** v5: a guest is asked to sign in; a free account at its daily limit is offered membership (unlimited detours, no ads);
  *  "Remove ads" offers membership or Plus. */
-export default function Upgrade({ gate, onClose }: { gate: Why; onClose: () => void }) {
+export default function Upgrade({ gate, onClose, onRewarded }: { gate: Why; onClose: () => void; onRewarded?: () => void }) {
   const box = useDialog(onClose);
   const guest = isGuest(useUser());
   const [usage, setUsage] = useState<PlanUsage | null>(null);
   const [msg, setMsg] = useState("");
+  const [watching, setWatching] = useState(false);
+  const adKind = gate === "detour_limit" ? "detour" : gate === "edit_limit" ? "edit" : null;
   useEffect(() => { if (gate === "detour_limit" || gate === "edit_limit") getPlanUsage().then(setUsage).catch(() => undefined); }, [gate]);
   // signed in from this sheet: the detour plans itself now
   useEffect(() => { if (gate === "sign_in_required" && !guest) onClose(); }, [guest]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -48,6 +51,9 @@ export default function Upgrade({ gate, onClose }: { gate: Why; onClose: () => v
             <span><b className="num">{usage.edits}/{usage.max_edits}</b><span className="fine">changes</span></span>
             <span className="fine">Resets at midnight</span>
           </div>}
+          {adKind && usage && usage.ads_left > 0 && <button type="button" className="btn watch-ad" onClick={() => setWatching(true)}>
+            <Gift size={16} aria-hidden /> Watch an ad · {adKind === "detour" ? "+1 detour" : "+5 changes"}
+            <span className="fine num">{usage.ads_left} left today</span></button>}
           <section className="member-card">
             <div className="row between"><h3><Unlimited size={20} aria-hidden /> Membership</h3><span className="num price-tag">฿{PRICES.membership} once</span></div>
             <ul className="perks">
@@ -66,6 +72,7 @@ export default function Upgrade({ gate, onClose }: { gate: Why; onClose: () => v
           {msg && <p className="fine" role="status">{msg}</p>}
         </>}
       </div>
+      {watching && adKind && <RewardedAd kind={adKind} onClose={() => setWatching(false)} onDone={() => { setWatching(false); onClose(); onRewarded?.(); }} />}
     </div>
   );
 }
