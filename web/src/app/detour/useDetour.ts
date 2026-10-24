@@ -120,10 +120,10 @@ export function useDetour(onError: (m: string) => void) {
   const plan = response && choosePlan(response, choice);
   const cap = response?.max_stops ?? 10;   // stops a plan holds: 10, members 15 (= STOP_CAP in plan-route)
 
-  // edits re-plan the shown preset: kept stops stay in (must_include) and in their order, removed ones stay out (exclude).
-  // Kept stops always stay, past the preset's time if need be: the time only shapes the generated plans, it never refuses
-  // a stop you chose. `add`: one more place where it costs least, the others staying put.
-  const replan = async (keep: number[], out: number[], add?: number): Promise<void> => {
+  // edits re-plan the shown preset: kept stops stay in (must_include), removed ones stay out (exclude), and the planner works
+  // out the best order again. Kept stops always stay, past the preset's time if need be: the time only shapes the generated
+  // plans, it never refuses a stop you chose. `fixed`: keep exactly this order (a place added in a gap goes right there).
+  const replan = async (keep: number[], out: number[], fixed = false): Promise<void> => {
     if (!origin || !dest || !response || !preset) return;
     const id = ++edit.current;
     setEditing(true);
@@ -132,7 +132,7 @@ export function useDetour(onError: (m: string) => void) {
       const base = budgetOf(preset);
       const budget = base === "auto" ? "auto" : Math.min(MAX_BUDGET, base);
       const r = await planRoute({ ...toRequest({ ...prefs, budget }, origin.point, dest.point),
-        must_include: [...new Set([...keep, ...prefs.picks.map((p) => p.id)])].slice(0, add != null ? cap - 1 : cap), keep_order: true, add,
+        must_include: [...new Set([...keep, ...prefs.picks.map((p) => p.id)])].slice(0, cap), keep_order: fixed || undefined,
         exclude: out.slice(-30), theme });
       if (id !== edit.current) return;
       setExclude(out); setResults((all) => ({ ...all, [preset!]: r })); setChoice(theme ?? null);
@@ -144,13 +144,12 @@ export function useDetour(onError: (m: string) => void) {
   // and lets the planner fill the gap with its best replacement.
   const removeStop = (stop: number) => { if (editing) return; setHidden((h) => [...h, stop]); return replan(ids().filter((x) => x !== stop), [...exclude, stop]); };
   // adding means adding: the place goes in even when the trip runs past the preset's time. `at`: the gap it goes in
-  // (the + between two stops: 0 = before the first); none = wherever it costs least ("add along your route")
+  // (the + between two stops, 0 = before the first): the route goes through it right there; none = "add along your
+  // route", and the planner fits it in the best order
   const addStop = (place: number, at?: number) => {
     if (editing) return;
-    const out = exclude.filter((x) => x !== place);
-    if (at == null) return replan(ids(), out, place);
-    const keep = ids();
-    return replan([...keep.slice(0, at), place, ...keep.slice(at)], out);
+    const keep = ids(), out = exclude.filter((x) => x !== place);
+    return at == null ? replan([...keep, place], out) : replan([...keep.slice(0, at), place, ...keep.slice(at)], out, true);
   };
 
   return {

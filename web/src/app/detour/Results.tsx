@@ -10,6 +10,7 @@ import { type Detour, PRESETS } from "./useDetour";
 import { arrive } from "./Choose";
 import PlanProgress from "./PlanProgress";
 import Info from "../Info";
+import { metres } from "../nav/progress";
 
 const MEAL_NAME: Record<Meal, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
 const PARTNER_TIP = "This shop pays Giggles Maps when you visit.";
@@ -83,16 +84,34 @@ function StopRow({ s, i, d, sel, onOpen, onCheckin }: { s: RouteStop; i: number;
   );
 }
 
+const LEG_REACH_M = 1500;   // a place this close to the stretch between two stops counts as on it (= route_places' corridor)
+const pt = ([lng, lat]: [number, number]) => ({ lat, lng });
+/** The road between the stops either side of gap `at` (0 = start to the first stop): the plan's line cut at its stops,
+ *  walking forward so a road that passes a spot twice is cut in order. */
+function stretch(line: [number, number][], stops: { lat: number; lng: number }[], at: number): [number, number][] {
+  const cuts = [0];
+  for (const s of stops) {
+    let best = cuts.at(-1)!, d = Infinity;
+    for (let k = best; k < line.length; k++) { const m = metres(pt(line[k]), s); if (m < d) { d = m; best = k; } }
+    cuts.push(best);
+  }
+  cuts.push(line.length - 1);
+  return line.slice(cuts[at], cuts[at + 1] + 1);
+}
+const offLine = (p: { lat: number; lng: number }, line: [number, number][]) => Math.min(...line.map((v) => metres(pt(v), p)));
+
 /** Places you can add: the planner's suggestions or a map kind (convenience, gas, ATMs...) near the route, plus a search that also finds
  * places elsewhere. Rows are one height and the list keeps its size, so nothing moves under your pointer while you search or filter. */
-function AlongList({ places, d, full, limit, at, onAdded }: { places: AlongPlace[]; d: Detour; full: boolean; limit: number; at?: number; onAdded?: () => void }) {
+function AlongList({ places, d, full, limit, at, leg, onAdded }: { places: AlongPlace[]; d: Detour; full: boolean; limit: number; at?: number;
+  leg?: [number, number][]; onAdded?: () => void }) {
   const [q, setQ] = useState("");
   const [kind, setKind] = useState("suggested");
   const [byKind, setByKind] = useState<Row[] | null>(null);
   const [elsewhere, setElsewhere] = useState<FoundPlace[]>([]);
   const chip = CHIPS.find((c) => c.id === kind);
   const inPlan = new Set(d.plan?.stops.map((s) => s.id) ?? []);
-  const geometry = d.plan?.geometry;
+  // the + between two stops: only what's on the road between them (`leg`); otherwise the whole route
+  const geometry = leg ?? d.plan?.geometry;
   // a map kind: its places nearest the route, minutes estimated from how far off the road they are (+5 there)
   useEffect(() => {
     if (!chip || !geometry) { setByKind(null); return; }
@@ -103,11 +122,14 @@ function AlongList({ places, d, full, limit, at, onAdded }: { places: AlongPlace
     return () => { live = false; };
   }, [kind, geometry]); // eslint-disable-line react-hooks/exhaustive-deps
   const needle = q.trim().toLowerCase();
-  const all: Row[] = chip ? byKind ?? [] : places.map((p) => ({ ...p, kind: null, photo: p.photo, extra: p.extra_min, estimate: false }));
+  const all: Row[] = chip ? byKind ?? [] : leg
+    ? places.map((p) => ({ p, off: offLine(p, leg) })).filter(({ off }) => off <= LEG_REACH_M)
+      .map(({ p, off }) => ({ ...p, kind: null, photo: p.photo, extra: Math.round((2 * off) / SPEED_M_PER_MIN[d.prefs.mode]) + 5, estimate: true }))
+    : places.map((p) => ({ ...p, kind: null, photo: p.photo, extra: p.extra_min, estimate: false }));
   const list = all.filter((p) => !needle || p.name.toLowerCase().includes(needle) || (p.name_th ?? "").includes(q.trim())).slice(0, limit);
   // 2+ letters: also search everywhere near the destination, after a short pause
   useEffect(() => {
-    if (needle.length < 2) { setElsewhere([]); return; }
+    if (needle.length < 2 || leg) { setElsewhere([]); return; }   // a stretch shows only what's on it
     let live = true;
     const t = setTimeout(() => searchPlaces(q.trim(), d.dest?.point).then((r) => {
       if (!live) return;
@@ -141,7 +163,7 @@ function AlongList({ places, d, full, limit, at, onAdded }: { places: AlongPlace
       <ul className="along-list">
         {chip && byKind === null ? <li className="along-empty"><SkelRows n={3} avatar={40} square /></li> : <>
           {list.map((p) => row(p, `${p.estimate ? "~" : ""}+${p.extra} min`))}
-          {!list.length && !elsewhere.length && <li className="along-empty fine">{needle ? "Nothing matches near your route." : "None near your route."}</li>}
+          {!list.length && !elsewhere.length && <li className="along-empty fine">{leg ? "Nothing on this stretch." : needle ? "Nothing matches near your route." : "None near your route."}</li>}
           {elsewhere.length > 0 && <li className="along-sep eyebrow">Elsewhere</li>}
           {elsewhere.map((p) => row(p, "off route", true))}
         </>}
@@ -161,18 +183,20 @@ function Along({ places, d, full }: { places: AlongPlace[]; d: Detour; full: boo
   );
 }
 
-/** The sheet the + between stops opens: every place along the route, by kind; the pick goes in that gap, right there. */
+/** The sheet the + between stops opens: only places on the road between those two stops; the pick goes right there and the
+ *  route goes through it. */
 function AddStopSheet({ places, d, full, at, onClose }: { places: AlongPlace[]; d: Detour; full: boolean; at: number; onClose: () => void }) {
   const stops = d.plan?.stops ?? [];
   const where = at === 0 ? `before ${stops[0]?.name ?? "your first stop"}` : at >= stops.length ? `after ${stops.at(-1)?.name ?? "your last stop"}`
     : `between ${stops[at - 1].name} and ${stops[at].name}`;
+  const leg = d.plan?.geometry?.length ? stretch(d.plan.geometry, stops, at) : [];
   const box = useDialog(onClose);
   return (
     <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="Add a stop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal add-stop" ref={box} tabIndex={-1}>
         <header className="modal-head"><span><h2>Add a stop</h2><span className="fine">It goes right here, {where}.</span></span>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button></header>
-        {places.length ? <AlongList places={places} d={d} full={full} limit={30} at={at} onAdded={onClose} /> : <p className="fine">No more places along this route.</p>}
+        {leg.length > 1 ? <AlongList places={places} d={d} full={full} limit={30} at={at} leg={leg} onAdded={onClose} /> : <p className="fine">Nothing on this stretch.</p>}
       </div>
     </div>
   );

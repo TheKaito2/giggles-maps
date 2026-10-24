@@ -76,11 +76,8 @@ serve(async (req) => {
   const exclude = new Set(ids(body.exclude, 30, "bad_exclude"));
   // the stops an edited plan keeps (a half day can hold 7+); the time budget still decides what fits
   const mustInclude = ids(body.must_include, STOP_CAP.member, "bad_must_include").filter((id) => !exclude.has(id));
-  // keep_order: the kept stops stay in exactly this order (the + between two stops puts a place right there; removing
-  // keeps the rest as they were). add: one more place, at its cheapest spot without moving the others ("add along your route")
+  // keep_order: the kept stops stay in exactly this order (the + between two stops puts a place right there)
   const fixedOrder = body.keep_order === true ? [...mustInclude] : undefined;
-  const addId = ids(body.add == null ? null : [body.add], 1, "bad_add")[0];
-  if (addId != null && !exclude.has(addId) && !mustInclude.includes(addId)) mustInclude.push(addId);
 
   const db = admin();
   const { data: profile } = await db.from("profiles").select("plus_until, member_since").eq("id", user.id).maybeSingle();

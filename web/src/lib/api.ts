@@ -140,7 +140,6 @@ export interface PlanRequest {
   max_price?: 0 | 1 | 2 | 3;    // omitted = Any
   must_include?: number[];      // places the user picked or kept (10, members 15)
   keep_order?: boolean;         // must_include is the order to keep, exactly
-  add?: number;                 // one more place, at its cheapest spot without moving the others
   exclude?: number[];           // stops the user removed or swapped out
   theme?: string;               // this plan comes first
   meals?: Meal[];               // meals to stop for; omitted = no food stop forced
