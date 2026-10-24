@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ShoppingBag, Sparkles } from "lucide-react";
-import { getShop, type PastShake, type Profile, shakeHistory } from "../../lib/api";
+import { getShop, type PastShake, type Profile, REVIEW_SHAKE_CHARS, shakeHistory } from "../../lib/api";
 import Fortune, { OddsTable, prizeText, RARITY } from "./Fortune";
 import { SkelRows } from "../Skeleton";
 import Info from "../Info";
@@ -23,8 +23,8 @@ export default function SiamSi({ profile, onChange, onShop }: { profile: Profile
     <section className="siam-si glass" aria-labelledby="siamsi-title">
       <div className="row between">
         <h3 id="siamsi-title"><Sparkles size={18} aria-hidden /> Siam Si <span className="fine" lang="th">เซียมซี</span>
-          <Info label="About Siam Si">Every new place you check in at gives a shake. Quests, new provinces, riding along and writing a review give
-            bonus shakes (keep up to 5).</Info></h3>
+          <Info label="About Siam Si">Every new place you check in at gives a shake. Quests, new provinces, riding along and a review of a
+            place you visited ({REVIEW_SHAKE_CHARS}+ characters) give bonus shakes (keep up to 5).</Info></h3>
         <button type="button" className="btn gold small" disabled={!tickets} onClick={() => setOpen(pending[0]?.checkin ?? true)}>
           {tickets ? `Shake · ${tickets}` : "No shakes"}</button>
       </div>

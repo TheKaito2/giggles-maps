@@ -1,3 +1,4 @@
+import { usualHours } from "../_shared/usual-hours.ts";
 import { admin, HttpError, json, num, readJson, requireUser, serve, thaiPoint } from "../_shared/http.ts";
 import { type Meal, MEAL_WINDOWS } from "../_shared/meals.ts";
 import { insertBest, insertionCost, type Plan, planDetour, type Stop } from "../_shared/planner.ts";
@@ -215,21 +216,28 @@ serve(async (req) => {
   }
   const routing = baseline ? "valhalla" : "estimate";
 
-  // one photo per place for the cards (Wikimedia or the owner's), first one wins
+  // one photo per place for the cards (Wikimedia, the owner's or a traveller's; never a hidden one), first one wins
   const photoOf = new Map<number, string>();
   if (candidates.length) {
-    const { data: photos, error: phErr } = await db.from("place_photos").select("place_id, url, source").in("place_id", candidates.map((c) => c.id)).order("id");
+    const { data: photos, error: phErr } = await db.from("place_photos").select("place_id, url").in("place_id", candidates.map((c) => c.id))
+      .eq("hidden", false).order("id");
     if (phErr) console.error("photos failed", phErr);
-    // owner photos are storage paths in the public shop-photos bucket; Wikimedia ones are full URLs
+    // Wikimedia ones are full URLs; owner and traveller photos are "<bucket>/<path>" in the public shop-photos and
+    // place-photos buckets (a traveller's path used to go out as-is: a broken image on the stop card)
     const storage = `${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/`;
-    for (const ph of (photos ?? []) as { place_id: number; url: string; source: string }[]) {
-      if (!photoOf.has(ph.place_id)) photoOf.set(ph.place_id, ph.source === "owner" ? storage + ph.url : ph.url);
+    for (const ph of (photos ?? []) as { place_id: number; url: string }[]) {
+      if (!photoOf.has(ph.place_id)) photoOf.set(ph.place_id, /^https?:\/\//.test(ph.url) ? ph.url : storage + ph.url);
     }
   }
 
+  // places without known hours get their kind's usual hours (a night plan used to visit temples at 04:00)
+  const hoursOf = (c: { category: string; name: string; open_min: number | null; close_min: number | null }) => {
+    const [openMin, closeMin] = usualHours(c.category, c.name, c.open_min, c.close_min);
+    return { openMin, closeMin };
+  };
   const allStops: Stop[] = candidates.map((c, i) => ({
     idx: i + 2, id: c.id, category: c.category, rating: c.rating == null ? null : Number(c.rating), tier: c.tier ?? 2, dwellMin: dwellOf(c.dwell_min),
-    openMin: c.open_min, closeMin: c.close_min, frac: c.frac, local: c.local, otop: c.otop, community: c.community,
+    ...hoursOf(c), frac: c.frac, local: c.local, otop: c.otop, community: c.community,
   }));
   const stops = allStops.filter((st) => !pitIds.has(st.id)), pitStops = allStops.filter((st) => pitIds.has(st.id));
   const travelMin = (a: number, b: number) => matrix[a][b];

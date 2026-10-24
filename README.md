@@ -14,7 +14,7 @@
 
 **Giggles Maps** turns the spare minutes on a trip into a mini adventure. Say where you're going and how much extra time
 you're OK with: it plans a route through the best local stops on the way, across all 77 provinces of Thailand (temples,
-viewpoints, cafés, OTOP craft shops), ranked on quality only. At each stop you check in with a photo and collect passport
+viewpoints, cafés, OTOP craft shops), ranked on quality, with paid Partners always labelled. At each stop you check in with a photo and collect passport
 stamps, XP, coins and Siam Si fortune sticks. Shops pay only for visits that really happened.
 
 <p align="center"><img src="docs/assets/hype.gif" width="80%" alt="Giggles Maps in 10 seconds" /><br />
@@ -25,7 +25,8 @@ stamps, XP, coins and Siam Si fortune sticks. Shops pay only for visits that rea
   <img src="docs/assets/screens/place.png" width="19%" alt="A place page" />
   <img src="docs/assets/screens/board.png" width="19%" alt="Leaderboard" />
   <img src="docs/assets/screens/profile.png" width="19%" alt="Profile" />
-  <img src="docs/assets/screens/dark.png" width="19%" alt="Dark mode" />
+  <img src="docs/assets/screens/dark.png" width="19%" alt="Dark mode" /><br />
+  <sub>Screens from demo mode: the other travellers, reviews and partners are pretend.</sub>
 </p>
 
 ## What it does
@@ -39,7 +40,7 @@ stamps, XP, coins and Siam Si fortune sticks. Shops pay only for visits that rea
 | ✍️ **Give back, get rewarded** | A written review of a place you visited earns a Siam Si shake; your first photo of a stop on its page earns coins. |
 | 🏆 **Play with friends** | Weekly and all-time leaderboards, province champions, quests and chests, a friends feed, ride-along trips with live positions and a shared album. |
 | 🌙 **Dark mode** | Light, Dark, or Auto (follows your phone). The map goes dark with it. |
-| 🏪 **For shops** | Claim your listing free, add products and photos, see how many trips pass your door. Partners pay per verified visit from prepaid credit. |
+| 🏪 **For shops** | Claim your listing free, add products and photos, see how many trips pass your door. Partners (฿299/month) show first on members' routes, always labelled, and take bookings. |
 
 ## How it works
 
@@ -56,7 +57,7 @@ flowchart LR
 ```
 
 - **Planner.** `plan-route` shortlists places along the road corridor in PostGIS, gets real road times from Valhalla,
-  then picks and orders stops to fill your budget (insertion + 2-opt, opening hours and meal windows respected).
+  then picks and orders stops to fill your budget (insertion + 2-opt). Opening hours and meal windows are respected; a place with no listed hours gets the usual hours for its kind.
   [Algorithm notes](docs/ARCHITECTURE.md) · [Thailand routing](docs/THAILAND-ROUTING.md)
 - **Trust.** Clients never write XP, coins, stamps or money. Every reward is a server function behind row-level security,
   check-ins are GPS-zoned and speed-checked, and payments arrive only through signed webhooks.

@@ -4,7 +4,7 @@ import { callFn, ensureSession, supabase } from "../lib/supabase";
 import { type Booking, cancelBooking, getMonthlyStamps, myBookings, PRICES, type Profile } from "../lib/api";
 import { isNative, purchase, purchaseErrorText, restorePurchases } from "../lib/native";
 import { isGuest, useUser } from "../lib/auth";
-import { demoOn, setDemo } from "../lib/demoGps";
+import { demoOn, setDemo, startDemo } from "../lib/demoGps";
 import { setSound, soundOn } from "../lib/sfx";
 import { type Appearance, setAppearance, useAppearance } from "../lib/theme";
 import Avatar from "./social/Avatar";
@@ -139,7 +139,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
             directions, then the Demo button drives you to each stop. Check-ins still count, marked as demo, and never on the leaderboard.
             Other travellers, reviews and partners you see are pretend.</Info></>}>
             <input type="checkbox" role="switch" className="switch" checked={demoOn()} aria-label="Demo mode"
-              onChange={(e) => { setDemo(e.target.checked); location.reload(); }} />
+              onChange={(e) => { if (e.target.checked) startDemo(); else setDemo(false); location.reload(); }} />
           </Row>
         </Group>
 

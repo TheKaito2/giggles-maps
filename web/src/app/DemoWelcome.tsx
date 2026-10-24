@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
-import { demoOn, setDemo } from "../lib/demoGps";
+import { demoOn, startDemo } from "../lib/demoGps";
 import { useDialog } from "../lib/useDialog";
 
-const WELCOMED = "gm-demo-welcomed", AT = "gm-demo-at";
-const BANGKOK = { lat: 13.7563, lng: 100.5018 };
+const WELCOMED = "gm-demo-welcomed";
 
 // private mode or blocked storage: the sheet may show again next visit, which is harmless
 const get = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
@@ -21,8 +20,7 @@ function WelcomeSheet({ onClose }: { onClose: () => void }) {
   const box = useDialog(onClose);
   const start = () => {
     put(WELCOMED, "1");
-    put(AT, JSON.stringify(BANGKOK));
-    setDemo(true);
+    startDemo();
     location.reload();   // demo state is read at start-up
   };
   return (

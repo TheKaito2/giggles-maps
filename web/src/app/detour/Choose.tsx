@@ -84,6 +84,11 @@ export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => voi
           {d.prefs.depart === "custom" && <input type="time" aria-label="Departure time" value={d.prefs.time} onChange={(e) => d.set({ time: e.target.value })} />}
         </span>
       </div>
+      {/* temples, markets and viewpoints keep day hours: a plan made at night has little or nothing open */}
+      {(startMin(d.prefs) >= 21 * 60 || startMin(d.prefs) < 6 * 60) && (
+        <p className="fine night-hint">Most places are closed at this hour.{" "}
+          <button type="button" className="link" onClick={() => d.set({ depart: "custom", time: "08:00" })}>Leave at 08:00 instead</button></p>
+      )}
       {Object.values(d.results).some((r) => r === "loading") && <PlanProgress />}
       <div className="presets">
         {PRESETS.map((p) => card(p.id, p.label, p.min, p.blurb))}

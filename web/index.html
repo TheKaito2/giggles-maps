@@ -157,9 +157,11 @@
     </footer>
 
     <script>
-      // compact sticky bar once the hero has scrolled away
-      new IntersectionObserver(([e]) => document.getElementById("top").classList.toggle("compact", !e.isIntersecting))
-        .observe(document.getElementById("hero"));
+      // solid, compact sticky bar as soon as the page scrolls (a see-through bar let the logo run over the hero mockup)
+      const bar = document.getElementById("top");
+      const compact = () => bar.classList.toggle("compact", scrollY > 24);
+      addEventListener("scroll", compact, { passive: true });
+      compact();
     </script>
   </body>
 </html>

@@ -29,3 +29,9 @@ test("with real GPS blocked, the demo spot stays", async () => {
   expect(await where()).toEqual(CHOKCHAI);
   blocked = false; demo.setDemo(false);
 });
+
+test("demoing Bangkok from far away: 'my location' is the demo's city, not 500 km off", async () => {
+  demo.startDemo(); demo.moveTo(CHOKCHAI);    // real GPS says Sakon Nakhon
+  expect(await where()).toEqual(demo.BANGKOK);
+  demo.setDemo(false);
+});

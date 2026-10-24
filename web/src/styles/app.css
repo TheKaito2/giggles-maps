@@ -563,7 +563,7 @@ table.stats th, table.stats td { padding: 6px 8px; border-bottom: 1px solid var(
 .nav-eta b { font: 800 var(--fs-display)/var(--lh-display) var(--font-data); color: var(--good); }
 .nav-bottom .row { justify-content: space-between; }
 .nav-bottom .icon-btn.on { background: var(--brand-soft); }
-.nav-bottom .nav-avoid { justify-content: flex-start; gap: 14px; }
+.nav-bottom .nav-avoid { justify-content: flex-start; gap: 6px; }
 .nav-me { width: 22px; height: 22px; border-radius: 50%; background: #2f7bf5; border: 4px solid #fff; box-shadow: 0 0 0 8px rgb(47 123 245 / .25); }
 
 /* ---------- map layers (night map, offline maps) ---------- */
@@ -585,7 +585,7 @@ table.stats th, table.stats td { padding: 6px 8px; border-bottom: 1px solid var(
   .sheet { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; border-radius: 22px 22px 0 0; box-shadow: 0 -8px 28px rgb(0 0 0 / .18);
     transition: height .28s cubic-bezier(.2, .8, .2, 1); height: 30%; }
   .sheet.snap-half { height: 55%; }
-  .sheet.snap-full { height: 92%; }
+  .sheet.snap-full { height: 92%; z-index: 7; }   /* pulled up, it covers the map's buttons and banners instead of sitting under them */
   .sheet.dragging { transition: none; }
   .sheet-grab { touch-action: none; padding-top: 6px; padding-inline: 16px; cursor: grab; }
   .sheet-handle { display: block; justify-self: center; width: 44px; height: 18px; border: 0; padding: 0; background: none; position: relative; }
@@ -841,6 +841,9 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .set-items { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .set-items button { display: grid; gap: 4px; width: 100%; padding: 6px; border-radius: 12px; border: 0; background: rgb(255 255 255 / .9); color: #0e2440; font-size: var(--fs-micro); font-weight: 700; text-align: center; }
 .set-items .preview { height: 48px; }
+.set-items .preview.title-chip span { font-size: var(--fs-caption); line-height: 1.15; padding-inline: 4px; }   /* "Full-moon wanderer" fits the 48 px tile */
+.set-items .preview.cover-prev .cover-title { font-size: var(--fs-micro); letter-spacing: .06em; }   /* "PASSPORT" fits a 3-up phone tile */
+.set-items .tile-kind { letter-spacing: .03em; color: #4a5a72; }   /* tile is always light, in dark mode too */
 .set-buy { align-items: center; } .set-buy b { display: inline-flex; align-items: center; gap: 3px; font-size: var(--fs-headline); }
 .set-list { display: grid; gap: 10px; }
 .try-backdrop { z-index: 110; }
@@ -912,7 +915,7 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 /* icon + number lead (title size) in the stat's colour, the same colours as the top bar; the label sits small in the top corner */
 .stat-strip b { display: inline-flex; align-items: center; gap: 6px; font: 800 var(--fs-title)/var(--lh-title) var(--font-data); color: var(--c); }
 .stat-strip b svg { flex: none; } .stat-strip b small { margin-left: -5px; align-self: flex-end; padding-bottom: 3px; }
-.stat-strip li > span:last-child { order: -1; justify-self: end; }
+.stat-strip li > span:last-child { order: -1; }   /* label above the number, both left-aligned */
 .stat-strip small { font-size: var(--fs-caption); font-weight: 700; color: var(--ink-2); }
 .stat-strip span { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-caption); font-weight: 700; color: var(--ink-2); }
 .stat-strip .s-xp { --c: var(--brand); } .stat-strip .s-provinces { --c: var(--good); } .stat-strip .s-stamps { --c: var(--stamp); }
@@ -1387,10 +1390,19 @@ input[type="file"]::file-selector-button { font: 700 var(--fs-label)/1 var(--fon
 /* visual QA round (tester C) */
 .avatar.c-marigold { color: #2a1d00; }   /* a white letter on gold was 2.2:1 */
 .level-rewards > .btn.big { position: sticky; bottom: 0; box-shadow: 0 4px 0 var(--brand-edge), 0 -10px 18px 6px var(--card); }   /* the pick stays reachable on small phones */
-.odds { overflow-x: auto; } .odds table { min-width: 440px; }   /* the prize column doesn't shrink to one word per line on 320 px */
+.odds { overflow-x: auto; } .odds table { min-width: 300px; }   /* fits a 390 px phone; scrolls only below that, so the prize column never shrinks to one word per line */
 input[type="file"] { width: 100%; }
 .row.between > .eyebrow { margin: 0; }
 .shop-grid li.locked .tile-try { opacity: .6; filter: grayscale(.5); }
 :root[data-theme="dark"] .maplibregl-ctrl-attrib-button { filter: invert(1); }
 html.native .book-close { top: calc(14px + env(safe-area-inset-top, 0px)); }
 html.native .toast { top: calc(64px + env(safe-area-inset-top, 0px)); }
+
+/* navigation's Avoid tolls / highways / ferries: chips, not bare form checkboxes */
+.nav-avoid { gap: 6px; flex-wrap: wrap; }
+.nav-avoid .toggle { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--card); padding: 6px 12px;
+  border-radius: 10px; font-size: var(--fs-label); font-weight: 700; cursor: pointer; }
+.nav-avoid .toggle input { margin: 0; }
+.nav-avoid .toggle:has(input:checked) { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
+/* a plan's stop names get two lines: "Sakon Nakhon Walking Street, Saturday & Sunday Nights" kept its "nights" cut off */
+.stop-rows .stop-text > b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }

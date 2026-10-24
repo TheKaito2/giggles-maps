@@ -45,7 +45,8 @@
     tl.fromTo("#end-pin", { scaleY: 1, scaleX: 1 }, { scaleY: 0.86, scaleX: 1.08, duration: 0.07, ease: "power2.out", transformOrigin: "50% 90%" }, 0.38);
     tl.to("#end-pin", { scaleY: 1, scaleX: 1, duration: 0.35, ease: "elastic.out(1, 0.5)" }, 0.45);
     // then the name wipes in under the landing, and the line and the address follow; all hold to the end
-    tl.fromTo("#end-word", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.3, ease: "power3.out" }, 0.4);
+    // negative top and bottom insets: Mali's "g" tails hang below the line box and a 0 inset cut them off
+    tl.fromTo("#end-word", { clipPath: "inset(-30% 100% -40% 0)" }, { clipPath: "inset(-30% 0% -40% 0)", duration: 0.3, ease: "power3.out" }, 0.4);
     tl.fromTo("#end-tag", { opacity: 0, filter: "blur(8px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.16, ease: "power4.out" }, 0.5);
     tl.fromTo("#end-url", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.3, ease: "back.out(1.6)" }, 0.5);
     window.__timelines["endcard"] = tl;

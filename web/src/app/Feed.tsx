@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Award, Bell, MessageCircle, Share2, Trash2, Trophy, Zap } from "lucide-react";
 import { errCode } from "../lib/supabase";
-import { addComment, type Card, type Comment, deleteComment, type FeedItem, getComments, getFeed, getSocial, getSpotlight, photoUrls,
+import { addComment, type Card, type Comment, deleteComment, type FeedItem, getComments, getFeed, getSocial, getSpotlight, photoSrc, photoUrls,
   type LatLng, type Profile, react, type Reaction, type Spotlight } from "../lib/api";
 import Avatar from "./social/Avatar";
 import ProvinceStamp from "./passport/ProvinceStamp";
@@ -209,7 +209,7 @@ export default function Feed({ profile, refreshKey, openFriend, goProfile, openP
           <Avatar name={f.nickname} colour={f.colour} avatar={f.avatar} size={56} /><span>{f.nickname}</span></button></li>)}
       </ul>
       {spot && <button type="button" className="spotlight" onClick={() => openPlace(spot.id)}>
-        {spot.photo ? <img src={spot.photo} alt="" /> : <span className="spotlight-ph" aria-hidden>★</span>}
+        {spot.photo ? <img src={photoSrc(spot.photo)} alt="" /> : <span className="spotlight-ph" aria-hidden>★</span>}
         <span className="person-main"><span className="eyebrow">Local spotlight{spot.province ? ` · ${spot.province}` : ""}</span>
           <b>{spot.name}</b><span className="fine">{spot.otop ? "OTOP producer" : "Community enterprise"}{spot.visits ? ` · ${spot.visits} visits this week` : ""}</span></span>
       </button>}

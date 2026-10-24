@@ -20,8 +20,9 @@ const TIER_TIP = { partner: "A verified shop that pays Giggles Maps monthly. Mem
 /** A place's photo, or its kind icon on its group colour. */
 export function Thumb({ s, size = 48 }: { s: { name: string; category: string; photo?: string | null }; size?: number }) {
   const k = kindOf(null, s.category);
-  return s.photo
-    ? <img className="thumb" src={s.photo} alt="" width={size} height={size} loading="lazy" />
+  const [broken, setBroken] = useState<string | null>(null);   // a photo that didn't load (moved, removed) shows the kind icon
+  return s.photo && s.photo !== broken
+    ? <img className="thumb" src={s.photo} alt="" width={size} height={size} loading="lazy" onError={() => setBroken(s.photo!)} />
     : <span className="thumb" style={{ width: size, height: size, background: GROUPS[k.group].colour }}><k.icon size={size * 0.45} aria-hidden /></span>;
 }
 

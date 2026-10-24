@@ -37,7 +37,7 @@ export function OddsTable({ luck = 0 }: { luck?: number }) {
     <div className="odds">
       {luck > 0 && <p className="fine"><b>With your +{luck * 10}% luck</b> from level rewards.</p>}
       <table>
-        <thead><tr><th>Stick</th><th>Chance</th><th>At a landmark</th><th>Prize</th></tr></thead>
+        <thead><tr><th>Stick</th><th>Chance</th><th title="At a landmark">Landmark</th><th>Prize</th></tr></thead>
         <tbody>
           <tr><td>Common</td><td className="num">{pct(a.common)}</td><td className="num">{pct(l.common)}</td><td>10–20 coins or +30 XP</td></tr>
           <tr><td>Rare</td><td className="num">{pct(a.rare)}</td><td className="num">{pct(l.rare)}</td><td>40–60 coins, 24 h ×1.5 XP, or a shop item (up to 150)</td></tr>

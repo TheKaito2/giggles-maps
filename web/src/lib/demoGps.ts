@@ -3,7 +3,7 @@ import type { LatLng } from "./api";
 // Demo mode: the app's location is wherever you put it (directions' Demo button drives you to the next stop), so it can be
 // shown anywhere. It stands in for navigator.geolocation itself, so everything that reads the location (stops near
 // you, check-in, turn-by-turn) follows it without knowing. Check-ins made with it are marked demo on the server.
-const ON = "gm-demo", AT = "gm-demo-at";
+const ON = "gm-demo", AT = "gm-demo-at", HOME = "gm-demo-home";
 /** Demo-mode people have ids "demo-01".. and exist only on this device. */
 export const isDemoId = (id: string) => id.startsWith("demo-");
 export const SAKON: LatLng = { lat: 17.163, lng: 104.149 };   // Sakon Nakhon: the default map centre
@@ -12,6 +12,7 @@ const write = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.st
 
 let on = read<boolean>(ON, false);
 let at = read<LatLng>(AT, SAKON);
+let home = read<LatLng>(HOME, SAKON);   // the demo's city: where "my location" goes back to when you aren't really there
 const watchers = new Map<number, PositionCallback>();
 const listeners = new Set<() => void>();
 let nextId = 1e6;   // clear of the real watch ids
@@ -33,6 +34,14 @@ export function setDemo(value: boolean) {
   if (!value) try { localStorage.removeItem("gm-demo-bar-hidden"); } catch { /* nothing to show again */ }   // next time demo mode is on, its note shows again
   changed();
 }
+export const BANGKOK: LatLng = { lat: 13.7563, lng: 100.5018 };
+/** Demo mode in Bangkok, where the pretend community is (the welcome sheet and Settings). Reload after: read at start-up. */
+export function startDemo() {
+  home = BANGKOK; write(HOME, BANGKOK);
+  moveTo(BANGKOK);
+  setDemo(true);
+}
+
 /** Move yourself there; everything watching the location gets a fix straight away. */
 export function moveTo(p: LatLng) {
   at = p; write(AT, p);
@@ -41,13 +50,21 @@ export function moveTo(p: LatLng) {
   changed();
 }
 
+// rough km, plenty for "is it the same city"
+const km = (a: LatLng, b: LatLng) => Math.hypot(a.lat - b.lat, (a.lng - b.lng) * Math.cos(a.lat * Math.PI / 180)) * 111;
+
 /**
- * "Use my location" (a trip's start): in demo mode the demo position first goes back to where you really are, so a new
- * trip starts from you, not from wherever the last demo drive ended. No real fix (blocked, desktop): the demo spot stays.
+ * "Use my location" (a trip's start): in demo mode a new trip starts from you, not from wherever the last demo drive
+ * ended. "You" is where you really are when that's in the demo's city, else the demo's city itself: demoing Bangkok from
+ * Sakon Nakhon used to start every trip 500 km away. No real fix (blocked, desktop): the demo spot stays.
  */
 export function myLocation(ok: PositionCallback, fail: PositionErrorCallback, opts?: PositionOptions) {
   if (!on || !realGet) return navigator.geolocation.getCurrentPosition(ok, fail, opts);
-  realGet((p) => { moveTo({ lat: p.coords.latitude, lng: p.coords.longitude }); ok(position()); }, () => ok(position()), opts);
+  realGet((p) => {
+    const real = { lat: p.coords.latitude, lng: p.coords.longitude };
+    moveTo(km(real, home) < 60 ? real : home);
+    ok(position());
+  }, () => ok(position()), opts);
 }
 
 /** Swap navigator.geolocation for the demo location while demo mode is on (once, at start-up). */

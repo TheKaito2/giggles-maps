@@ -248,7 +248,7 @@ function SetCard({ s, hero = false, byKey, profile, coins, onBuy, onTry }: {
         <p className="fine">{s.blurb_en}</p>
       </div>
       <ul className="set-items">{list.map((i) => <li key={key(i)}><button type="button" onClick={() => onTry(i)} aria-label={`Try on ${i.name_en}`}>
-        <Preview item={i} profile={profile} /><span>{i.name_en}</span></button></li>)}</ul>
+        <Preview item={i} profile={profile} /><span>{i.name_en}</span><span className="tile-kind">{KIND_NAME[i.kind]}</span></button></li>)}</ul>
       <div className="row between set-buy">
         {owned ? <span className="chip on"><Check size={13} aria-hidden /> All yours</span> : <span className="num">
           {s.price < s.full && <s className="fine">{s.full}</s>} <b><Coins size={15} aria-hidden /> {s.price}</b>

@@ -1,6 +1,6 @@
 // Landing-page screenshots of the web app, no dependencies: headless Chrome over the DevTools protocol.
 // Needs the dev server: cd web && npm run dev -- --port 5181
-// Usage: node tools/shots.mjs [only...]   e.g. node tools/shots.mjs choose quests
+// Usage: node tools/shots.mjs [only...]   e.g. node tools/shots.mjs choose quests  (GM_TZ: see the timezone note below)
 // GM_SESSION=path/to/storage.json adds localStorage entries ({ "sb-…-auth-token": "…" }) so shots show a real account.
 import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -15,6 +15,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const storage = {
   "gm-demo": "true", "gm-demo-bar-hidden": "1", "gm-demo-at": JSON.stringify({ lat: 13.7563, lng: 100.5018 }),
+  "gm-demo-home": JSON.stringify({ lat: 13.7563, lng: 100.5018 }), "gm-appearance": "light",   // light whatever this Mac is set to
   ...(process.env.GM_SESSION ? JSON.parse(readFileSync(process.env.GM_SESSION, "utf8")) : {}),
 };
 
@@ -116,6 +117,9 @@ try {
   await send("Runtime.enable");
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await send("Emulation.setTouchEmulationEnabled", { enabled: true });
+  // GM_TZ=Pacific/Auckland: a clock where it's daytime now, so "Leave now" plans show daytime times (shot at 04:00 Bangkok
+  // time, the hero showed 04:18 arrivals). Only what the page shows changes; the server still counts Bangkok days.
+  if (process.env.GM_TZ) await send("Emulation.setTimezoneOverride", { timezoneId: process.env.GM_TZ });
   // storage is per origin: open the origin once, seed it, then start the app fresh for each shot
   await send("Page.navigate", { url: `${BASE}/favicon.svg` });
   await sleep(500);

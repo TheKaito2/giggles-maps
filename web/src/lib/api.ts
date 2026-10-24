@@ -554,6 +554,8 @@ export async function uploadShopPhoto(file: Blob): Promise<string> {
 }
 /** Public URL for a shop photo path ("<uid>/..." or "shop-photos/<uid>/..."). */
 export const shopPhotoUrl = (path: string) => supabase.storage.from("shop-photos").getPublicUrl(path.replace(/^shop-photos\//, "")).data.publicUrl;
+/** Any place_photos url as an image src: Wikimedia ones are full URLs, owner and traveller photos "<bucket>/<path>". */
+export const photoSrc = (url: string) => /^https?:\/\//.test(url) ? url : url.startsWith("place-photos/") ? placePhotoUrl(url) : shopPhotoUrl(url);
 
 export interface PlaceExtras { description: string | null; otop_stars: number | null; verified: boolean; claimed: boolean;
   products: { id: number; name: string; price: number | null; photo: string | null }[] }
