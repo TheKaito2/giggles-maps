@@ -1,9 +1,19 @@
 import { useEffect, useRef } from "react";
 
-// open dialogs, newest last: Escape and Back close only the top one
-const open: (() => void)[] = [];
-let skipPop = 0;   // history.back() calls we make ourselves (a dialog closed by its own button): not a user's Back
+// Open dialogs, newest last: Escape and Back act on the top one only.
+const open: { close: () => void; closedByBack: () => void }[] = [];
+// history.back() calls we make ourselves (a dialog closed by its own button drops the entry it added): not a user's Back.
+// Counted here, in one listener that runs before any other, so a skip is used up even when no dialog is left to see it.
+let skipPop = 0;
+let quiet = false;
+addEventListener("popstate", () => {
+  quiet = skipPop > 0;
+  if (quiet) { skipPop--; return; }
+  open.at(-1)?.closedByBack();
+});
 export const dialogsOpen = () => open.length;
+/** Whether the popstate being handled right now came from quietBack (other popstate listeners can ignore it). */
+export const quietPop = () => quiet;
 /** Go back one history entry without it counting as the user pressing Back. */
 export function quietBack() { skipPop++; history.back(); }
 
@@ -19,13 +29,13 @@ export function useDialog<T extends HTMLElement = HTMLDivElement>(onClose: () =>
   useEffect(() => {
     const back = document.activeElement as HTMLElement | null;
     let byBack = false;
-    const me = () => close.current();
+    const me = { close: () => close.current(), closedByBack: () => { byBack = true; close.current(); } };
     open.push(me);
     box.current?.focus();
     history.pushState({ ...history.state, gmDialog: open.length }, "");
     const keys = (e: KeyboardEvent) => {
       if (open.at(-1) !== me) return;
-      if (e.key === "Escape") { e.stopPropagation(); me(); return; }
+      if (e.key === "Escape") { e.stopPropagation(); me.close(); return; }
       if (e.key !== "Tab" || !box.current) return;
       // keep Tab inside the dialog: wrap from the last focusable to the first and back
       const f = [...box.current.querySelectorAll<HTMLElement>("a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex='-1'])")]
@@ -35,15 +45,9 @@ export function useDialog<T extends HTMLElement = HTMLDivElement>(onClose: () =>
       if (e.shiftKey && (document.activeElement === first || document.activeElement === box.current)) { e.preventDefault(); last.focus(); }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     };
-    const pop = () => {
-      if (skipPop > 0) { skipPop--; return; }
-      if (open.at(-1) === me) { byBack = true; me(); }
-    };
     document.addEventListener("keydown", keys);
-    addEventListener("popstate", pop);
     return () => {
       document.removeEventListener("keydown", keys);
-      removeEventListener("popstate", pop);
       open.splice(open.indexOf(me), 1);
       if (!byBack && history.state?.gmDialog) quietBack();   // closed by its own button: drop the entry it added
       back?.focus();

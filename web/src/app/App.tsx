@@ -23,7 +23,7 @@ import { demoOn, onDemoChange } from "../lib/demoGps";
 import { SkelLines } from "./Skeleton";
 import Boundary from "./Boundary";
 import Modal from "./Modal";
-import { dialogsOpen, quietBack } from "../lib/useDialog";
+import { dialogsOpen, quietBack, quietPop } from "../lib/useDialog";
 
 // Only the map and the detour sheet load up front; tabs and sheets arrive when first opened.
 const MapView = lazy(() => import("./MapView"));   // maplibre is most of the code: the sheet paints first
@@ -68,7 +68,7 @@ export default function App() {
     setTabState(t);
   }, []);
   useEffect(() => {
-    const pop = () => { if (!dialogsOpen() && !history.state?.gmTab && tabNow.current !== "map") { tabNow.current = "map"; setTabState("map"); } };
+    const pop = () => { if (!quietPop() && !dialogsOpen() && !history.state?.gmTab && tabNow.current !== "map") { tabNow.current = "map"; setTabState("map"); } };
     addEventListener("popstate", pop);
     return () => removeEventListener("popstate", pop);
   }, []);
