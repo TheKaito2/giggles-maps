@@ -207,6 +207,17 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
 - `profile_of(p_id)`: me or a friend: card + `photos, friends, rank, badges, friend_code (mine only)`. Error `not_friends`.
 - `feed(p_scope 'all'|'friends'|'me')`: `[{id, kind, at, mine, data, who, to, place, province, photo, caption, reactions, my_reaction}]`.
 - `react(p_activity, p_emoji 'heart'|'fire'|'clap'|'wow'|null)`, `nudge(p_friend)` (error `already_nudged`).
+- Comments (migration 054), friends only (same rule as seeing the post):
+  - `comment(p_activity, p_body)` → the new comment. Errors: `not_found`, `bad_comment` (1–280 characters), `comment_limit` (30 a day).
+  - `comments_of(p_activity)` → `[{ id, body, at, mine, who }]`, oldest first.
+  - `delete_comment(p_id)`: the author or the post's owner.
+  - `feed()` items carry `comments` (count); a comment on someone else's post adds a `comment` item that only the two of you see.
+- `set_showcase(p)`: up to 3 `{type: 'badge'|'stamp', id}` you've earned (`not_earned`, `bad_showcase`); `profile_of` returns them as `showcase`.
+- Shop sets and daily picks (migration 054):
+  - `shop_today()` → `{ ends, picks: [{kind, id}] x6, sets: [{ id, name_en, name_th, blurb_en, items: ['kind:id'], full, price }] }`.
+    Picks are the same for everyone and change at midnight Bangkok time. `sets[0]` is this week's featured set.
+  - `buy_set(p_id)` → coins left. It buys the set's items you don't own at 75% each (rounded down). Errors: `members_only`,
+    `already_owned`, `not_enough_coins`.
 - `friend_quest()` → `{partner, week, me, them}` or null; `set_friend_quest(p_friend)` (error `already_paired`); `claim_quests()`.
 - `verify-checkin` also returns `badges: [badge]` for tiers reached by that check-in.
 

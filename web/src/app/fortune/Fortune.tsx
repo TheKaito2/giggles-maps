@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { Share2, X } from "lucide-react";
+import ShareSheet from "../share/ShareSheet";
 import { ApiError } from "../../lib/supabase";
 import { type Rarity, type Shake, shakeFortune } from "../../lib/api";
 import { FORTUNES } from "./fortunes";
@@ -47,12 +48,15 @@ const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
  * Siam Si (เซียมซี) ceremony: shake the bamboo cup (tap it, or shake the phone), one numbered stick falls out, then its
  * fortune card turns over with the prize. `checkin` = the first-visit check-in this shake belongs to; none = a bonus shake.
  */
-export default function Fortune({ checkin, onClose, onShaken }: { checkin?: string; onClose: () => void; onShaken: (s: Shake) => void }) {
+export default function Fortune({ checkin, onClose, onShaken, name = "Explorer", hasPlus = false }: {
+  checkin?: string; onClose: () => void; onShaken: (s: Shake) => void; name?: string; hasPlus?: boolean;
+}) {
   const [phase, setPhase] = useState<Phase>("ready");
   const [shake, setShake] = useState<Shake | null>(null);
   const [error, setError] = useState("");
   const [odds, setOdds] = useState(false);
-  const [usedCheckin, setUsedCheckin] = useState(false);   // after the check-in's shake, "again" spends bonus shakes
+  const [usedCheckin, setUsedCheckin] = useState(false);
+  const [sharing, setSharing] = useState(false);   // after the check-in's shake, "again" spends bonus shakes
   const started = useRef(false);
   const timers = useRef<number[]>([]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
@@ -130,11 +134,15 @@ export default function Fortune({ checkin, onClose, onShaken }: { checkin?: stri
 
       <div className="fortune-actions">
         {phase === "card" && again && <button type="button" className="btn gold" onClick={() => { setShake(null); setPhase("ready"); }}>Shake again · {shake!.tickets} left</button>}
+        {phase === "card" && shake && (shake.rarity === "epic" || shake.rarity === "legendary") &&
+          <button type="button" className="btn soft" onClick={() => setSharing(true)}><Share2 size={16} aria-hidden /> Share</button>}
         {phase === "card" && <button type="button" className="btn" onClick={onClose}>Done</button>}
         {phase !== "card" && phase !== "ready" && <button type="button" className="link" onClick={() => setPhase(shake ? "card" : phase)}>Skip</button>}
         <button type="button" className="link" aria-expanded={odds} onClick={() => setOdds(!odds)}>Odds</button>
       </div>
       {odds && <OddsTable />}
+      {sharing && shake && <ShareSheet hasPlus={hasPlus} onClose={() => setSharing(false)} options={[{ id: "fortune", label: "Siam Si",
+        card: { kind: "milestone", what: "fortune", rarity: RARITY[shake.rarity].en, prize: prizeText(shake), stick: shake.stick, name } }]} />}
     </div>
   );
 }

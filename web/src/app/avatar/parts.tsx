@@ -17,7 +17,8 @@ export const SLOTS: Record<Slot, { label: string; options: Option[] }> = {
   bg: { label: "Background", options: [c("sky", "Sky", "#bfe3ff"), c("mint", "Mint", "#c4f1d9"), c("peach", "Peach", "#ffd9c2"),
     c("lilac", "Lilac", "#e1d4ff"), c("butter", "Butter", "#fff1a8"), c("rose", "Rose", "#ffc9dc"), c("sand", "Sand", "#efe2c8"),
     c("teal", "Teal", "#9fe0dc"), c("navy", "Navy", "#27348b"), c("grey", "Cloud", "#dfe3ea"),
-    c("sunset", "Sunset", "url(#sunset)", true), c("temple", "Temple gold", "url(#temple)", true)] },
+    c("sunset", "Sunset", "url(#sunset)", true), c("temple", "Temple gold", "url(#temple)", true),
+    c("lanterns", "Sky lanterns", "url(#lanterns)", true)] },
   skin: { label: "Skin", options: [c("s1", "1", "#ffe0c7"), c("s2", "2", "#f6cba4"), c("s3", "3", "#e8b48a"), c("s4", "4", "#d39a6a"),
     c("s5", "5", "#b97c4f"), c("s6", "6", "#9a6038"), c("s7", "7", "#7a4626"), c("s8", "8", "#5a321b")] },
   face: { label: "Face", options: [o("round", "Round"), o("oval", "Oval"), o("square", "Square")] },
@@ -32,13 +33,13 @@ export const SLOTS: Record<Slot, { label: string; options: Option[] }> = {
     c("grey", "Grey", "#a9a9b0"), c("pink", "Pink", "#f28bb7"), c("blue", "Blue", "#4f7cf0"), c("green", "Green", "#3dbf8a")] },
   facial_hair: { label: "Facial hair", options: [o("none", "None"), o("stubble", "Stubble"), o("moustache", "Moustache"), o("beard", "Beard")] },
   glasses: { label: "Glasses", options: [o("none", "None"), o("round", "Round"), o("square", "Square"), o("sunglasses", "Shades"),
-    o("aviator", "Aviators", true), o("heart", "Hearts", true), o("star", "Stars", true)] },
+    o("aviator", "Aviators", true), o("heart", "Hearts", true), o("star", "Stars", true), o("goggles", "Swim goggles", true)] },
   headwear: { label: "Headwear", options: [o("none", "None"), o("cap", "Cap"), o("beanie", "Beanie"), o("bucket", "Bucket hat"),
     o("headband", "Headband"), o("flower", "Frangipani"), o("ngob", "Straw ngob hat", true), o("helmet", "Moto helmet", true),
     o("crown", "Crown", true), o("mongkol", "Mongkol", true), o("flower-crown", "Flower crown", true)] },
   outfit: { label: "Outfit", options: [o("tshirt", "T-shirt"), o("hoodie", "Hoodie"), o("collared", "Collared"), o("tank", "Tank top"),
     o("jacket", "Jacket"), o("scarf", "Scarf"), o("striped", "Stripes"), o("overalls", "Overalls"),
-    o("pha-khao-ma", "Pha khao ma", true), o("muay-thai", "Muay Thai", true), o("hawaiian", "Flower shirt", true), o("raincoat", "Raincoat", true)] },
+    o("pha-khao-ma", "Pha khao ma", true), o("muay-thai", "Muay Thai", true), o("hawaiian", "Flower shirt", true), o("raincoat", "Raincoat", true), o("mudmee", "Mudmee shirt", true)] },
   outfit_colour: { label: "Outfit colour", options: [c("indigo", "Indigo", "#27348b"), c("marigold", "Marigold", "#e9a400"),
     c("red", "Red", "#d1452f"), c("green", "Green", "#1b7f52"), c("sky", "Sky", "#2f7bf5"), c("pink", "Pink", "#e05a8a"),
     c("purple", "Purple", "#7a3b8f"), c("black", "Black", "#2a2a2e"), c("white", "White", "#f4f4f4"), c("khaki", "Khaki", "#b59a6a")] },
@@ -134,6 +135,10 @@ function glasses(id: string): ReactNode {
     case "sunglasses": return <g><rect x="42" y="46" width="16" height="11" rx="4" fill="#1d1d24" /><rect x="62" y="46" width="16" height="11" rx="4" fill="#1d1d24" /><path d="M58 50 L62 50" stroke="#1d1d24" strokeWidth="2.4" /></g>;
     case "aviator": return <g stroke="#b38b2d" strokeWidth="1.6"><path d="M42 47 L58 47 Q58 60 50 59 Q42 58 42 47 Z" fill="#3b4a5a" opacity=".9" /><path d="M62 47 L78 47 Q78 58 70 59 Q62 60 62 47 Z" fill="#3b4a5a" opacity=".9" /><path d="M58 48 L62 48" /></g>;
     case "heart": return <g fill="#ff4d8d" opacity=".9">{[51, 69].map((x) => <path key={x} d={`M${x} 59 C${x - 11} 51 ${x - 6} 43 ${x} 48 C${x + 6} 43 ${x + 11} 51 ${x} 59 Z`} />)}<path d="M57 50 L63 50" stroke="#ff4d8d" strokeWidth="2" /></g>;
+    case "goggles": return <g><path d="M33 51 L87 51" stroke="#0277bd" strokeWidth="3" />
+      {[50, 70].map((x) => <g key={x}><ellipse cx={x} cy="52" rx="8.5" ry="7" fill="#4fc3f7" opacity=".75" stroke="#0277bd" strokeWidth="2.4" />
+        <path d={`M${x - 4} 49 Q${x - 1} 47 ${x + 2} 48`} stroke="#fff" strokeWidth="1.6" fill="none" strokeLinecap="round" /></g>)}
+      <path d="M58.5 52 L61.5 52" stroke="#0277bd" strokeWidth="2.4" /></g>;
     case "star": return <g fill="#ffd23f" stroke="#c99a00" strokeWidth=".8">{[51, 69].map((x) => <path key={x} d={`M${x} 44 L${x + 2.6} 49.5 L${x + 8.5} 50 L${x + 4} 54 L${x + 5.4} 60 L${x} 56.8 L${x - 5.4} 60 L${x - 4} 54 L${x - 8.5} 50 L${x - 2.6} 49.5 Z`} />)}</g>;
     default: return null;
   }
@@ -182,6 +187,10 @@ function outfit(id: string, oc: string, skin: string, clip: string): ReactNode {
     case "hawaiian": return <g><path d={BODY} fill={oc} /><g clipPath={`url(#${clip})`}>{[[30, 104], [48, 114], [74, 106], [92, 116], [62, 96]].map(([x, y]) =>
       <g key={x} transform={`translate(${x} ${y})`}>{[0, 72, 144, 216, 288].map((r) => <ellipse key={r} cy="-3" rx="2" ry="3.4" fill="#fff" transform={`rotate(${r})`} />)}<circle r="1.4" fill="#ffd23f" /></g>)}</g>
       <path d="M49 85 L60 99 L55 85 Z M71 85 L60 99 L65 85 Z" fill={dark} /></g>;
+    case "mudmee": return <g><path d={BODY} fill="#6a1b4d" /><g clipPath={`url(#${clip})`}>
+      {[22, 40, 58, 76, 94].map((x) => <g key={x}><rect x={x} y="80" width="6" height="45" fill="#c2477d" />
+        {[92, 104, 116].map((y) => <path key={y} d={`M${x + 3} ${y - 4} L${x + 7} ${y} L${x + 3} ${y + 4} L${x - 1} ${y} Z`} fill="#f3c6dc" />)}</g>)}</g>
+      <path d="M50 85 Q60 93 70 85" stroke="#e9c46a" strokeWidth="2.5" fill="none" /></g>;
     case "raincoat": return <g><path d={BODY} fill="#f5c400" /><path d="M60 92 L60 122" stroke="#c99a00" strokeWidth="2" />
       {[100, 110].map((y) => <circle key={y} cx="64" cy={y} r="1.8" fill="#c99a00" />)}<path d="M40 90 C42 80 78 80 80 90 Q60 84 40 90 Z" fill="#c99a00" /></g>;
     default: return <g><path d={BODY} fill={oc} />{tee}</g>;
@@ -201,10 +210,13 @@ export function AvatarSvg({ look, size = 40, title }: { look: AvatarLook; size?:
         <clipPath id={`${id}-c`}><circle cx="60" cy="60" r="60" /></clipPath>
         <clipPath id={`${id}-b`}><path d={BODY} /></clipPath>
         <linearGradient id={`${id}-sunset`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ff9a8b" /><stop offset=".55" stopColor="#ffc56f" /><stop offset="1" stopColor="#7f7fd5" /></linearGradient>
+        <linearGradient id={`${id}-lanterns`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#0b0d26" /><stop offset="1" stopColor="#2b3a78" /></linearGradient>
         <radialGradient id={`${id}-temple`}><stop offset="0" stopColor="#fff2b0" /><stop offset=".7" stopColor="#f2c230" /><stop offset="1" stopColor="#b8860b" /></radialGradient>
       </defs>
       <g clipPath={`url(#${id}-c)`}>
         <rect width="120" height="120" fill={bg} />
+        {l.bg === "lanterns" && <g>{[[16, 20, 5], [96, 16, 4], [104, 48, 3.5], [12, 58, 3], [28, 92, 4], [100, 90, 3]].map(([x, y, r]) =>
+          <g key={x}><circle cx={x} cy={y} r={r * 2.2} fill="#ffb84d" opacity=".25" /><rect x={x - r * 0.7} y={y - r} width={r * 1.4} height={r * 2} rx={r * 0.5} fill="#ffcf6b" /></g>)}</g>}
         {l.bg === "temple" && <g fill="#fff" opacity=".35">{[0, 45, 90, 135].map((r) => <rect key={r} x="58" y="-10" width="4" height="140" transform={`rotate(${r} 60 60)`} />)}</g>}
         <g transform="translate(60 66) scale(1.16) translate(-60 -66)">
         {hairBack(l.hair, h)}

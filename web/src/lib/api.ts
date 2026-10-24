@@ -290,21 +290,34 @@ export async function getShop(): Promise<ShopItem[]> {
 }
 export const buyItem = (kind: ShopKind, id: string) => rpc<number>("buy_item", { p_kind: kind, p_id: id });
 export const equip = (kind: ShopKind, id: string) => rpc<Look>("equip", { p_kind: kind, p_id: id });
+/** A themed set: items are "kind:id"; price = what the items you don't own cost you now (25% off), full = all of them at list price. */
+export interface ShopSet { id: string; name_en: string; name_th: string; blurb_en: string; items: string[]; full: number; price: number }
+export interface ShopToday { ends: string; picks: { kind: ShopKind; id: string }[]; sets: ShopSet[] }
+export const getShopToday = () => rpc<ShopToday>("shop_today");
+export const buySet = (id: string) => rpc<number>("buy_set", { p_id: id });
 
 export const setAvatar = (look: AvatarLook) => rpc<AvatarLook>("set_avatar", { p: look });
 
 export interface Badge { slug: string; name_en: string; name_th: string; icon: string; value: number; tier: number; goals: number[]; next: number }
-export interface ProfilePage extends Omit<Card, "rank"> { friend_code: string | null; photos: number; friends: number; rank: number | null; badges: Badge[] }
+export type Pin = ({ type: "badge" } & Badge) | { type: "stamp"; id: number; name: string; name_th: string | null; tier: 1 | 2 | 3;
+  earned_at: string; province: string | null };
+export interface ProfilePage extends Omit<Card, "rank"> { friend_code: string | null; photos: number; friends: number; rank: number | null; badges: Badge[];
+  showcase: Pin[] }
+export const setShowcase = (pins: { type: "badge" | "stamp"; id: string }[]) => rpc<unknown>("set_showcase", { p: pins });
 export const getProfilePage = (id: string) => rpc<ProfilePage>("profile_of", { p_id: id });
 
 export type Reaction = "heart" | "fire" | "clap" | "wow";
 export interface FeedItem {
-  id: number; kind: "stamp" | "province" | "level" | "challenge" | "badge" | "nudge" | "fortune"; at: string; mine: boolean;
+  id: number; kind: "stamp" | "province" | "level" | "challenge" | "badge" | "nudge" | "fortune" | "comment"; at: string; mine: boolean;
   data: Record<string, unknown>; who: Who; to: Who | null;
   place: { id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3 } | null;
   province: { id: number; iso: string; name_en: string; name_th: string } | null;
-  photo: string | null; caption: string | null; reactions: Partial<Record<Reaction, number>>; my_reaction: Reaction | null;
+  photo: string | null; caption: string | null; reactions: Partial<Record<Reaction, number>>; my_reaction: Reaction | null; comments: number;
 }
+export interface Comment { id: number; body: string; at: string; mine: boolean; who: Who }
+export const getComments = (activity: number) => rpc<Comment[]>("comments_of", { p_activity: activity });
+export const addComment = (activity: number, body: string) => rpc<Comment>("comment", { p_activity: activity, p_body: body });
+export const deleteComment = (id: number) => rpc<void>("delete_comment", { p_id: id });
 export const getFeed = (scope: "all" | "friends" | "me" = "all") => rpc<FeedItem[]>("feed", { p_scope: scope });
 export const react = (id: number, emoji: Reaction | null) => rpc<void>("react", { p_activity: id, p_emoji: emoji });
 export const nudge = (friend: string) => rpc<void>("nudge", { p_friend: friend });

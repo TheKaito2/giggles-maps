@@ -213,10 +213,10 @@ export default function App() {
       ) : (
         <main className="page-view">
           {tab === "board" && <Leaderboard profile={profile} onChange={refresh} />}
-          {tab === "quests" && <Quests profile={profile} refreshKey={refreshKey} onChange={refresh} />}
+          {tab === "quests" && <Quests profile={profile} refreshKey={refreshKey} onChange={refresh} onShop={() => setOverlay("shop")} />}
           {tab === "feed" && <Feed profile={profile} refreshKey={refreshKey} openFriend={(id) => { setFriend(id); setTab("profile"); }} goProfile={() => { setFriend(null); setTab("profile"); }} openPlace={(id) => { setPlace(id); setTab("map"); }} />}
           {tab === "profile" && <ProfileTab profile={profile} refreshKey={refreshKey} onChange={refresh} friend={friend} setFriend={setFriend}
-            editAvatar={() => setOverlay("avatar")} editName={() => setNameSheet(true)}
+            editAvatar={() => setOverlay("avatar")} editName={() => setNameSheet(true)} openShop={() => setOverlay("shop")}
             openPlace={(id) => { setPlace(id); setTab("map"); }} />}
         </main>
       )}
@@ -249,7 +249,7 @@ export default function App() {
       )}
 
       {checkin && (
-        <CheckIn target={checkin.target} initialCode={checkin.code} hasPlus={!!profile?.plusUntil} onClose={() => setCheckin(null)} onDone={refresh} />
+        <CheckIn target={checkin.target} initialCode={checkin.code} hasPlus={!!profile?.plusUntil} nickname={profile?.nickname} onClose={() => setCheckin(null)} onDone={refresh} />
       )}
     </div>
   );

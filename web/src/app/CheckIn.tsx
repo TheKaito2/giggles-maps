@@ -2,7 +2,7 @@ import { demoOn } from "../lib/demoGps";
 import Fortune from "./fortune/Fortune";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "../lib/supabase";
-import ShareCard from "./ShareCard";
+import ShareSheet, { type CardOption } from "./share/ShareSheet";
 import { BILLING_TEXT, type CheckinResult, type CheckinTarget, REASON_TEXT, setPhoto, setPublicPhoto, uploadSelfie, verifyCheckin } from "../lib/api";
 
 const TIER_NAME = { 3: "Landmark", 2: "Worth a visit", 1: "Everyday" } as const;
@@ -15,9 +15,9 @@ type Step = "consent" | "camera" | "working" | "result" | "error";
 const getPosition = () => new Promise<GeolocationPosition>((ok, fail) =>
   navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }));
 
-interface Props { target: CheckinTarget; initialCode?: string; hasPlus: boolean; onClose: () => void; onDone: (r: CheckinResult) => void }
+interface Props { target: CheckinTarget; initialCode?: string; hasPlus: boolean; nickname?: string | null; onClose: () => void; onDone: (r: CheckinResult) => void }
 
-export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone }: Props) {
+export default function CheckIn({ target, initialCode, hasPlus, nickname, onClose, onDone }: Props) {
   const [step, setStep] = useState<Step>(readConsent() ? "camera" : "consent");
   const [demo, setDemo] = useState(false);
   const [code, setCode] = useState(initialCode ?? "");
@@ -31,6 +31,9 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
   const [facing, setFacing] = useState<"environment" | "user">("environment");
   const [caption, setCaption] = useState("");
   const [sharePublic, setSharePublic] = useState(false);   // off by default: photos stay friends-only
+  const [photo, setPhotoUrl] = useState("");   // the photo just taken, for the share card
+  const [sharing, setSharing] = useState(false);
+  useEffect(() => () => { if (photo) URL.revokeObjectURL(photo); }, [photo]);
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
 
@@ -62,6 +65,7 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
       }
       setStatus("Uploading photo…");
       const blob = await new Promise<Blob>((ok, fail) => canvas.toBlob((b) => (b ? ok(b) : fail(new Error("Couldn't read the photo."))), "image/jpeg", 0.82));
+      setPhotoUrl(URL.createObjectURL(blob));
       const path = await uploadSelfie(blob);
       setStatus("Checking…");
       const r = await verifyCheckin({
@@ -93,6 +97,18 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
   };
 
   const billing = result ? BILLING_TEXT[result.billing] : undefined;
+  const shareOptions = (r: CheckinResult): CardOption[] => {
+    const at = new Date(), name = nickname ?? "Explorer";
+    const base = { place: target.name, placeTh: null, tier: r.stamp?.tier ?? 2, province: r.stamp?.province ?? null, at,
+      level: r.member ? r.level ?? null : null };
+    const list: CardOption[] = [{ id: "story", label: "Story", card: { kind: "photo", ...base, photo: photo || undefined } },
+      { id: "sticker", label: "Sticker", card: { kind: "sticker", ...base } }];
+    if (r.stamp?.new_province && r.stamp.province) {
+      list.unshift({ id: "province", label: "New province", card: { kind: "milestone", what: "province", province: r.stamp.province, at, name } });
+    }
+    if (r.level_up && r.member && r.level) list.push({ id: "level", label: "Level up", card: { kind: "milestone", what: "level", level: r.level, name } });
+    return list;
+  };
 
   return (
     <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="ci-title">
@@ -178,7 +194,7 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
             {result.level_up && result.member && <p className="badge-earned">Level up! You're now level {result.level}.</p>}
 
             {result.status === "approved" && result.rewarded && (
-              <ShareCard place={target.name} level={result.member ? result.level ?? null : null} hasPlus={hasPlus} />
+              <button type="button" className="btn soft" onClick={() => setSharing(true)}>Share your stamp</button>
             )}
 
             {billing && (
@@ -196,7 +212,8 @@ export default function CheckIn({ target, initialCode, hasPlus, onClose, onDone 
           </div>
         )}
       </div>
-      {fortuneOpen && result && <Fortune checkin={result.checkin_id} onClose={() => setFortuneOpen(false)} onShaken={() => setShaken(true)} />}
+      {sharing && result && <ShareSheet hasPlus={hasPlus} onClose={() => setSharing(false)} options={shareOptions(result)} />}
+      {fortuneOpen && result && <Fortune checkin={result.checkin_id} name={nickname ?? undefined} hasPlus={hasPlus} onClose={() => setFortuneOpen(false)} onShaken={() => setShaken(true)} />}
     </div>
   );
 }

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { ShoppingBag, Sparkles } from "lucide-react";
 import { type PastShake, type Profile, shakeHistory } from "../../lib/api";
 import Fortune, { OddsTable, prizeText, RARITY } from "./Fortune";
 
 /** Profile card: bonus shakes waiting, a running XP boost, and the odds and your last 20 shakes. */
-export default function SiamSi({ profile, onChange }: { profile: Profile | null; onChange: () => void }) {
+export default function SiamSi({ profile, onChange, onShop }: { profile: Profile | null; onChange: () => void; onShop?: () => void }) {
   const [open, setOpen] = useState(false);
   const [more, setMore] = useState(false);
   const [history, setHistory] = useState<PastShake[] | null>(null);
@@ -20,7 +20,10 @@ export default function SiamSi({ profile, onChange }: { profile: Profile | null;
       </div>
       <p className="fine">Every new place you check in at gives a shake. Quests, new provinces and riding along give bonus shakes (keep up to 5).</p>
       {boost && <p className="chip boost">XP ×1.5 until {boost.toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" })}</p>}
-      <button type="button" className="link" aria-expanded={more} onClick={() => setMore(!more)}>Odds and history</button>
+      <div className="row">
+        <button type="button" className="link" aria-expanded={more} onClick={() => setMore(!more)}>Odds and history</button>
+        {onShop && <button type="button" className="link" onClick={onShop}><ShoppingBag size={14} aria-hidden /> Wear your prizes</button>}
+      </div>
       {more && <>
         <OddsTable />
         {history === null ? <p className="fine">Loading…</p> : history.length === 0 ? <p className="fine">No shakes yet.</p> : (
@@ -32,7 +35,7 @@ export default function SiamSi({ profile, onChange }: { profile: Profile | null;
           </ul>
         )}
       </>}
-      {open && <Fortune onClose={() => { setOpen(false); onChange(); }} onShaken={() => undefined} />}
+      {open && <Fortune onClose={() => { setOpen(false); onChange(); }} onShaken={() => undefined} name={profile?.nickname ?? undefined} hasPlus={!!profile?.plusUntil} />}
     </section>
   );
 }

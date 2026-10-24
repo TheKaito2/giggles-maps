@@ -1,43 +1,102 @@
 import { useEffect, useState } from "react";
-import { Check, Coins, Shirt } from "lucide-react";
+import { Check, Clock, Coins, Shirt, X } from "lucide-react";
 import { ApiError } from "../../lib/supabase";
-import { buyItem, equip, getShop, type Profile, type ShopItem, type ShopKind } from "../../lib/api";
+import { buyItem, buySet, equip, getShop, getShopToday, type Profile, setAvatar, type ShopItem, type ShopKind, type ShopSet,
+  type ShopToday } from "../../lib/api";
+import { AvatarSvg, type Slot } from "../avatar/parts";
+import { useDialog } from "../../lib/useDialog";
 
 const KINDS: { kind: ShopKind; title: string }[] = [
-  { kind: "theme", title: "Passport covers" }, { kind: "frame", title: "Photo frames" }, { kind: "map", title: "Map skins" },
-  { kind: "flair", title: "Name flair" }, { kind: "title", title: "Titles" },
+  { kind: "theme", title: "Passport covers" }, { kind: "frame", title: "Photo frames" }, { kind: "avatar", title: "Avatar items" },
+  { kind: "flair", title: "Name flair" }, { kind: "title", title: "Titles" }, { kind: "map", title: "Map skins" },
 ];
+const KIND_NAME: Record<ShopKind, string> = { theme: "Passport cover", frame: "Photo frame", avatar: "Avatar item", flair: "Name flair", title: "Title", map: "Map skin" };
 const ERR: Record<string, string> = {
   members_only: "Coins come with membership. Become a member to spend them.",
-  not_enough_coins: "Not enough coins yet. Stamps, challenges and level-ups earn more.",
+  not_enough_coins: "Not enough coins yet. Stamps, quests and level-ups earn more.",
   already_owned: "You already have this.",
 };
+// the same names as Siam Si sticks: price sets the rarity, Siam Si-only items are Legendary
+export const rarityOf = (i: ShopItem) => i.gacha_only ? "legendary" : i.price === 0 ? null : i.price <= 150 ? "common" : i.price <= 400 ? "rare" : "epic";
+const key = (i: { kind: string; id: string }) => `${i.kind}:${i.id}`;
+const left = (iso: string) => {
+  const m = Math.max(0, Math.round((new Date(iso).getTime() - Date.now()) / 60000));
+  return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`;
+};
 
-function Preview({ item }: { item: ShopItem }) {
-  if (item.kind === "theme") return <span className={`preview level-card theme-${item.id}`} aria-hidden />;
-  if (item.kind === "frame") return <span className={`preview frame-${item.id}`} aria-hidden><span className="ph" /></span>;
+/** A small picture of the item, worn by you where that makes sense (avatar items on your avatar, flair on your name). */
+function Preview({ item, profile, big = false }: { item: ShopItem; profile: Profile | null; big?: boolean }) {
+  const name = profile?.nickname ?? "Explorer";
+  if (item.kind === "avatar") {
+    const [slot, part] = item.id.split(":");
+    return <span className="preview avatar-prev" aria-hidden><AvatarSvg look={{ ...profile?.avatar, [slot as Slot]: part }} size={big ? 160 : 60} /></span>;
+  }
+  if (item.kind === "theme") return <span className={`preview cover-prev cover-bg theme-${item.id}`} aria-hidden><span className="cover-title">PASSPORT</span>
+    {big && <span className="cover-name">{name}</span>}</span>;
+  if (item.kind === "frame") return <span className={`preview frame-${item.id}`} aria-hidden>
+    {profile?.avatar && Object.keys(profile.avatar).length ? <span className="ph framed"><AvatarSvg look={profile.avatar} size={big ? 150 : 44} /></span> : <span className="ph" />}</span>;
   if (item.kind === "map") return <span className={`preview map-skin skin-${item.id}`} aria-hidden />;
-  if (item.kind === "flair") return <span className={`preview flair flair-${item.id}`} aria-hidden>Aa</span>;
-  return <span className="preview title-chip" aria-hidden>{item.name_en}</span>;
+  if (item.kind === "flair") return <span className={`preview flair flair-${item.id}`} aria-hidden>{big ? name : "Aa"}</span>;
+  return <span className="preview title-chip" aria-hidden>{big && <b>{name}</b>}<span>{item.name_en}</span></span>;
 }
 
-/** Cosmetics bought with earned coins (never real money). Plus includes the items marked Plus. */
+/** Cosmetics bought with earned coins (never real money): this week's set, today's picks, then everything by kind. Tap to try on. */
 export default function Shop({ profile, coins, onChange, onAvatar }: { profile: Profile | null; coins: number; onChange: () => void; onAvatar: () => void }) {
   const [items, setItems] = useState<ShopItem[]>([]);
+  const [today, setToday] = useState<ShopToday | null>(null);
+  const [trying, setTrying] = useState<ShopItem | null>(null);
   const [msg, setMsg] = useState("");
-  useEffect(() => { getShop().then(setItems).catch(() => setMsg("Couldn't load the shop.")); }, []);
+  const [, tick] = useState(0);
+  const load = () => {
+    getShop().then(setItems).catch(() => setMsg("Couldn't load the shop."));
+    getShopToday().then(setToday).catch(() => undefined);
+  };
+  useEffect(load, []);
+  useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 60_000); return () => clearInterval(t); }, []);
   const plus = !!profile?.plusUntil;
-  const owns = (i: ShopItem) => i.price === 0 || (plus && i.plus) || !!profile?.owned.includes(`${i.kind}:${i.id}`);
-  const wearing = (i: ShopItem) => (profile?.look[i.kind] ?? (i.price === 0 ? i.id : null)) === i.id;
+  const owns = (i: ShopItem) => i.price === 0 || (plus && i.plus) || !!profile?.owned.includes(key(i));
+  const wearing = (i: ShopItem) => {
+    if (i.kind === "avatar") { const [slot, part] = i.id.split(":"); return profile?.avatar?.[slot as Slot] === part; }
+    return (profile?.look[i.kind] ?? (i.price === 0 ? i.id : null)) === i.id;
+  };
+  const byKey = new Map(items.map((i) => [key(i), i]));
+  const canBuy = (i: ShopItem) => owns(i) || (!!profile?.member && coins >= i.price);
 
   const act = async (i: ShopItem) => {
     setMsg("");
     try {
       if (!owns(i)) await buyItem(i.kind, i.id);
-      await equip(i.kind, i.id);
-      onChange();
-    } catch (e) { setMsg(ERR[e instanceof ApiError ? e.code : ""] ?? "Couldn't do that. Try again."); }
+      if (i.kind === "avatar") { const [slot, part] = i.id.split(":"); await setAvatar({ ...profile?.avatar, [slot]: part }); }
+      else await equip(i.kind, i.id);
+      onChange(); setTrying(null);
+    } catch (e) { setMsg(ERR[e instanceof ApiError ? e.message : ""] ?? "Couldn't do that. Try again."); }
   };
+  const getSet = async (s: ShopSet) => {
+    setMsg("");
+    try { await buySet(s.id); onChange(); load(); setMsg(`${s.name_en} set is yours. Tap an item to wear it.`); }
+    catch (e) { setMsg(ERR[e instanceof ApiError ? e.message : ""] ?? "Couldn't buy the set. Try again."); }
+  };
+
+  const tile = (i: ShopItem) => {   // a plain function, not a component: a component made here would remount every render
+    const on = wearing(i), own = owns(i), r = rarityOf(i);
+    return (
+      <li key={key(i)} className={`${on ? "on " : ""}${r ? `r-${r}` : ""}`}>
+        <button type="button" className="tile-try" onClick={() => setTrying(i)} aria-label={`Try on ${i.name_en}`}>
+          <Preview item={i} profile={profile} />
+          <b>{i.name_en}</b><span className="fine">{i.name_th}</span>
+        </button>
+        <span className="tile-foot">
+          {on ? <span className="chip on"><Check size={13} aria-hidden /> On</span> : own ? <span className="chip">Owned</span>
+            : <span className={`price num${canBuy(i) ? "" : " short"}`}><Coins size={13} aria-hidden /> {i.price}</span>}
+          {r && <span className={`rarity r-${r}`}>{r}</span>}
+        </span>
+        {i.plus && !own && <span className="chip">Free with Plus</span>}
+      </li>
+    );
+  };
+  const sets = today?.sets ?? [];
+  const featured = sets[0];
+  const picks = (today?.picks ?? []).map((p) => byKey.get(key(p))).filter((x): x is ShopItem => !!x);
 
   return (
     <div className="shop stack">
@@ -46,31 +105,84 @@ export default function Shop({ profile, coins, onChange, onAvatar }: { profile: 
         {!profile?.member && <span className="fine">Coins unlock with membership</span>}
       </div>
       {msg && <p className="fine" role="status">{msg}</p>}
-      <button type="button" className="shop-avatar" onClick={onAvatar}>
-        <Shirt size={30} aria-hidden /><span><b>Avatar items</b><span className="fine">Crowns, ngob hats, Muay Thai gear and more: try them on in the avatar builder.</span></span>
-      </button>
+
+      {featured && <SetCard s={featured} hero byKey={byKey} profile={profile} coins={coins} onBuy={getSet} onTry={setTrying} />}
+
+      {picks.length > 0 && <section>
+        <div className="row between"><h4 className="eyebrow">Today's picks</h4>
+          {today && <span className="fine"><Clock size={13} aria-hidden /> New picks in {left(today.ends)}</span>}</div>
+        <ul className="shop-grid today">{picks.map(tile)}</ul>
+      </section>}
+
+      {sets.length > 1 && <section>
+        <h4 className="eyebrow">More sets</h4>
+        <div className="set-list">{sets.slice(1).map((s) => <SetCard key={s.id} s={s} byKey={byKey} profile={profile} coins={coins} onBuy={getSet} onTry={setTrying} />)}</div>
+      </section>}
+
       {KINDS.map(({ kind, title }) => (
         <section key={kind}>
-          <h4 className="eyebrow">{title}</h4>
+          <div className="row between"><h4 className="eyebrow">{title}</h4>
+            {kind === "avatar" && <button type="button" className="link" onClick={onAvatar}><Shirt size={14} aria-hidden /> Avatar builder</button>}</div>
           <ul className="shop-grid">
-            {items.filter((i) => i.kind === kind && (!i.gacha_only || owns(i))).map((i) => {   // Siam Si items show once won
-              const on = wearing(i), own = owns(i);
-              return (
-                <li key={i.id} className={on ? "on" : ""}>
-                  <Preview item={i} />
-                  <b>{i.name_en}</b><span className="fine">{i.name_th}</span>
-                  <button type="button" className={`btn ${own ? "soft" : "gold"} small`} disabled={on || (!own && (!profile?.member || coins < i.price))}
-                    onClick={() => act(i)} aria-label={on ? `${i.name_en}, wearing` : own ? `Use ${i.name_en}` : `Buy ${i.name_en} for ${i.price} coins`}>
-                    {on ? <><Check size={14} aria-hidden /> On</> : own ? "Use" : <><Coins size={14} aria-hidden /> {i.price}</>}
-                  </button>
-                  {i.plus && !own && <span className="chip">Free with Plus</span>}
-                  {i.gacha_only && <span className="chip siamsi">Siam Si</span>}
-                </li>
-              );
-            })}
+            {items.filter((i) => i.kind === kind && (!i.gacha_only || owns(i))).map(tile)}
           </ul>
         </section>
       ))}
+
+      {trying && <TryOn item={trying} profile={profile} msg={msg} wearing={wearing(trying)} owns={owns(trying)} canBuy={canBuy(trying)} coins={coins}
+        onAct={() => act(trying)} onClose={() => setTrying(null)} />}
     </div>
+  );
+}
+
+/** Try an item on before buying: big preview, then Wear or Buy. */
+function TryOn({ item, profile, msg, wearing, owns, canBuy, coins, onAct, onClose }: {
+  item: ShopItem; profile: Profile | null; msg: string; wearing: boolean; owns: boolean; canBuy: boolean; coins: number; onAct: () => void; onClose: () => void;
+}) {
+  const box = useDialog(onClose);
+  const r = rarityOf(item);
+  return (
+    <div className="sheet-backdrop try-backdrop" role="dialog" aria-modal="true" aria-label={`Try on ${item.name_en}`}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className={`modal try-on${r ? ` r-${r}` : ""}`} ref={box} tabIndex={-1}>
+        <header className="modal-head">
+          <span><span className="eyebrow">{KIND_NAME[item.kind]}{r ? ` · ${r}` : ""}</span>
+            <h2>{item.name_en}</h2><span className="fine">{item.name_th}</span></span>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button>
+        </header>
+        <div className="try-stage"><Preview item={item} profile={profile} big /></div>
+        {item.gacha_only && <p className="fine">Siam Si only: won from a fortune stick, never sold.</p>}
+        {msg && <p className="fine" role="status">{msg}</p>}
+        {wearing ? <button type="button" className="btn" disabled><Check size={16} aria-hidden /> Wearing it</button>
+          : owns ? <button type="button" className="btn" onClick={onAct}>Wear it</button>
+          : <button type="button" className="btn gold" disabled={!canBuy} onClick={onAct}><Coins size={16} aria-hidden /> Buy for {item.price} and wear</button>}
+        {!owns && !canBuy && <p className="fine">{profile?.member ? `${item.price - coins} more coins to go.` : ERR.members_only}</p>}
+      </div>
+    </div>
+  );
+}
+
+/** A themed set: its items, the full price struck out, and what it costs you (missing items, 25% off). */
+function SetCard({ s, hero = false, byKey, profile, coins, onBuy, onTry }: {
+  s: ShopSet; hero?: boolean; byKey: Map<string, ShopItem>; profile: Profile | null; coins: number; onBuy: (s: ShopSet) => void; onTry: (i: ShopItem) => void;
+}) {
+  const list = s.items.map((k) => byKey.get(k)).filter((x): x is ShopItem => !!x);
+  const owned = s.price === 0;
+  return (
+    <article className={`set-card set-${s.id}${hero ? " hero" : ""}`}>
+      <div className="set-head">
+        {hero && <span className="eyebrow">This week's set</span>}
+        <h3>{s.name_en} <span lang="th">{s.name_th}</span></h3>
+        <p className="fine">{s.blurb_en}</p>
+      </div>
+      <ul className="set-items">{list.map((i) => <li key={key(i)}><button type="button" onClick={() => onTry(i)} aria-label={`Try on ${i.name_en}`}>
+        <Preview item={i} profile={profile} /><span>{i.name_en}</span></button></li>)}</ul>
+      <div className="row between set-buy">
+        {owned ? <span className="chip on"><Check size={13} aria-hidden /> All yours</span> : <span className="num">
+          {s.price < s.full && <s className="fine">{s.full}</s>} <b><Coins size={15} aria-hidden /> {s.price}</b>
+          {s.price > s.full * 0.7 && <span className="fine"> · save {s.full - s.price}</span>}</span>}
+        {!owned && <button type="button" className="btn gold small" disabled={!profile?.member || coins < s.price} onClick={() => onBuy(s)}>Get the set</button>}
+      </div>
+    </article>
   );
 }

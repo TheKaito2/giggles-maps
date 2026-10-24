@@ -45,7 +45,7 @@ function Quest({ c }: { c: Challenge }) {
 }
 
 /** Quests tab (Duolingo-style): the friends quest, daily and weekly quests with reset timers, province sets, collections. */
-export default function Quests({ profile, refreshKey, onChange }: { profile: Profile | null; refreshKey: number; onChange: () => void }) {
+export default function Quests({ profile, refreshKey, onChange, onShop }: { profile: Profile | null; refreshKey: number; onChange: () => void; onShop: () => void }) {
   const [list, setList] = useState<Challenge[]>([]);
   const [fq, setFq] = useState<FriendQuest | null | undefined>(undefined);
   const [friends, setFriends] = useState<Card[]>([]);
@@ -69,7 +69,8 @@ export default function Quests({ profile, refreshKey, onChange }: { profile: Pro
     <div className="page-col stack">
       <header className="page-hero quests-hero"><Chest open={opened.length > 0} /><h1>Quests</h1>
         <p className="fine">Finish quests to open chests full of XP and coins{profile?.member ? "" : " (coins and levels come with membership)"}.</p></header>
-      {opened.length > 0 && <p className="hint chest-pop" role="status">Chest opened: {opened.join(", ")}</p>}
+      {opened.length > 0 && <p className="hint chest-pop" role="status">Chest opened: {opened.join(", ")}
+        {profile?.member && <button type="button" className="link" onClick={onShop}>Spend your coins</button>}</p>}
       {msg && <p className="fine" role="status">{msg}</p>}
 
       <VerifyLocal />

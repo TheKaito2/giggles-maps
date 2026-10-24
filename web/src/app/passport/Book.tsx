@@ -11,7 +11,7 @@ export interface BookOwner {
   nickname: string; colour: string; avatar?: AvatarLook | null; title: string | null; level: number; xp: number;
   joined?: string | null; code?: string | null;
 }
-const STAMPS_PER_PAGE = 8, PLACES_PER_PAGE = 12, PHOTOS_PER_PAGE = 4;
+const STAMPS_PER_PAGE = 8, PLACES_PER_PAGE = 6, PHOTOS_PER_PAGE = 4;
 const TIER = { 3: "LANDMARK", 2: "WORTH A VISIT", 1: "EVERYDAY" } as const;
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
 const chunk = <T,>(xs: T[], n: number) => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
@@ -68,7 +68,7 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
     <Page key="inside" className="inside">
       <p className="inside-head">This passport belongs to an explorer of Thailand.</p>
       <p className="inside-th">หนังสือเดินทางเล่มนี้เป็นของนักสำรวจประเทศไทย</p>
-      <p className="inside-note">Stamps are earned in person: check in with a photo at a place, and its stamp lands here. One for every province, 77 in all.</p>
+      <p className="inside-note">Stamps are earned in person. This book holds the 77 province visas and your landmark stamps; every other place goes in your Logbook.</p>
       <div className="inside-count"><b className="num">{firstIn.size}</b><span>/ 77 provinces</span></div>
     </Page>,
     <Page key="id" n={1} className="id-page">
@@ -106,16 +106,18 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
     )),
   ];
   const visaPages = Math.ceil(ordered.length / STAMPS_PER_PAGE);
-  chunk(stamps, PLACES_PER_PAGE).forEach((list, i) => pages.push(
+  const landmarks = stamps.filter((s) => s.tier === 3);
+  chunk(landmarks, PLACES_PER_PAGE).forEach((list, i) => pages.push(
     <Page key={`places-${i}`} n={3 + visaPages + i} className="places">
-      <h3 className="page-h">ENTRIES · สถานที่</h3>
-      <ul className="entry-grid">
-        {list.map((s) => <li key={s.place_id} className={`entry tier-${s.tier}`} style={{ rotate: `${(s.place_id % 11) - 5}deg` }}>
-          <span className="entry-tier">{TIER[s.tier]}</span><b>{s.name}</b><span className="num">{day(s.earned_at)}</span>
+      <h3 className="page-h">LANDMARKS · แลนด์มาร์ก</h3>
+      <ul className="entry-grid landmarks">
+        {list.map((s) => <li key={s.place_id} className="entry landmark" style={{ rotate: `${(s.place_id % 13) - 6}deg` }}>
+          <span className="entry-tier">{TIER[s.tier]}</span><b>{s.name}</b>{s.name_th && <span className="th">{s.name_th}</span>}
+          <span className="num band">{day(s.earned_at)}</span>
         </li>)}
       </ul>
     </Page>));
-  const placePages = Math.ceil(stamps.length / PLACES_PER_PAGE);
+  const placePages = Math.ceil(landmarks.length / PLACES_PER_PAGE);
   chunk(photos.slice(0, 48), PHOTOS_PER_PAGE).forEach((list, i) => pages.push(
     <Page key={`photos-${i}`} n={3 + visaPages + placePages + i} className={`photos frame-${frame}`}>
       <h3 className="page-h">MEMORIES · ความทรงจำ</h3>

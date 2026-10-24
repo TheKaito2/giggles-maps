@@ -9,12 +9,12 @@ export interface ProvinceFeature {
 
 // fetched once per page load and shared by the province map and the 77 stamps
 let cache: Promise<ProvinceFeature[]> | null = null;
-const load = () => (cache ??= fetch("/provinces.geojson").then((r) => r.json()).then((fc) => fc.features as ProvinceFeature[])
+export const loadProvinces = () => (cache ??= fetch("/provinces.geojson").then((r) => r.json()).then((fc) => fc.features as ProvinceFeature[])
   .catch((e) => { cache = null; throw e; }));
 
 export function useProvinces() {
   const [features, setFeatures] = useState<ProvinceFeature[]>([]);
-  useEffect(() => { load().then(setFeatures).catch(() => undefined); }, []);
+  useEffect(() => { loadProvinces().then(setFeatures).catch(() => undefined); }, []);
   return features;
 }
 

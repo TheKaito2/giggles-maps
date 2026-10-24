@@ -125,3 +125,33 @@ provinces N/77 and coins; tapping coins opens the Shop.
 - Free and earned only: shakes can't be bought with money, coins or Plus. Odds are shown in the app. At most 30 shakes a day.
 - Coins from shakes count for members (like every coin); guests and free users keep them for when they join.
 - Server: `shake_fortune(p_checkin)` (migrations 049-050), odds in `fortune_rarity`, history in `fortune_pulls`.
+
+## Profile, passport, shop, feed and sharing (migration 054)
+- **Profile:**
+  - a hero in your passport-cover colours, with your provinces filled in on a small map;
+  - level and XP to the next level;
+  - a showcase of 3 pinned badges or stamps;
+  - quick buttons for Passport, Logbook, Shop and Siam Si.
+  - Settings (demo mode, admin, account and membership) live in a sheet behind the gear.
+- **Passport:** the book holds the 77 province visas and landmark stamps only. Every check-in is in the **Logbook**,
+  newest first and grouped by day, with photos.
+- **Shop:**
+  - a featured themed set each week; buying the set costs 25% less than its missing items;
+  - 6 daily picks, the same for everyone, new at midnight Bangkok time;
+  - everything else by kind.
+  - Rarity follows price, with the same names as Siam Si: up to 150 Common, up to 400 Rare, above that Epic; Siam Si-only items
+    are Legendary.
+  - Tap any item to try it on before buying.
+  - Sets so far: Songkran, Loy Krathong, Isan Silk (5 items each: cover, frame, flair, title, avatar item).
+- **Feed:**
+  - A person's stamps from one day merge into one card, with a photo strip and place chips.
+  - Reactions are a row of 4 emoji.
+  - Friends can comment: 280 characters, 30 a day. The author or the post's owner can delete a comment.
+- **Share cards** (`web/src/app/share/`), drawn on a canvas and shared or saved as PNG:
+  - a photo story (1080x1920);
+  - a clear sticker for Instagram Stories (1080x1080);
+  - a province progress map;
+  - milestones (new province, level-up, badge, Epic or Legendary Siam Si);
+  - a ride-along trip card.
+  - Classic is free; Postcard, Night neon and Indigo cloth come with Plus.
+- **Ride-along album:** stays with the group. Save all and a trip card; nothing goes to the feed.

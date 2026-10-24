@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Car, LogOut } from "lucide-react";
+import { Car, Download, LogOut, Share2 } from "lucide-react";
 import { ApiError } from "../../lib/supabase";
-import { getTrip, joinTrip, type LatLng, leaveTrip, type Profile, SITE, startTrip, type Trip, tripPing } from "../../lib/api";
+import { getTrip, joinTrip, type LatLng, leaveTrip, photoUrls, type Profile, SITE, startTrip, type Trip, tripPing } from "../../lib/api";
+import ShareSheet from "../share/ShareSheet";
 import Avatar from "./Avatar";
 import Album from "../passport/Album";
 import QrLink from "./QrLink";
@@ -51,6 +52,9 @@ export type TripState = ReturnType<typeof useTrip>;
 export default function RideAlong({ trip: t, profile }: { trip: TripState; profile: Profile | null }) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [card, setCard] = useState<string[] | null>(null);
+  const [albumMsg, setAlbumMsg] = useState("");
   const trip = t.trip;
 
   if (!trip) return (
@@ -73,6 +77,29 @@ export default function RideAlong({ trip: t, profile }: { trip: TripState; profi
   );
 
   const byCheckin = new Map(trip.album.map((p) => [p.checkin_id, p.nickname]));
+  // the album stays with the group: everyone on the trip can save it or share a card, nothing goes to the feed
+  const saveAll = async () => {
+    setSaving(true); setAlbumMsg("");
+    try {
+      const urls = await photoUrls(trip.album.map((p) => p.path));
+      const files = (await Promise.all(trip.album.map(async (p, i) => {
+        const u = urls[p.path]; if (!u) return null;
+        const b = await fetch(u).then((r) => r.blob());
+        return new File([b], `trip-${trip.code}-${i + 1}.jpg`, { type: b.type || "image/jpeg" });
+      }))).filter((f): f is File => !!f);
+      const download = async () => { for (const f of files) {   // one download each where the browser can't share files
+        const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click();
+        await new Promise((r) => setTimeout(r, 300)); URL.revokeObjectURL(a.href);
+      } };
+      if (!navigator.canShare?.({ files })) await download();
+      else await navigator.share({ files }).catch((e: Error) => e.name === "AbortError" ? undefined : download());   // Safari may refuse after the wait
+    } catch { setAlbumMsg("Couldn't save the photos. Try again."); } finally { setSaving(false); }
+  };
+  const openCard = async () => {
+    if (saving) return;
+    const urls = await photoUrls(trip.album.slice(0, 6).map((p) => p.path)).catch(() => ({} as Record<string, string>));
+    setCard(Object.values(urls));
+  };
   return (
     <div className="stack">
       <section className="me-card glass">
@@ -91,7 +118,14 @@ export default function RideAlong({ trip: t, profile }: { trip: TripState; profi
         <QrLink url={`${SITE}/app/?trip=${trip.code}`} label="QR code to join this trip" />
       </section>
       {t.error && <p className="error" role="alert">{t.error}</p>}
-      <h4 className="eyebrow">Trip album ({trip.album.length})</h4>
+      <div className="row between"><h4 className="eyebrow">Trip album ({trip.album.length})</h4>
+        {trip.album.length > 0 && <span className="row">
+          <button type="button" className="btn soft small" onClick={openCard}><Share2 size={14} aria-hidden /> Trip card</button>
+          <button type="button" className="btn soft small" onClick={saveAll} disabled={saving}><Download size={14} aria-hidden /> {saving ? "Saving…" : "Save all"}</button>
+        </span>}</div>
+      {albumMsg && <p className="error" role="alert">{albumMsg}</p>}
+      {card && <ShareSheet hasPlus={!!profile?.plusUntil} onClose={() => setCard(null)} options={[{ id: "trip", label: "Trip", card: { kind: "trip",
+        title: trip.name ?? "Ride along", photos: card, members: trip.members.map((m) => m.nickname), at: new Date(trip.started_at) } }]} />}
       <Album photos={trip.album.map((p) => ({ ...p, province_id: null }))} frame={profile?.look.frame}
         by={(p) => byCheckin.get(p.checkin_id) ?? ""} />
     </div>
