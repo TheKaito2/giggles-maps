@@ -1160,3 +1160,29 @@ p.chase { margin: 0; }
 .crowns { flex-wrap: wrap; gap: 6px; }
 .crown-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; background: rgb(255 210 63 / .9); color: #241a00; font: 800 12px var(--font-body); }
 .place-regular { display: flex; align-items: center; flex-wrap: wrap; margin: 0; padding: 8px 12px; border-radius: 12px; background: var(--marigold-soft); color: #5a3d00; }
+
+/* loading: skeletons and a spinner (app/Skeleton.tsx) */
+.skel { display: block; flex: none; border-radius: 8px; background: linear-gradient(90deg, var(--line) 0%, var(--paper) 40%, var(--line) 80%) 0 0 / 300% 100%;
+  animation: skel-shine 1.4s ease-in-out infinite; }
+.skel.round { border-radius: 50%; }
+.skel-block { width: 100%; }
+@keyframes skel-shine { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.skel-lines { display: grid; gap: 8px; }
+.skel-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.skel-rows li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.skel-text { flex: 1; display: grid; gap: 6px; }
+.skel-posts { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.skel-posts li { display: grid; gap: 12px; padding: 14px 16px; border-radius: 20px; border: 2px solid var(--line); background: var(--card); }
+.skel-head { display: flex; align-items: center; gap: 12px; }
+.skel-tiles { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.skel-tiles .skel { width: 100%; border-radius: 14px; }
+.skel-board { display: grid; gap: 14px; }
+.skel-podium { display: flex; justify-content: center; align-items: flex-end; gap: 14px; }
+.skel-podium > span { display: grid; justify-items: center; gap: 6px; }
+.skel-place { display: grid; gap: 10px; padding: 0 18px 18px; }
+.skel-place > .skel:first-child { width: calc(100% + 36px); margin: 0 -18px; border-radius: 0; }
+.skel-buttons { display: flex; gap: 10px; }
+.spinner { display: inline-block; flex: none; vertical-align: -3px; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent;
+  animation: spin .7s linear infinite; opacity: .8; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .skel { animation: none; } .spinner { animation-duration: 2s; } }

@@ -4,6 +4,7 @@ import { ApiError } from "../../lib/supabase";
 import { addFriend, answerFriend, type Card, getSocial, type Profile, SITE, type Social } from "../../lib/api";
 import Avatar from "./Avatar";
 import QrLink from "./QrLink";
+import { SkelRows } from "../Skeleton";
 
 const ADD_TEXT: Record<string, string> = {
   code_not_found: "No one has that code. Check it and try again.",
@@ -68,7 +69,7 @@ export default function FriendsSection({ profile, onOpen }: { profile: Profile |
         </Person>)}
       </ul></>}
 
-      {social?.friends.length ? <ul className="people">
+      {!social ? <SkelRows n={2} /> : social.friends.length ? <ul className="people">
         {social.friends.map((c) => <Person key={c.id} c={c} onOpen={() => onOpen(c.id)} />)}
       </ul> : <p className="fine">No friends yet. Share your code or scan theirs, then see each other's stamps in the feed.</p>}
 

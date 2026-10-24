@@ -5,6 +5,7 @@ import { buyItem, buySet, equip, getShop, getShopToday, type Profile, setAvatar,
   type ShopToday } from "../../lib/api";
 import { AvatarSvg, type Slot } from "../avatar/parts";
 import { useDialog } from "../../lib/useDialog";
+import { SkelBlock, SkelTiles } from "../Skeleton";
 
 const KINDS: { kind: ShopKind; title: string }[] = [
   { kind: "theme", title: "Passport covers" }, { kind: "frame", title: "Photo frames" }, { kind: "avatar", title: "Avatar items" },
@@ -121,7 +122,7 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
       </div>
       {msg && <p className="fine" role="status">{msg}</p>}
 
-      {view === "bag" ? (bag.length ? bag.map(({ kind, title, list }) => (
+      {!items.length && !msg ? <><SkelBlock h={220} /><SkelTiles n={6} /></> : view === "bag" ? (bag.length ? bag.map(({ kind, title, list }) => (
         <section key={kind}>
           <div className="row between"><h4 className="eyebrow">{title}</h4>
             {kind === "avatar" && <button type="button" className="link" onClick={onAvatar}><Shirt size={14} aria-hidden /> Avatar builder</button>}</div>

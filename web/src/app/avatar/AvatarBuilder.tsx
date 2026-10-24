@@ -3,6 +3,7 @@ import { Coins, Dices, Lock, X } from "lucide-react";
 import { ApiError } from "../../lib/supabase";
 import { buyItem, getShop, type Profile, setAvatar } from "../../lib/api";
 import { type AvatarLook, AvatarSvg, DEFAULT_LOOK, randomLook, type Slot, SLOTS } from "./parts";
+import { Spinner } from "../Skeleton";
 
 // builder tabs: a part slot, plus the colour slot shown under it
 const TABS: { slot: Slot; colour?: Slot; label: string }[] = [
@@ -92,7 +93,7 @@ export default function AvatarBuilder({ profile, onClose, onSaved }: { profile: 
           </div>
         ))}
         {msg && <p className="error" role="alert">{msg}</p>}
-        <button type="button" className="btn big" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save avatar"}</button>
+        <button type="button" className="btn big" onClick={save} disabled={saving}>{saving ? <><Spinner /> Saving…</> : "Save avatar"}</button>
       </div>
     </div>
   );

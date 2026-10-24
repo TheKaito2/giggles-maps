@@ -6,6 +6,7 @@ import { createList, deleteReview, getMyLists, getPlaceExtras, getPlacePage, typ
 import { GROUPS, kindOf } from "./kinds";
 import { openNow } from "./hours";
 import Avatar from "./social/Avatar";
+import { SkelLines, SkelPlace } from "./Skeleton";
 
 const ago = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
@@ -29,7 +30,7 @@ function SaveMenu({ page, onClose, onChange }: { page: PlacePage; onClose: () =>
   return (
     <div className="save-menu glass" role="dialog" aria-label="Save to a list">
       <div className="row between"><b>Save to…</b><button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={16} /></button></div>
-      {!lists ? <p className="fine">Loading…</p> : lists.map((l) => (
+      {!lists ? <SkelLines n={2} /> : lists.map((l) => (
         <label key={l.id} className="toggle"><input type="checkbox" checked={l.places.some((p) => p.id === page.id)} onChange={() => toggle(l)} />
           <span>{l.name} <span className="fine">({l.places.length})</span></span></label>
       ))}
@@ -89,7 +90,7 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin }: {
     if (paths.length) photoUrls(paths).then(setUrls).catch(() => undefined);
   }, [page]);
 
-  if (!page) return <aside className="place-sheet glass" aria-busy="true"><button type="button" className="icon-btn sheet-close" onClick={onClose} aria-label="Close"><X size={18} /></button><p className="fine">{msg || "Loading…"}</p></aside>;
+  if (!page) return <aside className="place-sheet glass" aria-busy="true"><button type="button" className="icon-btn sheet-close" onClick={onClose} aria-label="Close"><X size={18} /></button>{msg ? <p className="fine">{msg}</p> : <SkelPlace />}</aside>;
   const k = kindOf(page.kind, page.category);
   const open = openNow(page.opening_hours);
   const share = () => {

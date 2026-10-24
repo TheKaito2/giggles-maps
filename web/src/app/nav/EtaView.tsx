@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Flag, X } from "lucide-react";
 import { type EtaView as Eta, viewEta } from "../../lib/api";
 import Avatar from "../social/Avatar";
+import { Spinner } from "../Skeleton";
 
 const hhmm = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
@@ -39,7 +40,7 @@ export default function EtaView({ token, onClose }: { token: string; onClose: ()
     <div className="nav-mode" role="dialog" aria-modal="true" aria-label="Shared trip">
       <div ref={box} className="nav-map" />
       <div className="nav-top">
-        {eta === undefined ? <b>Loading…</b> : eta === null ? <b>This shared trip has ended.</b> : <>
+        {eta === undefined ? <b><Spinner size={18} /> Loading the trip…</b> : eta === null ? <b>This shared trip has ended.</b> : <>
           <Avatar name={eta.who.nickname} colour={eta.who.colour} avatar={eta.who.avatar} size={44} />
           <span className="nav-turn"><b>{eta.who.nickname} is on the way{eta.dest.name ? ` to ${eta.dest.name}` : ""}</b>
             <span>{eta.eta_at ? <>Arriving around <b className="num">{hhmm(eta.eta_at)}</b></> : null}

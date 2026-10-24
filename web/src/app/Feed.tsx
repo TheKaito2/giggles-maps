@@ -9,6 +9,7 @@ import { useProvinces } from "./passport/useProvinces";
 import { BadgeIcon, TIER_COLOURS } from "./Badges";
 import { type FeedGroup, groupFeed } from "./feedGroups";
 import ShareSheet, { type CardOption } from "./share/ShareSheet";
+import { SkelPosts, SkelRows } from "./Skeleton";
 
 const EMOJI: Record<Reaction, string> = { heart: "❤️", fire: "🔥", clap: "👏", wow: "😍" };
 const TIER = { 3: "Landmark", 2: "Worth a visit", 1: "Everyday" } as const;
@@ -82,7 +83,7 @@ function Comments({ it, onCount }: { it: FeedItem; onCount: (n: number) => void 
   };
   return (
     <div className="comments">
-      {list === null ? <p className="fine">Loading…</p> : list.map((c) => (
+      {list === null ? <SkelRows n={2} avatar={30} /> : list.map((c) => (
         <div key={c.id} className="comment">
           <Avatar name={c.who.nickname} colour={c.who.colour} avatar={c.who.avatar} size={30} />
           <p><b>{c.mine ? "You" : c.who.nickname}</b> {c.body} <span className="fine">{ago(c.at)}</span></p>
@@ -214,7 +215,7 @@ export default function Feed({ profile, refreshKey, openFriend, goProfile, openP
         {(["all", "friends", "me"] as const).map((s) => <button key={s} type="button" role="tab" aria-selected={scope === s} className={scope === s ? "on" : ""}
           onClick={() => setScope(s)}>{s === "all" ? "All" : s === "friends" ? "Friends" : "Me"}</button>)}
       </div>
-      {items === null ? <p className="fine">Loading…</p> : items.length ? (
+      {items === null ? <SkelPosts n={3} /> : items.length ? (
         <ul className="feed">{groupFeed(items).map((g) => <Post key={g.key} g={g} urls={urls} onReact={(r) => onReact(g.items[0].id, r)}
           onComments={(n) => patch(g.items[0].id, (it) => ({ ...it, comments: n }))} onShare={setSharing} />)}</ul>
       ) : (

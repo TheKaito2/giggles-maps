@@ -6,6 +6,7 @@ import ShareSheet from "../share/ShareSheet";
 import Avatar from "./Avatar";
 import Album from "../passport/Album";
 import QrLink from "./QrLink";
+import { Spinner } from "../Skeleton";
 
 const POLL_MS = 15_000;
 const PING_MS = 30_000;
@@ -121,7 +122,7 @@ export default function RideAlong({ trip: t, profile }: { trip: TripState; profi
       <div className="row between"><h4 className="eyebrow">Trip album ({trip.album.length})</h4>
         {trip.album.length > 0 && <span className="row">
           <button type="button" className="btn soft small" onClick={openCard}><Share2 size={14} aria-hidden /> Trip card</button>
-          <button type="button" className="btn soft small" onClick={saveAll} disabled={saving}><Download size={14} aria-hidden /> {saving ? "Saving…" : "Save all"}</button>
+          <button type="button" className="btn soft small" onClick={saveAll} disabled={saving}><Download size={14} aria-hidden /> {saving ? <><Spinner size={14} /> Saving…</> : "Save all"}</button>
         </span>}</div>
       {albumMsg && <p className="error" role="alert">{albumMsg}</p>}
       {card && <ShareSheet hasPlus={!!profile?.plusUntil} onClose={() => setCard(null)} options={[{ id: "trip", label: "Trip", card: { kind: "trip",

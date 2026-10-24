@@ -7,6 +7,7 @@ import { cumulative, dueCall, type Progress, progress } from "./progress";
 import { say } from "./thai";
 import { isNight, loadLook, styleUrl } from "../mapLayers";
 import { metres } from "../useStops";
+import { Spinner } from "../Skeleton";
 
 export interface Waypoint extends LatLng { name: string; id?: number }   // id: a place you can check in at
 const ARRIVE_M = 50;   // this close to a stop counts as there: the arrival card comes up
@@ -201,7 +202,7 @@ export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
         {atStop || arrived ? <><Flag size={34} /><b>You've arrived at {(atStop ?? left[0])?.name}</b></>
           : mv && prog ? <><TurnIcon type={mv.type} /><span className="nav-turn"><b className="num">{fmtM(prog.toNextM)}</b>
               <span>{lang === "th" ? say(mv, 0, "th") : mv.instruction}</span></span></>
-          : <b>{msg || "Finding your route…"}</b>}
+          : <b>{msg || <><Spinner size={18} /> Finding your route…</>}</b>}
       </div>
       {prog && prog.offM > OFF_ROUTE_M && !atStop && <p className="nav-off">Off route: we'll reroute you in a moment</p>}
       {atStop && (

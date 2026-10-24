@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ShoppingBag, Sparkles } from "lucide-react";
 import { type PastShake, type Profile, shakeHistory } from "../../lib/api";
 import Fortune, { OddsTable, prizeText, RARITY } from "./Fortune";
+import { SkelRows } from "../Skeleton";
 
 /** Profile card: bonus shakes waiting, a running XP boost, and the odds and your last 20 shakes. */
 export default function SiamSi({ profile, onChange, onShop }: { profile: Profile | null; onChange: () => void; onShop?: () => void }) {
@@ -26,7 +27,7 @@ export default function SiamSi({ profile, onChange, onShop }: { profile: Profile
       </div>
       {more && <>
         <OddsTable />
-        {history === null ? <p className="fine">Loading…</p> : history.length === 0 ? <p className="fine">No shakes yet.</p> : (
+        {history === null ? <SkelRows n={3} avatar={0} /> : history.length === 0 ? <p className="fine">No shakes yet.</p> : (
           <ul className="shake-history">
             {history.map((h) => <li key={h.id} className={`r-${h.rarity}`}>
               <span className="num">No. {h.stick}</span><b>{RARITY[h.rarity].en}</b>

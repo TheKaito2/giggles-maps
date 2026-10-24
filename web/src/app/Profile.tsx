@@ -17,6 +17,7 @@ import ShareSheet from "./share/ShareSheet";
 import Account from "./Account";
 import SavedLists from "./SavedLists";
 import AdminEdits from "./AdminEdits";
+import { SkelProfile } from "./Skeleton";
 
 const month = (iso?: string | null) => iso ? new Date(iso).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "";
 const TIER = { 3: "Landmark", 2: "Worth a visit", 1: "Everyday" } as const;
@@ -89,7 +90,7 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
   const doNudge = () => nudge(id).then(() => setMsg(`Nudged ${page?.nickname}. They'll see it in their feed.`))
     .catch((e) => setMsg(e instanceof ApiError && e.code === "already_nudged" ? "You nudged them today already." : "Couldn't nudge. Try again."));
 
-  if (!page) return <div className="page-col">{onBack && <button type="button" className="link" onClick={onBack}><ArrowLeft size={16} /> Back</button>}<p className="fine">{msg || "Loading…"}</p></div>;
+  if (!page) return <div className="page-col">{onBack && <button type="button" className="link" onClick={onBack}><ArrowLeft size={16} /> Back</button>}{msg ? <p className="fine">{msg}</p> : <SkelProfile />}</div>;
   const look = self ? profile?.look ?? page.look : page.look;
   const avatar = self ? profile?.avatar : page.avatar;
   const counts = new Map<number, number>();
@@ -191,7 +192,7 @@ export default function ProfileTab({ profile, refreshKey, onChange, editAvatar, 
   friend: string | null; setFriend: (id: string | null) => void; openPlace: (id: number) => void; openShop: () => void; openBag: () => void;
 }) {
   const user = useUser();
-  if (!user) return <div className="page-col"><p className="fine">Loading…</p></div>;
+  if (!user) return <SkelProfile />;
   return friend
     ? <ProfileView key={friend} id={friend} self={false} profile={profile} refreshKey={refreshKey} onBack={() => setFriend(null)} onChange={onChange} />
     : <ProfileView key="me" id={user.id} self profile={profile} refreshKey={refreshKey} editAvatar={editAvatar} editName={editName} onChange={onChange}

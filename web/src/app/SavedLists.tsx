@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { Bookmark, Share2, Trash2 } from "lucide-react";
 import { getMyLists, type SavedList, updateList } from "../lib/api";
 import { GROUPS, kindOf } from "./kinds";
+import { SkelRows } from "./Skeleton";
 
 /** Saved places (Google-Maps-style lists): tap a place to open it on the map; share a list with friends. */
 export default function SavedLists({ openPlace }: { openPlace: (id: number) => void }) {
   const [lists, setLists] = useState<SavedList[] | null>(null);
   const load = () => getMyLists().then(setLists).catch(() => setLists([]));
   useEffect(() => { load(); }, []);
-  if (!lists) return null;
+  if (!lists) return <section className="stack saved-lists" aria-label="Saved places"><h3>Saved</h3><SkelRows n={2} avatar={0} /></section>;
   return (
     <section className="stack saved-lists" aria-label="Saved places">
       <h3>Saved</h3>

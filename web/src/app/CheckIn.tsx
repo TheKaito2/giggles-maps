@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError } from "../lib/supabase";
 import ShareSheet, { type CardOption } from "./share/ShareSheet";
 import { BILLING_TEXT, type CheckinResult, type CheckinTarget, REASON_TEXT, setPhoto, setPublicPhoto, uploadSelfie, verifyCheckin } from "../lib/api";
+import { Spinner } from "./Skeleton";
 
 const TIER_NAME = { 3: "Landmark", 2: "Worth a visit", 1: "Everyday" } as const;
 const CONSENT_KEY = "giggles.photoConsent.v2";   // v2: photos are kept for the passport album
@@ -166,7 +167,7 @@ export default function CheckIn({ target, initialCode, hasPlus, nickname, onClos
           </div>
         )}
 
-        {step === "working" && <p className="working" aria-live="polite">{status}</p>}
+        {step === "working" && <p className="working" aria-live="polite"><Spinner size={18} /> {status}</p>}
 
         {step === "result" && result && (
           <div className="stack result">

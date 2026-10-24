@@ -6,6 +6,7 @@ import { type Challenge, claimQuest, type FriendQuest, type QuestReward, getFrie
   type Card } from "../lib/api";
 import Avatar from "./social/Avatar";
 import VerifyLocal from "./VerifyLocal";
+import { SkelRows, Spinner } from "./Skeleton";
 
 const GROUPS: { kind: Challenge["kind"]; title: string; resets?: "day" | "week" }[] = [
   { kind: "daily", title: "Daily quests", resets: "day" }, { kind: "weekly", title: "Weekly quests", resets: "week" },
@@ -78,7 +79,7 @@ function ChestOpen({ quest, onClose, onClaimed }: { quest: Challenge; onClose: (
           <span className="reward-pop" style={{ animationDelay: ".35s" }}><Sparkles size={18} aria-hidden /> +1 Siam Si shake</span>
           {reward.level_up && <span className="reward-pop level" style={{ animationDelay: ".5s" }}>Level up! Level {reward.level}</span>}
         </div>
-      ) : <p className="chest-hint" role="status">{error || "Opening…"}</p>}
+      ) : <p className="chest-hint" role="status">{error || <><Spinner /> Opening…</>}</p>}
       {(reward || error) && <button type="button" className="btn big" onClick={onClose}>{reward ? "Nice!" : "Close"}</button>}
     </div>
   );
@@ -86,7 +87,7 @@ function ChestOpen({ quest, onClose, onClaimed }: { quest: Challenge; onClose: (
 
 /** Quests tab (Duolingo-style): the friends quest, daily and weekly quests with reset timers, province sets, collections. */
 export default function Quests({ profile, refreshKey, onChange, onShop }: { profile: Profile | null; refreshKey: number; onChange: () => void; onShop: () => void }) {
-  const [list, setList] = useState<Challenge[]>([]);
+  const [list, setList] = useState<Challenge[] | null>(null);   // null while loading
   const [fq, setFq] = useState<FriendQuest | null | undefined>(undefined);
   const [friends, setFriends] = useState<Card[]>([]);
   const [opening, setOpening] = useState<Challenge | null>(null);
@@ -101,8 +102,8 @@ export default function Quests({ profile, refreshKey, onChange, onShop }: { prof
 
   const pair = (id: string) => setFriendQuest(id).then(load)
     .catch((e) => setMsg(e instanceof ApiError && e.code === "already_paired" ? "One of you already has a partner this week." : "Couldn't start the quest."));
-  const fqDone = list.find((c) => c.slug === "friend-quest");
-  const ready = list.filter((c) => !c.claimed && c.have >= c.need).length;
+  const fqDone = list?.find((c) => c.slug === "friend-quest");
+  const ready = (list ?? []).filter((c) => !c.claimed && c.have >= c.need).length;
 
   return (
     <div className="page-col stack">
@@ -114,7 +115,7 @@ export default function Quests({ profile, refreshKey, onChange, onShop }: { prof
       <VerifyLocal />
       <section className="friend-quest glass">
         <div className="row between"><h3><Users size={18} aria-hidden /> Friends Quest</h3>{<span className="chip"><Clock size={12} aria-hidden /> {left("week")}</span>}</div>
-        {fq === undefined ? <p className="fine">Loading…</p> : fq ? <>
+        {fq === undefined ? <SkelRows n={1} avatar={56} /> : fq ? <>
           <div className="fq-pair">
             <span className="fq-person"><Avatar name={profile?.nickname ?? "You"} colour={profile?.colour ?? "marigold"} avatar={profile?.avatar} size={56} /><b>You</b><span className="num">{fq.me}</span></span>
             <span className="fq-plus">+</span>
@@ -134,7 +135,8 @@ export default function Quests({ profile, refreshKey, onChange, onShop }: { prof
         </> : <p className="fine">Add a friend on your Profile to unlock Friends Quests.</p>}
       </section>
 
-      {GROUPS.map((g) => {
+      {!list && !msg && <><h3>Daily quests</h3><SkelRows n={3} square avatar={44} /></>}
+      {list && GROUPS.map((g) => {
         const items = list.filter((c) => c.kind === g.kind);
         if (!items.length) return null;
         return (

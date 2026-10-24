@@ -5,6 +5,7 @@ import { type Board, type BoardMetric, type BoardPeriod, type BoardRow, type Boa
 import Avatar from "./social/Avatar";
 import ProvinceStamp from "./passport/ProvinceStamp";
 import { useProvinces } from "./passport/useProvinces";
+import { SkelBoard, SkelTiles } from "./Skeleton";
 
 const METRICS: { id: BoardMetric; label: string; unit: (n: number) => string }[] = [
   { id: "xp", label: "XP", unit: () => "XP" },
@@ -118,7 +119,7 @@ export default function Leaderboard({ profile, onChange }: { profile: Profile | 
       {period === "week" && current?.ends && <p className="week-note fine">Resets in <b className="num">{left(current.ends)}</b> · the top 3 and whoever leads
         their friends win coins and a Siam Si shake on Monday.</p>}
 
-      {error ? <p className="fine">Couldn't load the board. Try again.</p> : !current ? <p className="fine">Loading…</p> : <>
+      {error ? <p className="fine">Couldn't load the board. Try again.</p> : !current ? <SkelBoard /> : <>
         {podium.length > 0 && <ol className="podium" aria-label="Top 3">
           {[podium[1], podium[0], podium[2]].filter(Boolean).map((c) => (
             <li key={c.id} className={`place-${c.rank}`}>
@@ -148,7 +149,7 @@ export default function Leaderboard({ profile, onChange }: { profile: Profile | 
 
       <h3><Crown size={18} aria-hidden /> Province champions</h3>
       <p className="fine">Whoever checks in around a province on the most different days in 90 days wears its crown.</p>
-      {champs === null ? <p className="fine">Loading…</p> : <Champions list={champs} />}
+      {champs === null ? <SkelTiles n={3} h={150} min={150} /> : <Champions list={champs} />}
 
       <label className="toggle">
         <input type="checkbox" checked={profile?.onLeaderboard ?? true} onChange={(e) => setMe({ onLeaderboard: e.target.checked }).then(onChange)} />
