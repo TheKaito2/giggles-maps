@@ -53,7 +53,8 @@
 
   --font-display: "Mali", "LINE Seed Sans TH", system-ui, sans-serif;
   --font-body: "LINE Seed Sans TH", "Noto Sans Thai", system-ui, sans-serif;
-  --font-data: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --font-data: "LINE Seed Sans TH", "Noto Sans Thai", system-ui, sans-serif;   /* numbers: the friendly face, tabular (.num) */
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;               /* codes and the passport's printed fields */
   --radius: 14px;
 
   /* type scale: 8 levels, 3 weights (400/700/800). Thai needs room for stacked vowels and tone marks: nothing under 1.25 line height

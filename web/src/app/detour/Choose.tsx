@@ -13,7 +13,8 @@ import Figure from "./Figure";
 const MODE_ICON: Record<TravelMode, ReactNode> = {
   pedestrian: <Footprints size={16} aria-hidden />, auto: <Car size={16} aria-hidden />, bicycle: <Bike size={16} aria-hidden />,
 };
-export const arrive = (prefs: Prefs, r: RoutePlan) => hhmm(startMin(prefs) + r.total_min);
+// counted from the start time the server planned with ("Leave now" was fixed then), so it never drifts with the clock
+export const arrive = (prefs: Prefs, r: RoutePlan) => hhmm((r.start_min ?? startMin(prefs)) + r.total_min);
 
 /** Where you're going, from where, and how: shared by the choose and results steps. */
 export function TripHead({ d, onBack, backLabel, onSearch }: { d: Detour; onBack: () => void; backLabel: string; onSearch: () => void }) {
@@ -53,7 +54,7 @@ export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => voi
         <b className="preset-name">{label}</b>
         {min === "auto" ? <span className="figure big"><b>Auto</b></span> : <Figure className="big" text={`+${budgetLabel(min)}`} />}
         {r === "loading" ? <span className="preset-wait" role="status" aria-label="Planning"><i /><i /><i /></span>
-          : r && !ready ? <span className="fine">{(r as { error: string }).error} <b className="retry">Tap to retry</b></span>
+          : r && !ready ? <span className="fine">{(r as { error: string }).error} <b className="retry">{(r as { gate?: boolean }).gate ? "Sign in" : "Tap to retry"}</b></span>
           : stops && <>
               <span className="thumbs" aria-hidden>{stops.slice(0, 3).map((s) => <Thumb key={s.id} s={s} size={28} />)}</span>
               {stops.length ? <span className="preset-stats">

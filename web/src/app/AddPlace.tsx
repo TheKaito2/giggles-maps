@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Modal from "./Modal";
 import { X } from "lucide-react";
 import { errCode } from "../lib/supabase";
 import { nominate, suggestEdit, uploadSelfie } from "../lib/api";
@@ -42,8 +43,7 @@ export default function AddPlace({ onClose }: { onClose: () => void }) {
     { enableHighAccuracy: true, timeout: 15000 });
   };
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="add-place-title">
-      <form className="modal" onSubmit={(e) => { e.preventDefault(); if (name.trim().length > 1) send(); }}>
+    <Modal labelledBy="add-place-title" onClose={onClose} onSubmit={() => { if (name.trim().length > 1) send(); }}>
         <header className="modal-head"><h2 id="add-place-title">Add a missing place</h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button></header>
         <p className="fine">Stand at the place: we pin it where you are.</p>
@@ -59,7 +59,6 @@ export default function AddPlace({ onClose }: { onClose: () => void }) {
         <label className="field"><span>Phone (optional)</span><input className="text-in" value={phone} inputMode="tel" onChange={(e) => setPhone(e.target.value)} /></label>
         {msg && <p className="fine" role="status">{msg}</p>}
         <button className="btn" type="submit" disabled={busy || name.trim().length < 2}>{local ? "Nominate this shop" : "Send for review"}</button>
-      </form>
-    </div>
+    </Modal>
   );
 }

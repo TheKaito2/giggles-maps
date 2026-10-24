@@ -32,9 +32,13 @@ export function demoBoard(real: Board, scope: BoardScope, period: BoardPeriod, m
 export const demoChampionsMerged = (real: Champion[]): Champion[] =>
   [...real, ...demoChampions().filter((c) => !real.some((r) => r.province.id === c.province.id))];
 
+// pretend friend requests you answered this visit (accepted = true): kept in memory only, never sent to the server
+const answered = new Map<string, boolean>();
+export const answerDemoRequest = (id: string, accept: boolean) => { answered.set(id, accept); };
+
 export const demoSocial = (real: Social): Social => ({
-  friends: [...real.friends, ...DEMO_PEOPLE.filter((p) => p.friend).map(card)],
-  incoming: [...real.incoming, ...DEMO_INCOMING.map((id) => card(byId.get(id)!))],
+  friends: [...real.friends, ...DEMO_PEOPLE.filter((p) => p.friend || answered.get(p.id)).map(card)],
+  incoming: [...real.incoming, ...DEMO_INCOMING.filter((id) => !answered.has(id)).map((id) => card(byId.get(id)!))],
   outgoing: real.outgoing,
 });
 

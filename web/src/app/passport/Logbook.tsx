@@ -24,7 +24,7 @@ export default function Logbook({ owner, stamps, onClose }: { owner: string; sta
           <span><h2>Logbook</h2><span className="fine">{list.length} {list.length === 1 ? "place" : "places"}</span></span>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button>
         </header>
-        {!list.length && <p className="fine">Check in somewhere and it lands here, with your photo.</p>}
+        {!list.length && <p className="fine">Nothing here yet. On the Map tab, places near you glow when you are close enough to check in; each one lands here with your photo.</p>}
         {[...days].map(([day, rows]) => (
           <section key={day} className="log-day">
             <h4 className="eyebrow">{day} · {rows.length} {rows.length === 1 ? "place" : "places"}</h4>

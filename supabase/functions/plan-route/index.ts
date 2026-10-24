@@ -37,8 +37,6 @@ const dropsIfDuplicate = (id: string) => id !== "top_picks" && id !== "mix" && i
 
 serve(async (req) => {
   const user = await requireUser(req);
-  // detours need a real account (a guest's quota would reset with every fresh anonymous sign-in)
-  if (user.is_anonymous) throw new HttpError(403, "sign_in_required");
   const body = await readJson(req);
   const origin = thaiPoint(body.origin, "bad_origin");
   const dest = thaiPoint(body.dest, "bad_dest");
@@ -92,8 +90,11 @@ serve(async (req) => {
   const edit = mustInclude.length > 0 || exclude.size > 0;
   const quotaKey = edit ? `${destKey}|${[...mustInclude].sort((a, b) => a - b).join(".")}|${[...exclude].sort((a, b) => a - b).join(".")}` : destKey;
   // (an "edit" of a destination not planned today counts as a new detour; the database decides)
-  const { data: allowed, error: qErr } = await db.rpc("plan_allowed", { p_user: user.id, p_edit: edit, p_key: quotaKey, p_dest: destKey, p_member: member });
+  // guests get a taste (1 destination and 3 changes a day), then "sign in to plan more" (403)
+  const { data: allowed, error: qErr } = await db.rpc("plan_allowed", { p_user: user.id, p_edit: edit, p_key: quotaKey, p_dest: destKey, p_member: member,
+    p_guest: !!user.is_anonymous });
   if (qErr) throw qErr;
+  if (allowed === "sign_in_required") throw new HttpError(403, allowed);
   if (allowed !== "ok") throw new HttpError(429, allowed);
   // exclusive places are gone; the candidate queries still take a level and every place is level 0
   const { data: level, error: lErr } = await db.rpc("unlock_level", { p_user: user.id });
@@ -343,7 +344,8 @@ serve(async (req) => {
     // ETA per stop for the UI; early arrivals at a meal stop wait for the window, as the planner does
     let t = startMin, at = 0;
     const ordered = plan.order.map((s, index) => {
-      t += matrix[at][s.idx];
+      const leg = matrix[at][s.idx];   // road minutes from the previous stop (real ones once the plan is road-checked)
+      t += leg;
       const late = plan.lateMeals.get(s.id) ?? null;   // a restaurant for this meal, outside its usual hours
       const meal: Meal | null = plan.mealOf.get(s.id) ?? late;
       if (meal && !late) t = Math.max(t, MEAL_WINDOWS[meal][0]);
@@ -356,7 +358,7 @@ serve(async (req) => {
         id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng,
         is_partner: c.is_partner, is_demo: c.is_demo,
         rating: c.rating == null ? null : Number(c.rating), price_level: c.price_level, tier: c.tier ?? 2,
-        dwell_min: s.dwellMin, eta_min: eta, pit_stop: pitIds.has(c.id), meal, meal_late: !!late, picked: mustInclude.includes(c.id),
+        dwell_min: s.dwellMin, eta_min: eta, travel_min: Math.round(leg), pit_stop: pitIds.has(c.id), meal, meal_late: !!late, picked: mustInclude.includes(c.id),
         closed: plan.closedPicks.includes(c.id),   // you added it, but it's closed when you get there
         // about how many minutes this stop adds (road detour + time there): what removing it would save
         extra_min: ((x) => Number.isFinite(x) ? Math.round(x) : null)(insertionCost(plan.order.map((o) => o.idx), s.idx, travelMin, s.dwellMin)),

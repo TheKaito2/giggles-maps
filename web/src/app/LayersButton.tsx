@@ -3,6 +3,7 @@ import { Check, CloudDownload, Layers, Trash2, X } from "lucide-react";
 import { deletePack, downloadPack, type MapLook, type Night, type Pack, PACKS_URL, savedPacks } from "./mapLayers";
 import { SkelRows } from "./Skeleton";
 import Info from "./Info";
+import Modal from "./Modal";
 
 const NIGHTS: { id: Night; label: string }[] = [{ id: "auto", label: "Auto" }, { id: "on", label: "On" }, { id: "off", label: "Off" }];
 const mb = (b: number) => `${(b / 1e6).toFixed(b < 1e7 ? 1 : 0)} MB`;
@@ -38,8 +39,7 @@ function OfflineMaps({ onClose }: { onClose: () => void }) {
   const list = (all ?? []).filter((p) => !query || p.name_en.toLowerCase().includes(query) || p.name_th.includes(q.trim()))
     .sort((a, b) => Number(saved.includes(b.iso)) - Number(saved.includes(a.iso)) || a.name_en.localeCompare(b.name_en));
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="offline-title">
-      <div className="modal offline-maps">
+    <Modal labelledBy="offline-title" className="offline-maps" onClose={onClose}>
         <header className="modal-head"><h2 id="offline-title">Offline maps <Info label="About offline maps">Save a province to see its map with no signal. Planning, directions and
           check-ins still need a connection.</Info></h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button></header>
@@ -53,8 +53,7 @@ function OfflineMaps({ onClose }: { onClose: () => void }) {
           </li>)}
         </ul>}
         {msg && <p className="fine" role="status">{msg}</p>}
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -65,18 +64,17 @@ export default function LayersButton({ look, setLook }: { look: MapLook; setLook
   return (
     <>
       <button type="button" className="layers-btn" aria-label="Map layers" aria-expanded={open} onClick={() => setOpen(!open)}><Layers size={20} /></button>
-      {open && <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="layers-title" onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
-        <div className="modal layers-pop">
+      {open && <Modal labelledBy="layers-title" className="layers-pop" onClose={() => setOpen(false)}>
         <header className="modal-head"><h2 id="layers-title">Map</h2>
           <button type="button" className="icon-btn" onClick={() => setOpen(false)} aria-label="Close"><X size={20} /></button></header>
         <b>Night map</b>
-        <p className="fine">Auto: dark when the app is in dark mode, and after 18:30.</p>
+        <p className="fine">Auto: dark when the app is (Settings › Appearance).</p>
         <div className="seg" role="radiogroup" aria-label="Night map">
           {NIGHTS.map((n) => <button key={n.id} type="button" role="radio" aria-checked={look.night === n.id} className={look.night === n.id ? "on" : ""}
             onClick={() => setLook({ night: n.id })}>{n.label}</button>)}
         </div>
         <button type="button" className="btn soft small" onClick={() => { setOpen(false); setOffline(true); }}><CloudDownload size={15} aria-hidden /> Offline maps</button>
-      </div></div>}
+      </Modal>}
       {offline && <OfflineMaps onClose={() => setOffline(false)} />}
     </>
   );

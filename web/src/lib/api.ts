@@ -30,6 +30,7 @@ export interface RouteStop {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
   is_partner: boolean; // signed-up shop that pays per verified visit; never affects ranking
   is_demo: boolean; rating: number | null; dwell_min: number; eta_min: number;
+  travel_min?: number;   // road minutes from the previous stop; eta_min - previous leave - travel_min = waiting for a meal time
   pit_stop?: boolean;   // Quick plans: a convenience store after the sight (snacks, toilet)
   price_level?: number | null; // 0 free, 1-3 = ฿-฿฿฿, null = not listed
   nearby_partner: NearbyPartner | null;
@@ -281,6 +282,7 @@ export interface Profile {
   avatar: AvatarLook; joined: string | null; coins: number; provinces: number; isAdmin: boolean;
   fortuneTickets: number; xpBoostUntil: Date | null;   // Siam Si: bonus shakes waiting, x1.5 stamp XP until
   perks: Perks;   // level rewards picked so far
+  pendingShakes: { checkin: string; place: string }[];   // check-ins from the last day whose Siam Si shake hasn't been taken
 }
 /** Level rewards: one permanent +10% pick per level from 2 up (choose_level_perk). */
 export type Perk = "luck" | "coins";
@@ -297,7 +299,7 @@ interface MeRow {
   member: boolean; xp: number; plus_until: string | null; look: Look | null; nickname: string | null; colour: string | null;
   friend_code: string | null; on_leaderboard: boolean | null; title: string | null; owned: string[] | null; avatar: AvatarLook | null;
   joined: string | null; coins: number | null; provinces: number | null; is_admin: boolean; fortune_tickets: number | null; xp_boost_until: string | null;
-  perks: Perks | null;
+  perks: Perks | null; pending_shakes: { checkin: string; place: string }[] | null;
 }
 export async function getProfile(): Promise<Profile> {
   const data = await rpc<MeRow | null>("me");
@@ -310,7 +312,7 @@ export async function getProfile(): Promise<Profile> {
     onLeaderboard: data?.on_leaderboard ?? true, look, title: data?.title ?? null, owned: data?.owned ?? [],
     avatar: data?.avatar ?? {}, joined: data?.joined ?? null, coins: data?.coins ?? 0, provinces: data?.provinces ?? 0, isAdmin: !!data?.is_admin,
     fortuneTickets: data?.fortune_tickets ?? 0, xpBoostUntil: data?.xp_boost_until ? new Date(data.xp_boost_until) : null,
-    perks: data?.perks ?? { luck: 0, coins: 0, chosen: [] },
+    perks: data?.perks ?? { luck: 0, coins: 0, chosen: [] }, pendingShakes: data?.pending_shakes ?? [],
   };
 }
 
@@ -330,7 +332,11 @@ export async function getSocial(): Promise<Social> {
   return d ? (await d).demoSocial(real) : real;
 }
 export const addFriend = (code: string) => rpc<"friends" | "requested">("add_friend", { p_code: code });
-export const answerFriend = (from: string, accept: boolean) => rpc<void>("answer_friend", { p_from: from, p_accept: accept });
+export async function answerFriend(from: string, accept: boolean) {
+  const d = demo();
+  if (isDemoId(from)) { if (d) (await d).answerDemoRequest(from, accept); return; }   // a pretend request: answered on this device
+  await rpc<void>("answer_friend", { p_from: from, p_accept: accept });
+}
 export const removeFriend = async (id: string) => { if (!isDemoId(id)) await rpc<void>("remove_friend", { p_id: id }); };
 export interface FriendPassport { card: Card; stamps: PassportStamp[]; photos: PassportPhoto[]; provinces: PassportData["provinces"] }
 export async function getFriendPassport(id: string): Promise<FriendPassport> {
@@ -481,7 +487,7 @@ export async function getPlacePage(id: number): Promise<PlacePage | null> {
   return d && real ? (await d).demoPlacePage(real) : real;
 }
 /** A written review (20+ characters) of a place earns one bonus Siam Si shake there, once. */
-export const REVIEW_SHAKE_CHARS = 20;
+export const REVIEW_SHAKE_CHARS = 60;
 export const writeReview = (place: number, rating: number, body: string) =>
   rpc<{ xp: number; shake: boolean; tickets: number }>("write_review", { p_place: place, p_rating: rating, p_body: body });
 /** Add a photo of a place you have a stamp at to its page; your first one there pays coins. Removes the upload if the add fails. */

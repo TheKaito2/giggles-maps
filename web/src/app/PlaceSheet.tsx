@@ -101,6 +101,7 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
   shown.current = id;
   const load = () => getPlacePage(id).then((p) => {
     if (shown.current !== id) return;
+    if (!p) { setMsg("This place isn't on Giggles Maps. The link may be broken."); return; }   // was an endless skeleton
     setPage(p);
     const mine = p?.reviews.find((r) => r.mine);
     if (mine) { setRating(mine.rating); setBody(mine.body ?? ""); }
@@ -182,15 +183,16 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
       </header>
 
       <div className="place-actions">
-        <button type="button" className="btn small" onClick={() => onDirections(page)}><Navigation size={15} aria-hidden /> Directions</button>
+        {page.detour && <button type="button" className="btn gold small" onClick={() => onCheckin(page)}><Camera size={15} aria-hidden /> Check in</button>}
+        <button type="button" className={`btn small${page.detour ? " soft" : ""}`} onClick={() => onDirections(page)}><Navigation size={15} aria-hidden /> Directions</button>
         {tier && <button type="button" className="btn gold small" onClick={() => setMenu(menu === "book" ? null : "book")}><CalendarCheck size={15} aria-hidden /> Book</button>}
         <button type="button" className="btn soft small" onClick={() => setMenu(menu === "save" ? null : "save")}>
           {page.saved_in.length ? <BookmarkCheck size={15} aria-hidden /> : <Bookmark size={15} aria-hidden />} {page.saved_in.length ? "Saved" : "Save"}</button>
         <button type="button" className="btn soft small" onClick={share}><Share2 size={15} aria-hidden /> Share</button>
-        {page.detour && <button type="button" className="btn soft small" onClick={() => onCheckin(page)}><Camera size={15} aria-hidden /> Check in</button>}
+
         {page.stamped && <label className={`btn soft small${adding ? " busy" : ""}`} aria-disabled={adding}>
           {adding ? <span className="spinner" style={{ width: 14, height: 14 }} aria-hidden /> : <ImagePlus size={15} aria-hidden />}
-          {adding ? "Adding…" : "Add photo"}{page.photo_reward && !adding && <span className="chip reward-chip"><Coins size={11} aria-hidden /> +10</span>}
+          {adding ? "Adding…" : "Add a public photo"}{page.photo_reward && !adding && <span className="chip reward-chip"><Coins size={11} aria-hidden /> +10</span>}
           <input type="file" accept="image/*" className="sr-only" disabled={adding} onChange={(e) => { void addPhoto(e.target.files?.[0]); e.target.value = ""; }} />
         </label>}
       </div>
@@ -218,19 +220,6 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
         {page.address && <li><MapPin size={16} aria-hidden /><span>{page.address}</span></li>}
       </ul>
 
-      {/* other people's reviews and photos live elsewhere: we link to them, never copy them (Google's terms forbid
-          showing its content on a non-Google map, and Wongnai's are its own) */}
-      <section className="elsewhere" aria-labelledby="elsewhere-title">
-        <h4 id="elsewhere-title" className="eyebrow">Reviews and photos elsewhere</h4>
-        <div className="row tight">
-          <a className="btn soft small" target="_blank" rel="noopener noreferrer"
-            href={`https://www.google.com/maps/search/${encodeURIComponent(page.name)}/@${page.lat},${page.lng},17z`}>
-            Google Maps <ExternalLink size={14} aria-hidden /></a>
-          {k.group === "food" && <a className="btn soft small" target="_blank" rel="noopener noreferrer"
-            href={`https://www.wongnai.com/businesses?q=${encodeURIComponent(page.name_th || page.name)}`}>
-            Wongnai <ExternalLink size={14} aria-hidden /></a>}
-        </div>
-      </section>
 
       {page.regular && (
         <p className="place-regular"><Crown size={16} aria-hidden /> <b>Regular:</b>&nbsp;{page.regular.mine ? "you" : page.regular.who.nickname}
@@ -271,6 +260,20 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
             {r.body && <p>{r.body}</p>}
           </article>
         ))}
+      </section>
+
+      {/* other people's reviews and photos live elsewhere: we link to them, never copy them (Google's terms forbid
+          showing its content on a non-Google map, and Wongnai's are its own) */}
+      <section className="elsewhere" aria-labelledby="elsewhere-title">
+        <h4 id="elsewhere-title" className="eyebrow">Reviews and photos elsewhere</h4>
+        <div className="row tight">
+          <a className="btn soft small" target="_blank" rel="noopener noreferrer"
+            href={`https://www.google.com/maps/search/${encodeURIComponent(page.name)}/@${page.lat},${page.lng},17z`}>
+            Google Maps <ExternalLink size={14} aria-hidden /></a>
+          {k.group === "food" && <a className="btn soft small" target="_blank" rel="noopener noreferrer"
+            href={`https://www.wongnai.com/businesses?q=${encodeURIComponent(page.name_th || page.name)}`}>
+            Wongnai <ExternalLink size={14} aria-hidden /></a>}
+        </div>
       </section>
 
       <div className="row">

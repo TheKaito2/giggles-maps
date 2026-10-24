@@ -36,9 +36,9 @@ begin
 
   r := public.write_review(v_place, 4, 'nice');
   insert into t_out values ('short review: XP, no shake', (r->>'xp')::int = 20 and not (r->>'shake')::boolean, r::text);
-  r := public.write_review(v_place, 4, 'Lovely quiet spot, great coffee and shade');
+  r := public.write_review(v_place, 4, 'Lovely quiet spot with great coffee and plenty of shade by the pond.');
   insert into t_out values ('written review: a shake', (r->>'shake')::boolean, r::text);
-  r := public.write_review(v_place, 5, 'Lovely quiet spot, great coffee and shade again');
+  r := public.write_review(v_place, 5, 'Lovely quiet spot with great coffee and plenty of shade by the pond again.');
   insert into t_out values ('second written review: no shake', not (r->>'shake')::boolean, r::text);
 
   r := public.add_place_photo(v_place, auth.uid()::text || '/a.jpg');

@@ -235,7 +235,7 @@ export default function Shop() {
   return (
     <div className="shop-shell">
       <header className="topbar">
-        <a className="brand" href="/">Giggles <span>Maps</span></a>
+        <a className="brand" href="/"><img className="brand-mark" src="/logo.svg" alt="" width={36} height={36} /><span className="brand-word">giggles <span>maps</span></span></a>
         <span className="chip">For shops</span>
       </header>
       <main className="shop-main">

@@ -73,14 +73,17 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
   const byKey = new Map(items.map((i) => [key(i), i]));
   const canBuy = (i: ShopItem) => owns(i) || (!i.plus_only && i.level_req == null && coins >= i.price);
 
+  const [busy, setBusy] = useState(false);   // one buy or wear at a time: a double tap sent two purchases
   const act = async (i: ShopItem) => {
-    setMsg("");
+    if (busy) return;
+    setMsg(""); setBusy(true);
     try {
       if (!owns(i)) await buyItem(i.kind, i.id);
       if (i.kind === "avatar") { const [slot, part] = i.id.split(":"); await setAvatar({ ...profile?.avatar, [slot]: part }); }
       else await equip(i.kind, i.id);
       onChange(); setTrying(null);
     } catch (e) { setMsg(ERR[errCode(e)] ?? "Couldn't do that. Try again."); }
+    finally { setBusy(false); }
   };
   const getSet = async (s: ShopSet) => {
     setMsg("");
@@ -100,6 +103,7 @@ export default function Shop({ profile, coins, onChange, onAvatar, start = "shop
       <li key={key(i)} className={`${on ? "on " : ""}${r ? `r-${r}` : ""}`}>
         <button type="button" className="tile-try" onClick={() => setTrying(i)} aria-label={`Try on ${i.name_en}`}>
           <Preview item={i} profile={profile} />
+          <span className="tile-kind">{KIND_NAME[i.kind]}</span>
           <b>{i.name_en}</b><span className="fine">{i.name_th}</span>
         </button>
         <span className="tile-foot">

@@ -8,9 +8,12 @@ const SNAP: Record<Snap, number> = { peek: 0.3, half: 0.55, full: 0.92 };
  * Apple/Google-Maps-style bottom sheet on phones: drag the handle (or header) between peek, half and full; the body
  * scrolls inside. On wide screens it's the fixed left panel. `snap` changes from outside move it (e.g. results -> half).
  */
-export default function Sheet({ snap, setSnap, head, children, foot, label }: {
-  snap: Snap; setSnap: (s: Snap) => void; head?: ReactNode; children: ReactNode; foot?: ReactNode; label: string;
+export default function Sheet({ snap, setSnap, head, children, foot, label, page }: {
+  snap: Snap; setSnap: (s: Snap) => void; head?: ReactNode; children: ReactNode; foot?: ReactNode; label: string; page?: string;
 }) {
+  // a new step (where to → time options → results) starts at its top, not wherever the last one was scrolled to
+  const body = useRef<HTMLDivElement>(null);
+  useEffect(() => { body.current?.scrollTo(0, 0); }, [page]);
   const box = useRef<HTMLElement>(null);
   const [drag, setDrag] = useState<number | null>(null);   // height in px while dragging
   const start = useRef<{ y: number; h: number } | null>(null);
@@ -52,7 +55,7 @@ export default function Sheet({ snap, setSnap, head, children, foot, label }: {
         {/* the handle's onClick is for the keyboard (detail 0); pointer taps and drags go through up() */}
         {head}
       </div>
-      <div className="sheet-body">{children}</div>
+      <div className="sheet-body" ref={body}>{children}</div>
       {foot && <div className="sheet-foot">{foot}</div>}
     </section>
   );

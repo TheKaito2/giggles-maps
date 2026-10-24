@@ -1,6 +1,7 @@
 # Renders the sky-and-clouds brand images from public/logo.svg and public/sky-day.svg with headless Chrome (Playwright):
 #   python3 web/tools/brand_assets.py
-# -> ios AppIcon (1024), iOS splash (2732), public/apple-touch-icon.png (180), public/og.png (1200x630 share card).
+# -> ios AppIcon (1024), iOS splash (2732), public/apple-touch-icon.png (180), public/og.png (1200x630 share card),
+#    docs/assets/banner.png (README header).
 import base64, pathlib
 from playwright.sync_api import sync_playwright
 
@@ -26,6 +27,9 @@ def clouds(top, scale=1.0, flip=False):
 shots = {
     IOS / "AppIcon.appiconset/icon-1024.png": (1024, 1024, clouds(560, 1.6, True) + f'<div style="width:660px;position:relative;margin-top:-30px;{RIM}">{logo}</div>'),
     WEB / "public/apple-touch-icon.png": (180, 180, clouds(95, .3, True) + f'<div style="width:120px;position:relative;margin-top:-4px;{RIM.replace("6px", "2px")}">{logo}</div>'),
+    WEB.parent / "docs/assets/banner.png": (1280, 400, clouds(-90, 1.05) + f'''<div style="position:relative;display:flex;align-items:center;gap:30px">
+        <div style="width:170px;{RIM.replace("6px", "3px")}">{logo}</div><div style="color:#0e2440"><div style="font-size:84px;line-height:1">giggles <span style="color:#0a72d6">maps</span></div>
+        <div style="font:700 28px/1.3 Seed;margin-top:12px;color:#21456f">Extra time on your trip? Fill it with the best local stops in Thailand.</div></div></div>'''),
     WEB / "public/og.png": (1200, 630, clouds(-40, 1) + f'''<div style="position:relative;display:flex;align-items:center;gap:36px">
         <div style="width:250px;{RIM.replace("6px", "3px")}">{logo}</div><div style="color:#0e2440"><div style="font-size:96px;line-height:1">giggles <span style="color:#0a72d6">maps</span></div>
         <div style="font:700 34px/1.3 Seed;margin-top:14px;color:#21456f">Extra time on your trip? Fill it with<br>the best local stops in Thailand.</div></div></div>'''),

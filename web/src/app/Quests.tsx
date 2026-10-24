@@ -116,7 +116,19 @@ export default function Quests({ profile, refreshKey, onChange, onShop }: { prof
       {ready > 0 && <p className="hint chest-pop" role="status">{ready === 1 ? "A chest is" : `${ready} chests are`} ready to open: tap Claim.</p>}
       {msg && <p className="fine" role="status">{msg}</p>}
 
-      <VerifyLocal />
+
+      {!list && !msg && <section><div className="row between"><h3>Daily quests</h3></div><SkelQuests n={3} /></section>}
+      {list && GROUPS.map((g) => {
+        const items = list.filter((c) => c.kind === g.kind);
+        if (!items.length) return null;
+        return (
+          <section key={g.kind}>
+            <div className="row between"><h3>{g.title}</h3>{g.resets && <span className="chip"><Clock size={12} aria-hidden /> {left(g.resets)}</span>}</div>
+            <ul className="quest-list">{items.map((c) => <Quest key={`${c.slug}-${c.period ?? ""}`} c={c} onClaim={setOpening} />)}</ul>
+          </section>
+        );
+      })}
+      {/* the quests you can do today come first; teaming up and verifying shops follow (they pushed quests off the screen) */}
       <section className="friend-quest glass">
         <div className="row between"><h3><Users size={18} aria-hidden /> Friends Quest <Info label="About Friends Quest">Team up with one friend each week: collect 10 new
           stamps between you and you both get +150 XP and +40 coins.</Info></h3><span className="chip"><Clock size={12} aria-hidden /> {left("week")}</span></div>
@@ -138,18 +150,7 @@ export default function Quests({ profile, refreshKey, onChange, onShop }: { prof
           </li>)}</ul>
         </> : <p className="fine">Add a friend on your Profile to unlock Friends Quests.</p>}
       </section>
-
-      {!list && !msg && <section><div className="row between"><h3>Daily quests</h3></div><SkelQuests n={3} /></section>}
-      {list && GROUPS.map((g) => {
-        const items = list.filter((c) => c.kind === g.kind);
-        if (!items.length) return null;
-        return (
-          <section key={g.kind}>
-            <div className="row between"><h3>{g.title}</h3>{g.resets && <span className="chip"><Clock size={12} aria-hidden /> {left(g.resets)}</span>}</div>
-            <ul className="quest-list">{items.map((c) => <Quest key={`${c.slug}-${c.period ?? ""}`} c={c} onClaim={setOpening} />)}</ul>
-          </section>
-        );
-      })}
+      <VerifyLocal />
       {opening && <ChestOpen quest={opening} onClaimed={() => { load().catch(() => undefined); onChange(); }} onClose={() => setOpening(null)} />}
       <button type="button" className="link center" onClick={onShop}>Spend your coins in the shop</button>
     </div>

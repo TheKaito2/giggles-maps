@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useDialog } from "../../lib/useDialog";
 import { Share2, X } from "lucide-react";
 import ShareSheet from "../share/ShareSheet";
 import { errCode } from "../../lib/supabase";
@@ -24,12 +25,12 @@ export function prizeText(s: Pick<Shake, "prize" | "coins" | "xp" | "boost_hours
 
 /** The published odds (same numbers as the server's fortune_rarity). Luck perks (level rewards) divide the roll by 1 + 0.1 each,
  *  so every chance above Common grows by that factor (capped at 100% in total). */
-const BASE = { plain: [0.01, 0.09, 0.30], landmark: [0.03, 0.14, 0.38] };   // legendary, epic, rare
-function chances(b: number[], luck: number) {
+export const BASE = { plain: [0.01, 0.09, 0.30], landmark: [0.03, 0.14, 0.38] };   // legendary, epic, rare
+export function chances(b: number[], luck: number) {
   const f = 1 + 0.1 * luck, cum = [b[0], b[0] + b[1], b[0] + b[1] + b[2]].map((c) => Math.min(1, c * f));
   return { legendary: cum[0], epic: cum[1] - cum[0], rare: cum[2] - cum[1], common: 1 - cum[2] };
 }
-const pct = (x: number) => `${Math.round(x * 1000) / 10}%`;
+export const pct = (x: number) => `${Math.round(x * 1000) / 10}%`;
 export function OddsTable({ luck = 0 }: { luck?: number }) {
   const a = chances(BASE.plain, luck), l = chances(BASE.landmark, luck);
   return (
@@ -61,6 +62,7 @@ const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 export default function Fortune({ checkin, onClose, onShaken, name = "Explorer", hasPlus = false, luck = 0 }: {
   checkin?: string; onClose: () => void; onShaken: (s: Shake) => void; name?: string; hasPlus?: boolean; luck?: number;
 }) {
+  const stage = useDialog(onClose);   // Escape and Back close the ceremony, not the check-in under it
   const [phase, setPhase] = useState<Phase>("ready");
   const [shake, setShake] = useState<Shake | null>(null);
   const [error, setError] = useState("");
@@ -110,7 +112,8 @@ export default function Fortune({ checkin, onClose, onShaken, name = "Explorer",
   const f = shake ? FORTUNES[(shake.stick - 1) % FORTUNES.length] : null;
   const again = shake && shake.tickets > 0;
   return (
-    <div className={`fortune-stage phase-${phase}${shake ? ` r-${shake.rarity}` : ""}`} role="dialog" aria-modal="true" aria-labelledby="fortune-title">
+    <div className={`fortune-stage phase-${phase}${shake ? ` r-${shake.rarity}` : ""}`} role="dialog" aria-modal="true" aria-labelledby="fortune-title"
+      ref={stage} tabIndex={-1}>
       <button type="button" className="icon-btn fortune-close" onClick={onClose} aria-label="Close"><X size={20} /></button>
       <h2 id="fortune-title" className="fortune-title">เซียมซี <span>Siam Si</span></h2>
 

@@ -8,7 +8,8 @@ const config: CapacitorConfig = {
   ios: { path: "../ios", contentInset: "never", scheme: "Giggles Maps" },
   plugins: {
     Keyboard: { resize: "native" },   // the web view shrinks above the keyboard instead of the page sliding up
-    SplashScreen: { launchShowDuration: 600, backgroundColor: "#f3f4f9", showSpinner: false },
+    // the splash stays until the app has drawn its first frame (main.tsx hides it): no white flash on a cold start
+    SplashScreen: { launchAutoHide: false, launchFadeOutDuration: 250, backgroundColor: "#7cc6ff", showSpinner: false },
   },
 };
 export default config;

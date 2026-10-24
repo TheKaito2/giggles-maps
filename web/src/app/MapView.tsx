@@ -81,6 +81,9 @@ export default function MapView({ origin, dest, stops, geometry, alternates = NO
       attributionControl: { compact: true, customAttribution: "Routing: Valhalla" },
     });
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    // the credits start folded into their (i) button (a short "© OpenStreetMap" stays visible, see app.css); the open
+    // two-line pill sat in the middle of a phone screen
+    m.once("load", () => box.current?.querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show"));
     // follow the box, not just the window: the iOS app's web view settles its size after the map is made
     const sized = new ResizeObserver(() => m.resize());
     sized.observe(box.current!);

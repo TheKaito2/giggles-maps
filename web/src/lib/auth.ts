@@ -54,8 +54,16 @@ export async function resumeSignIn(fromApp?: URLSearchParams): Promise<string | 
     await go(data.url);
     return null;
   }
-  return params.get("error_description")?.replace(/\+/g, " ") ?? "Sign-in didn't finish. Try again.";
+  // our own words for the codes we know; never echo error_description, which anyone can put in a link to this domain
+  return AUTH_ERRORS[code] ?? "Sign-in didn't finish. Try again.";
 }
+
+const AUTH_ERRORS: Record<string, string> = {
+  otp_expired: "That sign-in link has expired. Ask for a new one.",
+  access_denied: "Sign-in was cancelled.",
+  identity_already_exists: "That account is already linked to another Giggles Maps account.",
+  email_exists: "That email already has an account. Sign in with it instead.",
+};
 
 // Email: a guest adds an email to the same account (confirm link). If that email already has an
 // account, send a normal sign-in link instead.

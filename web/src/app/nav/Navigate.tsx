@@ -223,14 +223,15 @@ export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
       <div className="nav-bottom">
         <div className="nav-eta">
           {remainingMin != null && <><b className="num">{clock(remainingMin)}</b><span className="fine num">{Math.round(remainingMin)} min · {fmtM(prog!.remainingM)}</span></>}
-          {left.length > 1 && <span className="fine">Next stop: {left[0].name}</span>}
+          {/* at a stop, "next" is the one after it */}
+          {left.filter((w) => w !== atStop).length > 1 && <span className="fine">Next stop: {left.filter((w) => w !== atStop)[0].name}</span>}
         </div>
         <div className="row">
           <button type="button" className="icon-btn" onClick={() => setMuted(!muted)} aria-label={muted ? "Unmute voice" : "Mute voice"}>{muted ? <VolumeX /> : <Volume2 />}</button>
           <button type="button" className="icon-btn" onClick={() => setLang(lang === "th" ? "en" : "th")} aria-label="Voice language"><Languages /><span className="fine">{lang.toUpperCase()}</span></button>
           <button type="button" className={`icon-btn${share ? " on" : ""}`} onClick={startShare} aria-label="Share live ETA"><Share2 /></button>
           {demoOn() && left[0] && !atStop && <button type="button" className="btn small demo-ff" onClick={fastForward} disabled={!route || driving}>
-            <FastForward size={16} aria-hidden /> {driving ? "Driving…" : `Demo: to ${left[0].name.split(" (")[0].slice(0, 18)}`}</button>}
+            <FastForward size={16} aria-hidden /> {driving ? "Driving…" : "Demo drive"}</button>}
           <button type="button" className="btn danger-btn small" onClick={end}><X size={16} aria-hidden /> End</button>
         </div>
         {mode === "auto" && <div className="row nav-avoid">

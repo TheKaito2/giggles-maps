@@ -1,13 +1,12 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ChevronDown, Flag, GripVertical, MoreHorizontal, Plus, Search, Trash2, Camera, X } from "lucide-react";
-import { useDialog } from "../../lib/useDialog";
+import Modal from "../Modal";
 import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, type RouteStop, routePlaces, searchPlaces, TIER_NAME } from "../../lib/api";
 import { CHIPS } from "../ExploreChips";
 import { SkelRows } from "../Skeleton";
 import { GROUPS, kindOf } from "../kinds";
 import { budgetLabel, hhmm, MEALS, startMin } from "../prefs";
 import { type Detour, PRESETS } from "./useDetour";
-import { arrive } from "./Choose";
 import PlanProgress from "./PlanProgress";
 import Info from "../Info";
 import { metres } from "../nav/progress";
@@ -49,9 +48,13 @@ interface Row { id: number; name: string; name_th: string | null; category: stri
   extra: number; estimate: boolean; rating: number | null }
 
 const MOVE = { pedestrian: "walk", bicycle: "ride", auto: "drive" } as const;
-/** "12 min drive · 15 min there · leave 10:31": how you get to a stop and how long you have there (`travel` null = hidden, e.g. mid-drag) */
-const legLine = (travel: number | null, mode: keyof typeof MOVE, dwell?: number, leave?: number) => travel == null ? null
-  : [`${Math.max(0, Math.round(travel))} min ${MOVE[mode]}`, dwell != null && `${dwell} min there`, leave != null && `leave ${hhmm(leave)}`].filter(Boolean).join(" · ");
+/** "12 min drive · 20 min wait · 45 min there · leave 12:31": how you get to a stop, any wait for a meal time, and how long you have
+ *  there. `gap` = minutes from leaving the last stop to arriving here; `travel` = the road part of it, when the plan says. */
+const legLine = (gap: number, mode: keyof typeof MOVE, travel?: number, dwell?: number, leave?: number) => {
+  const road = Math.max(0, Math.round(travel ?? gap)), wait = Math.round(gap - road);
+  return [`${road} min ${MOVE[mode]}`, wait >= 2 && `${wait} min wait`, dwell != null && `${dwell} min there`, leave != null && `leave ${hhmm(leave)}`]
+    .filter(Boolean).join(" · ");
+};
 
 function StopRow({ s, i, d, sel, dragging, travel, onDrag, onStep, onOpen, onCheckin }: { s: RouteStop; i: number; d: Detour; sel: boolean; dragging: boolean; travel: number | null;
   onDrag: (e: React.PointerEvent) => void; onStep: (by: number) => void; onOpen: (s: RouteStop) => void; onCheckin: (t: CheckinTarget) => void }) {
@@ -79,7 +82,8 @@ function StopRow({ s, i, d, sel, dragging, travel, onDrag, onStep, onOpen, onChe
           <b>{s.name}</b>
           <span className="stop-meta"><b className="num" aria-label={`Arrive ${hhmm(s.eta_min)}`}>{hhmm(s.eta_min)}</b>{s.extra_min != null && <b className="num extra">+{s.extra_min} min</b>}
             <span className="fine">{kindOf(s.pit_stop ? "convenience" : null, s.category).en}{s.rating != null && ` · ★ ${s.rating.toFixed(1)}`}</span></span>
-          {travel != null && <span className="fine num stop-leg">{legLine(travel, d.prefs.mode, s.dwell_min, s.eta_min + s.dwell_min)}</span>}
+          {/* mid-drag the numbers are stale: hidden, but keeping their space so rows don't jump under your finger */}
+          <span className={`fine num stop-leg${travel == null ? " stale" : ""}`}>{legLine(travel ?? 0, d.prefs.mode, s.travel_min, s.dwell_min, s.eta_min + s.dwell_min)}</span>
           {tags.length > 0 && <span className="row tight">{tags.map((b) => <span key={b.text} className={`chip ${b.cls}`} title={b.title}>{b.text}</span>)}</span>}
         </span>
       </button>
@@ -200,21 +204,18 @@ function AddStopSheet({ places, d, full, at, onClose }: { places: AlongPlace[]; 
   const where = at === 0 ? `before ${stops[0]?.name ?? "your first stop"}` : at >= stops.length ? `after ${stops.at(-1)?.name ?? "your last stop"}`
     : `between ${stops[at - 1].name} and ${stops[at].name}`;
   const leg = d.plan?.geometry?.length ? stretch(d.plan.geometry, stops, at) : [];
-  const box = useDialog(onClose);
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="Add a stop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal add-stop" ref={box} tabIndex={-1}>
-        <header className="modal-head"><span><h2>Add a stop</h2><span className="fine">It goes right here, {where}.</span></span>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button></header>
-        {leg.length > 1 ? <AlongList places={places} d={d} full={full} limit={30} at={at} leg={leg} onAdded={onClose} /> : <p className="fine">Nothing on this stretch.</p>}
-      </div>
-    </div>
+    <Modal label="Add a stop" className="add-stop" onClose={onClose}>
+      <header className="modal-head"><span><h2>Add a stop</h2><span className="fine">It goes right here, {where}.</span></span>
+        <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button></header>
+      {leg.length > 1 ? <AlongList places={places} d={d} full={full} limit={30} at={at} leg={leg} onAdded={onClose} /> : <p className="fine">Nothing on this stretch.</p>}
+    </Modal>
   );
 }
 
 /** The small + between stops: shows when you hover the stop next to it (always, faintly, on touch screens). */
-const AddGap = ({ onAdd }: { onAdd: () => void }) =>
-  <li className="add-gap"><button type="button" className="add-here" onClick={onAdd} aria-label="Add a stop here"><Plus size={14} aria-hidden /></button></li>;
+const AddGap = ({ onAdd, hidden }: { onAdd: () => void; hidden: boolean }) =>
+  <li className="add-gap" hidden={hidden}><button type="button" className="add-here" onClick={onAdd} aria-label="Add a stop here"><Plus size={14} aria-hidden /></button></li>;
 
 /** Step 3: plan cards to compare, then the stops you can remove (the plan refills the gap) or add to. */
 export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour; selected: number | null; onOpen: (s: RouteStop) => void; onCheckin: (t: CheckinTarget) => void }) {
@@ -300,7 +301,7 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
 
       <div className="trip-sum">
         <p className="trip-figures">
-          <span><b className="num big">{arrive(d.prefs, plan)}</b> <small>arrive</small></span>
+          <span><b className="num big">{hhmm(start + plan.total_min)}</b> <small>arrive</small></span>
           <span><b className="num">{plan.total_min}</b> <small>min trip</small></span>
           <span><b className="num">+{plan.extra_min}</b> <small>min vs straight</small></span>
           {plan.road_extra_min != null && plan.stops.length > 0 && <button type="button" className="link small-link" aria-expanded={details} onClick={() => setDetails(!details)}>
@@ -318,11 +319,11 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
             ? "Couldn't check road times right now. Try again in a moment." : "No stops fit this much time. Try a longer option or fewer filters."}</p>
         : <ol className="stop-rows" ref={rows}>
             {shown.map((s, i) => <Fragment key={s.id}>
-              {i === 0 && !order && <AddGap onAdd={() => setAdding(0)} />}
+              {i === 0 && <AddGap hidden={!!order} onAdd={() => setAdding(0)} />}
               <StopRow s={s} i={i} d={d} sel={selected === s.id} dragging={dragId === s.id} onDrag={(e) => drag(s.id, e)} onStep={(by) => step(s.id, by)}
                 travel={order ? null : s.eta_min - (i ? shown[i - 1].eta_min + shown[i - 1].dwell_min : start)}
                 onOpen={onOpen} onCheckin={onCheckin} />
-              {!order && <AddGap onAdd={() => setAdding(i + 1)} />}
+              <AddGap hidden={!!order} onAdd={() => setAdding(i + 1)} />
             </Fragment>)}
             {!order && shown.length > 0 && <li className="stop-row dest-row">
               <span className="stop-num dest" aria-hidden><Flag size={12} /></span>

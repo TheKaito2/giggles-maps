@@ -13,10 +13,10 @@ export function loadLook(): MapLook {
 }
 export function saveLook(look: MapLook) { try { localStorage.setItem(KEY, JSON.stringify(look)); } catch { /* private mode: not remembered */ } }
 
-// ponytail: fixed 18:30-06:00 for Thailand, sunset times if the app goes beyond the tropics
-/** Auto: night when the app is in dark mode, or after dark (18:30-06:00). */
-export const isNight = (night: Night, dark = document.documentElement.dataset.theme === "dark", d = new Date()) =>
-  night === "on" || (night === "auto" && (dark || d.getHours() * 60 + d.getMinutes() >= 18 * 60 + 30 || d.getHours() < 6));
+/** Auto: the map is dark exactly when the app is (Settings > Appearance, which can follow the phone). A dark map under a light
+ *  app read as broken, so the old 18:30 clock rule is gone; "On" still forces it. */
+export const isNight = (night: Night, dark = document.documentElement.dataset.theme === "dark") =>
+  night === "on" || (night === "auto" && dark);
 
 /** Online basemap: the coin-shop skin by day, OpenFreeMap's dark style at night. */
 export const styleUrl = (skin: string, night: boolean) =>

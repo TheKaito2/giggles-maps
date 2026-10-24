@@ -6,33 +6,37 @@
 .wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
 .fine { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--ink-2); }
 .lede { font-size: var(--fs-headline); line-height: var(--lh-headline); color: var(--ink-2); max-width: 34ch; }
+/* the page opens under the sky: clouds on blue, fading into the page haze */
+body { background: url(/sky-day.svg) top center / max(100%, 1240px) auto no-repeat,
+  linear-gradient(180deg, #4fb0ff 0, #a9dbff 520px, var(--paper) 900px) no-repeat, var(--paper); }
 main { display: grid; gap: clamp(72px, 10vw, 120px); padding-bottom: 72px; overflow-x: clip; }
 main h2 { font: 700 var(--fs-land-h2)/1.2 var(--font-display); text-align: center; }
 
 /* nav: sticky; compact (smaller, shadow, gold CTA) once the hero is gone */
-.nav { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(10px);
-  transition: box-shadow .2s ease; }
+.nav { position: sticky; top: 0; z-index: 10; background: transparent; transition: box-shadow .2s ease, background .2s ease; }
 .nav-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-block: 16px; transition: padding .2s ease; }
 .nav nav { display: flex; gap: 18px; align-items: center; }
 .nav-link { color: var(--ink); font-weight: 700; font-size: var(--fs-label); text-decoration: none; white-space: nowrap; }
-.nav.compact { box-shadow: 0 1px 0 var(--line), 0 6px 18px rgb(22 27 61 / .06); }
+.nav.compact { background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(10px); box-shadow: 0 1px 0 var(--line), 0 6px 18px rgb(22 27 61 / .06); }
 .nav.compact .nav-row { padding-block: 8px; }
 .nav.compact .btn { background: var(--marigold); color: #241a00; }
-.brand { font-family: var(--font-display); font-weight: 700; font-size: 24px; color: var(--brand); text-decoration: none; white-space: nowrap; }
-.brand span { color: var(--marigold); }
+.brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 700; font-size: 26px; color: var(--ink);
+  text-decoration: none; white-space: nowrap; }
+.brand span { color: var(--brand); }
+.brand img { width: 40px; height: 40px; filter: drop-shadow(0 2px 6px rgb(10 80 160 / .25)); }
 .btn { white-space: nowrap; }
 .btn.small { padding: 8px 16px; }
 .btn.big { padding: 15px 28px; font-size: var(--fs-body); }
 
 /* phone frame around a 390×844 screenshot */
-.phone { margin: 0; width: min(100%, 300px); aspect-ratio: 390 / 844; border-radius: 40px; padding: 9px; background: #161b3d;
-  box-shadow: 0 24px 60px rgb(22 27 61 / .22), inset 0 0 0 2px #2c3158; justify-self: center; }
+.phone { margin: 0; width: min(100%, 300px); aspect-ratio: 390 / 844; border-radius: 40px; padding: 9px; background: #0e2440;
+  box-shadow: 0 24px 60px rgb(10 60 120 / .28), inset 0 0 0 2px #24406b; justify-self: center; }
 .phone img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 32px; background: var(--card); }
 
 .hero { display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; align-items: center; padding-top: 24px; }
 .hero h1 { font: 700 var(--fs-land-hero)/1.12 var(--font-display); text-wrap: wrap; }
 .hero h1 em { font-style: normal; color: var(--brand); display: block; }
-.hero .lede { margin-top: 18px; }
+.hero .lede { margin-top: 18px; color: var(--ink); }
 .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; margin-top: 28px; }
 .text-link { font-weight: 700; color: var(--brand); text-decoration: none; }
 .text-link:hover { text-decoration: underline; }
@@ -62,9 +66,7 @@ main h2 { font: 700 var(--fs-land-h2)/1.2 var(--font-display); text-align: cente
 .feature h3 { font: 700 var(--fs-land-h3)/1.2 var(--font-display); }
 .feature p { font-size: var(--fs-headline); line-height: var(--lh-headline); color: var(--ink-2); }
 .feature .phone { width: min(100%, 270px); }
-.c-indigo { color: var(--brand); } .c-marigold { color: #b07c00; } .c-good { color: var(--good); } .c-stamp { color: var(--stamp); }
-:root[data-theme="dark"] .c-marigold { color: var(--marigold); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .c-marigold { color: var(--marigold); } }
+.c-indigo { color: var(--brand); } .c-marigold { color: var(--gold-ink); } .c-good { color: var(--good); } .c-stamp { color: var(--stamp); }
 @media (max-width: 720px) {
   .feature { grid-template-columns: 1fr; gap: 24px; text-align: center; }
   .feature:nth-of-type(even) .feature-copy { order: 0; }
@@ -82,13 +84,12 @@ main h2 { font: 700 var(--fs-land-h2)/1.2 var(--font-display); text-align: cente
 .plan.best .chip { background: var(--marigold); color: #241a00; }
 .plans > .fine { text-align: center; }
 
-.shops { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 32px; background: var(--brand); color: #fff;
+.shops { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 32px; color: #fff;
+  background: url(/sky-day.svg) center 120% / 140% auto no-repeat, linear-gradient(160deg, #2f9bff, #0a62c4);
   border-radius: 28px; padding: 40px clamp(24px, 5vw, 56px); }
 .shops h2 { text-align: left; color: #fff; }
 .shops p { margin-top: 8px; color: rgb(255 255 255 / .85); max-width: 46ch; font-size: var(--fs-headline); line-height: var(--lh-headline); }
-.shops .btn { background: #fff; color: #27348b; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .shops { background: #1d2550; } }
-:root[data-theme="dark"] .shops { background: #1d2550; }
+.shops .btn { background: #fff; color: var(--brand); }
 
 .faq { display: grid; gap: 12px; max-width: 760px; }
 .faq h2 { margin-bottom: 12px; }
@@ -102,6 +103,8 @@ main h2 { font: 700 var(--fs-land-h2)/1.2 var(--font-display); text-align: cente
 @media (max-width: 420px) {
   .nav-row { padding-inline: 14px; gap: 8px; }
   .nav nav { gap: 12px; }
-  .brand { font-size: 20px; }
+  .brand { font-size: 20px; gap: 6px; }
+  .brand img { width: 32px; height: 32px; }
+  .nav .nav-link { display: none; }   /* "I run a shop" sits under the headline */
   .nav .btn.small { padding: 8px 12px; }
 }

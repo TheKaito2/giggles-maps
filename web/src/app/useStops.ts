@@ -14,12 +14,16 @@ export function useStops(refreshKey: number) {
   const loadedAt = useRef<LatLng | null>(null);
   const watchId = useRef<number | null>(null);
 
+  const [problem, setProblem] = useState("");   // why stops near you can't show (the button gave no feedback before)
   const start = useCallback(() => {
-    if (watchId.current != null || !navigator.geolocation) return;
-    setWatching(true);
+    if (watchId.current != null) return;
+    if (!navigator.geolocation) { setProblem("This browser can't share your location."); return; }
+    setWatching(true); setProblem("");
     watchId.current = navigator.geolocation.watchPosition(
       (p) => setHere({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => { setWatching(false); watchId.current = null; },
+      (e) => { setWatching(false); watchId.current = null;
+        setProblem(e.code === e.PERMISSION_DENIED ? "Location is off for Giggles Maps. Turn it on in your browser or phone settings to see stops near you."
+          : "Couldn't find where you are. Try again outdoors or in a moment."); },
       { enableHighAccuracy: true, maximumAge: 10_000 });
   }, []);
 
@@ -46,5 +50,5 @@ export function useStops(refreshKey: number) {
         .sort((a, b) => Number(a.stamped) - Number(b.stamped) || b.tier - a.tier || metres(here, a) - metres(here, b))
     : [], [here, stops]);
   const inZoneIds = useMemo(() => inZone.map((s) => s.id), [inZone]);
-  return { here, stops, inZone, inZoneIds, watching, start };
+  return { here, stops, inZone, inZoneIds, watching, start, problem };
 }

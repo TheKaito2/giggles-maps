@@ -9,13 +9,13 @@ import { DEFAULT_PREFS, MAX_BUDGET, type Place, type Prefs, toRequest } from "..
 // are planned in parallel; none is picked until you tap one) -> results you can edit (remove or add stops).
 type Stage = "browse" | "choose" | "results";
 export const PRESETS = [
-  { id: "quick", label: "Quick", min: 20, blurb: "A quick sight and a 7-Eleven stop" },
+  { id: "quick", label: "Quick", min: 20, blurb: "One or two quick stops" },
   { id: "relaxed", label: "Relaxed", min: 45, blurb: "The best along the way" },
   { id: "day", label: "Day out", min: 120, blurb: "Make a trip of it" },
   { id: "half", label: "Half day", min: 240, blurb: "Room for a long wander" },
 ] as const;
 export type PresetId = (typeof PRESETS)[number]["id"] | "custom";
-type Result = RoutePlan | "loading" | { error: string };
+type Result = RoutePlan | "loading" | { error: string; gate?: boolean };   // gate: sign in or upgrade, not worth a retry
 // v5: why a plan was refused, for the sign-in / membership sheet
 export type Gate = "sign_in_required" | "detour_limit" | "edit_limit";
 const GATES = new Set<string>(["sign_in_required", "detour_limit", "edit_limit"]);
@@ -23,7 +23,7 @@ const GATES = new Set<string>(["sign_in_required", "detour_limit", "edit_limit"]
 const errorText = (e: unknown) => {
   const code = errCode(e);
   return code === "routing_unavailable" ? "Couldn't find a road route. Try another way to travel, or retry in a moment."
-    : code === "sign_in_required" ? "Sign in to plan detours."
+    : code === "sign_in_required" ? "Guests try one detour a day. Sign in free for 3."
     : code === "detour_limit" ? "That's today's 3 free detours."
     : code === "edit_limit" ? "That's today's 10 free changes."
     : code === "slow_down" ? "Lots of plans at once. Wait a moment, then try again."
@@ -73,7 +73,7 @@ export function useDetour(onError: (m: string) => void) {
     setResults((all) => ({ ...all, [k]: "loading" }));
     planRoute(toRequest({ ...prefs, budget: budgetOf(k) }, origin.point, dest.point))
       .then((r) => { if (id === request.current) setResults((all) => ({ ...all, [k]: r })); })
-      .catch((e) => { if (id === request.current) { gated(e); setResults((all) => ({ ...all, [k]: { error: errorText(e) } })); } });
+      .catch((e) => { if (id === request.current) { gated(e); setResults((all) => ({ ...all, [k]: { error: errorText(e), gate: GATES.has(errCode(e)) } })); } });
   };
   // a new trip plans all four options at once (Relaxed first), plus a custom time if that's the one picked;
   // the cards fill in as each returns
@@ -83,14 +83,13 @@ export function useDetour(onError: (m: string) => void) {
     setExclude([]); setChoice(null); setHidden([]); setResults({});
     if (stage === "browse" || !origin || !dest) return;
     const ids: PresetId[] = ["relaxed", "quick", "day", "half", ...(preset === "custom" ? ["custom" as const] : [])];
-    // detours need an account (v5): ask a guest to sign in instead of sending plans the server refuses
-    if (guest) { setGate("sign_in_required"); setResults(Object.fromEntries(ids.map((k) => [k, { error: "Sign in to plan detours." }]))); return; }
+    // guests plan too (one destination a day, server-side): the server answers sign_in_required after that
     setResults(Object.fromEntries(ids.map((k) => [k, "loading"])));
     // a short pause first: tapping several filter chips in a row sends one round of plans, not one per tap
     const t = setTimeout(() => { for (const k of ids) planPreset(k, id); }, 400);
     return () => clearTimeout(t);
   }, [origin, dest, prefs, stage === "browse", guest, again]); // eslint-disable-line react-hooks/exhaustive-deps
-  const retry = (k: PresetId) => guest ? setGate("sign_in_required") : planPreset(k, request.current);
+  const retry = (k: PresetId) => planPreset(k, request.current);
 
   const goTo = async (place: Place) => {
     setDest(place); setStage("choose"); setPreset(null);
@@ -102,7 +101,6 @@ export function useDetour(onError: (m: string) => void) {
   const choosePreset = (id: PresetId) => {
     edit.current++; setPreset(id); setChoice(null); setExclude([]); setEditing(false); setHidden([]);
     const r = results[id];
-    if (guest) { setGate("sign_in_required"); return; }
     if (!r || (typeof r === "object" && "error" in r)) planPreset(id, request.current);
   };
   // a new custom time changes the trip, and the effect above plans it; the same time again just picks it

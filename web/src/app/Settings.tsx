@@ -84,7 +84,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
     try {
       await callFn("delete-account", {});
       await supabase.auth.signOut();
-      setMsg("Account deleted. A fresh guest passport starts next time you plan a route.");
+      setMsg("Account deleted. You're a fresh guest now, with an empty passport.");
       setPage("home");
     } catch { setMsg("Couldn't delete the account. Try again."); }
   };
@@ -105,7 +105,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
 
       {page === "home" && <div className="set-page" key="home">
         <section className="set-me">
-          <Avatar name={profile?.nickname ?? "You"} colour={profile?.colour ?? "marigold"} avatar={profile?.avatar} size={56} />
+          <Avatar name={profile?.nickname ?? "Explorer"} colour={profile?.colour ?? "marigold"} avatar={profile?.avatar} size={56} />
           <span className="set-me-text">
             <b>{profile?.nickname ?? "Explorer"}</b>
             <span className="fine">{guest ? "Guest · not signed in" : user?.email ?? "Signed in"}</span>

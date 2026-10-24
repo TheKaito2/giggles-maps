@@ -35,6 +35,8 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions, 
   const [places, setPlaces] = useState<FoundPlace[]>([]);
   const [addresses, setAddresses] = useState<FoundPlace[]>([]);
   const [message, setMessage] = useState("");
+  // the text both searches (places, addresses) have answered for: when both found nothing, say so instead of an empty list
+  const [settled, setSettled] = useState({ places: "", addresses: "" });
   const request = useRef(0);
   useEffect(() => setQuery(value), [value]);
 
@@ -57,12 +59,14 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions, 
       searchPlaces(text, near).then((r) => {
         cache.current.set(key, r.slice(0, 6));
         if (id > shown.current.places && id <= request.current) { shown.current.places = id; setPlaces(r.slice(0, 6)); setMessage(""); }
+        if (id === request.current) setSettled((x) => ({ ...x, places: text }));
       }).catch(() => { if (id === request.current) setMessage("Search is unavailable. Pick on the map instead."); });
     }, 100);
     // addresses (Photon, fair use): 3+ letters, a short pause, the previous request cancelled
     const t2 = text.length >= 3 ? setTimeout(() => {
       searchAddresses(text, near, abort.signal).then((r) => {
         if (id > shown.current.addresses && id <= request.current) { shown.current.addresses = id; setAddresses(r.slice(0, 4)); }
+        if (id === request.current) setSettled((x) => ({ ...x, addresses: text }));
       }).catch(() => undefined);   // cancelled or Photon down: places still show
     }, 300) : undefined;
     return () => { clearTimeout(t1); clearTimeout(t2); abort.abort(); };
@@ -103,6 +107,10 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions, 
     );
   };
 
+  const typed = query.trim();
+  const nothing = typed.length >= 2 && typed !== value && !places.length && !addresses.length && settled.places === typed
+    && (typed.length < 3 || settled.addresses === typed);
+
   return (
     <div className="place-field">
       <div className="place-row">
@@ -114,14 +122,14 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions, 
             if (e.relatedTarget && e.currentTarget.closest(".place-field")?.contains(e.relatedTarget as Node)) return;
             setTimeout(() => { setOpen(false); setQuery((q) => q.trim() ? q : value); }, 150);
           }}
-          onChange={(e) => { setQuery(e.target.value); setMessage(""); }}
+          onChange={(e) => { setQuery(e.target.value); setMessage(""); setOpen(true); }}
           onKeyDown={(e) => {
             if (e.key === "Enter") { e.preventDefault(); enter(); }
             if (e.key === "Escape") { setOpen(false); setQuery(value); }
           }} />
         {actions}
       </div>
-      {open && (recent.length > 0 || places.length > 0 || addresses.length > 0 || message || footer) && (
+      {open && (recent.length > 0 || places.length > 0 || addresses.length > 0 || message || footer || nothing) && (
         <ul className="place-results" aria-label={`${label} suggestions`}>
           {recent.length > 0 && <li className="results-head fine">Recent</li>}
           {recent.map((p, i) => row(p, i, true))}
@@ -130,6 +138,7 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions, 
           {addresses.length > 0 && <li className="results-head fine">Addresses</li>}
           {addresses.map((p, i) => row(p, i))}
           {message && <li className="fine msg" role="status">{message}</li>}
+          {nothing && !message && <li className="fine msg" role="status">Nothing found for “{query.trim()}”. Try another spelling, or pick it on the map.</li>}
           {footer}
         </ul>
       )}

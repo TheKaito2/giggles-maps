@@ -107,7 +107,7 @@ export default function RideAlong({ trip: t, profile }: { trip: TripState; profi
       <section className="me-card glass">
         <div className="row between">
           <span className="person-main"><b>{trip.name ?? "Ride along"}</b>
-            <span className="fine">Live until {clockTime(trip.ends_at)} · code <b className="num">{trip.code}</b></span></span>
+            <span className="fine">Live until {clockTime(trip.ends_at)}</span><span className="fine trip-code">Code <b className="num">{trip.code}</b></span></span>
           <button type="button" className="btn ghost" onClick={() => { if (confirm(trip.owner ? "End the trip for everyone?" : "Leave this trip?")) t.leave(); }}>
             <LogOut size={15} aria-hidden /> {trip.owner ? "End trip" : "Leave"}</button>
         </div>

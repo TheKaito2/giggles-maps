@@ -124,12 +124,12 @@ export default function Leaderboard({ profile, onChange }: { profile: Profile | 
       {error ? <p className="fine">Couldn't load the board. Try again.</p> : !current ? <SkelBoard /> : <>
         {podium.length > 0 && <ol className="podium" aria-label="Top 3">
           {[podium[1], podium[0], podium[2]].filter(Boolean).map((c) => (
-            <li key={c.id} className={`place-${c.rank}`}>
+            <li key={c.id} className={`place-${podium.indexOf(c) + 1}`}>
               <div className="podium-who">
-                <Avatar name={c.nickname} colour={c.colour} avatar={c.avatar} size={c.rank === 1 ? 76 : 60} />
+                <Avatar name={c.nickname} colour={c.colour} avatar={c.avatar} size={podium.indexOf(c) === 0 ? 76 : 60} />
                 <b>{c.nickname}</b><span className="num fine">{c.value} {unit(c.value)}</span>
               </div>
-              <span className="podium-block num">{c.rank}</span>
+              <span className="podium-block num">{podium.indexOf(c) + 1}</span>{/* the step's place, even when two players tie on rank */}
             </li>
           ))}
         </ol>}

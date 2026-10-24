@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Modal from "../Modal";
 import { errCode } from "../../lib/supabase";
 import { COLOURS, setMe } from "../../lib/api";
 import Avatar from "./Avatar";
@@ -13,11 +14,10 @@ export default function Nickname({ current, colour: initialColour, onDone, onLat
   const save = async () => {
     setMsg("");
     try { await setMe({ nickname: name, colour }); onDone(); }
-    catch (e) { setMsg(errCode(e) === "bad_nickname" ? "Use 2 to 20 letters or numbers." : "Couldn't save. Try again."); }
+    catch (e) { setMsg(errCode(e) === "bad_nickname" ? "Use 2 to 20 characters (Thai, English, numbers or emoji)." : "Couldn't save. Try again."); }
   };
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="nick-title">
-      <form className="modal" onSubmit={(e) => { e.preventDefault(); save(); }}>
+    <Modal labelledBy="nick-title" onClose={onLater} onSubmit={save}>
         <header className="modal-head">
           <h2 id="nick-title">{current ? "Your name and colour" : "Pick a traveller name"}</h2>
           <button type="button" className="icon-btn" onClick={onLater} aria-label="Close">✕</button>
@@ -39,7 +39,6 @@ export default function Nickname({ current, colour: initialColour, onDone, onLat
           <button className="btn" type="submit" disabled={name.trim().length < 2}>Save</button>
           {!current && <button className="btn ghost" type="button" onClick={onLater}>Later</button>}
         </div>
-      </form>
-    </div>
+    </Modal>
   );
 }

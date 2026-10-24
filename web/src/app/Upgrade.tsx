@@ -11,7 +11,7 @@ import RewardedAd from "./RewardedAd";
 type Why = Gate | "ads";
 const TITLE: Record<Why, string> = {
   ads: "Go ad-free",
-  sign_in_required: "Sign in to plan detours",
+  sign_in_required: "Sign in to plan more detours",
   detour_limit: "That's today's free detours",
   edit_limit: "That's today's free changes",
 };
@@ -39,7 +39,7 @@ export default function Upgrade({ gate, onClose, onRewarded }: { gate: Why; onCl
         <header className="modal-head"><h2>{TITLE[gate]}</h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button></header>
         {gate === "sign_in_required" || (gate === "ads" && guest) ? <>
-          <p className="fine">{gate === "ads" ? "Sign in first, so it stays with your account." : "Free accounts plan 3 detours a day. Your stamps and photos come with you."}</p>
+          <p className="fine">{gate === "ads" ? "Sign in first, so it stays with your account." : "Guests try one detour a day; a free account plans 3. Your stamps and photos come with you."}</p>
           <SignIn />
         </> : <>
           {usage && <div className="usage-row">

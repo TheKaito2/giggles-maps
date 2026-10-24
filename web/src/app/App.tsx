@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { Bell, Camera, Coins, LocateFixed, Map as MapIcon, Navigation, Swords, Trophy, UserRound, X } from "lucide-react";
+import { Camera, Coins, LocateFixed, Map as MapIcon, Navigation, ScrollText, Trophy, UserRound, Users, X } from "lucide-react";
 import { ensureSession, supabase } from "../lib/supabase";
 import { addFriend, adFree, type CheckinTarget, getProfile, type LatLng, levelFor, levelProgress, pendingLevels, plusDaily, type Profile, readCodeParam, readScanParam } from "../lib/api";
 import Sheet, { type Snap } from "./detour/Sheet";
@@ -21,6 +21,9 @@ import ExploreChips, { CHIPS } from "./ExploreChips";
 import DemoBar from "./DemoBar";
 import { demoOn, onDemoChange } from "../lib/demoGps";
 import { SkelLines } from "./Skeleton";
+import Boundary from "./Boundary";
+import Modal from "./Modal";
+import { dialogsOpen, quietBack } from "../lib/useDialog";
 
 // Only the map and the detour sheet load up front; tabs and sheets arrive when first opened.
 const MapView = lazy(() => import("./MapView"));   // maplibre is most of the code: the sheet paints first
@@ -38,10 +41,11 @@ const Navigate = lazy(() => import("./nav/Navigate"));
 const EtaView = lazy(() => import("./nav/EtaView"));
 
 type Tab = "map" | "board" | "quests" | "feed" | "profile";
-const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "map", label: "Map", icon: <MapIcon size={24} /> }, { id: "board", label: "Leaderboard", icon: <Trophy size={24} /> },
-  { id: "quests", label: "Quests", icon: <Swords size={24} /> }, { id: "feed", label: "Feed", icon: <Bell size={24} /> },
-  { id: "profile", label: "Profile", icon: <UserRound size={24} /> },
+// short = the phone tab bar's caption (icons alone were guesswork: swords read "battle", a bell reads "notifications")
+const TABS: { id: Tab; label: string; short: string; icon: React.ReactNode }[] = [
+  { id: "map", label: "Map", short: "Map", icon: <MapIcon size={24} /> }, { id: "board", label: "Leaderboard", short: "Ranks", icon: <Trophy size={24} /> },
+  { id: "quests", label: "Quests", short: "Quests", icon: <ScrollText size={24} /> }, { id: "feed", label: "Feed", short: "Feed", icon: <Users size={24} /> },
+  { id: "profile", label: "Profile", short: "Profile", icon: <UserRound size={24} /> },
 ];
 
 // shared empty arrays: a fresh [] each render would make the map refit the route on every position update
@@ -50,7 +54,24 @@ const NONE: never[] = [];
 const TIER_WORD = { 3: "landmark", 2: "worth-a-visit", 1: "everyday" } as const;
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>(() => readCodeParam("friend") ? "profile" : "map");
+  const [tab, setTabState] = useState<Tab>(() => readCodeParam("friend") ? "profile" : "map");
+  // Back (phone gesture, browser button) from another tab comes back to the map in one step instead of leaving the app:
+  // map → a tab adds one history entry, tab → tab replaces it, tab → map by the tab bar drops it
+  const tabNow = useRef(tab);
+  const setTab = useCallback((t: Tab) => {
+    const from = tabNow.current;
+    if (t === from) return;
+    if (from === "map") history.pushState({ ...history.state, gmTab: t }, "");
+    else if (t !== "map") history.replaceState({ ...history.state, gmTab: t }, "");
+    else if (history.state?.gmTab) quietBack();
+    tabNow.current = t;
+    setTabState(t);
+  }, []);
+  useEffect(() => {
+    const pop = () => { if (!dialogsOpen() && !history.state?.gmTab && tabNow.current !== "map") { tabNow.current = "map"; setTabState("map"); } };
+    addEventListener("popstate", pop);
+    return () => removeEventListener("popstate", pop);
+  }, []);
   const [friend, setFriend] = useState<string | null>(null);   // a friend's profile open in the Profile tab
   const [passport, setPassport] = useState(false);   // open your passport on the Profile tab
   const [overlay, setOverlay] = useState<"shop" | "bag" | "avatar" | "ride" | "add" | null>(() => readCodeParam("trip") ? "ride" : null);
@@ -94,6 +115,14 @@ export default function App() {
   }, [plusActive, user?.id]);
   const [adSheet, setAdSheet] = useState(false);
   const nearby = useStops(refreshKey);
+  useEffect(() => { if (nearby.problem) setNotice(nearby.problem); }, [nearby.problem]);
+  // back from Stripe: say so on whatever screen the app opens on (it was only inside Settings), then pick up the new plan
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get("paid") !== "success") return;
+    setNotice("Payment received. It switches on in a few seconds.");
+    const t = setTimeout(() => setRefreshKey((k) => k + 1), 5000);
+    return () => clearTimeout(t);
+  }, []);
   // demo mode: re-render when you move, and watch the (fake) location from the start
   const [, demoMoved] = useReducer((x: number) => x + 1, 0);
   useEffect(() => onDemoChange(demoMoved), []);
@@ -109,7 +138,8 @@ export default function App() {
     setCheckin({ target: { id: s.id, name: s.name, lat: s.lat, lng: s.lng, is_partner: false, is_demo: false } });
   const trip = useTrip(nearby.here, nearby.start, refreshKey);
   const [nameSheet, setNameSheet] = useState(false);
-  const [nameLater, setNameLater] = useState(false);
+  // "Later" on the name sheet holds for 3 days, not just this visit (it opened on every tab before)
+  const [nameLater, setNameLater] = useState(() => { try { return Number(localStorage.getItem("gm-name-later")) > Date.now(); } catch { return false; } });
   const [notice, setNotice] = useState("");
   const [pendingFriend, setPendingFriend] = useState(() => readCodeParam("friend"));
 
@@ -173,7 +203,7 @@ export default function App() {
         {TABS.map((t) => (
           <button key={t.id} type="button" className={tab === t.id ? "on" : ""} aria-current={tab === t.id ? "page" : undefined}
             onClick={() => { setTab(t.id); if (t.id === "profile") setFriend(null); }}>
-            {t.icon}<span>{t.label}</span>
+            {t.icon}<span className="tab-long">{t.label}</span><span className="tab-short" aria-hidden>{t.short}</span>
           </button>
         ))}
       </nav>
@@ -198,21 +228,21 @@ export default function App() {
               <p className="map-banner">Tap the map to set your {picking === "origin" ? "start" : "destination"}.
                 <button className="link" onClick={() => setPicking(null)}>Cancel</button></p>
             )}
-            <Suspense fallback={null}><MapView origin={d.stage === "browse" ? null : d.origin?.point ?? null} dest={d.dest?.point ?? null}
+            <Boundary><Suspense fallback={null}><MapView origin={d.stage === "browse" ? null : d.origin?.point ?? null} dest={d.dest?.point ?? null}
               stops={mapPlan?.stops ?? NONE} geometry={mapPlan?.geometry ?? NONE}
               alternates={alternates} focus={focus} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop}
               nearby={nearby.stops} here={nearby.here} inZone={nearby.inZoneIds}
               members={trip.trip?.members ?? NONE} skin={profile?.look.map ?? "liberty"} look={look}
-              kinds={d.stage === "browse" ? CHIPS.find((c) => c.id === chip)?.kinds ?? null : null} onPlace={(p) => setPlace(p.id)} /></Suspense>
+              kinds={d.stage === "browse" ? CHIPS.find((c) => c.id === chip)?.kinds ?? null : null} onPlace={(p) => setPlace(p.id)} /></Suspense></Boundary>
             {demoOn() && <DemoBar />}
             {d.stage === "browse" && <ExploreChips active={chip} onPick={setChip} />}
             <div className="map-tools">
               <LayersButton look={look} setLook={setLook} />
               {!nearby.watching && <button type="button" className="map-tool" onClick={nearby.start} aria-label="Show stops near me"><LocateFixed size={20} /></button>}
             </div>
-            {place && <Suspense fallback={null}><PlaceSheet id={place} onClose={() => setPlace(null)}
+            {place && <Boundary><Suspense fallback={null}><PlaceSheet id={place} onClose={() => setPlace(null)}
               onDirections={(p) => { setPlace(null); d.goTo({ point: { lat: p.lat, lng: p.lng }, name: p.name }); }}
-              onCheckin={checkInAt} onCoins={refresh} /></Suspense>}
+              onCheckin={checkInAt} onCoins={refresh} /></Suspense></Boundary>}
             {(zoneStop || paused) && (
               <div className="map-actions">
                 {zoneStop && !zoneStop.stamped ? (
@@ -236,7 +266,7 @@ export default function App() {
             )}
           </div>
 
-          <Sheet snap={snap} setSnap={setSnap} label={d.stage === "browse" ? "Where to?" : "Your detour"}
+          <Sheet snap={snap} setSnap={setSnap} page={d.stage} label={d.stage === "browse" ? "Where to?" : "Your detour"}
             head={d.stage !== "browse" && <TripHead d={d} onBack={d.stage === "results" ? () => d.setStage("choose") : d.close}
               backLabel={d.stage === "results" ? "Back to time options" : "Close this trip"} onSearch={() => setSnap("full")} />}
             foot={d.stage === "results" && plan && plan.stops.length > 0 && (
@@ -253,26 +283,24 @@ export default function App() {
         </main>
       ) : (
         <main className="page-view">
-          <Suspense fallback={<div className="page-col"><SkelLines n={6} /></div>}>
+          <Boundary page key={tab}><Suspense fallback={<div className="page-col"><SkelLines n={6} /></div>}>
           {tab === "board" && <Leaderboard profile={profile} onChange={refresh} />}
           {tab === "quests" && <Quests profile={profile} refreshKey={refreshKey} onChange={refresh} onShop={() => setOverlay("shop")} />}
           {tab === "feed" && <Feed profile={profile} refreshKey={refreshKey} openFriend={(id) => { setFriend(id); setTab("profile"); }} goProfile={() => { setFriend(null); setTab("profile"); }} openPlace={(id) => { setPlace(id); setTab("map"); }} />}
           {tab === "profile" && <ProfileTab profile={profile} refreshKey={refreshKey} onChange={refresh} friend={friend} setFriend={setFriend}
             editAvatar={() => setOverlay("avatar")} editName={() => setNameSheet(true)} openShop={() => setOverlay("shop")} openBag={() => setOverlay("bag")}
             openPlace={(id) => { setPlace(id); setTab("map"); }} passport={passport} onPassport={() => setPassport(false)} />}
-          </Suspense>
+          </Suspense></Boundary>
           {profile && !adFree(profile) && <AdBanner page={tab} onRemove={() => setAdSheet(true)} />}
         </main>
       )}
 
-      <Suspense fallback={null}>
+      <Boundary><Suspense fallback={null}>
       {(overlay === "shop" || overlay === "bag") && (
-        <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="Shop" onClick={(e) => { if (e.target === e.currentTarget) setOverlay(null); }}>
-          <div className="modal shop-modal">
-            <header className="modal-head"><h2>Shop</h2><button type="button" className="icon-btn" onClick={() => setOverlay(null)} aria-label="Close"><X size={20} /></button></header>
-            <Shop profile={profile} coins={profile?.coins ?? 0} onChange={refresh} onAvatar={() => setOverlay("avatar")} start={overlay} />
-          </div>
-        </div>
+        <Modal label="Shop" className="shop-modal" onClose={() => setOverlay(null)}>
+          <header className="modal-head"><h2>Shop</h2><button type="button" className="icon-btn" onClick={() => setOverlay(null)} aria-label="Close"><X size={20} /></button></header>
+          <Shop profile={profile} coins={profile?.coins ?? 0} onChange={refresh} onAvatar={() => setOverlay("avatar")} start={overlay} />
+        </Modal>
       )}
       {overlay === "add" && <AddPlace onClose={() => setOverlay(null)} />}
       {d.gate && tab === "map" && <Upgrade gate={d.gate} onClose={() => d.setGate(null)}
@@ -284,24 +312,22 @@ export default function App() {
       {etaToken && <EtaView token={etaToken} onClose={() => setEtaToken(null)} />}
       {overlay === "avatar" && profile && <AvatarBuilder profile={profile} onClose={() => setOverlay(null)} onSaved={() => { setOverlay(null); refresh(); }} />}
       {overlay === "ride" && (
-        <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="Ride along" onClick={(e) => { if (e.target === e.currentTarget) setOverlay(null); }}>
-          <div className="modal">
-            <header className="modal-head"><h2>Ride along</h2><button type="button" className="icon-btn" onClick={() => setOverlay(null)} aria-label="Close"><X size={20} /></button></header>
-            <RideAlong trip={trip} profile={profile} />
-          </div>
-        </div>
+        <Modal label="Ride along" onClose={() => setOverlay(null)}>
+          <header className="modal-head"><h2>Ride along</h2><button type="button" className="icon-btn" onClick={() => setOverlay(null)} aria-label="Close"><X size={20} /></button></header>
+          <RideAlong trip={trip} profile={profile} />
+        </Modal>
       )}
 
       {profile && (nameSheet || (tab !== "map" && !profile.nickname && !nameLater)) && (
         <Nickname current={profile.nickname} colour={profile.colour}
           onDone={() => { setNameSheet(false); refresh(); }}
-          onLater={() => { setNameSheet(false); setNameLater(true); }} />
+          onLater={() => { setNameSheet(false); setNameLater(true); try { localStorage.setItem("gm-name-later", String(Date.now() + 3 * 864e5)); } catch { /* this visit only */ } }} />
       )}
 
-      </Suspense>
-      {checkin && <Suspense fallback={null}>
+      </Suspense></Boundary>
+      {checkin && <Boundary><Suspense fallback={null}>
         <CheckIn target={checkin.target} initialCode={checkin.code} hasPlus={!!profile?.plusUntil} luck={profile?.perks.luck} nickname={profile?.nickname} onClose={() => setCheckin(null)} onDone={() => { liveTrip.checkedIn(checkin.target.id); refresh(); }} />
-      </Suspense>}
+      </Suspense></Boundary>}
     </div>
   );
 }

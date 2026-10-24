@@ -6,7 +6,6 @@ import { errCode } from "../lib/supabase";
 import { getFriendPassport, getPassport, getProfilePage, levelProgress, nudge, pendingLevels, type PassportPhoto, type PassportStamp, type Pin, type Profile,
   type ProfilePage, removeFriend, setShowcase, type TripMemory } from "../lib/api";
 import { useUser } from "../lib/auth";
-import { useDialog } from "../lib/useDialog";
 import Avatar from "./social/Avatar";
 import FriendsSection from "./social/Friends";
 import Badges, { BadgeIcon } from "./Badges";
@@ -16,6 +15,7 @@ import ProvinceMap from "./passport/ProvinceMap";
 import ShareSheet from "./share/ShareSheet";
 import SettingsSheet from "./Settings";
 import LevelRewards from "./LevelRewards";
+import Modal from "./Modal";
 import SavedLists from "./SavedLists";
 import { SkelProfile } from "./Skeleton";
 import { STAMP_TIER } from "../lib/format";
@@ -31,14 +31,6 @@ function PinView({ p }: { p: Pin }) {
 }
 
 /** A modal with focus handling (focus in, Escape, focus back). */
-function Modal({ label, className, onClose, children }: { label: string; className: string; onClose: () => void; children: ReactNode }) {
-  const box = useDialog(onClose);
-  return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label={label} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={`modal ${className}`} ref={box} tabIndex={-1}>{children}</div>
-    </div>
-  );
-}
 
 /** Pick up to 3 earned badges or stamps to pin under your name. */
 function PinPicker({ page, stamps, onClose, onSaved }: { page: ProfilePage; stamps: PassportStamp[]; onClose: () => void; onSaved: () => void }) {
@@ -98,7 +90,7 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
   const counts = new Map<number, number>();
   for (const s of book?.stamps ?? []) if (s.province_id != null) counts.set(s.province_id, (counts.get(s.province_id) ?? 0) + 1);
   const { into, span } = levelProgress(page.xp);
-  const tickets = self ? profile?.fortuneTickets ?? 0 : 0;
+  const tickets = self ? (profile?.fortuneTickets ?? 0) + (profile?.pendingShakes.length ?? 0) : 0;
   const waiting = self && profile ? pendingLevels(profile) : [];
   const perks = self ? profile?.perks : undefined;
 

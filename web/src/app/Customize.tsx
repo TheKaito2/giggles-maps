@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Coffee, Landmark, type LucideIcon, ShoppingBag, Sparkles, Trees, UtensilsCrossed, X } from "lucide-react";
 import type { Interest, LatLng } from "../lib/api";
 import ExplorePlaces from "./ExplorePlaces";
 import { DEFAULT_PREFS, filterSummary, INTERESTS, MEALS, type Prefs } from "./prefs";
 import Info from "./Info";
+import Modal from "./Modal";
 
 export const KIND_ICON: Record<Interest, LucideIcon> = {
   culture: Landmark, nature: Trees, food: UtensilsCrossed, cafes: Coffee, shopping: ShoppingBag, landmarks: Sparkles,
@@ -20,22 +21,11 @@ export default function Filters({ prefs: start, apply, near, onClose }: { prefs:
   const [prefs, setDraft] = useState(start);
   const set = (patch: Partial<Prefs> | ((p: Prefs) => Partial<Prefs>)) =>
     setDraft((p) => ({ ...p, ...(typeof patch === "function" ? patch(p) : patch) }));
-  const box = useRef<HTMLDivElement>(null);
-  // focus moves in on open, Escape closes, focus returns to the button that opened it
-  useEffect(() => {
-    const back = document.activeElement as HTMLElement | null;
-    box.current?.querySelector<HTMLElement>("h2")?.focus();
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", esc);
-    return () => { document.removeEventListener("keydown", esc); back?.focus(); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const toggle = (id: Interest) =>
     set((p) => ({ interests: p.interests.includes(id) ? p.interests.filter((i) => i !== id) : [...p.interests, id] }));
 
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="filters-title"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal filters" ref={box}>
+    <Modal labelledBy="filters-title" className="filters" onClose={onClose}>
         <header className="modal-head"><h2 id="filters-title" tabIndex={-1}>Your stops</h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close without changes"><X size={20} /></button></header>
 
@@ -95,7 +85,6 @@ export default function Filters({ prefs: start, apply, near, onClose }: { prefs:
             <button type="button" className="btn" onClick={() => { apply(prefs); onClose(); }}>Show plans</button>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

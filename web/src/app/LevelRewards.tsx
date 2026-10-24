@@ -5,11 +5,15 @@ import { errCode } from "../lib/supabase";
 import { buzz } from "../lib/native";
 import { useDialog } from "../lib/useDialog";
 import { Preview } from "./passport/Shop";
+import { BASE, chances, pct } from "./fortune/Fortune";
 
 const PERKS: { id: Perk; Icon: typeof Clover; title: string; blurb: string }[] = [
-  { id: "luck", Icon: Clover, title: "+10% luck", blurb: "Siam Si: every stick above Common comes up 10% more often." },
+  { id: "luck", Icon: Clover, title: "+10% luck", blurb: "Better Siam Si sticks: every rarity above Common comes up more often." },
   { id: "coins", Icon: Coins, title: "+10% coins", blurb: "Every coin you earn from now on: stamps, quests, Siam Si and photos." },
 ];
+// what a pick changes, in real numbers: the chance of a Rare-or-better stick, or the coin bonus
+const rarePlus = (luck: number) => pct(1 - chances(BASE.plain, luck).common);
+const effect = (p: Perk, n: number) => p === "luck" ? `Rare or better: ${rarePlus(n)} → ${rarePlus(n + 1)}` : `Coins: +${n * 10}% → +${n * 10 + 10}%`;
 
 /** Level-up rewards: for each level reached, pick one permanent perk; the level's cosmetic is already yours. Lowest level first. */
 export default function LevelRewards({ profile, onChange, onClose }: { profile: Profile; onChange: () => void; onClose: () => void }) {
@@ -58,7 +62,7 @@ export default function LevelRewards({ profile, onChange, onClose }: { profile: 
                 <span className="perk-icon" aria-hidden><Icon size={26} /></span>
                 <b>{title}</b>
                 <span className="fine">{blurb}</span>
-                <span className="perk-total num">{total(id)}% → {total(id) + 10}%</span>
+                <span className="perk-total num">{effect(id, profile.perks[id])}</span>
               </button>
             ))}
           </div>

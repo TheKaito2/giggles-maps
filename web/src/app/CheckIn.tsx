@@ -1,6 +1,7 @@
 import { demoOn } from "../lib/demoGps";
 import Fortune from "./fortune/Fortune";
 import { useEffect, useRef, useState } from "react";
+import Modal from "./Modal";
 import { ApiError } from "../lib/supabase";
 import ShareSheet, { type CardOption } from "./share/ShareSheet";
 import { type Billing, type CheckinResult, type CheckinTarget, setPhoto, setPublicPhoto, uploadSelfie, verifyCheckin } from "../lib/api";
@@ -117,7 +118,7 @@ export default function CheckIn({ target, initialCode, hasPlus, luck = 0, nickna
     if (!f) return;
     const img = new Image(), src = URL.createObjectURL(f);
     img.onload = () => { URL.revokeObjectURL(src); submit(toCanvas(img, img.naturalWidth, img.naturalHeight)); };
-    img.onerror = () => URL.revokeObjectURL(src);
+    img.onerror = () => { URL.revokeObjectURL(src); setError("That file isn't a photo this phone can open. Pick a JPG, PNG or HEIC picture."); setStep("error"); };
     img.src = src;
   };
 
@@ -136,8 +137,8 @@ export default function CheckIn({ target, initialCode, hasPlus, luck = 0, nickna
   };
 
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="ci-title">
-      <div className="modal">
+    <>
+    <Modal labelledBy="ci-title" onClose={onClose}>
         <header className="modal-head">
           <h2 id="ci-title">Check in at {target.name}</h2>
           <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
@@ -241,9 +242,9 @@ export default function CheckIn({ target, initialCode, hasPlus, luck = 0, nickna
             <button className="btn" onClick={() => setStep("camera")}>Try again</button>
           </div>
         )}
-      </div>
+    </Modal>
       {sharing && result && <ShareSheet hasPlus={hasPlus} onClose={() => setSharing(false)} options={shareOptions(result)} />}
       {fortuneOpen && result && <Fortune checkin={result.checkin_id} name={nickname ?? undefined} hasPlus={hasPlus} luck={luck} onClose={() => setFortuneOpen(false)} onShaken={() => setShaken(true)} />}
-    </div>
+    </>
   );
 }
