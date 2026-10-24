@@ -65,6 +65,8 @@ test("closed visits and malformed leg durations fail verification", () => {
   assert.equal(scheduleStops([{ ...stop(1), openMin: 100, closeMin: 200 }], [10, 20], 600, new Map()).failed, 0);
   assert.equal(scheduleStops([stop(1)], [Infinity, 20], 600, new Map()).failed, 0);
   assert.equal(visitIsOpen(1500, 30, 1320, 120), true);
+  assert.equal(visitIsOpen(1438, 10, 0, 1440), true);   // a 24/7 shop at 23:58: the visit runs past midnight
+  assert.equal(visitIsOpen(1438, 10, 360, 1080), false);
 });
 test("routing outages reject without manufacturing a road line", async () => {
   const route = createRouter("https://example.invalid", async () => new Response("down", { status: 503 }));

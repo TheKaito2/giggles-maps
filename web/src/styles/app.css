@@ -667,7 +667,7 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 /* hold and drag to reorder: touch-action none, so a drag on the handle never scrolls the panel instead */
 .drag-handle { flex: none; display: grid; place-items: center; width: 24px; height: 44px; margin-right: -4px; border: 0; background: none;
   color: var(--ink-2); cursor: grab; touch-action: none; border-radius: 8px; }
-.drag-handle:disabled { opacity: .4; cursor: default; }
+.drag-handle:disabled, .drag-handle[aria-disabled="true"] { opacity: .4; cursor: default; }   /* dimmed while the route recalculates */
 .stop-row.dragging { background: var(--card); box-shadow: var(--shadow); z-index: 2; }
 .stop-row.dragging .drag-handle { cursor: grabbing; }
 .menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 10; display: grid; min-width: 190px; padding: 6px; border-radius: 14px; }
@@ -1374,7 +1374,7 @@ input[type="file"]::file-selector-button { font: 700 var(--fs-label)/1 var(--fon
 .boundary { display: grid; justify-items: center; gap: 8px; text-align: center; padding: 24px 18px; margin: 16px; border-radius: 20px; background: var(--card);
   border: 2px solid var(--line); color: var(--ink-2); box-shadow: var(--shadow); }
 .boundary b { color: var(--ink); font: 800 var(--fs-headline)/var(--lh-headline) var(--font-body); }
-.boundary.boundary-page { max-width: 420px; margin: 48px auto; }   /* not .page: that's the passport's absolutely placed page */
+.boundary.boundary-page { width: calc(100% - 32px); max-width: 420px; margin: 48px auto; }   /* not .page: that's the passport's absolutely placed page */
 .modal.boundary-modal { padding: 0; max-width: 420px; background: none; box-shadow: none; } .boundary-modal .boundary { margin: 0; }
 .stop-leg.stale { visibility: hidden; }
 .tile-kind { font: 700 var(--fs-micro)/var(--lh-micro) var(--font-body); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
@@ -1423,3 +1423,11 @@ html.native .toast { top: calc(64px + env(safe-area-inset-top, 0px)); }
   .sheet.snap-full .sheet-body { flex: none; overflow: visible; }
   .sheet.snap-full .sheet-foot { position: sticky; bottom: 0; background: var(--card); }
 }
+
+/* 320 px phones: the shop set's 3-up tiles are 61 px wide */
+@media (max-width: 360px) {
+  .set-items .preview.cover-prev .cover-title { font-size: 9.5px; letter-spacing: 0; }
+  .set-items .preview.title-chip span { font-size: var(--fs-micro); line-height: 1.1; padding-inline: 2px; }
+}
+/* a sheet pulled up full leaves a strip of map: no half-hidden zoom buttons in it */
+@media (max-width: 959px) { .workspace:has(.sheet.snap-full) .maplibregl-ctrl-top-right { visibility: hidden; } }

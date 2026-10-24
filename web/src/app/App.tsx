@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Camera, Coins, LocateFixed, Map as MapIcon, Navigation, ScrollText, Trophy, UserRound, Users, X } from "lucide-react";
 import { ensureSession, supabase } from "../lib/supabase";
 import { addFriend, adFree, type CheckinTarget, getProfile, type LatLng, levelFor, levelProgress, pendingLevels, plusDaily, type Profile, readCodeParam, readScanParam } from "../lib/api";
@@ -23,22 +23,23 @@ import { demoOn, onDemoChange } from "../lib/demoGps";
 import { SkelLines } from "./Skeleton";
 import Boundary from "./Boundary";
 import Modal from "./Modal";
-import { dialogsOpen, LOAD, ours, quietBack, quietPop } from "../lib/useDialog";
+import { lazyRetry } from "../lib/lazy";
+import { dialogsOpen, LOAD, ours, quietBack, quietPop, useBack } from "../lib/useDialog";
 
 // Only the map and the detour sheet load up front; tabs and sheets arrive when first opened.
-const MapView = lazy(() => import("./MapView"));   // maplibre is most of the code: the sheet paints first
-const CheckIn = lazy(() => import("./CheckIn"));
-const Leaderboard = lazy(() => import("./Leaderboard"));
-const Upgrade = lazy(() => import("./Upgrade"));
-const Quests = lazy(() => import("./Quests"));
-const Feed = lazy(() => import("./Feed"));
-const ProfileTab = lazy(() => import("./Profile"));
-const Shop = lazy(() => import("./passport/Shop"));
-const AvatarBuilder = lazy(() => import("./avatar/AvatarBuilder"));
-const PlaceSheet = lazy(() => import("./PlaceSheet"));
-const AddPlace = lazy(() => import("./AddPlace"));
-const Navigate = lazy(() => import("./nav/Navigate"));
-const EtaView = lazy(() => import("./nav/EtaView"));
+const MapView = lazyRetry(() => import("./MapView"));   // maplibre is most of the code: the sheet paints first
+const CheckIn = lazyRetry(() => import("./CheckIn"));
+const Leaderboard = lazyRetry(() => import("./Leaderboard"));
+const Upgrade = lazyRetry(() => import("./Upgrade"));
+const Quests = lazyRetry(() => import("./Quests"));
+const Feed = lazyRetry(() => import("./Feed"));
+const ProfileTab = lazyRetry(() => import("./Profile"));
+const Shop = lazyRetry(() => import("./passport/Shop"));
+const AvatarBuilder = lazyRetry(() => import("./avatar/AvatarBuilder"));
+const PlaceSheet = lazyRetry(() => import("./PlaceSheet"));
+const AddPlace = lazyRetry(() => import("./AddPlace"));
+const Navigate = lazyRetry(() => import("./nav/Navigate"));
+const EtaView = lazyRetry(() => import("./nav/EtaView"));
 
 type Tab = "map" | "board" | "quests" | "feed" | "profile";
 // short = the phone tab bar's caption (icons alone were guesswork: swords read "battle", a bell reads "notifications")
@@ -61,7 +62,12 @@ export default function App() {
   const setTab = useCallback((t: Tab) => {
     const from = tabNow.current;
     if (t === from) return;
-    if (from === "map") history.pushState({ ...history.state, gmTab: t, gmLoad: LOAD }, "");
+    // leaving the map with a trip step or a place open: the tab takes that entry's place (Back from the tab lands on the
+    // map again, where the step picks its entry back up)
+    if (from === "map" && history.state?.gmDialog && ours(history.state)) {
+      const { gmDialog: _, ...rest } = history.state;
+      history.replaceState({ ...rest, gmTab: t, gmLoad: LOAD }, "");
+    } else if (from === "map") history.pushState({ ...history.state, gmTab: t, gmLoad: LOAD }, "");
     else if (t !== "map") history.replaceState({ ...history.state, gmTab: t, gmLoad: LOAD }, "");
     else if (history.state?.gmTab && ours(history.state)) quietBack();
     tabNow.current = t;
@@ -85,7 +91,7 @@ export default function App() {
   const setLook = (patch: Partial<MapLook>) => setLookState((l) => { const next = { ...l, ...patch }; saveLook(next); return next; });
   const [etaToken, setEtaToken] = useState(() => {
     const t = /^[0-9a-f]{32}$/.exec(new URLSearchParams(location.search).get("eta") ?? "")?.[0] ?? null;
-    if (t) history.replaceState(null, "", location.pathname);   // keep the link out of history and referrers
+    if (t) history.replaceState(history.state, "", location.pathname);   // keep the link out of history and referrers
     return t;
   });
   // the place page open on the map: a tapped pin, a saved place, or a shared /app/?place=ID link
@@ -97,6 +103,10 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [profile, setProfile] = useState<Profile | null>(null);
   const d = useDetour(setError);
+  // Back steps through the trip (results, then time options, then the map) and closes a place sheet, instead of leaving
+  // the app and losing the plan
+  useBack(() => (d.stage === "results" ? d.setStage("choose") : d.close()), tab === "map" && d.stage !== "browse", d.stage);
+  useBack(() => setPlace(null), tab === "map" && place != null, String(place));
   const plan = d.stage === "results" ? d.plan : null;
   const mapPlan = d.stage === "browse" ? null : d.plan;   // while choosing, the highlighted option's route previews
   // the other plan cards' routes, faint on the map behind the one you picked
@@ -152,13 +162,13 @@ export default function App() {
   useEffect(() => {
     const code = readCodeParam("trip");
     if (!code) return;
-    history.replaceState(null, "", location.pathname);
+    history.replaceState(history.state, "", location.pathname);
     trip.join(code);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // friend QR: /app/?friend=CODE adds them once you have a name (they see it on the request)
   useEffect(() => {
     if (!pendingFriend || !profile?.nickname) return;
-    history.replaceState(null, "", location.pathname);
+    history.replaceState(history.state, "", location.pathname);
     setPendingFriend(null);
     addFriend(pendingFriend)
       .then((r) => setNotice(r === "friends" ? "You're friends now." : "Friend request sent."))
@@ -181,7 +191,7 @@ export default function App() {
       const place = (data as CheckinTarget[] | null)?.[0];
       if (!place) return;
       setCheckin({ target: place, code: scan.code });
-      history.replaceState(null, "", location.pathname);
+      history.replaceState(history.state, "", location.pathname);
     })().catch(() => setError("Couldn't open that shop's check-in. Try scanning again."));
   }, []);
 

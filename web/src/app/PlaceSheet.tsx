@@ -97,6 +97,7 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
   const [msg, setMsg] = useState("");
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);   // one review save at a time (a double tap sent two, the second hid "+1 shake")
+  const savingNow = useRef(false);   // the same, for taps faster than a re-render
   // a late answer for the previous pin must not land on this one
   const shown = useRef(id);
   shown.current = id;
@@ -130,17 +131,17 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
     if (await shareOrCopy(page.name, `${SITE}/app/?place=${page.id}`) === "copied") setMsg("Link copied.");
   };
   const submitReview = () => {
-    if (saving) return;
-    setSaving(true);
+    if (savingNow.current) return;
+    savingNow.current = true; setSaving(true);
     writeReview(page.id, rating, body).then((r) => {
       setMsg(r.shake ? "Review saved. +1 Siam Si shake for writing it: shake it on your Profile." : r.xp ? `Review saved. +${r.xp} XP.` : "Review saved.");
       if (r.shake || r.xp) onCoins?.();
       load();
     }).catch((e) => setMsg(errCode(e) === "check_in_first" ? "Check in here first: reviews are from verified visits only." : "Couldn't save the review."))
-      .finally(() => setSaving(false));
+      .finally(() => { savingNow.current = false; setSaving(false); });
   };
-  // counted like the server does (characters, not UTF-16 units: an emoji is one, not two)
-  const reviewLen = [...body.trim()].length, toGo = REVIEW_SHAKE_CHARS - reviewLen;
+  // counted like the server does: characters, not UTF-16 units (an emoji is one, not two), and only spaces trimmed (SQL trim())
+  const reviewLen = [...body.replace(/^ +| +$/g, "")].length, toGo = REVIEW_SHAKE_CHARS - reviewLen;
   const addPhoto = async (file: File | undefined) => {
     if (!file) return;
     setAdding(true); setMsg("");

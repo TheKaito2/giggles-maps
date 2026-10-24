@@ -1,10 +1,11 @@
 import { Component, type ReactNode } from "react";
 import { RotateCcw, WifiOff } from "lucide-react";
 import Modal from "./Modal";
+import { retryScreens } from "../lib/lazy";
 
 /** A screen that fails to load or crashes shows this card instead of taking the whole app down to a white page. The usual
  *  cause is a code chunk that can't be fetched: offline before that screen was ever opened, or an old copy of the app still
- *  open after a new version went live (its chunk names are gone). Back online, it reloads by itself. */
+ *  open after a new version went live (its chunk names are gone). Back online, it tries again by itself. */
 /** `page`: a whole screen (centred card). `onClose`: a pop-up (Shop, check-in…): the card shows as a pop-up too, with a
  *  Close that shuts whatever failed (in the app's grid it pushed the tab bar to mid-screen and couldn't be dismissed). */
 export default class Boundary extends Component<{ children: ReactNode; page?: boolean; onClose?: () => void }, { failed: boolean }> {
@@ -13,12 +14,13 @@ export default class Boundary extends Component<{ children: ReactNode; page?: bo
   componentDidCatch(error: unknown) { console.error("screen failed", error); }
   componentDidMount() { addEventListener("online", this.retry); }
   componentWillUnmount() { removeEventListener("online", this.retry); }
-  retry = () => { if (this.state.failed) location.reload(); };
+  // back online: try the screen again (its code is fetched afresh), no page reload, so a planned trip survives
+  retry = () => { if (this.state.failed) { retryScreens(); this.setState({ failed: false }); } };
   render() {
     if (!this.state.failed) return this.props.children;
     const offline = !navigator.onLine, { onClose } = this.props;
     // Close shuts the pop-up first (its parent stops rendering what failed), then this card resets for the next one
-    const close = onClose && (() => { onClose(); this.setState({ failed: false }); });
+    const close = onClose && (() => { onClose(); retryScreens(); this.setState({ failed: false }); });
     const card = (
       <div className={`boundary${this.props.page ? " boundary-page" : ""}`} role="alert">
         {offline ? <WifiOff size={28} aria-hidden /> : <RotateCcw size={28} aria-hidden />}

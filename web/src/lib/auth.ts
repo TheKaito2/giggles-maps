@@ -46,7 +46,7 @@ export async function resumeSignIn(fromApp?: URLSearchParams): Promise<string | 
   }
   const code = params.get("error_code");
   if (!code) return null;
-  if (!fromApp) history.replaceState(null, "", location.pathname);
+  if (!fromApp) history.replaceState(history.state, "", location.pathname);
   let provider: string | null = null;
   try { provider = sessionStorage.getItem(LINKING_KEY); sessionStorage.removeItem(LINKING_KEY); } catch { /* ignore */ }
   if (code === "identity_already_exists" && (provider === "google" || provider === "apple")) {

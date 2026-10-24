@@ -9,6 +9,17 @@
 import { inMealWindow, type Meal, MEAL_PLACES, MEAL_WINDOWS } from "./meals.ts";
 import { type Theme, type Tier, themeWeight } from "./themes.ts";
 
+/** Open for the whole visit, by the clock: past midnight counts (an all-night place, or a trip that runs past 00:00: the
+ *  plain minute compare dropped a 24/7 shop for a visit at 23:58), and so do hours that close after midnight. */
+export function visitIsOpen(arrival: number, dwell: number, open: number | null | undefined, close: number | null | undefined) {
+  if (open == null || close == null || open === close || close - open >= 1440) return true;   // 24/7 is stored as 0–1440
+  const day = Math.floor(arrival / 1440);
+  return [day - 1, day].some((d) => {
+    const from = d * 1440 + open, to = d * 1440 + close + (close < open ? 1440 : 0);
+    return arrival >= from && arrival + dwell <= to;
+  });
+}
+
 export interface Stop {
   idx: number;          // row/column in the travel matrix
   id: number;
@@ -88,7 +99,7 @@ export function planDetour(input: PlanInput): Plan {
         if (t < from) t = from;
         if (!inMealWindow(meal, t) || t > to) ok = false;
       }
-      if (!picks.has(s.id) && s.openMin != null && s.closeMin != null && (t < s.openMin || t + s.dwellMin > s.closeMin)) ok = false;
+      if (!picks.has(s.id) && !visitIsOpen(t, s.dwellMin, s.openMin, s.closeMin)) ok = false;
       t += s.dwellMin;
       at = s.idx;
     }
@@ -226,7 +237,7 @@ export function planDetour(input: PlanInput): Plan {
     t += travelMin(at, s.idx);
     const meal = mealOf.get(s.id);
     if (meal) t = Math.max(t, MEAL_WINDOWS[meal][0]);
-    if (picks.has(s.id) && s.openMin != null && s.closeMin != null && (t < s.openMin || t + s.dwellMin > s.closeMin)) closedPicks.push(s.id);
+    if (picks.has(s.id) && !visitIsOpen(t, s.dwellMin, s.openMin, s.closeMin)) closedPicks.push(s.id);
     t += s.dwellMin; at = s.idx;
   }
   return { order, baseMin, totalMin, extraMin: totalMin - baseMin, mealOf, lateMeals, missedMeals, requiredIds, unfitRequired,

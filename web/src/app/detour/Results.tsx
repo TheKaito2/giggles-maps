@@ -319,7 +319,10 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
 
       {plan.stops.length === 0
         ? <p className="fine">{plan.warnings?.some((w) => w === "places_unavailable" || w === "some_detours_unavailable")
-            ? "Couldn't check road times right now. Try again in a moment." : "No stops fit this much time. Try a longer option or fewer filters."}</p>
+            ? "Couldn't check road times right now. Try again in a moment."
+            : start % 1440 >= 21 * 60 || start % 1440 < 6 * 60   // at night it's closing hours, not too little time
+              ? <>Most places are closed at this hour. <button type="button" className="link" onClick={() => d.set({ depart: "custom", time: "08:00" })}>Leave at 08:00 instead</button></>
+              : "No stops fit this much time. Try a longer option or fewer filters."}</p>
         : <ol className="stop-rows" ref={rows}>
             {shown.map((s, i) => <Fragment key={s.id}>
               {i === 0 && <AddGap hidden={!!order} onAdd={() => setAdding(0)} />}

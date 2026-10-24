@@ -1,17 +1,10 @@
-import type { Plan, Stop } from "./planner.ts";
+import { type Plan, type Stop, visitIsOpen } from "./planner.ts";
+export { visitIsOpen };
 import { inMealWindow, type Meal, MEAL_WINDOWS } from "./meals.ts";
 import type { LatLng, Mode, RoadRoute } from "./valhalla.ts";
 
 export const allowsEstimateFallback = (mode: Mode, distanceM: number) => mode === "pedestrian" && distanceM <= 10000;
 
-export function visitIsOpen(arrival: number, dwell: number, open: number | null | undefined, close: number | null | undefined) {
-  if (open == null || close == null || open === close) return true;
-  const day = Math.floor(arrival / 1440);
-  return [day - 1, day].some((d) => {
-    const from = d * 1440 + open, to = d * 1440 + close + (close < open ? 1440 : 0);
-    return arrival >= from && arrival + dwell <= to;
-  });
-}
 
 /** picks: stops the user chose (opening hours don't fail them) */
 export function scheduleStops(order: Stop[], legs: number[], startMin: number, mealOf: Map<number, Meal>, picks: number[] = []) {

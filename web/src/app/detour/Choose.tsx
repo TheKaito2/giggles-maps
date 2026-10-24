@@ -54,7 +54,7 @@ export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => voi
         <b className="preset-name">{label}</b>
         {min === "auto" ? <span className="figure big"><b>Auto</b></span> : <Figure className="big" text={`+${budgetLabel(min)}`} />}
         {r === "loading" ? <span className="preset-wait" role="status" aria-label="Planning"><i /><i /><i /></span>
-          : r && !ready ? <span className="fine">{(r as { error: string }).error} <b className="retry">{(r as { gate?: boolean }).gate ? "Sign in" : "Tap to retry"}</b></span>
+          : r && !ready ? <span className="fine">{(r as { error: string }).error} <b className="retry">{(r as { gate?: string }).gate?.startsWith("sign_in") ? "Sign in" : "Tap to retry"}</b></span>
           : stops && <>
               <span className="thumbs" aria-hidden>{stops.slice(0, 3).map((s) => <Thumb key={s.id} s={s} size={28} />)}</span>
               {stops.length ? <span className="preset-stats">
