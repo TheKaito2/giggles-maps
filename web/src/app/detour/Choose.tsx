@@ -8,6 +8,7 @@ import { BUDGETS, budgetLabel, DEPARTS, filterSummary, hhmm, INTERESTS, MODES, t
 import { type Detour, PRESETS, type PresetId } from "./useDetour";
 import { Thumb } from "./Results";
 import PlanProgress from "./PlanProgress";
+import Figure from "./Figure";
 
 const MODE_ICON: Record<TravelMode, ReactNode> = {
   pedestrian: <Footprints size={16} aria-hidden />, auto: <Car size={16} aria-hidden />, bicycle: <Bike size={16} aria-hidden />,
@@ -49,12 +50,16 @@ export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => voi
     return (
       <button key={id} type="button" className={`preset${d.preset === id ? " on" : ""}`} aria-pressed={d.preset === id}
         onClick={() => { d.setPreset(id); onPicked(); }}>
-        <span className="preset-top"><b>{label}</b><span className="num">{min === "auto" ? "Auto" : `+${budgetLabel(min)}`}</span></span>
+        <b className="preset-name">{label}</b>
+        {min === "auto" ? <span className="figure big"><b>Auto</b></span> : <Figure className="big" text={`+${budgetLabel(min)}`} />}
         {r === "loading" ? <span className="preset-wait" role="status" aria-label="Planning"><i /><i /><i /></span>
           : r && !ready ? <span className="fine">{(r as { error: string }).error} <b className="retry">Tap to retry</b></span>
           : stops && <>
               <span className="thumbs" aria-hidden>{stops.slice(0, 3).map((s) => <Thumb key={s.id} s={s} size={28} />)}</span>
-              <span className="fine">{stops.length ? `${stops.length} stop${stops.length === 1 ? "" : "s"} · arrive ${arrive(d.prefs, ready!)}` : "No stops fit"}</span>
+              {stops.length ? <span className="preset-stats">
+                  <span><b className="num">{stops.length}</b> <small>{stops.length === 1 ? "stop" : "stops"}</small></span>
+                  <span><b className="num">{arrive(d.prefs, ready!)}</b> <small>arrive</small></span>
+                </span> : <span className="fine">No stops fit</span>}
             </>}
         <span className="fine blurb">{blurb}</span>
       </button>

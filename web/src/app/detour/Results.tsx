@@ -63,7 +63,8 @@ function StopRow({ s, i, d, sel, onOpen, onCheckin }: { s: RouteStop; i: number;
         <Thumb s={s} />
         <span className="stop-text">
           <b>{s.name}</b>
-          <span className="fine num">{hhmm(s.eta_min)} · {kindOf(s.pit_stop ? "convenience" : null, s.category).en}{s.extra_min != null && ` · +${s.extra_min} min`}{s.rating != null && ` · ★ ${s.rating.toFixed(1)}`}</span>
+          <span className="stop-meta"><b className="num">{hhmm(s.eta_min)}</b>{s.extra_min != null && <b className="num extra">+{s.extra_min} min</b>}
+            <span className="fine">{kindOf(s.pit_stop ? "convenience" : null, s.category).en}{s.rating != null && ` · ★ ${s.rating.toFixed(1)}`}</span></span>
           {badges(s).length > 0 && <span className="row tight">{badges(s).map((b) => <span key={b.text} className={`chip ${b.cls}`} title={b.title}>{b.text}</span>)}</span>}
         </span>
       </button>
@@ -144,15 +145,18 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
               onClick={() => d.setChoice(p.id)}>
               <span className="thumbs" aria-hidden>{p.stops.slice(0, 4).map((s) => <Thumb key={s.id} s={s} size={30} />)}</span>
               <b>{p.name}</b>
-              <span className="fine num">{p.stops.length} stop{p.stops.length === 1 ? "" : "s"} · +{p.extra_min} min</span>
+              <span className="preset-stats"><span><b className="num">{p.stops.length}</b> <small>{p.stops.length === 1 ? "stop" : "stops"}</small></span>
+                <span><b className="num">+{p.extra_min}</b> <small>min</small></span></span>
             </button>
           ))}
         </div>
       )}
 
       <div className="trip-sum">
-        <p><b className="num">{arrive(d.prefs, plan)}</b> <span className="fine">arrive · </span>
-          <span className="num">{plan.total_min} min trip</span> <span className="fine">· {plan.extra_min} min more than going straight</span>
+        <p className="trip-figures">
+          <span><b className="num big">{arrive(d.prefs, plan)}</b> <small>arrive</small></span>
+          <span><b className="num">{plan.total_min}</b> <small>min trip</small></span>
+          <span><b className="num">+{plan.extra_min}</b> <small>min vs straight</small></span>
           {plan.road_extra_min != null && plan.stops.length > 0 && <button type="button" className="link small-link" aria-expanded={details} onClick={() => setDetails(!details)}>
             Details <ChevronDown size={14} aria-hidden /></button>}</p>
         {details && plan.road_extra_min != null && (
