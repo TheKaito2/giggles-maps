@@ -81,8 +81,15 @@ const SHOTS = {
     await run(() => document.querySelector('input[aria-label="Where to?"]').focus());
     await send("Input.insertText", { text: "Chatuchak Market" });
     await until("a place suggestion", () => !!document.querySelector(".place-results button, .place-results li[role=option]"));
-    await run(() => (document.querySelector(".place-results button, .place-results li[role=option]")).click());
-    await until("planned presets", () => document.querySelectorAll(".preset .thumbs, .preset .preset-stats, .preset .fine").length >= 3);
+    await sleep(1500);   // the search is debounced: let the list settle before tapping a row
+    await until("the time options", () => {
+      if (document.querySelector(".preset")) return true;
+      const rows = [...document.querySelectorAll(".place-results button")];
+      (rows.find((r) => /Chatuchak Market/.test(r.textContent)) ?? rows[0])?.click();
+      return false;
+    });
+    // all three options planned: their stop thumbnails are in and the planning progress is gone
+    for (let i = 0; i < 3; i++) await until("planned presets", () => document.querySelectorAll(".preset .thumbs").length >= 3 && !document.querySelector(".plan-progress")).catch(() => null);
     await sleep(1500);
     await shoot("choose");
   },
@@ -98,6 +105,10 @@ const SHOTS = {
   },
   async quests() { await tab("Quests"); await skipName(); await until("quests", () => !!document.querySelector(".quests-hero")); await shoot("quests"); },
   async board() { await tab("Leaderboard"); await skipName(); await until("leaderboard", () => !!document.querySelector(".board-hero")); await shoot("board"); },
+  // demo mode's busy feed: friends row up top, then the first day cards
+  async feed() { await tab("Feed"); await skipName(); await until("feed posts", () => document.querySelectorAll(".feed-item").length >= 3);
+    await clickText(".seg button", "Friends"); await until("friends' posts", () => document.querySelectorAll(".feed-item").length >= 3);
+    await run(() => { document.querySelector(".page-view")?.scrollTo(0, 0); return true; }); await shoot("feed"); },
 };
 
 try {
@@ -115,7 +126,10 @@ try {
     await send("Page.navigate", { url: `${BASE}/app/` });
     await until("app shell", () => !!document.querySelector(".app-shell"));
     await sleep(2500);   // map tiles and the profile load
-    await take().catch((e) => console.error(`${name}: ${e.message}`));
+    await take().catch(async (e) => {
+      console.error(`${name}: ${e.message}`);
+      if (process.env.GM_DEBUG) console.error(await run(() => document.body.innerText.slice(0, 600)).catch(() => ""));
+    });
   }
 } finally {
   ws.close();
