@@ -28,6 +28,7 @@ export function Thumb({ s, size = 48 }: { s: { name: string; category: string; p
 // at most two badges per stop, the most telling first
 function badges(s: RouteStop): { text: string; cls: string; title?: string }[] {
   const all = [
+    s.closed && { text: "Closed then", cls: "closed", title: "You added it, but it's closed when you get there" },
     s.partner_tier && { text: TIER_NAME[s.partner_tier], cls: `tier-${s.partner_tier}`, title: TIER_TIP[s.partner_tier] },
     s.picked && { text: "You picked", cls: "picked" },
     s.pit_stop && { text: "Pit stop", cls: "pit", title: "A quick stop for snacks, a drink or the toilet" },
@@ -235,7 +236,7 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
           <p className="fine num">+{plan.road_extra_min} min on the road · {plan.stop_min} min at stops{plan.wait_min ? ` · ${plan.wait_min} min waiting for a meal time` : ""} · straight there {plan.base_min} min</p>
         )}
         {current?.missed_meals?.length ? <p className="fine" role="status">No restaurant fits {current.missed_meals.map((m) => `${MEAL_NAME[m].toLowerCase()} (${MEALS.find((x) => x.id === m)!.window})`).join(", ")}. Try more time or another start time.</p> : null}
-        {current?.unfit_required?.length ? <p className="fine" role="status">A place you picked is closed when you'd get there, so it's not in this plan.</p> : null}
+        {current?.unfit_required?.length ? <p className="fine" role="status">A place you picked has no road to it, so it's not in this plan.</p> : null}
         {plan.routing === "estimate" && <p className="fine" role="status">Road directions are unavailable, so times are estimates.</p>}
       </div>
 

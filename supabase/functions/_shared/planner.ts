@@ -56,7 +56,8 @@ export interface Plan {
   lateMeals: Map<number, Meal>;  // meal stops the route can't reach in the window: the best time the route allows
   missedMeals: Meal[];
   requiredIds: number[];
-  unfitRequired: number[];     // picked places that can't go in: closed whenever the route would reach them
+  unfitRequired: number[];     // picked places that can't go in (no road to them)
+  closedPicks: number[];       // picked places that are closed when the route gets there: in the plan anyway, flagged
 }
 
 const UNRATED = 3.5;   // unrated places score like a middling rating, below the 4.0 default floor
@@ -71,6 +72,7 @@ export function planDetour(input: PlanInput): Plan {
   // Local gems: independent and community places only
   const eligible = input.stops.filter((s) => (s.rating == null ? allowUnrated : s.rating >= minRating) && (theme !== "local" || isLocal(s)));
   const mealOf = new Map<number, Meal>();
+  const closedPicks = new Set<number>();   // picks the user added although they're closed then: hours don't apply to them
 
   // Walk the order on the clock. Arriving early for a meal means waiting until the window opens
   // (the wait counts against the budget); arriving late for a meal, or outside opening hours, fails.
@@ -84,7 +86,7 @@ export function planDetour(input: PlanInput): Plan {
         if (t < from) t = from;
         if (!inMealWindow(meal, t) || t > to) ok = false;
       }
-      if (s.openMin != null && s.closeMin != null && (t < s.openMin || t + s.dwellMin > s.closeMin)) ok = false;
+      if (!closedPicks.has(s.id) && s.openMin != null && s.closeMin != null && (t < s.openMin || t + s.dwellMin > s.closeMin)) ok = false;
       t += s.dwellMin;
       at = s.idx;
     }
@@ -147,13 +149,15 @@ export function planDetour(input: PlanInput): Plan {
       / Math.sqrt(Math.max(added, 1));
   };
 
-  // phase 0a: the places the user picked, each at its cheapest position where it's open; no budget or stop cap
+  // phase 0a: the places the user picked, each at its cheapest position where it's open; no budget or stop cap.
+  // Closed wherever it goes? It still goes in (the user chose it), flagged closed
   let order: Stop[] = [];
   const requiredIds = input.requiredIds ?? [];
   const unfitRequired: number[] = [];
   for (const id of requiredIds) {
     const s = input.stops.find((x) => x.id === id);
-    const ins = s ? bestInsert(order, s, mealOf, Infinity) : null;
+    let ins = s ? bestInsert(order, s, mealOf, Infinity) : null;
+    if (s && !ins) { closedPicks.add(s.id); ins = bestInsert(order, s, mealOf, Infinity); }
     if (ins) order = ins.order; else unfitRequired.push(id);
   }
 
@@ -209,7 +213,8 @@ export function planDetour(input: PlanInput): Plan {
   }
 
   const totalMin = duration(order);
-  return { order, baseMin, totalMin, extraMin: totalMin - baseMin, mealOf, lateMeals, missedMeals, requiredIds, unfitRequired };
+  return { order, baseMin, totalMin, extraMin: totalMin - baseMin, mealOf, lateMeals, missedMeals, requiredIds, unfitRequired,
+    closedPicks: [...closedPicks] };
 }
 
 /**

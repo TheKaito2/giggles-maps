@@ -13,7 +13,8 @@ export function visitIsOpen(arrival: number, dwell: number, open: number | null 
   });
 }
 
-export function scheduleStops(order: Stop[], legs: number[], startMin: number, mealOf: Map<number, Meal>) {
+/** closed: stops the user added although they're closed then (opening hours don't fail them) */
+export function scheduleStops(order: Stop[], legs: number[], startMin: number, mealOf: Map<number, Meal>, closed: number[] = []) {
   let time = startMin;
   const etaMin: number[] = [];
   let failed = -1;
@@ -27,7 +28,7 @@ export function scheduleStops(order: Stop[], legs: number[], startMin: number, m
       time = Math.max(time, MEAL_WINDOWS[meal][0]);
       if (!inMealWindow(meal, time)) failed = i;
     }
-    if (!visitIsOpen(time, s.dwellMin, s.openMin, s.closeMin)) failed = i;
+    if (!closed.includes(s.id) && !visitIsOpen(time, s.dwellMin, s.openMin, s.closeMin)) failed = i;
     etaMin.push(Math.round(time)); time += s.dwellMin;
   });
   return { totalMin: time + legs[order.length] - startMin, etaMin, failed };
@@ -73,7 +74,7 @@ export async function verifyRoadPlan(input: {
       // rather than throwing the whole plan away (that left long trips with no stops at all)
       catch { routeErrors++; adjusted = true; order.splice(dropIndex(), 1); continue; }
     }
-    const clock = scheduleStops(order, road.legMin, input.startMin, input.plan.mealOf);
+    const clock = scheduleStops(order, road.legMin, input.startMin, input.plan.mealOf, input.plan.closedPicks);
     // over the budget is fine once only the user's picks are left: those go in whatever the time
     if (clock.failed < 0 && (clock.totalMin - input.baseline.travelMin <= input.budgetMin + 1e-7 || order.every(picked))) {
       const mealOf = new Map([...input.plan.mealOf].filter(([id]) => order.some((s) => s.id === id)));

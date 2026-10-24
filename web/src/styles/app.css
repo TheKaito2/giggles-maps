@@ -173,6 +173,7 @@ body { background: var(--paper); overflow: hidden; }
 .tag.picked { display: inline-flex; align-items: center; gap: 6px; background: var(--indigo-soft); color: var(--indigo); border-color: transparent; font-weight: 700; }
 .tag.picked button { border: 0; background: none; color: inherit; padding: 0; display: grid; }
 .chip.picked { background: var(--good); color: #fff; }
+.chip.closed { background: var(--bad); color: #fff; }
 
 /* landmarks (tier 3): the must-go places detours are built around */
 .chip.landmark { background: var(--marigold); color: #241a00; margin-left: 6px; vertical-align: middle; }

@@ -37,6 +37,7 @@ export interface RouteStop {
   meal?: Meal | null; // engine v2: this stop covers a meal
   meal_late?: boolean; // the restaurant for that meal, outside the usual meal hours (the route couldn't reach them)
   picked?: boolean;   // the user asked for this place (must_include)
+  closed?: boolean;   // picked, but closed when the trip gets there (it stays in the plan)
   local?: boolean; otop?: boolean; community?: boolean;   // local first: independent / OTOP / community enterprise
   tier?: 1 | 2 | 3;   // 3 = landmark (must-go), 2 = worth a visit, 1 = everyday
   extra_min?: number | null;   // about how many minutes this stop adds (road detour + time there); null if unknown

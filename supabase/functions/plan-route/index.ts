@@ -296,7 +296,7 @@ serve(async (req) => {
       const legs = []; let at = 0;
       for (const s of t.plan.order) { legs.push(matrix[at][s.idx]); at = s.idx; }
       legs.push(matrix[at][1]);
-      t.etaMin = scheduleStops(t.plan.order, legs, startMin, t.plan.mealOf).etaMin;
+      t.etaMin = scheduleStops(t.plan.order, legs, startMin, t.plan.mealOf, t.plan.closedPicks).etaMin;
       t.travelMin = legs.reduce((a, b) => a + b, 0);
       t.geometry = [origin, ...t.plan.order.map((s) => candidates[s.idx - 2]), dest].map((p) => [p.lng, p.lat]);
     }
@@ -353,6 +353,7 @@ serve(async (req) => {
         is_partner: c.is_partner, is_demo: c.is_demo,
         rating: c.rating == null ? null : Number(c.rating), price_level: c.price_level, tier: c.tier ?? 2,
         dwell_min: s.dwellMin, eta_min: eta, pit_stop: pitIds.has(c.id), meal, meal_late: !!late, picked: mustInclude.includes(c.id),
+        closed: plan.closedPicks.includes(c.id),   // you added it, but it's closed when you get there
         // about how many minutes this stop adds (road detour + time there): what removing it would save
         extra_min: ((x) => Number.isFinite(x) ? Math.round(x) : null)(insertionCost(plan.order.map((o) => o.idx), s.idx, travelMin, s.dwellMin)),
         photo: photoOf.get(c.id) ?? null,

@@ -58,7 +58,8 @@ export const KINDS: Record<string, { icon: LucideIcon; en: string; th: string; g
   community_centre: { icon: Users, en: "Community centre", th: "ศูนย์ชุมชน", group: "local" },
 };
 // places imported before kinds existed only have the coarse planner category
-const FROM_CATEGORY: Record<string, string> = { food: "restaurant", craft: "craft" };
+// "shop" in a plan is a 7-Eleven-style pit stop (the only shops the planner adds), also once kept through an edit
+const FROM_CATEGORY: Record<string, string> = { food: "restaurant", craft: "craft", shop: "convenience" };
 export const kindOf = (kind?: string | null, category?: string | null) =>
   KINDS[kind ?? ""] ?? KINDS[FROM_CATEGORY[category ?? ""] ?? category ?? ""] ?? KINDS.attraction;
 export const colourOf = (kind?: string | null, category?: string | null) => GROUPS[kindOf(kind, category).group].colour;
