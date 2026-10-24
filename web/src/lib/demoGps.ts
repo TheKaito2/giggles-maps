@@ -25,7 +25,11 @@ export const demoAt = () => at;
 export const onDemoChange = (f: () => void) => { listeners.add(f); return () => { listeners.delete(f); }; };
 const changed = () => listeners.forEach((f) => f());
 
-export function setDemo(value: boolean) { on = value; write(ON, value); changed(); }
+export function setDemo(value: boolean) {
+  on = value; write(ON, value);
+  if (!value) try { localStorage.removeItem("gm-demo-bar-hidden"); } catch { /* nothing to show again */ }   // next time demo mode is on, its note shows again
+  changed();
+}
 /** Move yourself there; everything watching the location gets a fix straight away. */
 export function moveTo(p: LatLng) {
   at = p; write(AT, p);
