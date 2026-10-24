@@ -48,7 +48,7 @@ export default function AvatarBuilder({ profile, onClose, onSaved }: { profile: 
   };
 
   return (
-    <Modal labelledBy="ab-title" className="builder" onClose={onClose}>
+    <Modal labelledBy="ab-title" className="builder" dismissable={false} onClose={onClose}>
         <header className="modal-head">
           <h2 id="ab-title">Your avatar</h2>
           <span className="coin-balance num"><Coins size={16} aria-hidden /> {coins}</span>

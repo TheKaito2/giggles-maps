@@ -17,7 +17,7 @@ export default function Nickname({ current, colour: initialColour, onDone, onLat
     catch (e) { setMsg(errCode(e) === "bad_nickname" ? "Use 2 to 20 characters (Thai, English, numbers or emoji)." : "Couldn't save. Try again."); }
   };
   return (
-    <Modal labelledBy="nick-title" onClose={onLater} onSubmit={save}>
+    <Modal labelledBy="nick-title" dismissable={false} onClose={onLater} onSubmit={save}>
         <header className="modal-head">
           <h2 id="nick-title">{current ? "Your name and colour" : "Pick a traveller name"}</h2>
           <button type="button" className="icon-btn" onClick={onLater} aria-label="Close">✕</button>

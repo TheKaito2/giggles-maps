@@ -486,7 +486,7 @@ export async function getPlacePage(id: number): Promise<PlacePage | null> {
   const real = await rpc<PlacePage | null>("place_page", { p_id: id }), d = demo();
   return d && real ? (await d).demoPlacePage(real) : real;
 }
-/** A written review (20+ characters) of a place earns one bonus Siam Si shake there, once. */
+/** A written review (60+ characters) of a place earns one bonus Siam Si shake there, once. */
 export const REVIEW_SHAKE_CHARS = 60;
 export const writeReview = (place: number, rating: number, body: string) =>
   rpc<{ xp: number; shake: boolean; tickets: number }>("write_review", { p_place: place, p_rating: rating, p_body: body });

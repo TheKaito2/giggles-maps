@@ -43,7 +43,7 @@ export default function AddPlace({ onClose }: { onClose: () => void }) {
     { enableHighAccuracy: true, timeout: 15000 });
   };
   return (
-    <Modal labelledBy="add-place-title" onClose={onClose} onSubmit={() => { if (name.trim().length > 1) send(); }}>
+    <Modal labelledBy="add-place-title" dismissable={false} onClose={onClose} onSubmit={() => { if (name.trim().length > 1) send(); }}>
         <header className="modal-head"><h2 id="add-place-title">Add a missing place</h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button></header>
         <p className="fine">Stand at the place: we pin it where you are.</p>

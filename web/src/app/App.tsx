@@ -23,7 +23,7 @@ import { demoOn, onDemoChange } from "../lib/demoGps";
 import { SkelLines } from "./Skeleton";
 import Boundary from "./Boundary";
 import Modal from "./Modal";
-import { dialogsOpen, quietBack, quietPop } from "../lib/useDialog";
+import { dialogsOpen, LOAD, ours, quietBack, quietPop } from "../lib/useDialog";
 
 // Only the map and the detour sheet load up front; tabs and sheets arrive when first opened.
 const MapView = lazy(() => import("./MapView"));   // maplibre is most of the code: the sheet paints first
@@ -61,14 +61,17 @@ export default function App() {
   const setTab = useCallback((t: Tab) => {
     const from = tabNow.current;
     if (t === from) return;
-    if (from === "map") history.pushState({ ...history.state, gmTab: t }, "");
-    else if (t !== "map") history.replaceState({ ...history.state, gmTab: t }, "");
-    else if (history.state?.gmTab) quietBack();
+    if (from === "map") history.pushState({ ...history.state, gmTab: t, gmLoad: LOAD }, "");
+    else if (t !== "map") history.replaceState({ ...history.state, gmTab: t, gmLoad: LOAD }, "");
+    else if (history.state?.gmTab && ours(history.state)) quietBack();
     tabNow.current = t;
     setTabState(t);
   }, []);
   useEffect(() => {
-    const pop = () => { if (!quietPop() && !dialogsOpen() && !history.state?.gmTab && tabNow.current !== "map") { tabNow.current = "map"; setTabState("map"); } };
+    const pop = () => {
+      const onTab = history.state?.gmTab && ours(history.state);
+      if (!quietPop() && !dialogsOpen() && !onTab && tabNow.current !== "map") { tabNow.current = "map"; setTabState("map"); }
+    };
     addEventListener("popstate", pop);
     return () => removeEventListener("popstate", pop);
   }, []);

@@ -56,7 +56,7 @@ const legLine = (gap: number, mode: keyof typeof MOVE, travel?: number, dwell?: 
     .filter(Boolean).join(" · ");
 };
 
-function StopRow({ s, i, d, sel, dragging, travel, onDrag, onStep, onOpen, onCheckin }: { s: RouteStop; i: number; d: Detour; sel: boolean; dragging: boolean; travel: number | null;
+function StopRow({ s, i, d, sel, dragging, travel, roadMin, onDrag, onStep, onOpen, onCheckin }: { s: RouteStop; i: number; d: Detour; sel: boolean; dragging: boolean; travel: number | null; roadMin?: number;
   onDrag: (e: React.PointerEvent) => void; onStep: (by: number) => void; onOpen: (s: RouteStop) => void; onCheckin: (t: CheckinTarget) => void }) {
   const [menu, setMenu] = useState(false);
   const more = useRef<HTMLDivElement>(null);
@@ -83,7 +83,7 @@ function StopRow({ s, i, d, sel, dragging, travel, onDrag, onStep, onOpen, onChe
           <span className="stop-meta"><b className="num" aria-label={`Arrive ${hhmm(s.eta_min)}`}>{hhmm(s.eta_min)}</b>{s.extra_min != null && <b className="num extra">+{s.extra_min} min</b>}
             <span className="fine">{kindOf(s.pit_stop ? "convenience" : null, s.category).en}{s.rating != null && ` · ★ ${s.rating.toFixed(1)}`}</span></span>
           {/* mid-drag the numbers are stale: hidden, but keeping their space so rows don't jump under your finger */}
-          <span className={`fine num stop-leg${travel == null ? " stale" : ""}`}>{legLine(travel ?? 0, d.prefs.mode, s.travel_min, s.dwell_min, s.eta_min + s.dwell_min)}</span>
+          <span className={`fine num stop-leg${travel == null ? " stale" : ""}`}>{legLine(travel ?? 0, d.prefs.mode, roadMin, s.dwell_min, s.eta_min + s.dwell_min)}</span>
           {tags.length > 0 && <span className="row tight">{tags.map((b) => <span key={b.text} className={`chip ${b.cls}`} title={b.title}>{b.text}</span>)}</span>}
         </span>
       </button>
@@ -322,6 +322,9 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
               {i === 0 && <AddGap hidden={!!order} onAdd={() => setAdding(0)} />}
               <StopRow s={s} i={i} d={d} sel={selected === s.id} dragging={dragId === s.id} onDrag={(e) => drag(s.id, e)} onStep={(by) => step(s.id, by)}
                 travel={order ? null : s.eta_min - (i ? shown[i - 1].eta_min + shown[i - 1].dwell_min : start)}
+                // the road minutes only hold for the leg the plan made: with the stop before this one just removed (re-planning),
+                // the gap spans two legs, so it's all shown as travel rather than a bogus wait
+                roadMin={plan.stops[plan.stops.indexOf(s) - 1] === (i ? shown[i - 1] : undefined) ? s.travel_min : undefined}
                 onOpen={onOpen} onCheckin={onCheckin} />
               <AddGap hidden={!!order} onAdd={() => setAdding(i + 1)} />
             </Fragment>)}

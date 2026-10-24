@@ -6,6 +6,10 @@ const open: { close: () => void; closedByBack: () => void }[] = [];
 // Counted here, in one listener that runs before any other, so a skip is used up even when no dialog is left to see it.
 let skipPop = 0;
 let quiet = false;
+/** This page load's id. history.state survives a reload but the open dialogs and tabs don't: entries from an earlier
+ *  load are ignored, or Back would land on them and do nothing. */
+export const LOAD = Date.now();
+export const ours = (state: unknown) => (state as { gmLoad?: number } | null)?.gmLoad === LOAD;
 addEventListener("popstate", () => {
   quiet = skipPop > 0;
   if (quiet) { skipPop--; return; }
@@ -32,7 +36,7 @@ export function useDialog<T extends HTMLElement = HTMLDivElement>(onClose: () =>
     const me = { close: () => close.current(), closedByBack: () => { byBack = true; close.current(); } };
     open.push(me);
     box.current?.focus();
-    history.pushState({ ...history.state, gmDialog: open.length }, "");
+    history.pushState({ ...history.state, gmDialog: open.length, gmLoad: LOAD }, "");
     const keys = (e: KeyboardEvent) => {
       if (open.at(-1) !== me) return;
       if (e.key === "Escape") { e.stopPropagation(); me.close(); return; }
@@ -49,7 +53,7 @@ export function useDialog<T extends HTMLElement = HTMLDivElement>(onClose: () =>
     return () => {
       document.removeEventListener("keydown", keys);
       open.splice(open.indexOf(me), 1);
-      if (!byBack && history.state?.gmDialog) quietBack();   // closed by its own button: drop the entry it added
+      if (!byBack && history.state?.gmDialog && ours(history.state)) quietBack();   // closed by its own button: drop the entry it added
       back?.focus();
     };
   }, []);
