@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Bell, Camera, Coins, LocateFixed, Map as MapIcon, MapPin, Navigation, Swords, Trophy, UserRound, X } from "lucide-react";
 import { ensureSession, supabase } from "../lib/supabase";
 import { addFriend, type CheckinTarget, getProfile, type LatLng, type Profile, readCodeParam, readScanParam } from "../lib/api";
@@ -42,12 +42,15 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 // shared empty arrays: a fresh [] each render would make the map refit the route on every position update
 const NONE: never[] = [];
 
+const TIER_WORD = { 3: "landmark", 2: "worth-a-visit", 1: "everyday" } as const;
+
 export default function App() {
   const [tab, setTab] = useState<Tab>(() => readCodeParam("friend") ? "profile" : "map");
   const [friend, setFriend] = useState<string | null>(null);   // a friend's profile open in the Profile tab
   const [overlay, setOverlay] = useState<"shop" | "bag" | "avatar" | "ride" | "add" | null>(() => readCodeParam("trip") ? "ride" : null);
   const [chip, setChip] = useState<string | null>(null);
   const [nav, setNav] = useState<Waypoint[] | null>(null);   // turn-by-turn running
+  const [paused, setPaused] = useState<Waypoint[] | null>(null);   // directions left off to check in at a stop
   const [look, setLookState] = useState<MapLook>(loadLook);   // map type + night map, remembered on this device
   const setLook = (patch: Partial<MapLook>) => setLookState((l) => { const next = { ...l, ...patch }; saveLook(next); return next; });
   const [etaToken, setEtaToken] = useState(() => {
@@ -83,6 +86,14 @@ export default function App() {
   useEffect(() => onDemoChange(demoMoved), []);
   useEffect(() => { if (demoOn()) nearby.start(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const zoneStop = nearby.inZone[0];
+  // walking into a stop's zone you haven't stamped: a buzz, so the check-in card gets noticed
+  const buzzed = useRef<number | null>(null);
+  useEffect(() => {
+    if (zoneStop && !zoneStop.stamped && buzzed.current !== zoneStop.id) navigator.vibrate?.([60, 40, 60]);
+    buzzed.current = zoneStop?.id ?? null;
+  }, [zoneStop?.id, zoneStop?.stamped]);
+  const checkInAt = (s: { id: number; name: string; lat: number; lng: number }) =>
+    setCheckin({ target: { id: s.id, name: s.name, lat: s.lat, lng: s.lng, is_partner: false, is_demo: false } });
   const trip = useTrip(nearby.here, nearby.start, refreshKey);
   const [nameSheet, setNameSheet] = useState(false);
   const [nameLater, setNameLater] = useState(false);
@@ -185,12 +196,25 @@ export default function App() {
             {place && <PlaceSheet id={place} onClose={() => setPlace(null)}
               onDirections={(p) => { setPlace(null); d.goTo({ point: { lat: p.lat, lng: p.lng }, name: p.name }); }}
               onCheckin={(p) => setCheckin({ target: { id: p.id, name: p.name, lat: p.lat, lng: p.lng, is_partner: false, is_demo: false } })} />}
-            {zoneStop && (
+            {(zoneStop || paused) && (
               <div className="map-actions">
-                <button type="button" className={`btn checkin-cta tier-${zoneStop.tier}`}
-                  onClick={() => setCheckin({ target: { id: zoneStop.id, name: zoneStop.name, lat: zoneStop.lat, lng: zoneStop.lng, is_partner: false, is_demo: false } })}>
-                  <Camera size={18} aria-hidden /> {zoneStop.stamped ? "Add a photo at" : "Check in at"} {zoneStop.name}
-                </button>
+                {zoneStop && !zoneStop.stamped ? (
+                  <div className={`arrive-card tier-${zoneStop.tier}`} role="status">
+                    <span className="eyebrow">You're here</span>
+                    <b>{zoneStop.name}</b>
+                    <p className="fine">Check in with a photo to collect the {TIER_WORD[zoneStop.tier]} stamp.</p>
+                    <button type="button" className="btn big checkin-go" onClick={() => checkInAt(zoneStop)}><Camera size={20} aria-hidden /> Check in</button>
+                  </div>
+                ) : zoneStop && (
+                  <button type="button" className={`btn checkin-cta tier-${zoneStop.tier}`} onClick={() => checkInAt(zoneStop)}>
+                    <Camera size={18} aria-hidden /> Add a photo at {zoneStop.name}
+                  </button>
+                )}
+                {paused && !checkin && <span className="row resume-row">
+                  <button type="button" className="btn resume-nav" onClick={() => { setNav(paused); setPaused(null); }}>
+                    <Navigation size={16} aria-hidden /> Resume directions to {paused[0].name}</button>
+                  <button type="button" className="icon-btn" onClick={() => setPaused(null)} aria-label="Stop these directions"><X size={16} /></button>
+                </span>}
               </div>
             )}
           </div>
@@ -199,8 +223,8 @@ export default function App() {
             head={d.stage !== "browse" && <TripHead d={d} onBack={d.stage === "results" ? () => d.setStage("choose") : d.close}
               backLabel={d.stage === "results" ? "Back to time options" : "Close this trip"} onSearch={() => setSnap("full")} />}
             foot={d.stage === "results" && plan && plan.stops.length > 0 && (
-              <button type="button" className="btn big find" onClick={() => setNav([...plan.stops.map((st) => ({ lat: st.lat, lng: st.lng, name: st.name })),
-                { ...d.dest!.point, name: d.dest!.name }])}><Navigation size={18} aria-hidden /> Start · {plan.stops.length} stop{plan.stops.length === 1 ? "" : "s"}</button>
+              <button type="button" className="btn big find" onClick={() => { setPaused(null); setNav([...plan.stops.map((st) => ({ lat: st.lat, lng: st.lng, name: st.name, id: st.id })),
+                { ...d.dest!.point, name: d.dest!.name }]); }}><Navigation size={18} aria-hidden /> Start · {plan.stops.length} stop{plan.stops.length === 1 ? "" : "s"}</button>
             )}>
             {error && <p className="error" role="alert">{error}<button type="button" className="icon-btn" onClick={() => setError("")} aria-label="Dismiss"><X size={16} /></button></p>}
             {d.stage === "browse" && <WhereTo near={nearby.here} onPick={(point, name) => d.goTo({ point, name })} pickOnMap={() => { setPicking("dest"); setSnap("peek"); }}
@@ -230,7 +254,8 @@ export default function App() {
         </div>
       )}
       {overlay === "add" && <AddPlace onClose={() => setOverlay(null)} />}
-      {nav && <Navigate waypoints={nav} mode={d.prefs.mode} onClose={() => setNav(null)} />}
+      {nav && <Navigate waypoints={nav} mode={d.prefs.mode} onClose={() => setNav(null)}
+        onCheckin={(stop, rest) => { setNav(null); setPaused(rest.length ? rest : null); if (stop.id != null) checkInAt({ ...stop, id: stop.id }); }} />}
       {etaToken && <EtaView token={etaToken} onClose={() => setEtaToken(null)} />}
       {overlay === "avatar" && profile && <AvatarBuilder profile={profile} onClose={() => setOverlay(null)} onSaved={() => { setOverlay(null); refresh(); }} />}
       {overlay === "ride" && (

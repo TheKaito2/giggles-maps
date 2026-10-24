@@ -1051,3 +1051,19 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .hscroll-arrow.on { display: grid; }
 .hscroll-arrow.prev { margin-left: 4px; } .hscroll-arrow.next { margin-left: -38px; }
 .hscroll-arrow:hover { background: var(--indigo); color: #fff; }
+
+/* arrival: the check-in card on the map and in turn-by-turn */
+.arrive-card { display: grid; justify-items: center; text-align: center; gap: 4px; width: min(360px, calc(100vw - 32px)); padding: 16px 18px 18px;
+  border-radius: 22px; background: var(--card); border: 3px solid var(--indigo); box-shadow: 0 10px 30px rgb(10 12 30 / .3); animation: arrive-in .35s ease-out; }
+.arrive-card.tier-3 { border-color: var(--marigold); }
+.arrive-card > b { font: 800 20px var(--font-display); line-height: 1.2; }
+.arrive-card .fine { margin: 0 0 6px; }
+.checkin-go { width: 100%; justify-content: center; position: relative; }
+.arrive-card.tier-3 .checkin-go { background: var(--marigold); color: #241a00; }
+.checkin-go::after { content: ""; position: absolute; inset: -4px; border-radius: inherit; border: 3px solid currentColor; opacity: 0; animation: go-ring 1.8s ease-out infinite; pointer-events: none; }
+@keyframes go-ring { 0% { opacity: .55; transform: scale(.96); } 100% { opacity: 0; transform: scale(1.08); } }
+@keyframes arrive-in { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .arrive-card, .checkin-go::after { animation: none; } }
+.nav-arrive { position: absolute; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; z-index: 3; }
+.resume-row { align-items: center; gap: 6px; }
+.resume-nav { box-shadow: var(--shadow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100vw - 90px); }

@@ -1,12 +1,14 @@
 import maplibregl from "maplibre-gl";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ArrowUp, CornerUpLeft, CornerUpRight, Flag, Languages, Share2, Volume2, VolumeX, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUp, Camera, CornerUpLeft, CornerUpRight, Flag, Languages, Share2, SkipForward, Volume2, VolumeX, X } from "lucide-react";
 import { type Avoid, getNavRoute, type LatLng, type NavRoute, shareEta, SITE, stopEta, type TravelMode, tripPing } from "../../lib/api";
 import { cumulative, dueCall, type Progress, progress } from "./progress";
 import { say } from "./thai";
 import { isNight, loadLook, styleUrl } from "../mapLayers";
+import { metres } from "../useStops";
 
-export interface Waypoint extends LatLng { name: string }
+export interface Waypoint extends LatLng { name: string; id?: number }   // id: a place you can check in at
+const ARRIVE_M = 50;   // this close to a stop counts as there: the arrival card comes up
 const OFF_ROUTE_M = 60, OFF_ROUTE_S = 10, REROUTE_GAP_S = 20;
 // announce a turn this far ahead, then again closer, then at the turn
 const CALLS: Record<TravelMode, number[]> = { auto: [800, 200, 0], bicycle: [300, 80, 0], pedestrian: [150, 40, 0] };
@@ -25,8 +27,11 @@ function TurnIcon({ type }: { type: number }) {
 /**
  * On-device turn-by-turn: follows your GPS along the road route, speaks each turn (Thai or English), reroutes when you
  * leave the route, keeps the screen on, and can share a live ETA link. Waypoints = the stops left, then the destination.
+ * At each stop an arrival card offers to check in, which leaves directions (`onCheckin` gets the stop and what's left).
  */
-export default function Navigate({ waypoints, mode, onClose }: { waypoints: Waypoint[]; mode: TravelMode; onClose: () => void }) {
+export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
+  waypoints: Waypoint[]; mode: TravelMode; onClose: () => void; onCheckin: (stop: Waypoint, rest: Waypoint[]) => void;
+}) {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const me = useRef<maplibregl.Marker | null>(null);
@@ -42,6 +47,8 @@ export default function Navigate({ waypoints, mode, onClose }: { waypoints: Wayp
   const cum = useMemo(() => route ? cumulative(route.shape) : [], [route]);
   const offSince = useRef<number | null>(null), lastReroute = useRef(0), said = useRef(new Set<string>()), lastIndex = useRef(0);
   const legsDone = useRef(0);   // legs of the current route already finished (each leg ends at a stop)
+  const [atStop, setAtStop] = useState<Waypoint | null>(null);   // the stop you just reached: the arrival card
+  const greeted = useRef(new Set<Waypoint>());
 
   const speak = (text: string) => {
     if (muted || !("speechSynthesis" in window)) return;
@@ -86,6 +93,20 @@ export default function Navigate({ waypoints, mode, onClose }: { waypoints: Wayp
     src?.setData({ type: "FeatureCollection", features: route ? [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: route.shape } }] : [] });
   }, [route]);
 
+  // close to the next stop: say so once and bring up the arrival card
+  useEffect(() => {
+    const next = left[0];
+    if (!here || !next || greeted.current.has(next) || metres(here, next) > ARRIVE_M) return;
+    greeted.current.add(next); setAtStop(next);
+    navigator.vibrate?.([80, 60, 80]);
+    speak(lang === "th" ? `ถึง ${next.name} แล้ว` : `You've arrived at ${next.name}`);
+  }, [here, left]); // eslint-disable-line react-hooks/exhaustive-deps
+  const keepGoing = () => {   // skip checking in here: on to the next stop
+    const rest = left.filter((w) => w !== atStop);
+    setAtStop(null);
+    if (rest.length && rest.length !== left.length) { setLeft(rest); if (here) plan(here, rest); }
+  };
+
   // every fix and every new route: where am I on the route, what to say, am I off route, did I reach a stop
   useEffect(() => {
     if (!here || !route) return;
@@ -110,7 +131,7 @@ export default function Navigate({ waypoints, mode, onClose }: { waypoints: Wayp
     if (done > legsDone.current && left.length > 1) {
       const reached = left[done - legsDone.current - 1] ?? left[0];
       setLeft(left.slice(done - legsDone.current)); legsDone.current = done;
-      speak(lang === "th" ? `ถึง ${reached.name} แล้ว` : `You've reached ${reached.name}`);
+      if (!greeted.current.has(reached)) { greeted.current.add(reached); setAtStop(reached); speak(lang === "th" ? `ถึง ${reached.name} แล้ว` : `You've reached ${reached.name}`); }
     }
     if (p.next != null) {
       const mv = route.maneuvers[p.next];
@@ -154,12 +175,26 @@ export default function Navigate({ waypoints, mode, onClose }: { waypoints: Wayp
     <div className="nav-mode" role="dialog" aria-modal="true" aria-label="Navigation">
       <div ref={box} className="nav-map" />
       <div className="nav-top" aria-live="polite">
-        {arrived ? <><Flag size={34} /><b>You've arrived at {left[0]?.name}</b></>
+        {atStop || arrived ? <><Flag size={34} /><b>You've arrived at {(atStop ?? left[0])?.name}</b></>
           : mv && prog ? <><TurnIcon type={mv.type} /><span className="nav-turn"><b className="num">{fmtM(prog.toNextM)}</b>
               <span>{lang === "th" ? say(mv, 0, "th") : mv.instruction}</span></span></>
           : <b>{msg || "Finding your route…"}</b>}
       </div>
-      {prog && prog.offM > OFF_ROUTE_M && <p className="nav-off">Off route: we'll reroute you in a moment</p>}
+      {prog && prog.offM > OFF_ROUTE_M && !atStop && <p className="nav-off">Off route: we'll reroute you in a moment</p>}
+      {atStop && (
+        <div className="arrive-card nav-arrive" role="alertdialog" aria-labelledby="arrive-title">
+          <span className="eyebrow">You've arrived</span>
+          <b id="arrive-title">{atStop.name}</b>
+          {atStop.id != null
+            ? <><p className="fine">Check in with a photo to collect the stamp. Directions pause; you can pick them up again after.</p>
+                <button type="button" className="btn big checkin-go" onClick={() => { if (share) stopEta().catch(() => undefined); onCheckin(atStop, left.filter((w) => w !== atStop)); }}>
+                  <Camera size={20} aria-hidden /> Check in here</button></>
+            : <p className="fine">That's the end of the route. End directions and, if this place is a stop, its check-in is right there on the map.</p>}
+          {left.filter((w) => w !== atStop).length > 0
+            ? <button type="button" className="btn soft" onClick={keepGoing}><SkipForward size={16} aria-hidden /> Skip, go to {left.filter((w) => w !== atStop)[0].name}</button>
+            : <button type="button" className="btn soft" onClick={end}><X size={16} aria-hidden /> End directions</button>}
+        </div>
+      )}
       <div className="nav-bottom">
         <div className="nav-eta">
           {remainingMin != null && <><b className="num">{clock(remainingMin)}</b><span className="fine num">{Math.round(remainingMin)} min · {fmtM(prog!.remainingM)}</span></>}
