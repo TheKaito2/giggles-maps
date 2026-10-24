@@ -49,3 +49,12 @@ test("step times put a slow city start where it belongs along the route", () => 
   const spots = onRoute([origin, dest, onRoad], { ...route, vertexMin });
   expect(spots[2].along).toBeCloseTo(45, 0);
 });
+
+test("no call pairs points further apart than the routing server allows", () => {
+  // stops strung along 1,500 km: rows taken in route order must not mix far ends in one call
+  const long: RoadRoute = { geometry: Array.from({ length: 301 }, (_, k) => [100, 6 + k * 0.045] as [number, number]), legMin: [1200], travelMin: 1200 };
+  const points = [{ lat: 6, lng: 100 }, { lat: 19.5, lng: 100 }, ...Array.from({ length: 22 }, (_, k) => ({ lat: 6.2 + k * 0.6, lng: 100.05 }))];
+  for (const [mode, limit] of [["auto", 142000], ["bicycle", 57000], ["pedestrian", 28000]] as const) {
+    for (const c of planCalls(points, onRoute(points, long), mode)) for (const s of c.sources) for (const t of c.targets.values()) expect(haversineM(points[s], t)).toBeLessThanOrEqual(limit);
+  }
+});

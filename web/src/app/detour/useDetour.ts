@@ -27,7 +27,8 @@ const errorText = (e: unknown) => {
     : code === "detour_limit" ? "That's today's 3 free detours."
     : code === "edit_limit" ? "That's today's 10 free changes."
     : code === "slow_down" ? "Lots of plans at once. Wait a moment, then try again."
-    : code.startsWith("bad_") ? "Pick a start and destination inside Thailand." : "Couldn't plan this one. Try again in a moment.";
+    : code === "too_far_for_mode" ? "That's too far to walk or cycle in one go. Try Driving."
+    : code === "bad_origin" || code === "bad_dest" ? "Pick a start and destination inside Thailand." : "Couldn't plan this one. Try again in a moment.";
 };
 
 export function useDetour(onError: (m: string) => void) {
@@ -43,7 +44,6 @@ export function useDetour(onError: (m: string) => void) {
   const [choice, setChoice] = useState<string | null>(null);   // theme of the plan card you picked
   const [exclude, setExclude] = useState<number[]>([]);
   const [editing, setEditing] = useState(false);
-  const [bump, setBump] = useState(0);              // extra minutes added so the stops you added fit
   const [hidden, setHidden] = useState<number[]>([]);   // removed stops, hidden at once while the route recalculates
   const [locating, setLocating] = useState(false);
   const request = useRef(0);   // preset plans in flight
@@ -79,7 +79,7 @@ export function useDetour(onError: (m: string) => void) {
   useEffect(() => {
     const id = ++request.current;
     edit.current++; setEditing(false);   // an edit in flight belongs to the old trip
-    setExclude([]); setChoice(null); setBump(0); setHidden([]); setResults({});
+    setExclude([]); setChoice(null); setHidden([]); setResults({});
     if (stage === "browse" || !origin || !dest) return;
     const ids: PresetId[] = ["relaxed", "quick", "day", "half", ...(preset === "custom" ? ["custom" as const] : [])];
     // detours need an account (v5): ask a guest to sign in instead of sending plans the server refuses
@@ -99,7 +99,7 @@ export function useDetour(onError: (m: string) => void) {
   };
   // tapping an option shows its plans (planning it again only if it failed); edits don't carry across options
   const choosePreset = (id: PresetId) => {
-    edit.current++; setPreset(id); setChoice(null); setExclude([]); setEditing(false); setBump(0); setHidden([]);
+    edit.current++; setPreset(id); setChoice(null); setExclude([]); setEditing(false); setHidden([]);
     const r = results[id];
     if (guest) { setGate("sign_in_required"); return; }
     if (!r || (typeof r === "object" && "error" in r)) planPreset(id, request.current);
@@ -110,7 +110,7 @@ export function useDetour(onError: (m: string) => void) {
   };
   const close = () => {
     request.current++; edit.current++;
-    setStage("browse"); setDest(null); setResults({}); setExclude([]); setChoice(null); setEditing(false); setHidden([]); setBump(0);
+    setStage("browse"); setDest(null); setResults({}); setExclude([]); setChoice(null); setEditing(false); setHidden([]);
     setOrigin((o) => o?.name === "Your location" ? null : o);   // you'll have moved: locate again next time
   };
 
@@ -118,25 +118,20 @@ export function useDetour(onError: (m: string) => void) {
   const response = current && typeof current === "object" && "route_id" in current ? current : null;
   const plan = response && choosePlan(response, choice);
 
-  // edits re-plan the shown preset: kept stops stay in (must_include), removed ones stay out (exclude)
-  const replan = async (keep: number[], out: number[], extra = bump, mustFit?: number, tries = 2): Promise<void> => {
+  // edits re-plan the shown preset: kept stops stay in (must_include), removed ones stay out (exclude). Kept stops always
+  // stay, past the preset's time if need be: the time only shapes the generated plans, it never refuses a stop you chose.
+  const replan = async (keep: number[], out: number[]): Promise<void> => {
     if (!origin || !dest || !response || !preset) return;
     const id = ++edit.current;
     setEditing(true);
     try {
       const theme = choice ?? response.plans?.[0]?.id;
       const base = budgetOf(preset);
-      // auto: the server's own pick is the base (response.budget_min already includes the current bump)
-      const budget = base === "auto" ? (extra ? Math.min(MAX_BUDGET, response.budget_min - bump + extra) : "auto") : Math.min(MAX_BUDGET, base + extra);
+      const budget = base === "auto" ? "auto" : Math.min(MAX_BUDGET, base);
       const r = await planRoute({ ...toRequest({ ...prefs, budget }, origin.point, dest.point),
         must_include: [...new Set([...prefs.picks.map((p) => p.id), ...keep])].slice(0, MAX_STOPS), exclude: out.slice(-30), theme });
       if (id !== edit.current) return;
-      // the estimate said it fits but the real road time didn't: give it 15 more minutes (twice at most)
-      const unfit = r.plans?.find((p) => p.id === theme)?.unfit_required ?? r.unfit_required ?? [];
-      if (mustFit != null && unfit.includes(mustFit) && tries > 0 && budget !== "auto" && budget < MAX_BUDGET) {
-        return replan(keep, out, extra + 15, mustFit, tries - 1);
-      }
-      setExclude(out); setBump(extra); setResults((all) => ({ ...all, [preset!]: r })); setChoice(theme ?? null);
+      setExclude(out); setResults((all) => ({ ...all, [preset!]: r })); setChoice(theme ?? null);
     } catch (e) { if (id === edit.current) { gated(e); onError(errorText(e)); } }
     finally { if (id === edit.current) { setEditing(false); setHidden([]); } }
   };
@@ -144,17 +139,12 @@ export function useDetour(onError: (m: string) => void) {
   // one edit at a time: the next one builds on its result. Removing keeps the others, rules this one out,
   // and lets the planner fill the gap with its best replacement.
   const removeStop = (stop: number) => { if (editing) return; setHidden((h) => [...h, stop]); return replan(ids().filter((x) => x !== stop), [...exclude, stop]); };
-  // adding means adding: stretch the time (to the next 15 min) when the place wouldn't fit what's left
-  const addStop = (place: number, extraMin: number) => {
-    if (editing) return;
-    const left = (response?.budget_min ?? 0) - (plan?.extra_min ?? 0);
-    const more = extraMin > left ? Math.ceil((extraMin - left) / 15) * 15 : 0;
-    return replan([...ids(), place], exclude.filter((x) => x !== place), bump + more, place);
-  };
+  // adding means adding: the place goes in even when the trip runs past the preset's time
+  const addStop = (place: number) => { if (editing) return; return replan([...ids(), place], exclude.filter((x) => x !== place)); };
 
   return {
     stage, setStage, origin, setOrigin, dest, setDest, prefs, set, results, preset, setPreset: choosePreset, choice, setChoice, plan, response,
-    editing, locating, bump, hidden, retry, notify: onError, gate, setGate, replanAll: () => setAgain((n) => n + 1), goTo, close, pickCustom, budgetOf, removeStop, addStop,
+    editing, locating, hidden, retry, notify: onError, gate, setGate, replanAll: () => setAgain((n) => n + 1), goTo, close, pickCustom, budgetOf, removeStop, addStop,
     swap: () => { if (origin && dest) { setOrigin(dest); setDest(origin); } },
   };
 }

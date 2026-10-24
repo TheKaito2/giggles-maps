@@ -115,14 +115,14 @@ function AlongList({ places, d, full, limit, onAdded }: { places: AlongPlace[]; 
     }).catch(() => live && setElsewhere([])), 300);
     return () => { live = false; clearTimeout(t); };
   }, [needle, kind, byKind]); // eslint-disable-line react-hooks/exhaustive-deps
-  const add = (id: number, extra: number) => { d.addStop(id, extra); onAdded?.(); };
+  const add = (id: number) => { d.addStop(id); onAdded?.(); };
   const row = (p: Row | FoundPlace, extra: string, off = false) => (
     <li key={`${off ? "e" : ""}${p.id}`}>
       <Thumb s={{ name: p.name, category: p.category ?? "", photo: "photo" in p ? p.photo ?? null : null }} size={40} />
       <span className="stop-text"><b>{p.name}</b>
         <span className="stop-meta"><b className={`num extra${off ? " off" : ""}`}>{extra}</b>
           <span className="fine">{kindOf(p.kind ?? null, p.category ?? "").en}{p.rating != null && ` · ★ ${p.rating.toFixed(1)}`}</span></span></span>
-      <button type="button" className="btn soft small add-btn" disabled={full || d.editing} onClick={() => add(p.id!, "extra" in p ? p.extra : 15)}
+      <button type="button" className="btn soft small add-btn" disabled={full || d.editing} onClick={() => add(p.id!)}
         aria-label={`Add ${p.name}`}><Plus size={15} aria-hidden /> Add</button>
     </li>
   );
@@ -235,8 +235,7 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
           <p className="fine num">+{plan.road_extra_min} min on the road · {plan.stop_min} min at stops{plan.wait_min ? ` · ${plan.wait_min} min waiting for a meal time` : ""} · straight there {plan.base_min} min</p>
         )}
         {current?.missed_meals?.length ? <p className="fine" role="status">No restaurant fits {current.missed_meals.map((m) => `${MEAL_NAME[m].toLowerCase()} (${MEALS.find((x) => x.id === m)!.window})`).join(", ")}. Try more time or another start time.</p> : null}
-        {current?.unfit_required?.length ? <p className="fine" role="status">A place you picked didn't fit this much time. Try a longer option.</p> : null}
-        {d.bump > 0 && <p className="fine" role="status">Extra time stretched to +{budgetLabel(response.budget_min)} so your added stops fit.</p>}
+        {current?.unfit_required?.length ? <p className="fine" role="status">A place you picked is closed when you'd get there, so it's not in this plan.</p> : null}
         {plan.routing === "estimate" && <p className="fine" role="status">Road directions are unavailable, so times are estimates.</p>}
       </div>
 

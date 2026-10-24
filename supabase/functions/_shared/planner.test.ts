@@ -139,14 +139,17 @@ test("a picked place goes in even below the rating floor, inside the budget", ()
   expect(p.extraMin).toBeLessThanOrEqual(30);
 });
 
-test("a picked place that can't fit is reported, never forced over budget or the stop cap", () => {
+test("a picked place goes in past the budget and the stop cap; only a closed one is reported", () => {
   const far = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 10, stops, travelMin, requiredIds: [5] });
-  expect(far.order.map((s) => s.id)).not.toContain(5);
-  expect(far.unfitRequired).toEqual([5]);
-  expect(far.extraMin).toBeLessThanOrEqual(10);
+  expect(far.order.map((s) => s.id)).toContain(5);
+  expect(far.unfitRequired).toEqual([]);
+  expect(far.extraMin).toBeGreaterThan(10);
   const capped = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 120, stops, travelMin, requiredIds: [2, 3], maxStops: 1 });
-  expect(capped.order.map((s) => s.id)).toEqual([2]);
-  expect(capped.unfitRequired).toEqual([3]);
+  expect(capped.order.map((s) => s.id).sort()).toEqual([2, 3]);
+  const closed = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 120, travelMin, requiredIds: [5],
+    stops: stops.map((s) => s.id === 5 ? { ...s, openMin: 0, closeMin: 60 } : s) });
+  expect(closed.order.map((s) => s.id)).not.toContain(5);
+  expect(closed.unfitRequired).toEqual([5]);
 });
 
 // landmark world: a cafe right on the route vs a landmark temple well off it

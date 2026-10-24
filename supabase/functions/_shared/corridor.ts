@@ -5,7 +5,9 @@
 // real road times from a few matrix calls; the rest use the model.
 import { haversineM, type LatLng, MAX_PAIRS, METERS_PER_MIN, type Mode, pairsMinutes, type RoadRoute } from "./valhalla.ts";
 
-const NEAR_M = 40000;    // stops closer than this get real road times between them
+const NEAR_M = 40000;    // stops closer than this get real road times between them (walking: the limit below)
+// the public routing server refuses a whole matrix call if any pair is further apart than this (straight line)
+const MATRIX_LIMIT_M: Record<Mode, number> = { pedestrian: 28000, bicycle: 57000, auto: 142000 };
 const NEIGHBOURS = 4;    // ...at most this many per stop, nearest first
 const MAX_CALLS = 6;     // matrix calls per request; pairs beyond them keep the model
 
@@ -38,10 +40,11 @@ export function corridorMinutes(spots: Spot[], mode: Mode, real: Map<string, num
 
 /** Which road times to fetch, packed into calls of at most MAX_PAIRS: each stop to its route anchor and to its nearest
  *  neighbours, sources taken in route order so neighbouring rows share targets. */
-export function planCalls(points: LatLng[], spots: Spot[]) {
+export function planCalls(points: LatLng[], spots: Spot[], mode: Mode = "auto") {
+  const limit = MATRIX_LIMIT_M[mode], reach = Math.min(NEAR_M, limit);
   type Target = { key: string; at: LatLng };
   const wants = points.map((p, i) => {
-    const near = points.map((q, j) => ({ j, d: haversineM(p, q) })).filter(({ j, d }) => j !== i && d <= NEAR_M)
+    const near = points.map((q, j) => ({ j, d: haversineM(p, q) })).filter(({ j, d }) => j !== i && d <= reach)
       .sort((a, b) => a.d - b.d).slice(0, NEIGHBOURS).map(({ j }) => ({ key: `${j}`, at: points[j] }));
     return [...(i < 2 ? [] : [{ key: "a", at: spots[i].anchor }]), ...near] as Target[];
   });
@@ -53,7 +56,10 @@ export function planCalls(points: LatLng[], spots: Spot[]) {
     const mine = wants[i].map((t) => ({ key: t.key === "a" ? `a${i}` : t.key, at: t.at }));
     const merged = new Map(cur.targets);
     for (const t of mine) merged.set(t.key, t.at);
-    if (cur.sources.length && (cur.sources.length + 1) * merged.size > MAX_PAIRS) {
+    // a new call when this row would go over the pair count, or pair any source and target too far apart
+    const tooFar = [...merged.values()].some((t) => haversineM(points[i], t) > limit)
+      || cur.sources.some((s) => mine.some((t) => haversineM(points[s], t.at) > limit));
+    if (cur.sources.length && (tooFar || (cur.sources.length + 1) * merged.size > MAX_PAIRS)) {
       calls.push(cur);
       cur = { sources: [], targets: new Map() };
       for (const t of mine) cur.targets.set(t.key, t.at);
@@ -68,7 +74,7 @@ export function planCalls(points: LatLng[], spots: Spot[]) {
 export async function corridorMatrix(points: LatLng[], baseline: RoadRoute, mode: Mode, fetchPairs = pairsMinutes) {
   const spots = onRoute(points, baseline);
   const real = new Map<string, number>();
-  const calls = planCalls(points, spots).slice(0, MAX_CALLS);
+  const calls = planCalls(points, spots, mode).slice(0, MAX_CALLS);
   for (let c = 0; c < calls.length; c += 2) {   // two at a time: the public routing server is shared
     await Promise.all(calls.slice(c, c + 2).map(async ({ sources, targets }) => {
       const keys = [...targets.keys()];

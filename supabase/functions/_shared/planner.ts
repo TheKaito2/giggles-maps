@@ -1,6 +1,7 @@
 // Giggles Maps detour planner. Stops are chosen on quality (rating x variety x trip theme) per added minute,
 // times an optional per-place boost (monetization v5: members' plans put paying partners first).
-// Constraints: total extra time <= budget, every stop open on arrival, rating >= floor (unrated only if allowed),
+// Constraints: total extra time <= budget (stops the user picked go in regardless: the budget shapes what the planner
+// adds, never refuses what the user chose), every stop open on arrival, rating >= floor (unrated only if allowed),
 // meal stops arrive inside their meal window, and at most maxStops stops.
 // Phase 0 places the stops the user picked (must_include), then meal stops; phase 1 fills the rest;
 // greedy insertion + 2-opt, fine for ~25 candidates.
@@ -41,7 +42,7 @@ export interface PlanInput {
   theme?: Theme;        // default top_picks (no boost)
   weight?: (category: string, tier?: Tier) => number;   // overrides theme, e.g. the user's own mix of interests
   boost?: (id: number) => number;   // per-place multiplier on the score (partners for members); default 1
-  requiredIds?: number[];   // places the user picked; go in first, skip the rating floor, count toward maxStops
+  requiredIds?: number[];   // places the user picked; go in first, past the budget and maxStops if need be, skip the rating floor
   meals?: Meal[];       // meals the trip should cover, from mealsInTrip()
   segments?: number;    // spread stops over this many stretches of the route (0/undefined = off, e.g. city trips)
 }
@@ -55,7 +56,7 @@ export interface Plan {
   lateMeals: Map<number, Meal>;  // meal stops the route can't reach in the window: the best time the route allows
   missedMeals: Meal[];
   requiredIds: number[];
-  unfitRequired: number[];     // picked places that don't fit the budget, hours or stop cap
+  unfitRequired: number[];     // picked places that can't go in: closed whenever the route would reach them
 }
 
 const UNRATED = 3.5;   // unrated places score like a middling rating, below the 4.0 default floor
@@ -92,12 +93,13 @@ export function planDetour(input: PlanInput): Plan {
   const duration = (order: Stop[], meals = mealOf) => walk(order, meals).minutes;
 
   const baseMin = duration([]);
-  const feasible = (order: Stop[], meals = mealOf) => {
+  const feasible = (order: Stop[], meals = mealOf, budget = budgetMin) => {
     const w = walk(order, meals);
-    return w.ok && w.minutes - baseMin <= budgetMin + 1e-9;
+    return w.ok && w.minutes - baseMin <= budget + 1e-9;
   };
 
-  // reverse any segment that shortens the trip while staying feasible
+  // reverse any segment that shortens the trip while staying open on arrival (shorter never breaks the budget, and picked
+  // stops may already have taken the trip past it)
   const twoOpt = (o: Stop[]): Stop[] => {
     let best = o, improved = true;
     while (improved) {
@@ -105,7 +107,7 @@ export function planDetour(input: PlanInput): Plan {
       for (let i = 0; i < best.length - 1; i++) {
         for (let k = i + 1; k < best.length; k++) {
           const cand = [...best.slice(0, i), ...best.slice(i, k + 1).reverse(), ...best.slice(k + 1)];
-          if (duration(cand) < duration(best) - 1e-9 && feasible(cand)) { best = cand; improved = true; }
+          if (duration(cand) < duration(best) - 1e-9 && feasible(cand, mealOf, Infinity)) { best = cand; improved = true; }
         }
       }
     }
@@ -113,12 +115,12 @@ export function planDetour(input: PlanInput): Plan {
   };
 
   // cheapest feasible way to add s to the current order
-  const bestInsert = (order: Stop[], s: Stop, meals = mealOf) => {
+  const bestInsert = (order: Stop[], s: Stop, meals = mealOf, budget = budgetMin) => {
     let best: { order: Stop[]; added: number } | null = null;
     const current = duration(order);
     for (let i = 0; i <= order.length; i++) {
       const next = [...order.slice(0, i), s, ...order.slice(i)];
-      if (!feasible(next, meals)) continue;
+      if (!feasible(next, meals, budget)) continue;
       const added = duration(next, meals) - current;
       if (!best || added < best.added) best = { order: next, added };
     }
@@ -145,13 +147,13 @@ export function planDetour(input: PlanInput): Plan {
       / Math.sqrt(Math.max(added, 1));
   };
 
-  // phase 0a: the places the user picked, each at its cheapest feasible position
+  // phase 0a: the places the user picked, each at its cheapest position where it's open; no budget or stop cap
   let order: Stop[] = [];
   const requiredIds = input.requiredIds ?? [];
   const unfitRequired: number[] = [];
   for (const id of requiredIds) {
     const s = input.stops.find((x) => x.id === id);
-    const ins = s && order.length < maxStops ? bestInsert(order, s) : null;
+    const ins = s ? bestInsert(order, s, mealOf, Infinity) : null;
     if (ins) order = ins.order; else unfitRequired.push(id);
   }
 

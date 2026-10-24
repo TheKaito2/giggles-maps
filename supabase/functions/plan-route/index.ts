@@ -1,10 +1,10 @@
 import { admin, HttpError, json, num, readJson, requireUser, serve, thaiPoint } from "../_shared/http.ts";
 import { type Meal, MEAL_WINDOWS } from "../_shared/meals.ts";
 import { insertBest, insertionCost, type Plan, planDetour, type Stop } from "../_shared/planner.ts";
-import { fitsInterests, independent, isInterest, mixWeight, type Tier, THEMES, toTheme } from "../_shared/themes.ts";
+import { fitsInterests, independent, INTERESTS, isInterest, mixWeight, type Tier, THEMES, toTheme } from "../_shared/themes.ts";
 import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan } from "../_shared/road-detour.ts";
 import { corridorMatrix } from "../_shared/corridor.ts";
-import { createRouter, estimateMinutes, haversineM, type LatLng, matrixMinutes, METERS_PER_MIN, type Mode, type RoadRoute } from "../_shared/valhalla.ts";
+import { createRouter, estimateMinutes, RoutingError, haversineM, type LatLng, matrixMinutes, METERS_PER_MIN, type Mode, type RoadRoute } from "../_shared/valhalla.ts";
 
 interface Candidate {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
@@ -45,7 +45,8 @@ serve(async (req) => {
   const startMin = num(body.start_min, 0, 1439, "bad_start_min");
   if (body.mode != null && !MODES.has(body.mode)) throw new HttpError(400, "bad_mode");
   const mode: Mode = body.mode ?? "pedestrian";
-  const requestedTheme = body.theme == null ? null : toTheme(body.theme);   // "scenic" works as well as "nature"
+  // "scenic" works as well as "nature"; edits name the plan they change, which can be "Your mix" or "Giggle's picks"
+  const requestedTheme = body.theme == null ? null : body.theme === "mix" || body.theme === "giggles" ? body.theme : toTheme(body.theme);
   if (body.theme != null && !requestedTheme) throw new HttpError(400, "bad_theme");
   // planner preferences, all optional; omitted = the defaults every plan used before
   const interests: string[] = body.interests ?? [];
@@ -106,6 +107,8 @@ serve(async (req) => {
   try { baseline = await routeRoad([origin, dest], mode); }
   catch (error) {
     console.error("baseline routing failed", error);
+    // the routing server's own limit (walking 100 km, cycling 150 km): say so instead of "couldn't route"
+    if (error instanceof RoutingError && error.message.includes("max distance")) throw new HttpError(400, "too_far_for_mode");
     if (!localWalkingFallback) throw new HttpError(503, "routing_unavailable");
     warnings.push("estimated_local_walk");
   }
@@ -134,6 +137,9 @@ serve(async (req) => {
       p_per_group: (shortTrip ? 4 : 5) + Math.min(exclude.size, 3) + (narrowed ? 4 : 0), ...filters,
       p_meal_slots: meals.length ? 4 : 0,   // nearest restaurants always make the shortlist when a meal is asked for
       p_segments: segments,
+      // filter the corridor itself, so a narrow filter still gets a full shortlist (keep() below re-checks)
+      p_kinds: interests.length ? interests.flatMap((i) => INTERESTS[i]) : null, p_landmarks: interests.includes("landmarks"),
+      p_open_only: openOnly, p_no_chains: noChains,
     })
     : await db.rpc("detour_candidates", {
       o_lat: origin.lat, o_lng: origin.lng, d_lat: dest.lat, d_lng: dest.lng,
@@ -151,9 +157,9 @@ serve(async (req) => {
   if (mustInclude.length) {
     const { data: picked, error: pErr } = await db.rpc("places_by_ids", { p_ids: mustInclude, p_level: level });
     if (pErr) throw pErr;
-    // a pick that can't fit even in a straight line stays out of the matrix (a far point can break the routing call);
-    // the planner then reports it in unfit_required
-    const reach = budgetMin * METERS_PER_MIN[mode];
+    // a pick far off the route stays out of the matrix (a far point can break the routing call); the planner then reports
+    // it in unfit_required. The reach is the longest preset's, not this one: picks go in past the chosen time
+    const reach = MAX_BUDGET * METERS_PER_MIN[mode];
     for (const p of (picked ?? []) as Candidate[]) {
       if (candidates.some((c) => c.id === p.id)) continue;
       if (haversineM(origin, p) + haversineM(p, dest) - directM <= reach) candidates.push(p);
@@ -296,6 +302,8 @@ serve(async (req) => {
     }
     const stopsKey = t.plan.order.map((s) => s.id).join(",");
     if (dropsIfDuplicate(t.id) && verifiedKeys.has(stopsKey)) continue;
+    // an alternative with no stops is an empty tab (Local gems on a chain-store high street); Top picks always stays
+    if (t.id !== "top_picks" && !t.plan.order.length) continue;
     verifiedKeys.add(stopsKey);
     verifiedPlans.push(t);
   }

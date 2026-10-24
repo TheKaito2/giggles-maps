@@ -85,3 +85,12 @@ test("a routing failure on a long route drops one stop and retries instead of em
   });
   assert.equal(p.plan.order.length, 1); assert.equal(p.failed, false); assert.equal(p.adjusted, true);
 });
+
+test("the user's picks stay even when the real road takes the trip past the budget", async () => {
+  const picks = { ...proposal([stop(1), stop(2)]), requiredIds: [1] };
+  // 30 min each way: way over a 45-minute budget with both stops
+  const p = await run(picks, async (points) => ({ geometry: baseline.geometry, legMin: points.slice(1).map(() => 30), travelMin: 30 * (points.length - 1) }));
+  assert.deepEqual(p.plan.order.map((s) => s.id), [1]);   // the planner's own stop goes, the pick stays
+  assert.ok(p.plan.extraMin > 45);
+  assert.deepEqual(p.plan.unfitRequired, []);
+});

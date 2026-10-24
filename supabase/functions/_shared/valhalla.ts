@@ -70,7 +70,8 @@ export function createRouter(base: string, fetcher: typeof fetch = fetch) {
       body: JSON.stringify({ locations: points.map((p) => ({ lat: p.lat, lon: p.lng, type: "break" })), costing: mode, units: "kilometers" }),
       signal: AbortSignal.timeout(8000),
     });
-    if (!response.ok) throw new RoutingError(`route provider returned ${response.status}`);
+    // keep the provider's reason ("Path distance exceeds the max distance limit", "No path could be found")
+    if (!response.ok) throw new RoutingError(`route provider returned ${response.status}: ${String((await response.json().catch(() => null))?.error ?? "")}`);
     const data = await response.json();
     const legs = data.trip?.legs;
     if (data.trip?.status !== 0 || !Array.isArray(legs) || legs.length !== points.length - 1) throw new RoutingError("incomplete road route");
