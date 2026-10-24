@@ -600,6 +600,10 @@ body { background: var(--paper); overflow: hidden; }
 /* ---------- place page sheet (Google-Maps-style) ---------- */
 .place-sheet { position: absolute; z-index: 30; top: 12px; left: 12px; bottom: 12px; width: 440px; overflow-y: auto; overscroll-behavior: contain;
   padding: 0 0 20px; display: grid; align-content: start; gap: 14px; border-radius: 22px; background: var(--card); }
+/* the sheet scrolls itself: .glass's ring (an absolute ::before) would cover only the first screen and scroll away as a stray
+   box once reviews make it long, so the sheet gets a plain border on its own box instead */
+.place-sheet.glass::before { display: none; }
+.place-sheet { border: 1.5px solid var(--line); }
 .place-sheet > *:not(.photo-strip) { margin-inline: 18px; }
 .place-sheet > .sheet-close { position: absolute; top: 10px; right: 10px; z-index: 2; margin: 0; background: var(--card); box-shadow: var(--shadow); border-radius: 50%; }
 .place-sheet > p.fine:only-of-type { padding-top: 20px; }

@@ -276,13 +276,17 @@ export function demoReviews(
   // Days ago, ascending, so the list comes out newest first.
   const daysAgo = Array.from({ length: n }, () => Math.floor(r() * 120)).sort((a, b) => a - b);
 
+  const used = new Set<string>();   // no two reviews of one place say the same thing
   const reviews: PlaceReview[] = pool.slice(0, n).map((p, i) => {
     const roll = r();
     const rating = roll < 0.15 ? 3 : roll < 0.55 ? 4 : 5;
     const useThai = r() < 0.3;
     const noBody = r() < 0.12;
     const texts = useThai ? bank.th : bank.en;
-    const body = noBody ? null : texts[Math.floor(r() * texts.length)];
+    let k = Math.floor(r() * texts.length);
+    for (let tries = 0; used.has(texts[k]) && tries < texts.length; tries++) k = (k + 1) % texts.length;
+    const body = noBody || used.has(texts[k]) ? null : texts[k];
+    if (body) used.add(body);
     const who: Who = { id: p.id, nickname: p.nickname, colour: p.colour, avatar: p.avatar, level: p.level };
     return {
       who,
