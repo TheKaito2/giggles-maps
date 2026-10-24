@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ChevronDown, MoreHorizontal, Plus, Repeat, Search, Trash2, Camera, X } from "lucide-react";
+import { ChevronDown, MoreHorizontal, Plus, Search, Trash2, Camera, X } from "lucide-react";
 import { useDialog } from "../../lib/useDialog";
 import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, type RouteStop, routePlaces, searchPlaces, TIER_NAME } from "../../lib/api";
 import { CHIPS } from "../ExploreChips";
@@ -75,7 +75,6 @@ function StopRow({ s, i, d, sel, onOpen, onCheckin }: { s: RouteStop; i: number;
         <button type="button" className="icon-btn" aria-label={`More for ${s.name}`} aria-expanded={menu} aria-haspopup="menu" disabled={d.editing} onClick={() => setMenu(!menu)}><MoreHorizontal size={18} /></button>
         {menu && <div className="menu glass" role="menu" onClick={() => setMenu(false)}>
           <button type="button" role="menuitem" onClick={() => onCheckin(s)}><Camera size={16} aria-hidden /> Check in</button>
-          <button type="button" role="menuitem" onClick={() => d.removeStop(s.id)}><Repeat size={16} aria-hidden /> Swap for another</button>
           <button type="button" role="menuitem" onClick={() => d.removeStop(s.id)}><Trash2 size={16} aria-hidden /> Remove</button>
         </div>}
       </div>
@@ -179,7 +178,7 @@ function AddStopSheet({ places, d, full, onClose }: { places: AlongPlace[]; d: D
 const AddGap = ({ onAdd }: { onAdd: () => void }) =>
   <li className="add-gap"><button type="button" className="add-here" onClick={onAdd} aria-label="Add a stop here"><Plus size={14} aria-hidden /></button></li>;
 
-/** Step 3: plan cards to compare, then the stops you can remove, swap or add to. */
+/** Step 3: plan cards to compare, then the stops you can remove (the plan refills the gap) or add to. */
 export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour; selected: number | null; onOpen: (s: RouteStop) => void; onCheckin: (t: CheckinTarget) => void }) {
   const [details, setDetails] = useState(false);
   const [adding, setAdding] = useState(false);   // the "Add a stop" sheet, from a + between stops
