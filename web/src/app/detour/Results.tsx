@@ -158,7 +158,7 @@ function AlongList({ places, d, full, limit, at, leg, onAdded }: { places: Along
   // closed when you'd pass it: say when it opens (usual hours when none are listed)
   const closedNote = (p: object) => {
     const { closed, opens_min: opens } = p as { closed?: boolean; opens_min?: number | null };
-    return closed && <span className="chip closed" title="Probably closed when you pass it">{opens != null ? `Opens ${hhmm(opens)}` : "Closed then"}</span>;
+    return closed && <span className="chip closed" title="Probably closed when you pass it">{opens != null ? <><span className="opens-word">Opens </span>{hhmm(opens)}</> : "Closed then"}</span>;
   };
   const row = (p: Row | FoundPlace, extra: string, off = false) => (
     <li key={`${off ? "e" : ""}${p.id}`}>

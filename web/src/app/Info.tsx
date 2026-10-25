@@ -1,9 +1,11 @@
 import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Info as InfoIcon } from "lucide-react";
+import Modal from "./Modal";
 
 /** An (i) button that holds the explaining, so screens stay short. Tap to open; tap elsewhere or Escape closes it. */
 export default function Info({ label, children, align = "start" }: { label: string; children: ReactNode; align?: "start" | "end" }) {
   const [open, setOpen] = useState(false);
+  const [cramped, setCramped] = useState(false);   // shown as a dialog: no room for the bubble where it sits
   const id = useId();
   const box = useRef<HTMLSpanElement>(null);
   const pop = useRef<HTMLSpanElement>(null);
@@ -25,11 +27,14 @@ export default function Info({ label, children, align = "start" }: { label: stri
     const above = anchor.top - 6 - Math.max(0, panel?.top ?? 0) - pad;
     const up = el.offsetHeight > below && above > below && above >= 72;   // a sliver above (320 px) isn't room: below scrolls
     el.classList.toggle("up", up);
+    // a panel too small for it either way (320 px with a trip open, where the sheet clips it): a small dialog instead
+    if (above < 72 && below < 72) { setCramped(true); return; }
     if (el.offsetHeight > (up ? above : below)) el.style.maxHeight = `${Math.max(48, up ? above : below)}px`;
   }, [open]);
+  useEffect(() => { if (!open) setCramped(false); }, [open]);   // measured afresh each time it opens
   useEffect(() => {
     if (!open) return;
-    const out = (e: Event) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    const out = (e: Event) => { if (!box.current?.contains(e.target as Node) && !(e.target as Element).closest?.(".info-dialog")) setOpen(false); };
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); setOpen(false); box.current?.querySelector("button")?.focus(); } };
     document.addEventListener("pointerdown", out); document.addEventListener("keydown", esc, true);
     return () => { document.removeEventListener("pointerdown", out); document.removeEventListener("keydown", esc, true); };
@@ -38,7 +43,11 @@ export default function Info({ label, children, align = "start" }: { label: stri
     <span className="info" ref={box}>
       <button type="button" className="info-btn" aria-label={label} aria-expanded={open} aria-controls={id}
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}><InfoIcon size={16} aria-hidden /></button>
-      {open && <span id={id} ref={pop} role="note" className={`info-pop ${align}`}>{children}</span>}
+      {open && !cramped && <span id={id} ref={pop} role="note" className={`info-pop ${align}`}>{children}</span>}
+      {open && cramped && <Modal label={label} className="info-dialog" onClose={() => { setOpen(false); setCramped(false); }}>
+        <p>{children}</p>
+        <button type="button" className="btn small" onClick={() => { setOpen(false); setCramped(false); }}>OK</button>
+      </Modal>}
     </span>
   );
 }

@@ -1447,3 +1447,4 @@ html.native .toast { top: calc(64px + env(safe-area-inset-top, 0px)); }
 .along-list .stop-meta .chip { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* phone on its side: the sheet is full height, so it covers the map's Layers button (it sat on "Swap") */
 @media (max-width: 959px) and (max-height: 500px) { .sheet.snap-half { z-index: 7; } }
+@media (max-width: 360px) { .along-list .opens-word { display: none; } }   /* "05:00" alone fits a 320 px row */
