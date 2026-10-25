@@ -1,7 +1,7 @@
 import { usualHours } from "../_shared/usual-hours.ts";
 import { admin, HttpError, json, num, readJson, requireUser, serve, thaiPoint } from "../_shared/http.ts";
 import { type Meal, MEAL_WINDOWS } from "../_shared/meals.ts";
-import { insertBest, insertionCost, type Plan, planDetour, type Stop } from "../_shared/planner.ts";
+import { insertBest, insertionCost, type Plan, planDetour, type Stop, visitIsOpen } from "../_shared/planner.ts";
 import { fitsInterests, independent, INTERESTS, isInterest, mixWeight, type Tier, THEMES, toTheme } from "../_shared/themes.ts";
 import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan } from "../_shared/road-detour.ts";
 import { corridorMatrix } from "../_shared/corridor.ts";
@@ -370,7 +370,8 @@ serve(async (req) => {
       const card = cards.get(s.id);
       return {
         id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng,
-        is_partner: c.is_partner, is_demo: c.is_demo,
+        // the seeded example partners are partners in demo mode only; in a real plan they're ordinary places
+        is_partner: c.is_partner && (!c.is_demo || body.demo === true), is_demo: c.is_demo && body.demo === true,
         rating: c.rating == null ? null : Number(c.rating), price_level: c.price_level, tier: c.tier ?? 2,
         dwell_min: s.dwellMin, eta_min: eta, travel_min: Math.round(leg), pit_stop: pitIds.has(c.id), meal, meal_late: !!late, picked: mustInclude.includes(c.id),
         closed: plan.closedPicks.includes(c.id),   // you added it, but it's closed when you get there
@@ -382,7 +383,7 @@ serve(async (req) => {
         // field name kept for existing clients; the card is any nearby place, picked by quality
         nearby_partner: card
           ? { id: card.id, name: card.name, category: card.category, lat: card.lat, lng: card.lng,
-              distance_m: Math.round(card.dist_m), is_partner: card.is_partner, is_demo: card.is_demo }
+              distance_m: Math.round(card.dist_m), is_partner: card.is_partner && (!card.is_demo || body.demo === true), is_demo: card.is_demo && body.demo === true }
           : null,
       };
     });
@@ -394,8 +395,11 @@ serve(async (req) => {
       return { id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng, tier: c.tier ?? 2,
         rating: c.rating == null ? null : Number(c.rating), local: !!c.local, otop: !!c.otop, community: !!c.community,
         photo: photoOf.get(c.id) ?? null, partner_tier: tierOf.get(c.id) ?? null,
-        extra_min: Math.round(insertionCost(plan.order.map((x) => x.idx), st.idx, travelMin, st.dwellMin)) };
-    }).filter((a) => Number.isFinite(a.extra_min)).sort((a, b) => a.extra_min - b.extra_min).slice(0, 30);
+        extra_min: Math.round(insertionCost(plan.order.map((x) => x.idx), st.idx, travelMin, st.dwellMin)),
+        // closed when you'd pass it (about: straight from the start), so "add along your route" doesn't offer a night
+        // market at 10:00 as if it were open; open ones come first
+        closed: !visitIsOpen(startMin + travelMin(0, st.idx), st.dwellMin, st.openMin, st.closeMin) };
+    }).filter((a) => Number.isFinite(a.extra_min)).sort((a, b) => Number(a.closed) - Number(b.closed) || a.extra_min - b.extra_min).slice(0, 30);
 
     return { ordered, cards, geometry, along };
   };

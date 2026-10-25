@@ -493,6 +493,7 @@ body { background: var(--paper); overflow: hidden; }
    box once reviews make it long, so the sheet gets a plain border on its own box instead */
 .place-sheet.glass::before { display: none; }
 .place-sheet > *:not(.photo-strip) { margin-inline: 18px; }
+.place-cover { height: 96px; border-radius: 16px; margin-bottom: 10px; display: grid; place-items: center; color: #fff; opacity: .9; }
 .place-sheet > .place-msg { margin: 0; padding: 18px 60px 18px 18px; min-height: 64px; }   /* "not found": clear of the close button, never clipped */
 .place-sheet > .sheet-close { position: absolute; top: 10px; right: 10px; z-index: 2; margin: 0; background: var(--card); box-shadow: var(--shadow); border-radius: 50%; }
 .place-sheet > p.fine:only-of-type { padding-top: 20px; }

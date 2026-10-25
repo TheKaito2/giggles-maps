@@ -33,16 +33,28 @@ const errorText = (e: unknown) => {
     : code === "bad_origin" || code === "bad_dest" ? "Pick a start and destination inside Thailand." : "Couldn't plan this one. Try again in a moment.";
 };
 
+// This tab's trip, kept in sessionStorage so a reload (or iOS dropping the app's web view) doesn't lose the plan: the
+// destination, start, time option and filters come back and the options are planned again. Edits to stops aren't kept.
+const SAVED = "gm-trip";
+type Saved = { stage: Stage; origin: Place | null; dest: Place; prefs: Prefs; preset: PresetId | null };
+function savedTrip(): Saved | null {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(SAVED) ?? "null") as Saved | null;
+    return v?.dest?.point && (v.stage === "choose" || v.stage === "results") ? { ...v, prefs: { ...DEFAULT_PREFS, ...v.prefs } } : null;
+  } catch { return null; }
+}
+
 export function useDetour(onError: (m: string) => void) {
+  const restored = useRef(savedTrip()).current;
   const guest = isGuest(useUser());
   const [gate, setGate] = useState<Gate | null>(null);
   const gated = (e: unknown) => { if (e instanceof ApiError && GATES.has(e.code)) setGate(e.code as Gate); };
-  const [stage, setStage] = useState<Stage>("browse");
-  const [origin, setOrigin] = useState<Place | null>(null);   // null = your location, found when needed
-  const [dest, setDest] = useState<Place | null>(null);
-  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
+  const [stage, setStage] = useState<Stage>(restored?.stage ?? "browse");
+  const [origin, setOrigin] = useState<Place | null>(restored?.origin ?? null);   // null = your location, found when needed
+  const [dest, setDest] = useState<Place | null>(restored?.dest ?? null);
+  const [prefs, setPrefs] = useState<Prefs>(restored?.prefs ?? DEFAULT_PREFS);
   const [results, setResults] = useState<Partial<Record<PresetId, Result>>>({});
-  const [preset, setPreset] = useState<PresetId | null>(null);   // nothing picked until you tap one
+  const [preset, setPreset] = useState<PresetId | null>(restored?.preset ?? null);   // nothing picked until you tap one
   const [choice, setChoice] = useState<string | null>(null);   // theme of the plan card you picked
   const [exclude, setExclude] = useState<number[]>([]);
   const [editing, setEditing] = useState(false);
@@ -51,6 +63,12 @@ export function useDetour(onError: (m: string) => void) {
   // card or destination) starts from the planner's order again: reset where those happen, not by watching `choice`,
   // which an edit's own result sets too (that reset it after the first edit).
   const [manual, setManual] = useState(false);
+  useEffect(() => {
+    try {
+      if (stage === "browse" || !dest) sessionStorage.removeItem(SAVED);
+      else sessionStorage.setItem(SAVED, JSON.stringify({ stage, origin, dest, prefs, preset } satisfies Saved));
+    } catch { /* not kept: private mode */ }
+  }, [stage, origin, dest, prefs, preset]);
   const [locating, setLocating] = useState(false);
   const request = useRef(0);   // preset plans in flight
   const [again, setAgain] = useState(0);   // bumped to plan the presets again (a rewarded ad lifted today's limit)

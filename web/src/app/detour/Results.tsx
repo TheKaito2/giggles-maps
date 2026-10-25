@@ -159,7 +159,8 @@ function AlongList({ places, d, full, limit, at, leg, onAdded }: { places: Along
       <Thumb s={{ name: p.name, category: p.category ?? "", photo: "photo" in p ? p.photo ?? null : null }} size={40} />
       <span className="stop-text"><b>{p.name}</b>
         <span className="stop-meta"><b className={`num extra${off ? " off" : ""}`}>{extra}</b>
-          <span className="fine">{kindOf(p.kind ?? null, p.category ?? "").en}{p.rating != null && ` · ★ ${p.rating.toFixed(1)}`}</span></span></span>
+          <span className="fine">{kindOf(p.kind ?? null, p.category ?? "").en}{p.rating != null && ` · ★ ${p.rating.toFixed(1)}`}</span>
+          {(p as { closed?: boolean }).closed && <span className="chip closed" title="Probably closed when you pass it">Closed then</span>}</span></span>
       <button type="button" className="btn soft small add-btn" disabled={full || d.editing} onClick={() => add(p.id!)}
         aria-label={`Add ${p.name}`}><Plus size={15} aria-hidden /> Add</button>
     </li>

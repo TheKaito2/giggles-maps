@@ -6,6 +6,8 @@ import { resolve } from "node:path";
 // `--mode app` builds only the traveller app into dist-app/ for the iOS shell (Capacitor serves its index.html).
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
+  // the app shares a few pure modules with the Edge Functions (supabase/functions/_shared): one source for both
+  server: { fs: { allow: [resolve(__dirname), resolve(__dirname, "../supabase/functions/_shared")] } },
   build: {
     outDir: mode === "app" ? "dist-app" : "dist",
     rollupOptions: {

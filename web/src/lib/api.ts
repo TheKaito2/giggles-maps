@@ -50,6 +50,7 @@ export interface AlongPlace {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number; tier: 1 | 2 | 3;
   rating: number | null; local: boolean; otop: boolean; community: boolean; photo: string | null; extra_min: number;
   partner_tier?: PartnerTier | null;
+  closed?: boolean;   // closed when you'd pass it (about)
 }
 
 export type Meal = "breakfast" | "lunch" | "dinner";

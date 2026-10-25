@@ -85,7 +85,11 @@ export default function App() {
   const [passport, setPassport] = useState(false);   // open your passport on the Profile tab
   const [overlay, setOverlay] = useState<"shop" | "bag" | "avatar" | "ride" | "add" | null>(() => readCodeParam("trip") ? "ride" : null);
   const [chip, setChip] = useState<string | null>(null);
-  const [nav, setNav] = useState<Waypoint[] | null>(null);   // turn-by-turn running
+  // turn-by-turn running; kept for this tab, so a reload goes back into directions instead of a plain map
+  const [nav, setNav] = useState<Waypoint[] | null>(() => { try { return JSON.parse(sessionStorage.getItem("gm-nav") ?? "null"); } catch { return null; } });
+  useEffect(() => {
+    try { if (nav) sessionStorage.setItem("gm-nav", JSON.stringify(nav)); else sessionStorage.removeItem("gm-nav"); } catch { /* not kept */ }
+  }, [nav]);
   const [paused, setPaused] = useState<Waypoint[] | null>(null);   // directions left off to check in at a stop
   const [look, setLookState] = useState<MapLook>(loadLook);   // map type + night map, remembered on this device
   const setLook = (patch: Partial<MapLook>) => setLookState((l) => { const next = { ...l, ...patch }; saveLook(next); return next; });
