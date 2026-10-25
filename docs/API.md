@@ -96,7 +96,7 @@ Response
   members 300 and free accounts 100 a day (429 `slow_down`). An edit of a destination not planned today counts as a detour. `my_plan_usage()` reports today's counts.
 - Stops are chosen by quality (rating, variety, fit inside the budget). For members, paid tiers score higher: Giggles Choice ×2,
   Partner ×1.5. Every stop and `along` place has `partner_tier: "partner" | "choice" | null`; show its badge whenever set.
-- `plans` can include `{id: "giggles", name: "Giggle's picks"}`: Giggles Choice places only (plus picks), for everyone, when a
+- `plans` can include `{id: "giggles", name: "Giggles' picks"}`: Giggles Choice places only (plus picks), for everyone, when a
   Choice place fits.
 - `is_partner: true` means the place is a signed-up shop that pays per verified visit. It can appear any number of times, only on merit. Show a **Partner** label (`Example partner` when `is_demo`) so users know the shop pays.
 - `nearby_partner` (on park/viewpoint/temple stops, max 2 per route): a "Near this spot" card `{id, name, category, lat, lng, distance_m, is_partner, is_demo}`. It is the best nearby place by quality (rating, then distance), signed up or not; the field name is kept from v2 so existing clients keep working. Show the Partner label only when the card's `is_partner` is true. Users can check in there too.

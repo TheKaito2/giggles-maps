@@ -163,7 +163,7 @@ export default function Shop() {
                 {tierLive === "partner" ? "Add 30 days" : "Become a partner"}</button>
               {!verified && <span className="fine">Get your sticker scanned once first.</span>}</>}</article>
           <article className={tierLive === "choice" ? "here" : ""}><span className="eyebrow">Giggles Choice</span><b>By invitation</b>
-            <span className="fine">Hand-picked partners. A Choice badge, ×2 on members' routes and the Giggle's picks plan.</span>
+            <span className="fine">Hand-picked partners. A Choice badge, ×2 on members' routes and the Giggles' picks plan.</span>
             {tierLive === "choice" ? <>
                 <span className="chip">Until {day(shop!.tier_until!)}</span>
                 <button className="btn gold" onClick={() => pay({ kind: "choice", shop_id: shopId })}>Add 30 days · ฿{PRICES.choice}</button></>
@@ -248,7 +248,8 @@ export default function Shop() {
         <section id="account" className="stack">
           <h2>Your account</h2>
           {isGuest(user)
-            ? <SignIn why="Sign in to claim or add your shop and manage it here. Free for every local business." />
+            ? <SignIn why="Sign in to claim or add your shop and manage it here. Free for every local business."
+                note="Your shop, its listing and its credit stay with this account." />
             : <p className="fine">Signed in as <b>{user?.email}</b>.</p>}
         </section>
       </main>

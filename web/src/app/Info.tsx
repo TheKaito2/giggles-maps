@@ -16,6 +16,10 @@ export default function Info({ label, children, align = "start" }: { label: stri
     const left = box.current!.getBoundingClientRect().left + el.offsetLeft, right = left + el.offsetWidth, pad = 12;
     const dx = right > innerWidth - pad ? innerWidth - pad - right : left < pad ? pad - left : 0;
     if (dx) el.style.translate = `${dx}px 0`;
+    // and open upward when there's no room below inside its scrolling panel (it hid behind the trip's Start bar)
+    const anchor = box.current!.getBoundingClientRect();
+    const floor = Math.min(innerHeight, (box.current!.closest(".sheet-body, .modal, .page-view")?.getBoundingClientRect().bottom ?? innerHeight)) - pad;
+    el.classList.toggle("up", anchor.bottom + 6 + el.offsetHeight > floor && anchor.top - 6 - el.offsetHeight > pad);
   }, [open]);
   useEffect(() => {
     if (!open) return;

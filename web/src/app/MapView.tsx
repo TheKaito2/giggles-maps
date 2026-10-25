@@ -134,6 +134,8 @@ export default function MapView({ origin, dest, stops, geometry, alternates = NO
     let t: ReturnType<typeof setTimeout>;
     m.on("moveend", () => { clearTimeout(t); t = setTimeout(loadPins, 250); });
     m.on("load", loadPins);
+    // the basemap asks for icons its sprite lacks ("office", "atm", "gate"): a blank one instead of a console warning each time
+    m.on("styleimagemissing", (e) => { if (!m.hasImage(e.id)) m.addImage(e.id, { width: 1, height: 1, data: new Uint8Array(4) }); });
     m.on("click", "gm-pois", (e) => {
       const f = e.features?.[0];
       if (f && !pickingRef.current) onPlaceRef.current?.(f.properties as unknown as MapPlace);

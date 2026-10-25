@@ -11,6 +11,7 @@ import Avatar from "./social/Avatar";
 import SignIn from "./SignIn";
 import AdminEdits from "./AdminEdits";
 import Info from "./Info";
+import { useBack } from "../lib/useDialog";
 
 // Settings, iOS / Android style: an account card, then short titled groups of rows. Switches act at once; anything bigger
 // opens its own page inside the sheet (‹ back). Destructive actions sit last and ask first.
@@ -51,6 +52,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
   const member = profile?.member ?? false;
   const plusUntil = profile?.plusUntil ?? null;
   const [page, setPage] = useState<Page>("home");
+  useBack(() => setPage("home"), page !== "home", page);   // Back from Membership, Appearance… returns to the list
   const [msg, setMsg] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [stamps, setStamps] = useState<string[]>([]);

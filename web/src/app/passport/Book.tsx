@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Camera, ChevronLeft, ChevronRight, Share2, X } from "lucide-react";
 import ShareSheet, { type CardOption } from "../share/ShareSheet";
-import { useDialog } from "../../lib/useDialog";
+import { useBack, useDialog } from "../../lib/useDialog";
 import { type PassportPhoto, type PassportStamp, photoUrls, type TripMemory } from "../../lib/api";
 import type { AvatarLook } from "../avatar/parts";
 import Avatar from "../social/Avatar";
@@ -260,6 +260,7 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
   const last = leaves.length - (spread ? 0 : 1);
   const go = (d: number) => setAt((a) => Math.max(0, Math.min(last, a + d)));
 
+  useBack(onClose);   // Back closes the passport (it used to leave Profile for the map)
   // arrow keys turn pages, Escape closes: one listener, reading the latest state through a ref
   const keys = useRef({ go, album, onClose });
   keys.current = { go, album, onClose };

@@ -85,7 +85,7 @@ export default function Pitch() {
           <article className="hot"><span className="eyebrow">Partner</span><b className="num">฿{PRICES.partner}<small>/month</small></b>
             <span className="fine">First on members' routes, Partner badge, bookings.</span></article>
           <article><span className="eyebrow">Giggles Choice</span><b><Sparkles size={18} aria-hidden /> By invitation</b>
-            <span className="fine">Partners apply; the ones we choose can switch it on (฿{PRICES.choice}/month) and join the Giggle's picks plan.</span></article>
+            <span className="fine">Partners apply; the ones we choose can switch it on (฿{PRICES.choice}/month) and join the Giggles' picks plan.</span></article>
         </div>
         <p className="fine">Prepaid credit pays for bookings (฿{PRICES.booking} each) and verified visits. Card or PromptPay.</p>
       </section>

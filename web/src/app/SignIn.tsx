@@ -2,7 +2,8 @@ import { useState } from "react";
 import { signInWith, signInWithEmail } from "../lib/auth";
 
 // Google, Apple and email sign-in. Used in Passport and wherever an account is needed.
-export default function SignIn({ why }: { why?: string }) {
+/** `note`: what carries over to the account (the shop site says its own). */
+export default function SignIn({ why, note = "Your stamps, coins and photos move to your account." }: { why?: string; note?: string }) {
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
@@ -30,7 +31,7 @@ export default function SignIn({ why }: { why?: string }) {
         <button className="btn ghost" disabled={busy}>Email me a link</button>
       </form>
       {msg && <p className="fine" role="status">{msg}</p>}
-      <p className="fine">Your stamps, coins and photos move to your account.</p>
+      <p className="fine">{note}</p>
     </div>
   );
 }

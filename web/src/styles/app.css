@@ -1106,6 +1106,7 @@ p.chase { margin: 0; }
   border-radius: 12px; background: var(--ink); color: var(--card); font: 400 var(--fs-caption)/var(--lh-caption) var(--font-body); text-align: left; letter-spacing: 0; text-transform: none;
   box-shadow: 0 8px 24px rgb(0 0 0 / .25); animation: pop .15s ease-out both; white-space: normal; }
 .info-pop.start { left: -6px; } .info-pop.end { right: -6px; }
+.info-pop.up { top: auto; bottom: calc(100% + 6px); }
 .info-pop b { color: inherit; }
 
 /* detour numbers first: the figure is what you read, the unit is a whisper (detour/Figure.tsx) */
@@ -1430,4 +1431,4 @@ html.native .toast { top: calc(64px + env(safe-area-inset-top, 0px)); }
   .set-items .preview.title-chip span { font-size: var(--fs-micro); line-height: 1.1; padding-inline: 2px; }
 }
 /* a sheet pulled up full leaves a strip of map: no half-hidden zoom buttons in it */
-@media (max-width: 959px) { .workspace:has(.sheet.snap-full) .maplibregl-ctrl-top-right { visibility: hidden; } }
+@media (max-width: 959px) { .workspace:has(.sheet.snap-full) :is(.maplibregl-ctrl-top-right, .explore-chips) { visibility: hidden; } }

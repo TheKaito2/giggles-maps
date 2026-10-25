@@ -33,7 +33,7 @@ const MAX_CANDIDATES = 22; // up to 5 per theme group, so every themed plan has 
 const MODES = new Set<Mode>(["pedestrian", "bicycle", "auto"]);
 const MIN_RATINGS = new Set([0, 3.5, 4, 4.5]);
 const END_CLEARANCE_M = 150; // the start and destination themselves aren't detours: places this close to either end are dropped
-// plans that are dropped when they repeat an earlier plan's stops (Top picks, Your mix and Giggle's picks always stay)
+// plans that are dropped when they repeat an earlier plan's stops (Top picks, Your mix and Giggles' picks always stay)
 const dropsIfDuplicate = (id: string) => id !== "top_picks" && id !== "mix" && id !== "giggles";
 
 serve(async (req) => {
@@ -44,7 +44,7 @@ serve(async (req) => {
   const startMin = num(body.start_min, 0, 1439, "bad_start_min");
   if (body.mode != null && !MODES.has(body.mode)) throw new HttpError(400, "bad_mode");
   const mode: Mode = body.mode ?? "pedestrian";
-  // "scenic" works as well as "nature"; edits name the plan they change, which can be "Your mix" or "Giggle's picks"
+  // "scenic" works as well as "nature"; edits name the plan they change, which can be "Your mix" or "Giggles' picks"
   const requestedTheme = body.theme == null ? null : body.theme === "mix" || body.theme === "giggles" ? body.theme : toTheme(body.theme);
   if (body.theme != null && !requestedTheme) throw new HttpError(400, "bad_theme");
   // planner preferences, all optional; omitted = the defaults every plan used before
@@ -257,8 +257,8 @@ serve(async (req) => {
   const variants = [
     ...(interests.length ? [{ id: "mix", name: "Your mix", weight: mixWeight(interests) }] : []),
     ...THEMES.map((t) => ({ id: t.id, name: t.name, theme: t.id })),
-    // Giggle's picks: only places we hand-picked (Giggles Choice), for everyone, when any are along the way
-    ...(choiceStops.some((st) => tierOf.get(st.id) === "choice") ? [{ id: "giggles", name: "Giggle's picks", only: choiceStops }] : []),
+    // Giggles' picks: only places we hand-picked (Giggles Choice), for everyone, when any are along the way
+    ...(choiceStops.some((st) => tierOf.get(st.id) === "choice") ? [{ id: "giggles", name: "Giggles' picks", only: choiceStops }] : []),
   ];
   const prefs = { minRating, allowUnrated: includeUnrated, maxStops: maxStops ?? stopCap, requiredIds: mustInclude };
   for (const t of variants) {
