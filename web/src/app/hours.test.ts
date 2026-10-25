@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { openNow } from "./hours";
+import { openNow, readableHours } from "./hours";
 
 const at = (day: number, h: number, m = 0) => new Date(2026, 9, 19 + day, h, m);   // 19 Oct 2026 is a Monday
 
@@ -20,4 +20,10 @@ test("unknown or odd hours are unknown, never closed", () => {
   expect(openNow(null)).toBeNull();
   expect(openNow("sunrise-sunset")).toBeNull();
   expect(openNow("Mo-Fr 08:00-17:00 \"call first\"")).toBeNull();
+});
+
+test("hours read like words", () => {
+  expect(readableHours("24/7")).toBe("Open 24 hours");
+  expect(readableHours("sunrise-sunset")).toBe("Sunrise to sunset");
+  expect(readableHours("Mo-Fr 08:00-17:00; Su off")).toBe("Mon–Fri 08:00–17:00 · Sun closed");
 });

@@ -5,7 +5,7 @@ import { admin, HttpError, json, readJson, requireUser, serve } from "../_shared
 //   plus       : Giggles Plus for a user, 30 days (no ads, daily coins, Plus shelf and title, themes and flair)
 //   membership : one-time lifetime membership (no ads, unlimited detours, partners first, 3 months of Plus), never renews
 //   partner    : a shop's Partner tier, 30 days (members' routes put it first; guests can book it)
-//   choice     : Giggles Choice, 30 days: a Partner we hand-picked (needs our approval first), also in the Giggle's plan
+//   choice     : Giggles Choice, 30 days: a Partner we hand-picked (needs our approval first), also in the Partner picks plan
 const CREDIT_PACKS = [500, 1000, 3000];
 const PLUS_THB = 59;
 const MEMBERSHIP_THB = 349;

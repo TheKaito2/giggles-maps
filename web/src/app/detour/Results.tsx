@@ -15,7 +15,7 @@ const MEAL_NAME: Record<Meal, string> = { breakfast: "Breakfast", lunch: "Lunch"
 const PARTNER_TIP = "This shop pays Giggles Maps when you visit.";
 // paid placement is always labelled: members' plans put these places first
 const TIER_TIP = { partner: "A verified shop that pays Giggles Maps monthly. Members' plans put partners first.",
-  choice: "Hand-picked by Giggles and pays monthly. Members' plans put it first; the Giggles' picks plan uses only these." } as const;
+  choice: "Hand-picked by Giggles and pays monthly. Members' plans put it first; the Partner picks plan uses only these." } as const;
 
 /** A place's photo, or its kind icon on its group colour. */
 export function Thumb({ s, size = 48 }: { s: { name: string; category: string; photo?: string | null }; size?: number }) {
@@ -154,13 +154,18 @@ function AlongList({ places, d, full, limit, at, leg, onAdded }: { places: Along
     return () => { live = false; clearTimeout(t); };
   }, [needle, kind, byKind]); // eslint-disable-line react-hooks/exhaustive-deps
   const add = (id: number) => { d.addStop(id, at); onAdded?.(); };
+  // closed when you'd pass it: say when it opens (usual hours when none are listed)
+  const closedNote = (p: object) => {
+    const { closed, opens_min: opens } = p as { closed?: boolean; opens_min?: number | null };
+    return closed && <span className="chip closed" title="Probably closed when you pass it">{opens != null ? `Opens ${hhmm(opens)}` : "Closed then"}</span>;
+  };
   const row = (p: Row | FoundPlace, extra: string, off = false) => (
     <li key={`${off ? "e" : ""}${p.id}`}>
       <Thumb s={{ name: p.name, category: p.category ?? "", photo: "photo" in p ? p.photo ?? null : null }} size={40} />
       <span className="stop-text"><b>{p.name}</b>
         <span className="stop-meta"><b className={`num extra${off ? " off" : ""}`}>{extra}</b>
           <span className="fine">{kindOf(p.kind ?? null, p.category ?? "").en}{p.rating != null && ` · ★ ${p.rating.toFixed(1)}`}</span>
-          {(p as { closed?: boolean }).closed && <span className="chip closed" title="Probably closed when you pass it">Closed then</span>}</span></span>
+          {closedNote(p)}</span></span>
       <button type="button" className="btn soft small add-btn" disabled={full || d.editing} onClick={() => add(p.id!)}
         aria-label={`Add ${p.name}`}><Plus size={15} aria-hidden /> Add</button>
     </li>
@@ -346,7 +351,8 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
 
       <Along places={current?.along ?? []} d={d} full={plan.stops.length >= d.cap} />
       <p className="fine">How stops are picked <Info label="How stops are picked">Stops are picked on quality, opening hours and how little time they
-        add. Partner shops rank like everyone else.</Info></p>
+        add. Paid Partner and Giggles Choice places are always labelled; free plans rank them like everyone else, and
+        members' plans give them a boost. "Partner picks" is a plan of paid partners only.</Info></p>
     </div>
   );
 }

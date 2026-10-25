@@ -22,7 +22,7 @@ export interface NearbyPartner {
   is_partner: boolean; is_demo: boolean;
 }
 
-// v5: a verified shop paying monthly. Members' plans put these first; "choice" ones also make the Giggle's plan.
+// v5: a verified shop paying monthly. Members' plans put these first; "choice" ones also make the Partner picks plan.
 export type PartnerTier = "partner" | "choice";
 export const TIER_NAME: Record<PartnerTier, string> = { partner: "Partner", choice: "Giggles Choice" };
 
@@ -51,6 +51,7 @@ export interface AlongPlace {
   rating: number | null; local: boolean; otop: boolean; community: boolean; photo: string | null; extra_min: number;
   partner_tier?: PartnerTier | null;
   closed?: boolean;   // closed when you'd pass it (about)
+  opens_min?: number | null;   // its opening time (minutes after midnight), usual hours when none are listed
 }
 
 export type Meal = "breakfast" | "lunch" | "dinner";

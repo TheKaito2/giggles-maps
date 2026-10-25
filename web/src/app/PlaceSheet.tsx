@@ -9,7 +9,7 @@ import { addPlacePhoto, createList, deletePlacePhoto, deleteReview, getMyLists, 
 import { shrinkPhoto } from "../lib/photo";
 import BookingSheet from "./BookingSheet";
 import { GROUPS, kindOf } from "./kinds";
-import { openNow } from "./hours";
+import { openNow, readableHours } from "./hours";
 import Avatar from "./social/Avatar";
 import { SkelLines, SkelPlace } from "./Skeleton";
 import Info from "./Info";
@@ -237,7 +237,7 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
       )}
       <ul className="place-info">
         {page.opening_hours ? <li><Clock size={16} aria-hidden />
-          <span>{open === true ? <b className="open">Open now</b> : open === false ? <b className="closed">Closed now</b> : null} <span className="fine">{page.opening_hours}</span></span></li>
+          <span>{open === true ? <b className="open">Open now</b> : open === false ? <b className="closed">Closed now</b> : null} <span className="fine">{readableHours(page.opening_hours)}</span></span></li>
           : usual && <li><Clock size={16} aria-hidden /><span><span className="fine">Usually {hhmm(usual[0])}–{hhmm(usual[1])} for a {k.en.toLowerCase()}{" "}
             (hours not listed; the planner uses these)</span></span></li>}
         {page.phone && <li><Phone size={16} aria-hidden /><a href={`tel:${page.phone.split(";")[0].replace(/\s/g, "")}`}>{page.phone.split(";")[0]}</a></li>}

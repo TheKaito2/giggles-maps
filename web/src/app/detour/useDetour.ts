@@ -33,14 +33,16 @@ const errorText = (e: unknown) => {
     : code === "bad_origin" || code === "bad_dest" ? "Pick a start and destination inside Thailand." : "Couldn't plan this one. Try again in a moment.";
 };
 
-// This tab's trip, kept in sessionStorage so a reload (or iOS dropping the app's web view) doesn't lose the plan: the
-// destination, start, time option and filters come back and the options are planned again. Edits to stops aren't kept.
-const SAVED = "gm-trip";
-type Saved = { stage: Stage; origin: Place | null; dest: Place; prefs: Prefs; preset: PresetId | null };
+// The trip you're planning, kept on this device for 12 hours: closing the app (a phone does that to apps in the
+// background on a road trip), a reload or iOS dropping the web view doesn't lose it. The destination, start, time option
+// and filters come back and the options are planned again; edits to stops aren't kept.
+const SAVED = "gm-trip", KEEP_MS = 12 * 3600_000;
+type Saved = { stage: Stage; origin: Place | null; dest: Place; prefs: Prefs; preset: PresetId | null; at?: number };
 function savedTrip(): Saved | null {
   try {
-    const v = JSON.parse(sessionStorage.getItem(SAVED) ?? "null") as Saved | null;
-    return v?.dest?.point && (v.stage === "choose" || v.stage === "results") ? { ...v, prefs: { ...DEFAULT_PREFS, ...v.prefs } } : null;
+    const v = JSON.parse(localStorage.getItem(SAVED) ?? "null") as Saved | null;
+    const fresh = v?.at != null && Date.now() - v.at < KEEP_MS;
+    return fresh && v?.dest?.point && (v.stage === "choose" || v.stage === "results") ? { ...v, prefs: { ...DEFAULT_PREFS, ...v.prefs } } : null;
   } catch { return null; }
 }
 
@@ -65,8 +67,8 @@ export function useDetour(onError: (m: string) => void) {
   const [manual, setManual] = useState(false);
   useEffect(() => {
     try {
-      if (stage === "browse" || !dest) sessionStorage.removeItem(SAVED);
-      else sessionStorage.setItem(SAVED, JSON.stringify({ stage, origin, dest, prefs, preset } satisfies Saved));
+      if (stage === "browse" || !dest) localStorage.removeItem(SAVED);
+      else localStorage.setItem(SAVED, JSON.stringify({ stage, origin, dest, prefs, preset, at: Date.now() } satisfies Saved));
     } catch { /* not kept: private mode */ }
   }, [stage, origin, dest, prefs, preset]);
   const [locating, setLocating] = useState(false);

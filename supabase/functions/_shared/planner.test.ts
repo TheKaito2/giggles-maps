@@ -177,7 +177,7 @@ test("Local gems never picks a landmark; a tight budget never goes over", () => 
 // a 100-minute drive along x; 10 strong places bunched at the start, one decent place in each later stretch
 const line = (x: number) => ({ x, y: 1 });
 const along = [{ x: 0, y: 0 }, { x: 100, y: 0 },
-  ...[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5].map(line), ...[30, 50, 70, 90].map(line)];
+  ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(line), ...[30, 50, 70, 90].map(line)];   // a minute apart: not the same site
 const alongMin = (a: number, b: number) => Math.abs(along[a].x - along[b].x) + Math.abs(along[a].y - along[b].y);
 const KINDS = ["temple", "museum", "park", "cafe", "viewpoint", "art", "market", "craft", "food", "temple", "temple", "park", "museum", "viewpoint"];
 const alongStops: Stop[] = along.slice(2).map((p, i) => ({
@@ -267,4 +267,11 @@ test("a fixed order stays exactly as given; an extra pick slots in without movin
   const ids = plus.order.map((s) => s.id);
   expect(ids.filter((id) => id !== 4)).toEqual([3, 2]);
   expect(ids).toContain(4);
+});
+
+test("two places 0 minutes apart are planned as one stop", () => {
+  const twin: Stop[] = [...stops, { idx: 8, id: 8, category: "park", rating: 4.6, dwellMin: 10 }];
+  const tm = (a: number, b: number) => (a === 8 ? travelMin(2, b) : b === 8 ? travelMin(a, 2) : travelMin(a, b));   // 8 sits on 2
+  const p = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 120, stops: twin, travelMin: tm }).order.map((s) => s.id);
+  expect(p.includes(2) && p.includes(8)).toBe(false);
 });

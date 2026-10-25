@@ -10,7 +10,7 @@ import { Spinner } from "../Skeleton";
 import { buzz, shareOrCopy } from "../../lib/native";
 import { clockTime } from "../../lib/format";
 
-export interface Waypoint extends LatLng { name: string; id?: number }   // id: a place you can check in at
+export interface Waypoint extends LatLng { name: string; id?: number; dwell?: number }   // id: a place you can check in at; dwell: minutes there
 const ARRIVE_M = 50;   // this close to a stop counts as there: the arrival card comes up
 const LEAVE_M = 100;   // this far from it again: you drove on, the card goes away (twice ARRIVE_M so GPS jitter doesn't flicker it)
 const OFF_ROUTE_M = 60, OFF_ROUTE_S = 10, REROUTE_GAP_S = 20;
@@ -170,7 +170,10 @@ export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
   }, [here, route]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // live ETA link: keep the arrival time and your position fresh while sharing
-  const remainingMin = route && prog ? (route.timeS / 60) * (prog.remainingM / Math.max(route.distanceM, 1)) : null;
+  const driveMin = route && prog ? (route.timeS / 60) * (prog.remainingM / Math.max(route.distanceM, 1)) : null;
+  // the arrival counts the time planned at the stops still ahead (it was driving only: 08:17 against a planned 10:50)
+  const stopMin = left.slice(0, -1).reduce((t, w) => t + (w.dwell ?? 0), 0);
+  const remainingMin = driveMin == null ? null : driveMin + stopMin;
   useEffect(() => {
     if (!share || !here) return;
     const dest = left[left.length - 1];
@@ -222,7 +225,8 @@ export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
       )}
       <div className="nav-bottom">
         <div className="nav-eta">
-          {remainingMin != null && <><b className="num">{clock(remainingMin)}</b><span className="fine num">{Math.round(remainingMin)} min · {fmtM(prog!.remainingM)}</span></>}
+          {remainingMin != null && <><b className="num">{clock(remainingMin)}</b><span className="fine num">{Math.round(driveMin!)} min driving · {fmtM(prog!.remainingM)}
+            {stopMin > 0 && ` · ${Math.round(stopMin)} min at stops`}</span></>}
           {/* at a stop, "next" is the one after it */}
           {left.filter((w) => w !== atStop).length > 1 && <span className="fine">Next stop: {left.filter((w) => w !== atStop)[0].name}</span>}
         </div>

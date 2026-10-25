@@ -33,7 +33,7 @@ const MAX_CANDIDATES = 22; // up to 5 per theme group, so every themed plan has 
 const MODES = new Set<Mode>(["pedestrian", "bicycle", "auto"]);
 const MIN_RATINGS = new Set([0, 3.5, 4, 4.5]);
 const END_CLEARANCE_M = 150; // the start and destination themselves aren't detours: places this close to either end are dropped
-// plans that are dropped when they repeat an earlier plan's stops (Top picks, Your mix and Giggles' picks always stay)
+// plans that are dropped when they repeat an earlier plan's stops (Top picks, Your mix and Partner picks always stay)
 const dropsIfDuplicate = (id: string) => id !== "top_picks" && id !== "mix" && id !== "giggles";
 
 serve(async (req) => {
@@ -44,7 +44,7 @@ serve(async (req) => {
   const startMin = num(body.start_min, 0, 1439, "bad_start_min");
   if (body.mode != null && !MODES.has(body.mode)) throw new HttpError(400, "bad_mode");
   const mode: Mode = body.mode ?? "pedestrian";
-  // "scenic" works as well as "nature"; edits name the plan they change, which can be "Your mix" or "Giggles' picks"
+  // "scenic" works as well as "nature"; edits name the plan they change, which can be "Your mix" or "Partner picks"
   const requestedTheme = body.theme == null ? null : body.theme === "mix" || body.theme === "giggles" ? body.theme : toTheme(body.theme);
   if (body.theme != null && !requestedTheme) throw new HttpError(400, "bad_theme");
   // planner preferences, all optional; omitted = the defaults every plan used before
@@ -188,13 +188,13 @@ serve(async (req) => {
       pitIds.add(p.id);
     }
   }
-  // paid tiers: Partner and Giggles Choice. Members' plans put them first; the Giggle's plan uses Choice stops only.
+  // paid tiers: Partner and Giggles Choice. Members' plans put them first; the Partner picks plan uses Choice stops only.
   const tierOf = new Map<number, "partner" | "choice">();
   if (candidates.length) {
     const { data: tiers, error: tErr } = await db.rpc("places_tiers", { p_ids: candidates.map((c) => c.id) });
     if (tErr) console.error("partner tiers failed", tErr);
     for (const t of (tiers ?? []) as { id: number; tier: "partner" | "choice" }[]) tierOf.set(t.id, t.tier);
-    // demo mode only: the pretend partners (demo_partners) count too, so the demo shows badges and the Giggle's plan
+    // demo mode only: the pretend partners (demo_partners) count too, so the demo shows badges and the Partner picks plan
     if (body.demo === true) {
       const { data: demo, error: dErr } = await db.from("demo_partners").select("place_id, tier").in("place_id", candidates.map((c) => c.id));
       if (dErr) console.error("demo partners failed", dErr);
@@ -257,8 +257,8 @@ serve(async (req) => {
   const variants = [
     ...(interests.length ? [{ id: "mix", name: "Your mix", weight: mixWeight(interests) }] : []),
     ...THEMES.map((t) => ({ id: t.id, name: t.name, theme: t.id })),
-    // Giggles' picks: only places we hand-picked (Giggles Choice), for everyone, when any are along the way
-    ...(choiceStops.some((st) => tierOf.get(st.id) === "choice") ? [{ id: "giggles", name: "Giggles' picks", only: choiceStops }] : []),
+    // Partner picks: only places we hand-picked (Giggles Choice), for everyone, when any are along the way
+    ...(choiceStops.some((st) => tierOf.get(st.id) === "choice") ? [{ id: "giggles", name: "Partner picks", only: choiceStops }] : []),
   ];
   const prefs = { minRating, allowUnrated: includeUnrated, maxStops: maxStops ?? stopCap, requiredIds: mustInclude };
   for (const t of variants) {
@@ -398,7 +398,8 @@ serve(async (req) => {
         extra_min: Math.round(insertionCost(plan.order.map((x) => x.idx), st.idx, travelMin, st.dwellMin)),
         // closed when you'd pass it (about: straight from the start), so "add along your route" doesn't offer a night
         // market at 10:00 as if it were open; open ones come first
-        closed: !visitIsOpen(startMin + travelMin(0, st.idx), st.dwellMin, st.openMin, st.closeMin) };
+        closed: !visitIsOpen(startMin + travelMin(0, st.idx), st.dwellMin, st.openMin, st.closeMin),
+        opens_min: st.openMin ?? null };   // so a closed one can say when it opens
     }).filter((a) => Number.isFinite(a.extra_min)).sort((a, b) => Number(a.closed) - Number(b.closed) || a.extra_min - b.extra_min).slice(0, 30);
 
     return { ordered, cards, geometry, along };

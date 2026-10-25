@@ -3,7 +3,7 @@
 v5 replaces v4 (23 Oct). It **drops v3's "the route is never for sale"**: paying partners now come first on members' routes, always
 labelled. Free users still get the quality order.
 
-**Code:** migration `20261024000063_monetization_v5.sql`, `plan-route` (sign-in, quotas, partner boost, Giggles' picks plan),
+**Code:** migration `20261024000063_monetization_v5.sql`, `plan-route` (sign-in, quotas, partner boost, Partner picks plan),
 `stripe-checkout` (partner / choice), web `AdBanner`, `Upgrade`, `BookingSheet`, the shop dashboard's Partner and Bookings sections.
 
 ## Prices
@@ -47,7 +47,7 @@ labelled. Free users still get the quality order.
   Aurora frames, Aurora flair. The existing Plus covers and flair stay free with Plus.
 - 25% more coins from quests and a stamp every month (from v4).
 
-### The Giggles' picks plan
+### The Partner picks plan
 A plan card that uses only Giggles Choice places (plus anything you picked). Everyone gets it when a Choice place is along the way.
 
 ## Shops
@@ -58,7 +58,7 @@ A plan card that uses only Giggles Choice places (plus anything you picked). Eve
 3. **Giggles Choice, by invitation (not a plan you can buy).** Only a live Partner can apply (`request_choice`, else
    `partners_only`). An admin chooses (Profile → Settings → admin list). Only a chosen shop can then switch it on for
    ฿799 / month (checkout refuses Choice before approval). Gets: a Giggles Choice badge, ×2 on members' routes, and the
-   Giggles' picks plan for everyone.
+   Partner picks plan for everyone.
 4. A tier runs 30 days per payment; paying again adds 30 days.
 
 **Labelling:** every paid place shows its badge (Partner / Giggles Choice) on detour cards and the place page, with a tooltip

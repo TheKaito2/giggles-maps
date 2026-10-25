@@ -202,11 +202,14 @@ export function planDetour(input: PlanInput): Plan {
     order = pick.order;
   }
 
+  // two places 0 minutes apart are one stop (a shrine and its park): planning both read as padding
+  const sameSite = (s: Stop, o: Stop[]) => o.some((x) => travelMin(x.idx, s.idx) < 1 && travelMin(s.idx, x.idx) < 1);
+
   // phase 1: fill the remaining budget by quality x theme x variety per added minute
   while (order.length < maxStops) {
     let pick: { order: Stop[]; ratio: number } | null = null;
     for (const s of eligible) {
-      if (order.includes(s) || weight(s.category, s.tier) === 0) continue;
+      if (order.includes(s) || sameSite(s, order) || weight(s.category, s.tier) === 0) continue;
       const ins = bestInsert(order, s);
       if (!ins) continue;
       const ratio = score(s, order, ins.added);
@@ -220,7 +223,7 @@ export function planDetour(input: PlanInput): Plan {
   if (!order.some(isLocal) && order.length < maxStops) {
     let pick: { order: Stop[]; ratio: number } | null = null;
     for (const s of eligible) {
-      if (!isLocal(s) || order.includes(s) || weight(s.category, s.tier) === 0) continue;
+      if (!isLocal(s) || order.includes(s) || sameSite(s, order) || weight(s.category, s.tier) === 0) continue;
       const ins = bestInsert(order, s);
       if (!ins) continue;
       const ratio = score(s, order, ins.added);

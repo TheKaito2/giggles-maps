@@ -35,3 +35,15 @@ export function openNow(oh: string | null | undefined, now = new Date()): boolea
   }
   return result;
 }
+
+/** The hours as people read them: "24/7" -> "Open 24 hours", "sunrise-sunset" -> "Sunrise to sunset", day codes spelled
+ *  out ("Mo-Fr 08:00-17:00; Su off" -> "Mon–Fri 08:00–17:00 · Sun closed"). Anything else is shown as it is. */
+const DAY_NAME: Record<string, string> = { Mo: "Mon", Tu: "Tue", We: "Wed", Th: "Thu", Fr: "Fri", Sa: "Sat", Su: "Sun", PH: "holidays" };
+export function readableHours(oh: string): string {
+  const s = oh.trim();
+  if (s === "24/7") return "Open 24 hours";
+  return s.split(";").map((r) => r.trim()).filter(Boolean).join(" · ")
+    .replace(/\bsunrise\s*-\s*sunset\b/gi, "sunrise to sunset").replace(/^sunrise to sunset/, "Sunrise to sunset")
+    .replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su|PH)\b/g, (d) => DAY_NAME[d])
+    .replace(/(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/g, "$1–$2").replace(/([a-z])-([A-Z])/g, "$1–$2").replace(/\b(off|closed)\b/g, "closed");
+}

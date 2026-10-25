@@ -85,10 +85,12 @@ export default function App() {
   const [passport, setPassport] = useState(false);   // open your passport on the Profile tab
   const [overlay, setOverlay] = useState<"shop" | "bag" | "avatar" | "ride" | "add" | null>(() => readCodeParam("trip") ? "ride" : null);
   const [chip, setChip] = useState<string | null>(null);
-  // turn-by-turn running; kept for this tab, so a reload goes back into directions instead of a plain map
-  const [nav, setNav] = useState<Waypoint[] | null>(() => { try { return JSON.parse(sessionStorage.getItem("gm-nav") ?? "null"); } catch { return null; } });
+  // turn-by-turn running; kept on this device for 12 hours, so reopening the app (or a reload) goes back into directions
+  const [nav, setNav] = useState<Waypoint[] | null>(() => {
+    try { const v = JSON.parse(localStorage.getItem("gm-nav") ?? "null"); return v && Date.now() - v.at < 12 * 3600_000 ? v.waypoints : null; } catch { return null; }
+  });
   useEffect(() => {
-    try { if (nav) sessionStorage.setItem("gm-nav", JSON.stringify(nav)); else sessionStorage.removeItem("gm-nav"); } catch { /* not kept */ }
+    try { if (nav) localStorage.setItem("gm-nav", JSON.stringify({ waypoints: nav, at: Date.now() })); else localStorage.removeItem("gm-nav"); } catch { /* not kept */ }
   }, [nav]);
   const [paused, setPaused] = useState<Waypoint[] | null>(null);   // directions left off to check in at a stop
   const [look, setLookState] = useState<MapLook>(loadLook);   // map type + night map, remembered on this device
@@ -289,7 +291,7 @@ export default function App() {
             head={d.stage !== "browse" && <TripHead d={d} onBack={d.stage === "results" ? () => d.setStage("choose") : d.close}
               backLabel={d.stage === "results" ? "Back to time options" : "Close this trip"} onSearch={() => setSnap("full")} />}
             foot={d.stage === "results" && plan && plan.stops.length > 0 && (
-              <button type="button" className="btn big find" onClick={() => { setPaused(null); setNav([...plan.stops.map((st) => ({ lat: st.lat, lng: st.lng, name: st.name, id: st.id })),
+              <button type="button" className="btn big find" onClick={() => { setPaused(null); setNav([...plan.stops.map((st) => ({ lat: st.lat, lng: st.lng, name: st.name, id: st.id, dwell: st.dwell_min })),
                 { ...d.dest!.point, name: d.dest!.name }]); liveTrip.start(plan.stops, d.dest!.name); }}><Navigation size={18} aria-hidden /> Start · {plan.stops.length} stop{plan.stops.length === 1 ? "" : "s"}</button>
             )}>
             {error && <p className="error" role="alert">{error}<button type="button" className="icon-btn" onClick={() => setError("")} aria-label="Dismiss"><X size={16} /></button></p>}

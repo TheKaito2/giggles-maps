@@ -27,7 +27,7 @@ export function scheduleStops(order: Stop[], legs: number[], startMin: number, m
   return { totalMin: time + legs[order.length] - startMin, etaMin, failed };
 }
 
-// Per-request cache/limit shared across all the plans (one per theme, plus mix/Giggle's), never a budget per plan.
+// Per-request cache/limit shared across all the plans (one per theme, plus mix/Partner picks), never a budget per plan.
 export function boundedRouter(route: (points: LatLng[], mode: Mode) => Promise<RoadRoute>, limit = 7, durationMs = 24000) {
   const cache = new Map<string, Promise<RoadRoute>>();
   const deadline = Date.now() + durationMs;
