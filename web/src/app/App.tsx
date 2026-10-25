@@ -87,8 +87,18 @@ export default function App() {
   const [chip, setChip] = useState<string | null>(null);
   // turn-by-turn running; kept on this device for 12 hours, so reopening the app (or a reload) goes back into directions
   const [nav, setNav] = useState<Waypoint[] | null>(() => {
-    try { const v = JSON.parse(localStorage.getItem("gm-nav") ?? "null"); return v && Date.now() - v.at < 12 * 3600_000 ? v.waypoints : null; } catch { return null; }
+    try {
+      const v = JSON.parse(localStorage.getItem("gm-nav") ?? "null");
+      const ok = Array.isArray(v?.waypoints) && v.waypoints.length > 0 && v.waypoints.every((w: Waypoint) =>
+        typeof w?.name === "string" && Number.isFinite(w.lat) && Number.isFinite(w.lng));   // not half-restored from edited data
+      return ok && Date.now() - v.at < 12 * 3600_000 ? v.waypoints : null;
+    } catch { return null; }
   });
+  useEffect(() => {
+    const forget = () => setNav(null);   // signed out: directions on this device end (see forgetTrip)
+    addEventListener("gm-forget-trip", forget);
+    return () => removeEventListener("gm-forget-trip", forget);
+  }, []);
   useEffect(() => {
     try { if (nav) localStorage.setItem("gm-nav", JSON.stringify({ waypoints: nav, at: Date.now() })); else localStorage.removeItem("gm-nav"); } catch { /* not kept */ }
   }, [nav]);
@@ -101,7 +111,11 @@ export default function App() {
     return t;
   });
   // the place page open on the map: a tapped pin, a saved place, or a shared /app/?place=ID link
-  const [place, setPlace] = useState<number | null>(() => Number(new URLSearchParams(location.search).get("place")) || null);
+  const [place, setPlace] = useState<number | null>(() => {
+    const id = Number(new URLSearchParams(location.search).get("place")) || null;
+    if (id) history.replaceState(history.state, "", location.pathname);   // read once: a reload doesn't reopen a closed sheet
+    return id;
+  });
   const [picking, setPicking] = useState<"origin" | "dest" | null>(null);
   const [error, setError] = useState("");
   const [checkin, setCheckin] = useState<{ target: CheckinTarget; code?: string } | null>(null);

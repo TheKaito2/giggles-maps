@@ -1108,6 +1108,7 @@ p.chase { margin: 0; }
   box-shadow: 0 8px 24px rgb(0 0 0 / .25); animation: pop .15s ease-out both; white-space: normal; }
 .info-pop.start { left: -6px; } .info-pop.end { right: -6px; }
 .info-pop.up { top: auto; bottom: calc(100% + 6px); }
+.info-pop { overflow-y: auto; overscroll-behavior: contain; }
 .info-pop b { color: inherit; }
 
 /* detour numbers first: the figure is what you read, the unit is a whisper (detour/Figure.tsx) */
@@ -1422,14 +1423,16 @@ html.native .toast { top: calc(64px + env(safe-area-inset-top, 0px)); }
 /* a phone on its side (390 px tall): the trip's header, time options and Start filled the full sheet and left no room for
    the stops, so the whole sheet scrolls there, with Start kept at the bottom */
 @media (max-width: 959px) and (max-height: 500px) {
-  .sheet.snap-full { height: 100%; overflow-y: auto; }
-  .sheet.snap-full .sheet-body { flex: none; overflow: visible; }
-  .sheet.snap-full .sheet-foot { position: sticky; bottom: 0; background: var(--card); }
+  /* half height left Start under the tab bar there: on a phone on its side the sheet is full or peeking, nothing between */
+  .sheet.snap-full, .sheet.snap-half { height: 100%; overflow-y: auto; }
+  .sheet.snap-full .sheet-body, .sheet.snap-half .sheet-body { flex: none; overflow: visible; }
+  .sheet.snap-full .sheet-foot, .sheet.snap-half .sheet-foot { position: sticky; bottom: 0; background: var(--card); }
 }
 
 /* 320 px phones: the shop set's 3-up tiles are 61 px wide */
 @media (max-width: 360px) {
   .set-items .preview.cover-prev .cover-title { font-size: 9.5px; letter-spacing: 0; }
+  .set-items .preview { overflow: hidden; }
   .set-items .preview.title-chip span { font-size: var(--fs-micro); line-height: 1.1; padding-inline: 2px; }
 }
 /* a sheet pulled up full leaves a strip of map: no half-hidden zoom buttons in it */

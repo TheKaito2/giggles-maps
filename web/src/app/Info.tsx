@@ -16,10 +16,16 @@ export default function Info({ label, children, align = "start" }: { label: stri
     const left = box.current!.getBoundingClientRect().left + el.offsetLeft, right = left + el.offsetWidth, pad = 12;
     const dx = right > innerWidth - pad ? innerWidth - pad - right : left < pad ? pad - left : 0;
     if (dx) el.style.translate = `${dx}px 0`;
-    // and open upward when there's no room below inside its scrolling panel (it hid behind the trip's Start bar)
+    // and open on the side with room inside its scrolling panel, never past it: below hid behind the trip's Start bar,
+    // above behind the trip header (320 px, landscape). Too long for either side: as tall as fits, and it scrolls.
+    el.style.maxHeight = "";
     const anchor = box.current!.getBoundingClientRect();
-    const floor = Math.min(innerHeight, (box.current!.closest(".sheet-body, .modal, .page-view")?.getBoundingClientRect().bottom ?? innerHeight)) - pad;
-    el.classList.toggle("up", anchor.bottom + 6 + el.offsetHeight > floor && anchor.top - 6 - el.offsetHeight > pad);
+    const panel = box.current!.closest(".sheet-body, .modal, .page-view")?.getBoundingClientRect();
+    const below = Math.min(innerHeight, panel?.bottom ?? innerHeight) - pad - anchor.bottom - 6;
+    const above = anchor.top - 6 - Math.max(0, panel?.top ?? 0) - pad;
+    const up = el.offsetHeight > below && above > below;
+    el.classList.toggle("up", up);
+    if (el.offsetHeight > (up ? above : below)) el.style.maxHeight = `${Math.max(72, up ? above : below)}px`;
   }, [open]);
   useEffect(() => {
     if (!open) return;

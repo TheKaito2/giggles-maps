@@ -12,6 +12,7 @@ import SignIn from "./SignIn";
 import AdminEdits from "./AdminEdits";
 import Info from "./Info";
 import { useBack } from "../lib/useDialog";
+import { forgetTrip } from "./detour/useDetour";
 
 // Settings, iOS / Android style: an account card, then short titled groups of rows. Switches act at once; anything bigger
 // opens its own page inside the sheet (‹ back). Destructive actions sit last and ask first.
@@ -85,6 +86,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
   const deleteAccount = async () => {
     try {
       await callFn("delete-account", {});
+      forgetTrip();
       await supabase.auth.signOut();
       setMsg("Account deleted. You're a fresh guest now, with an empty passport.");
       setPage("home");
@@ -150,7 +152,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
         </Group>}
 
         <Group title="Account">
-          {!guest && <Row icon={<LogOut size={17} />} tone="slate" label="Sign out" onClick={() => supabase.auth.signOut().then(onClose)} />}
+          {!guest && <Row icon={<LogOut size={17} />} tone="slate" label="Sign out" onClick={() => { forgetTrip(); void supabase.auth.signOut().then(onClose); }} />}
           <Row icon={<Trash2 size={17} />} tone="bad" label="Delete account" danger onClick={() => go("delete")} />
         </Group>
         <p className="fine set-legal"><a href="/privacy.html">Privacy</a> · Giggles Maps</p>

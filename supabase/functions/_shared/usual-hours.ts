@@ -2,9 +2,10 @@
 // kind, so a plan made at night doesn't send people to a temple at 04:00 or a weekend-night walking street at dawn.
 // Known hours always win. Minutes after midnight; close < open means it closes after midnight.
 // ponytail: one window per kind, no weekdays; a walking street open only at weekends still shows on a Tuesday evening.
-// only for markets, shops and food: "Night Safari" (a park) or "Midnight Café" are not night markets
+// for markets, shops, food, art and crafts ("Artwork Zone Night Bazaar"): a park called "Night Safari" or a
+// "Midnight Café" is not a night market
 const NIGHT_MARKET = /\bnight\b|walking street|ถนนคนเดิน|ตลาดโต้รุ่ง|ตลาดกลางคืน|ไนท์/i;
-const NIGHT_KINDS = new Set(["market", "shop", "food"]);
+const NIGHT_KINDS = new Set(["market", "shop", "food", "art", "craft"]);
 const USUAL: Record<string, [number, number]> = {
   temple: [6 * 60, 18 * 60], museum: [9 * 60, 16 * 60 + 30], art: [10 * 60, 18 * 60], park: [5 * 60, 20 * 60],
   viewpoint: [5 * 60, 20 * 60], craft: [9 * 60, 18 * 60], shop: [9 * 60, 20 * 60], market: [6 * 60, 18 * 60],

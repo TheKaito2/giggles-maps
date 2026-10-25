@@ -28,6 +28,7 @@ const errorText = (e: unknown) => {
     : code === "detour_limit" ? "That's today's 3 free detours."
     : code === "edit_limit" ? "That's today's 10 free changes."
     : code === "slow_down" ? "Lots of plans at once. Wait a moment, then try again."
+    : code === "day_cap" ? "That's all the plans for today. Sign in free for more, or come back tomorrow."
     : code === "stop_limit" ? "That's the most stops a plan holds. Remove one to add another."
     : code === "too_far_for_mode" ? "That's too far to walk or cycle in one go. Try Driving."
     : code === "bad_origin" || code === "bad_dest" ? "Pick a start and destination inside Thailand." : "Couldn't plan this one. Try again in a moment.";
@@ -36,13 +37,30 @@ const errorText = (e: unknown) => {
 // The trip you're planning, kept on this device for 12 hours: closing the app (a phone does that to apps in the
 // background on a road trip), a reload or iOS dropping the web view doesn't lose it. The destination, start, time option
 // and filters come back and the options are planned again; edits to stops aren't kept.
-const SAVED = "gm-trip", KEEP_MS = 12 * 3600_000;
-type Saved = { stage: Stage; origin: Place | null; dest: Place; prefs: Prefs; preset: PresetId | null; at?: number };
+// Its plans come back too when they're under 30 minutes old, instead of planning all four options again on every reopen
+// (that used up a guest's 20 plans a day).
+const SAVED = "gm-trip", KEEP_MS = 12 * 3600_000, PLANS_MS = 30 * 60_000;
+type Saved = { stage: Stage; origin: Place | null; dest: Place; prefs: Prefs; preset: PresetId | null; at?: number;
+  results?: Partial<Record<PresetId, Result>>; resultsAt?: number };
+/** Signing out or deleting the account: the trip and directions kept on this device go too (a shared phone's next user
+ *  saw the previous route, planned on their account). Open screens hear it and close. */
+export function forgetTrip() {
+  try { localStorage.removeItem(SAVED); localStorage.removeItem("gm-nav"); } catch { /* nothing kept */ }
+  dispatchEvent(new Event("gm-forget-trip"));
+}
+const isPlace = (p: unknown): p is Place => {
+  const v = p as Place | null;
+  return !!v && typeof v.name === "string" && Number.isFinite(v.point?.lat) && Number.isFinite(v.point?.lng);
+};
 function savedTrip(): Saved | null {
   try {
     const v = JSON.parse(localStorage.getItem(SAVED) ?? "null") as Saved | null;
-    const fresh = v?.at != null && Date.now() - v.at < KEEP_MS;
-    return fresh && v?.dest?.point && (v.stage === "choose" || v.stage === "results") ? { ...v, prefs: { ...DEFAULT_PREFS, ...v.prefs } } : null;
+    // anything that doesn't look like a trip we saved (edited, from an older version) is dropped, not half-restored
+    if (!v || v.at == null || Date.now() - v.at >= KEEP_MS || !(v.stage === "choose" || v.stage === "results")) return null;
+    if (!isPlace(v.dest) || (v.origin != null && !isPlace(v.origin))) return null;
+    if (v.preset != null && !PRESETS.some((x) => x.id === v.preset) && v.preset !== "custom") return null;
+    const plans = v.results && v.resultsAt != null && Date.now() - v.resultsAt < PLANS_MS ? v.results : undefined;
+    return { ...v, prefs: { ...DEFAULT_PREFS, ...v.prefs }, results: plans };
   } catch { return null; }
 }
 
@@ -55,7 +73,10 @@ export function useDetour(onError: (m: string) => void) {
   const [origin, setOrigin] = useState<Place | null>(restored?.origin ?? null);   // null = your location, found when needed
   const [dest, setDest] = useState<Place | null>(restored?.dest ?? null);
   const [prefs, setPrefs] = useState<Prefs>(restored?.prefs ?? DEFAULT_PREFS);
-  const [results, setResults] = useState<Partial<Record<PresetId, Result>>>({});
+  const [results, setResults] = useState<Partial<Record<PresetId, Result>>>(() =>
+    Object.fromEntries(Object.entries(restored?.results ?? {}).filter(([, r]) => r !== "loading")));
+  // the restored plans stand while the trip is unchanged (reopening doesn't plan again); any change plans afresh
+  const reuseKey = useRef<string | null>(restored?.results ? JSON.stringify([restored.origin, restored.dest, restored.prefs]) : null);
   const [preset, setPreset] = useState<PresetId | null>(restored?.preset ?? null);   // nothing picked until you tap one
   const [choice, setChoice] = useState<string | null>(null);   // theme of the plan card you picked
   const [exclude, setExclude] = useState<number[]>([]);
@@ -68,9 +89,13 @@ export function useDetour(onError: (m: string) => void) {
   useEffect(() => {
     try {
       if (stage === "browse" || !dest) localStorage.removeItem(SAVED);
-      else localStorage.setItem(SAVED, JSON.stringify({ stage, origin, dest, prefs, preset, at: Date.now() } satisfies Saved));
-    } catch { /* not kept: private mode */ }
-  }, [stage, origin, dest, prefs, preset]);
+      else {
+        const settled = !Object.values(results).some((r) => r === "loading");
+        localStorage.setItem(SAVED, JSON.stringify({ stage, origin, dest, prefs, preset, at: Date.now(),
+          ...(settled && { results, resultsAt: Date.now() }) } satisfies Saved));
+      }
+    } catch { /* not kept: private mode, or full */ }
+  }, [stage, origin, dest, prefs, preset, results]);
   const [locating, setLocating] = useState(false);
   const request = useRef(0);   // preset plans in flight
   const [again, setAgain] = useState(0);   // bumped to plan the presets again (a rewarded ad lifted today's limit)
@@ -91,6 +116,16 @@ export function useDetour(onError: (m: string) => void) {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
   });
 
+  useEffect(() => {
+    const forget = () => closeRef.current();
+    addEventListener("gm-forget-trip", forget);
+    return () => removeEventListener("gm-forget-trip", forget);
+  }, []);
+  // a trip saved before your location was found: find it now, as picking the destination would have
+  useEffect(() => {
+    if (restored && !restored.origin) locate().then((here) => setOrigin((o) => o ?? here)).catch((e) => onError((e as Error).message));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const budgetOf = (id: PresetId) => id === "custom" ? prefs.budget : PRESETS.find((p) => p.id === id)!.min;
 
   const planPreset = (k: PresetId, id: number) => {
@@ -103,6 +138,9 @@ export function useDetour(onError: (m: string) => void) {
   // a new trip plans all four options at once (Relaxed first), plus a custom time if that's the one picked;
   // the cards fill in as each returns
   useEffect(() => {
+    const signInGate = Object.values(results).some((r) => typeof r === "object" && "gate" in r && r.gate?.startsWith("sign_in"));
+    if (reuseKey.current === JSON.stringify([origin, dest, prefs]) && !(signInGate && !guest)) return;   // the saved plans still fit
+    reuseKey.current = null;
     const id = ++request.current;
     edit.current++; setEditing(false);   // an edit in flight belongs to the old trip
     setExclude([]); setChoice(null); setManual(false); setHidden([]); setResults({});
@@ -135,12 +173,14 @@ export function useDetour(onError: (m: string) => void) {
   const pickCustom = (min: number | "auto") => {
     if (min === prefs.budget) choosePreset("custom"); else { set({ budget: min }); setPreset("custom"); }
   };
+  const closeRef = useRef(() => {});
   const close = () => {
     request.current++; edit.current++;
     setStage("browse"); setDest(null); setResults({}); setExclude([]); setChoice(null); setManual(false); setEditing(false); setHidden([]);
     setOrigin((o) => o?.name === "Your location" ? null : o);   // you'll have moved: locate again next time
   };
 
+  closeRef.current = close;
   const current = preset ? results[preset] : undefined;
   const response = current && typeof current === "object" && "route_id" in current ? current : null;
   const plan = response && choosePlan(response, choice);
@@ -186,7 +226,7 @@ export function useDetour(onError: (m: string) => void) {
   return {
     stage, setStage, origin, setOrigin, dest, setDest, prefs, set, results, preset, setPreset: choosePreset, choice,
     setChoice: (c: string | null) => { setManual(false); setChoice(c); }, plan, response,
-    cap, editing, locating, hidden, retry, notify: onError, gate, setGate, replanAll: () => setAgain((n) => n + 1), goTo, close, pickCustom, budgetOf, removeStop, addStop, reorder,
+    cap, editing, locating, hidden, retry, notify: onError, gate, setGate, replanAll: () => { reuseKey.current = null; setAgain((n) => n + 1); }, goTo, close, pickCustom, budgetOf, removeStop, addStop, reorder,
     swap: () => { if (origin && dest) { setOrigin(dest); setDest(origin); } },
   };
 }

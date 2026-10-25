@@ -8,6 +8,7 @@ import { say } from "./thai";
 import { isNight, loadLook, styleUrl } from "../mapLayers";
 import { Spinner } from "../Skeleton";
 import { buzz, shareOrCopy } from "../../lib/native";
+import { useBack } from "../../lib/useDialog";
 import { clockTime } from "../../lib/format";
 
 export interface Waypoint extends LatLng { name: string; id?: number; dwell?: number }   // id: a place you can check in at; dwell: minutes there
@@ -36,6 +37,13 @@ function TurnIcon({ type }: { type: number }) {
 export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
   waypoints: Waypoint[]; mode: TravelMode; onClose: () => void; onCheckin: (stop: Waypoint, rest: Waypoint[]) => void;
 }) {
+  // Back and Escape end directions (back to the plan) instead of stepping the trip underneath or leaving the app
+  useBack(onClose);
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape" && !document.querySelector("[aria-modal=true]:not(.nav-mode)")) onClose(); };
+    addEventListener("keydown", esc);
+    return () => removeEventListener("keydown", esc);
+  }, [onClose]);
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const me = useRef<maplibregl.Marker | null>(null);

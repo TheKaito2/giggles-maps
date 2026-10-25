@@ -222,8 +222,8 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
       {msg && <p className="fine" role="status">{msg}</p>}
 
       {extras?.description ? <p className="place-about">{extras.description}</p>
-        : <p className="place-about fine">{page.tier === 3 ? `A landmark ${k.en.toLowerCase()}, one of the best-known places around here.`
-          : page.tier === 2 ? `A ${k.en.toLowerCase()} worth a stop.` : `An everyday ${k.en.toLowerCase()}.`}</p>}
+        : <p className="place-about fine">{page.tier === 3 ? "A landmark: one of the best-known places around here."
+          : page.tier === 2 ? "Worth a stop on the way." : "An everyday place, handy on the way."}</p>}
       {(page.otop || page.community) && <p className="local-note">{page.community
         ? "A community enterprise: your visit supports local makers directly."
         : "An OTOP producer (One Tambon One Product): local products made in this subdistrict."}</p>}
@@ -238,8 +238,8 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
       <ul className="place-info">
         {page.opening_hours ? <li><Clock size={16} aria-hidden />
           <span>{open === true ? <b className="open">Open now</b> : open === false ? <b className="closed">Closed now</b> : null} <span className="fine">{readableHours(page.opening_hours)}</span></span></li>
-          : usual && <li><Clock size={16} aria-hidden /><span><span className="fine">Usually {hhmm(usual[0])}–{hhmm(usual[1])} for a {k.en.toLowerCase()}{" "}
-            (hours not listed; the planner uses these)</span></span></li>}
+          : usual && <li><Clock size={16} aria-hidden /><span><span className="fine">Usually {hhmm(usual[0])}–{hhmm(usual[1])}, the typical hours for this kind of place
+            (its own aren't listed; the planner uses these)</span></span></li>}
         {page.phone && <li><Phone size={16} aria-hidden /><a href={`tel:${page.phone.split(";")[0].replace(/\s/g, "")}`}>{page.phone.split(";")[0]}</a></li>}
         {page.website && <li><Globe size={16} aria-hidden /><a href={page.website.startsWith("http") ? page.website : `https://${page.website}`} target="_blank" rel="noopener noreferrer">{page.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}</a></li>}
         {page.address && <li><MapPin size={16} aria-hidden /><span>{page.address}</span></li>}

@@ -9,4 +9,5 @@ test("known hours win; unknown ones fall back to the usual hours for the kind", 
   expect(usualHours("stay", "Hotel", null, null)).toEqual([null, null]);
   expect(usualHours("park", "Night Safari", null, null)).toEqual([300, 1200]);       // only markets, shops, food
   expect(usualHours("cafe", "Midnight Café", null, null)).toEqual([480, 1080]);
+  expect(usualHours("art", "Artwork Zone Night Bazaar", null, null)).toEqual([1020, 1380]);
 });
