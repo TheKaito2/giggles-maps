@@ -8,6 +8,7 @@ import { installDemoGps } from "../lib/demoGps";
 import { installHScroll } from "../lib/hscroll";
 import { installNativeGeolocation, isNative, openSite } from "../lib/native";
 import { installTheme } from "../lib/theme";
+import { installI18n } from "../lib/i18n";
 import { SplashScreen } from "@capacitor/splash-screen";
 
 if (isNative) {
@@ -32,7 +33,9 @@ addEventListener("vite:preloadError", (e) => {
   try { last = Number(sessionStorage.getItem("gm-reloaded-at")) || 0; sessionStorage.setItem("gm-reloaded-at", String(Date.now())); } catch { /* no storage: still reload once */ }
   if (navigator.onLine && Date.now() - last > 30_000) { e.preventDefault(); location.reload(); }
 });
-createRoot(document.getElementById("root")!).render(<Boundary page>{debug ? <Debug what={debug} /> : <App />}</Boundary>);
+// Thai mode loads its dictionary before the first render, so the app never flashes English first
+void installI18n().catch((e) => console.error("thai", e))
+  .finally(() => createRoot(document.getElementById("root")!).render(<Boundary page>{debug ? <Debug what={debug} /> : <App />}</Boundary>));
 if (isNative) requestAnimationFrame(() => { void SplashScreen.hide(); });   // the first frame is on screen: lift the splash
 // offline: keeps the app itself loadable with no signal (saved province maps cover the map)
 if (import.meta.env.PROD && !isNative && "serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch((e) => console.error("service worker", e));

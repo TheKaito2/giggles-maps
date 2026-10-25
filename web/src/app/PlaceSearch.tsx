@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Clock, MapPin } from "lucide-react";
 import { type FoundPlace, type LatLng, searchAddresses, searchPlaces } from "../lib/api";
 import { GROUPS, kindOf } from "./kinds";
+import { nameOf } from "../lib/i18n";
 
 const RECENT_KEY = "giggles.recentSearches";
 const readRecent = (): FoundPlace[] => { try { return JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]"); } catch { return []; } };
@@ -99,7 +100,7 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions, 
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(p)}>
           {recentRow ? <span className="result-icon address"><Clock size={15} aria-hidden /></span> : <ResultIcon p={p} />}
           <span className="result-text">
-            <b>{p.name}{p.tier === 3 && <span className="chip landmark">Landmark</span>}</b>
+            <b>{nameOf(p)}{p.tier === 3 && <span className="chip landmark">Landmark</span>}</b>
             <span className="fine">{k ? k.en : "Address"}{p.distance_m != null && ` · ${formatDistance(p.distance_m)}`}</span>
           </span>
         </button>

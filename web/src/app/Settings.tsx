@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { CalendarCheck, ChevronLeft, ChevronRight, Crown, LogIn, LogOut, RotateCcw, ShieldCheck, Sparkles, SunMoon, Trash2, Volume2, Wand2, X } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight, Crown, Languages, LogIn, LogOut, RotateCcw, ShieldCheck, Sparkles, SunMoon, Trash2, Volume2, Wand2, X } from "lucide-react";
 import { callFn, ensureSession, supabase } from "../lib/supabase";
 import { type Booking, cancelBooking, getMonthlyStamps, myBookings, PRICES, type Profile } from "../lib/api";
 import { isNative, purchase, purchaseErrorText, restorePurchases } from "../lib/native";
@@ -7,6 +7,7 @@ import { isGuest, useUser } from "../lib/auth";
 import { demoOn, setDemo, startDemo } from "../lib/demoGps";
 import { setSound, soundOn } from "../lib/sfx";
 import { type Appearance, setAppearance, useAppearance } from "../lib/theme";
+import { lang, setLang } from "../lib/i18n";
 import Avatar from "./social/Avatar";
 import SignIn from "./SignIn";
 import AdminEdits from "./AdminEdits";
@@ -133,8 +134,15 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
           {bookings.length > 0 && <Row icon={<CalendarCheck size={17} />} tone="good" label="Bookings" value={open ? `${open} open` : bookings.length} onClick={() => go("bookings")} />}
         </Group>
 
-        <Group title="App" foot="Switching demo mode reloads the app.">
+        <Group title="App" foot="Switching language or demo mode reloads the app.">
           <Row icon={<SunMoon size={17} />} tone="night" label="Appearance" value={LOOKS.find((l) => l.id === look)!.label} onClick={() => go("appearance")} />
+          <Row icon={<Languages size={17} />} tone="sky" label="Language">
+            {/* each language named in itself, never translated */}
+            <span className="seg lang-seg" role="radiogroup" aria-label="Language" translate="no">
+              {(["en", "th"] as const).map((l) => <button key={l} type="button" role="radio" aria-checked={lang() === l} className={lang() === l ? "on" : ""}
+                onClick={() => { if (lang() !== l) setLang(l); }}>{l === "en" ? "English" : "ไทย"}</button>)}
+            </span>
+          </Row>
           <Row icon={<Volume2 size={17} />} tone="marigold" label="Sounds">
             <input type="checkbox" role="switch" className="switch" checked={sound} aria-label="Sounds for chests and Siam Si"
               onChange={(e) => { setSound(e.target.checked); setSoundState(e.target.checked); }} />

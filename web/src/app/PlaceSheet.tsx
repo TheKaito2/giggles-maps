@@ -15,6 +15,7 @@ import { SkelLines, SkelPlace } from "./Skeleton";
 import Info from "./Info";
 import { shareOrCopy } from "../lib/native";
 import { hhmm } from "./prefs";
+import { lang, nameOf } from "../lib/i18n";
 
 const ago = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
@@ -184,8 +185,8 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
       <header className="place-head">
         <span className="place-card-icon big" style={{ background: GROUPS[k.group].colour }}><k.icon size={22} aria-hidden /></span>
         <div className="person-main">
-          <h2>{page.name}</h2>
-          {page.name_th && page.name_th !== page.name && <span className="fine">{page.name_th}</span>}
+          <h2>{nameOf(page)}</h2>
+          {page.name_th && page.name_th !== page.name && <span className="fine" translate="no">{lang() === "th" ? page.name : page.name_th}</span>}
           <span className="row tight">
             {page.rating != null ? <><b className="num">{page.rating}</b><Stars value={page.rating} /><span className="fine">({page.review_count})</span></>
               : <span className="fine">{page.review_count ? `${page.review_count} review${page.review_count > 1 ? "s" : ""}` : "No reviews yet"}</span>}

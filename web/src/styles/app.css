@@ -1437,3 +1437,13 @@ html.native .toast { top: calc(64px + env(safe-area-inset-top, 0px)); }
 }
 /* a sheet pulled up full leaves a strip of map: no half-hidden zoom buttons in it */
 @media (max-width: 959px) { .workspace:has(.sheet.snap-full) :is(.maplibregl-ctrl-top-right, .explore-chips) { visibility: hidden; } }
+
+/* Settings > Language: English | ไทย */
+.seg.lang-seg { display: inline-flex; width: auto; padding: 3px; gap: 2px; }
+.seg.lang-seg button { padding: 6px 12px; font-size: var(--fs-label); }
+
+/* add-along rows at 320 px: the minutes never shrink, the "Opens 17:00" chip does */
+.along-list .stop-meta > b.extra { flex: none; }
+.along-list .stop-meta .chip { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* phone on its side: the sheet is full height, so it covers the map's Layers button (it sat on "Swap") */
+@media (max-width: 959px) and (max-height: 500px) { .sheet.snap-half { z-index: 7; } }

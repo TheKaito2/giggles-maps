@@ -25,6 +25,7 @@ import Boundary from "./Boundary";
 import Modal from "./Modal";
 import { lazyRetry } from "../lib/lazy";
 import { dialogsOpen, LOAD, ours, quietBack, quietPop, useBack } from "../lib/useDialog";
+import { nameOf } from "../lib/i18n";
 
 // Only the map and the detour sheet load up front; tabs and sheets arrive when first opened.
 const MapView = lazyRetry(() => import("./MapView"));   // maplibre is most of the code: the sheet paints first
@@ -305,7 +306,7 @@ export default function App() {
             head={d.stage !== "browse" && <TripHead d={d} onBack={d.stage === "results" ? () => d.setStage("choose") : d.close}
               backLabel={d.stage === "results" ? "Back to time options" : "Close this trip"} onSearch={() => setSnap("full")} />}
             foot={d.stage === "results" && plan && plan.stops.length > 0 && (
-              <button type="button" className="btn big find" onClick={() => { setPaused(null); setNav([...plan.stops.map((st) => ({ lat: st.lat, lng: st.lng, name: st.name, id: st.id, dwell: st.dwell_min })),
+              <button type="button" className="btn big find" onClick={() => { setPaused(null); setNav([...plan.stops.map((st) => ({ lat: st.lat, lng: st.lng, name: nameOf(st), id: st.id, dwell: st.dwell_min })),
                 { ...d.dest!.point, name: d.dest!.name }]); liveTrip.start(plan.stops, d.dest!.name); }}><Navigation size={18} aria-hidden /> Start · {plan.stops.length} stop{plan.stops.length === 1 ? "" : "s"}</button>
             )}>
             {error && <p className="error" role="alert">{error}<button type="button" className="icon-btn" onClick={() => setError("")} aria-label="Dismiss"><X size={16} /></button></p>}

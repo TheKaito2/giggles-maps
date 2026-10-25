@@ -10,6 +10,7 @@ import VerifyLocal from "./VerifyLocal";
 import { SkelLines, SkelQuests, Spinner } from "./Skeleton";
 import Info from "./Info";
 import { buzz } from "../lib/native";
+import { lang } from "../lib/i18n";
 
 const GROUPS: { kind: Challenge["kind"]; title: string; resets?: "day" | "week" }[] = [
   { kind: "daily", title: "Daily quests", resets: "day" }, { kind: "weekly", title: "Weekly quests", resets: "week" },
@@ -42,7 +43,7 @@ function Quest({ c, onClaim }: { c: Challenge; onClaim: (c: Challenge) => void }
     <li className={`quest${c.claimed ? " done" : ""}${ready ? " ready" : ""}`}>
       <Chest open={c.claimed} ready={ready} />
       <div className="quest-main">
-        <b>{c.title_en}</b><span className="fine">{c.title_th}</span>
+        <b>{c.title_en}</b>{lang() !== "th" && <span className="fine">{c.title_th}</span>}
         <div className="quest-bar"><span style={{ width: `${Math.min(100, (100 * c.have) / c.need)}%` }} /><em className="num">{Math.min(c.have, c.need)} / {c.need}</em></div>
       </div>
       {ready ? <button type="button" className="btn gold small claim-btn" onClick={() => onClaim(c)}>Claim</button>
@@ -71,7 +72,7 @@ function ChestOpen({ quest, onClose, onClaimed }: { quest: Challenge; onClose: (
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="chest-stage" role="dialog" aria-modal="true" aria-labelledby="chest-title" ref={box} tabIndex={-1}>
-      <h2 id="chest-title" className="chest-title">{quest.title_en}<span lang="th">{quest.title_th}</span></h2>
+      <h2 id="chest-title" className="chest-title">{quest.title_en}{lang() !== "th" && <span lang="th">{quest.title_th}</span>}</h2>
       <div className={`chest-big${reward ? " burst" : error ? "" : " shaking"}`}>
         {reward && <span className="chest-rays" aria-hidden />}
         <Chest open={!!reward} size={200} />

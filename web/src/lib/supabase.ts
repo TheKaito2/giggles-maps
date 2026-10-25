@@ -3,6 +3,8 @@ import { createClient, type Session } from "@supabase/supabase-js";
 export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+  // the global fetch at call time, not at start-up: Thai mode wraps it to learn names that come in both languages
+  { global: { fetch: (...args: Parameters<typeof fetch>) => fetch(...args) } },
 );
 
 // Once per page load: a stored session can belong to a user the server deleted (account deleted elsewhere,

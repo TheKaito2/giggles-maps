@@ -7,6 +7,7 @@ import { colourOf, kindIdOf } from "./kinds";
 import { isNight, type MapLook, offlineStyle, styleUrl } from "./mapLayers";
 import { useTheme } from "../lib/theme";
 import { SAKON } from "../lib/demoGps";
+import { lang } from "../lib/i18n";
 
 interface Props {
   origin: LatLng | null;
@@ -97,7 +98,9 @@ export default function MapView({ origin, dest, stops, geometry, alternates = NO
         if (l.type !== "symbol" || l.id.startsWith("poi")) continue;
         const field = JSON.stringify(m.getLayoutProperty(l.id, "text-field") ?? "");
         if (field.includes("name") && !field.includes("ref")) {
-          m.setLayoutProperty(l.id, "text-field", ["to-string", ["coalesce", ["get", "name:en"], ["get", "name_en"], ["get", "name:latin"], ["get", "name"]]]);
+          m.setLayoutProperty(l.id, "text-field", ["to-string", lang() === "th"
+            ? ["coalesce", ["get", "name:th"], ["get", "name"], ["get", "name:en"]]   // Thai mode: Thai labels
+            : ["coalesce", ["get", "name:en"], ["get", "name_en"], ["get", "name:latin"], ["get", "name"]]]);
         }
       }
       m.addSource("gm-pois", { type: "geojson", data: poisRef.current });
@@ -105,7 +108,7 @@ export default function MapView({ origin, dest, stops, geometry, alternates = NO
         if (m.getLayer("gm-pois") || !m.getSource("gm-pois")) return;
         m.addLayer({ id: "gm-pois", type: "symbol", source: "gm-pois", layout: {
           "icon-image": ["concat", "k-", ["get", "icon"]], "icon-allow-overlap": false, "symbol-sort-key": ["get", "rank"],
-          "text-field": ["step", ["zoom"], "", 15, ["get", "name"]], "text-size": 12, "text-offset": [0, 1.3], "text-anchor": "top",
+          "text-field": ["step", ["zoom"], "", 15, lang() === "th" ? ["coalesce", ["get", "name_th"], ["get", "name"]] : ["get", "name"]], "text-size": 12, "text-offset": [0, 1.3], "text-anchor": "top",
           "text-optional": true, "text-max-width": 9, "text-font": ["Noto Sans Regular"],
         }, paint: { "text-color": lookRef.current.night ? "#e3eafa" : ["get", "colour"],   // at night the kind colours were too dark to read
           "text-halo-color": lookRef.current.night ? "#1c1f26" : "#ffffff", "text-halo-width": 1.6 } }, "route-casing");

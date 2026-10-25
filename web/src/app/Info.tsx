@@ -23,9 +23,9 @@ export default function Info({ label, children, align = "start" }: { label: stri
     const panel = box.current!.closest(".sheet-body, .modal, .page-view")?.getBoundingClientRect();
     const below = Math.min(innerHeight, panel?.bottom ?? innerHeight) - pad - anchor.bottom - 6;
     const above = anchor.top - 6 - Math.max(0, panel?.top ?? 0) - pad;
-    const up = el.offsetHeight > below && above > below;
+    const up = el.offsetHeight > below && above > below && above >= 72;   // a sliver above (320 px) isn't room: below scrolls
     el.classList.toggle("up", up);
-    if (el.offsetHeight > (up ? above : below)) el.style.maxHeight = `${Math.max(72, up ? above : below)}px`;
+    if (el.offsetHeight > (up ? above : below)) el.style.maxHeight = `${Math.max(48, up ? above : below)}px`;
   }, [open]);
   useEffect(() => {
     if (!open) return;

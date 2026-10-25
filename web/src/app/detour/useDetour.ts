@@ -75,8 +75,9 @@ export function useDetour(onError: (m: string) => void) {
   const [prefs, setPrefs] = useState<Prefs>(restored?.prefs ?? DEFAULT_PREFS);
   const [results, setResults] = useState<Partial<Record<PresetId, Result>>>(() =>
     Object.fromEntries(Object.entries(restored?.results ?? {}).filter(([, r]) => r !== "loading")));
+  const plannedAt = useRef(restored?.resultsAt ?? Date.now());   // when the plans on screen were made
   // the restored plans stand while the trip is unchanged (reopening doesn't plan again); any change plans afresh
-  const reuseKey = useRef<string | null>(restored?.results ? JSON.stringify([restored.origin, restored.dest, restored.prefs]) : null);
+  const reuseKey = useRef<string | null>(restored?.results && Object.keys(restored.results).length ? JSON.stringify([restored.origin, restored.dest, restored.prefs]) : null);
   const [preset, setPreset] = useState<PresetId | null>(restored?.preset ?? null);   // nothing picked until you tap one
   const [choice, setChoice] = useState<string | null>(null);   // theme of the plan card you picked
   const [exclude, setExclude] = useState<number[]>([]);
@@ -90,9 +91,12 @@ export function useDetour(onError: (m: string) => void) {
     try {
       if (stage === "browse" || !dest) localStorage.removeItem(SAVED);
       else {
+        // only plans that worked are kept (a failure is asked again on reopen), stamped with when they were made, so
+        // reopening every few minutes can't stretch their 30 minutes
+        const plans = Object.fromEntries(Object.entries(results).filter(([, r]) => typeof r === "object" && "route_id" in r));
         const settled = !Object.values(results).some((r) => r === "loading");
         localStorage.setItem(SAVED, JSON.stringify({ stage, origin, dest, prefs, preset, at: Date.now(),
-          ...(settled && { results, resultsAt: Date.now() }) } satisfies Saved));
+          ...(settled && Object.keys(plans).length > 0 && { results: plans, resultsAt: plannedAt.current }) } satisfies Saved));
       }
     } catch { /* not kept: private mode, or full */ }
   }, [stage, origin, dest, prefs, preset, results]);
@@ -132,7 +136,7 @@ export function useDetour(onError: (m: string) => void) {
     if (!origin || !dest) return;
     setResults((all) => ({ ...all, [k]: "loading" }));
     planRoute(toRequest({ ...prefs, budget: budgetOf(k) }, origin.point, dest.point))
-      .then((r) => { if (id === request.current) setResults((all) => ({ ...all, [k]: r })); })
+      .then((r) => { if (id === request.current) { plannedAt.current = Date.now(); setResults((all) => ({ ...all, [k]: r })); } })
       .catch((e) => { if (id === request.current) { gated(e); setResults((all) => ({ ...all, [k]: { error: errorText(e), gate: GATES.has(errCode(e)) ? errCode(e) as Gate : undefined } })); } });
   };
   // a new trip plans all four options at once (Relaxed first), plus a custom time if that's the one picked;
@@ -201,6 +205,7 @@ export function useDetour(onError: (m: string) => void) {
         must_include: [...new Set([...keep, ...prefs.picks.map((p) => p.id)])].slice(0, cap), keep_order: fixed || undefined,
         exclude: out.slice(-30), theme });
       if (id !== edit.current) return;
+      plannedAt.current = Date.now();
       setExclude(out); setResults((all) => ({ ...all, [preset!]: r })); setChoice(theme ?? null);
     } catch (e) { if (id === edit.current) { gated(e); onError(errorText(e)); } }
     finally { if (id === edit.current) { setEditing(false); setHidden([]); } }

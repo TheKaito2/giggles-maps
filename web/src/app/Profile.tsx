@@ -76,7 +76,8 @@ function ProfileView({ id, self, profile, refreshKey, onBack, editAvatar, editNa
   const [sheet, setSheet] = useState<Sheet>(null);
   const [msg, setMsg] = useState("");
   const [again, setAgain] = useState(0);
-  useEffect(() => { getProfilePage(id).then(setPage).catch(() => setMsg("Couldn't load this profile.")); }, [id, refreshKey, again]);
+  // a new id (you, after deleting the account, are a new guest): the old one's error goes with it
+  useEffect(() => { setMsg(""); getProfilePage(id).then(setPage).catch(() => setMsg("Couldn't load this profile.")); }, [id, refreshKey, again]);
   // asked from outside (the provinces counter up top): open the passport, which shows once its stamps are in
   useEffect(() => { if (passport) { setSheet("book"); onPassport?.(); } }, [passport]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { (self ? getPassport() : getFriendPassport(id)).then((b) => setBook({ stamps: b.stamps, photos: b.photos, trips: "trips" in b ? b.trips : undefined })).catch(() => undefined); }, [id, self, refreshKey]);

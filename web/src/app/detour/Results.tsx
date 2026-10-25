@@ -10,6 +10,7 @@ import { type Detour, PRESETS } from "./useDetour";
 import PlanProgress from "./PlanProgress";
 import Info from "../Info";
 import { metres } from "../nav/progress";
+import { nameOf } from "../../lib/i18n";
 
 const MEAL_NAME: Record<Meal, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
 const PARTNER_TIP = "This shop pays Giggles Maps when you visit.";
@@ -80,7 +81,7 @@ function StopRow({ s, i, d, sel, dragging, travel, roadMin, onDrag, onStep, onOp
         <span className="stop-num" aria-hidden>{i + 1}</span>
         <Thumb s={s} />
         <span className="stop-text">
-          <b>{s.name}</b>
+          <b>{nameOf(s)}</b>
           <span className="stop-meta"><b className="num" aria-label={`Arrive ${hhmm(s.eta_min)}`}>{hhmm(s.eta_min)}</b>{s.extra_min != null && <b className="num extra">+{s.extra_min} min</b>}
             <span className="fine">{kindOf(s.pit_stop ? "convenience" : null, s.category).en}{s.rating != null && ` · ★ ${s.rating.toFixed(1)}`}</span></span>
           {/* mid-drag the numbers are stale: hidden, but keeping their space so rows don't jump under your finger */}
@@ -162,7 +163,7 @@ function AlongList({ places, d, full, limit, at, leg, onAdded }: { places: Along
   const row = (p: Row | FoundPlace, extra: string, off = false) => (
     <li key={`${off ? "e" : ""}${p.id}`}>
       <Thumb s={{ name: p.name, category: p.category ?? "", photo: "photo" in p ? p.photo ?? null : null }} size={40} />
-      <span className="stop-text"><b>{p.name}</b>
+      <span className="stop-text"><b>{nameOf(p)}</b>
         <span className="stop-meta"><b className={`num extra${off ? " off" : ""}`}>{extra}</b>
           {/* closed then: when it opens takes the kind's place, so the row stays one line and "+NN min" stays visible */}
           {closedNote(p) || <span className="fine">{kindOf(p.kind ?? null, p.category ?? "").en}{p.rating != null && ` · ★ ${p.rating.toFixed(1)}`}</span>}</span></span>
