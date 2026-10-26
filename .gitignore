@@ -6,3 +6,6 @@ supabase/.branches
 .DS_Store
 .tools/
 build/
+
+# graphify knowledge graph (local; rebuilt by the post-commit hook)
+graphify-out/
