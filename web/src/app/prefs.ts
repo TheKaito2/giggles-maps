@@ -26,6 +26,8 @@ export const DEFAULT_PREFS: Prefs = {
 };
 
 export const MAX_BUDGET = 240;
+// stops a free plan holds (= STOP_CAP.free in supabase/functions/_shared/tiers.ts); members, Plus and demo mode: 15
+export const FREE_STOPS = 3;
 export const MEALS: { id: Meal; label: string; window: string }[] = [
   { id: "breakfast", label: "Breakfast", window: "07:00–09:30" },
   { id: "lunch", label: "Lunch", window: "11:30–13:30" },

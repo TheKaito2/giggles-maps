@@ -66,7 +66,8 @@ export interface ThemedPlan {
 export interface RoutePlan {
   route_id: string; routing: "valhalla" | "estimate"; mode: string; plus: boolean; member: boolean; level: number;
   base_min: number; total_min: number; extra_min: number; budget_min: number; max_budget_min: number;
-  max_stops?: number;   // the most stops this account's plans hold (10, members 15)
+  max_stops?: number;   // the most stops this account's plans hold (free 3; members, Plus and demo 15)
+  free_cap?: boolean;   // the free 3-stop cap applies: "Members can add more stops"
   start_min?: number;   // when this plan leaves (minutes after midnight): the stops' times count from it
   candidates_considered: number;
   stops: RouteStop[]; geometry: [number, number][];
@@ -224,12 +225,15 @@ export const verifyCheckin = (p: {
 }) => callFn<CheckinResult>("verify-checkin", p);
 
 // Stripe Checkout (web only). Returns the hosted payment page URL.
-export const startCheckout = (p: { kind: "plus" } | { kind: "membership" } | { kind: "credit"; shop_id: string; pack: number }
+export const startCheckout = (p: { kind: "plus" | "plus_year" } | { kind: "membership" } | { kind: "credit"; shop_id: string; pack: number }
   | { kind: "partner" | "choice"; shop_id: string }) =>
   callFn<{ url: string }>("stripe-checkout", p);
 
 // v5 prices (THB); the server has the same numbers
-export const PRICES = { membership: 349, plus: 59, partner: 299, choice: 799, booking: 20 } as const;
+// ponytail: plus / plusYear are defaults awaiting the owner's decision (= PLUS_THB in stripe-checkout)
+export const PRICES = { membership: 349, plus: 59, plusYear: 590, partner: 299, choice: 799, booking: 20 } as const;
+/** What yearly Plus saves against 12 months (17% at ฿590 vs ฿59). */
+export const PLUS_YEAR_SAVE = Math.round(100 * (1 - PRICES.plusYear / (12 * PRICES.plus)));
 // v5: who sees ads (everyone but members and Plus)
 export const adFree = (p: Profile | null) => !!p && (p.member || !!p.plusUntil);
 

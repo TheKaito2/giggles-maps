@@ -11,7 +11,7 @@ labelled. Free users still get the quality order.
 | What | Who pays | Price |
 |---|---|---|
 | Membership | user | ฿349 once, lifetime |
-| Giggles Plus | user | ฿59 / month (30 days, no auto-renew on the web) |
+| Giggles Plus | user | ฿59 / month (30 days, no auto-renew on the web), or ฿590 / year on the web (365 days, saves 17%) |
 | Partner | shop | ฿299 / month |
 | Giggles Choice | a Partner we chose (apply first) | ฿799 / month, only after being chosen |
 | Booking commission | shop | ฿20 flat per completed booking, from its prepaid credit |
@@ -22,6 +22,11 @@ labelled. Free users still get the quality order.
 ### Everyone (free)
 - Map, stamps, passport, photos, quests, coins, levels, the shop and Siam Si. Coins and levels are no longer a membership perk.
 - A banner ad on the Feed, Quests, Leaderboard and Profile tabs. Never on the map, in directions, the detour planner or check-in.
+- **3 stops a plan** (guests and free accounts). The planner fills up to 3; a 4th must-visit pick is refused
+  (`403 stop_limit_free`) and the app offers membership. The stop-count control goes to 3 with a locked "More stops ·
+  Members", results say "Members can add more stops" when a plan is at 3, and a shared trip loads its first 3 stops.
+  Members, Plus and demo mode get 15 (Roadtrippers-style: the limit power users pay to lift). Demo mode is a client flag,
+  so anyone can switch it on for 15 stops (accepted: it shows the app off).
 - **Guests try one detour a day** (1 destination, 3 changes; then `403 sign_in_required`). Free accounts: 3 detours and 10 changes a day (Bangkok day).
   - A detour = one destination (rounded to ~100 m). The 3 time options and preference changes for it count once.
   - A change = one edit (add, remove or swap a stop). The planner's own retries of that edit count once.
@@ -34,14 +39,19 @@ labelled. Free users still get the quality order.
 
 ### Membership: ฿349 once
 - No ads, forever.
+- Up to 15 stops a plan (free: 3).
 - Unlimited detours and changes, inside a rate limit that keeps the router alive: 20 plans a minute and 300 a day
   (`429 slow_down`). Free accounts also stop at 100 plans a day, and an edit of a destination not planned today counts as a detour.
 - Partner and Giggles Choice stops first: in members' plans a Choice place scores ×2 and a Partner ×1.5 (`boost` in `planner.ts`).
 - 3 months of Plus free, once per account (`profiles.membership_plus_given`; Stripe and App Store alike).
 - iOS: non-consumable `com.kristpaul.gigglesmaps.membership` (its App Store description needs updating for v5).
 
-### Giggles Plus: ฿59 / month
+### Giggles Plus: ฿59 / month or ฿590 / year
+- Monthly (`plus`, 30 days) or yearly (`plus_year`, 365 days, web only; migration `20261028000089_plus_yearly.sql`).
+  Prices are defaults awaiting the owner's decision (`PLUS_THB` in `stripe-checkout`, `PRICES` in `web/src/lib/api.ts`).
+  iOS StoreKit sells monthly only (`com.kristpaul.gigglesmaps.plus.monthly`); a yearly App Store product would need adding there.
 - No ads.
+- Up to 15 stops a plan (free: 3).
 - +20 coins the first time you open the app each day (`plus_daily`).
 - The Plus shelf: items worn while Plus is active and never sold (`shop_items.plus_only`): the Plus explorer title, Holo foil and
   Aurora frames, Aurora flair. The existing Plus covers and flair stay free with Plus.
@@ -49,6 +59,15 @@ labelled. Free users still get the quality order.
 
 ### The Partner picks plan
 A plan card that uses only Giggles Choice places (plus anything you picked). Everyone gets it when a Choice place is along the way.
+
+## Booking partner links (affiliate)
+
+At the destination, detour results show "Stay or do more near <destination>" with two links: hotels on Agoda and things to
+do on Klook, each the provider's search for the destination name, labelled "Partner links". Built from `VITE_AGODA_CID` and
+`VITE_KLOOK_AID` at build time (`web/src/lib/affiliate.ts`); with either id missing the row is hidden. Formats:
+`https://www.agoda.com/search?cid=<CID>&textToSearch=<name>` and `https://www.klook.com/search/result/?query=<name>&aid=<AID>`
+(confirm the parameter names in each partner dashboard once signed up). Earnings are the providers' commission; nothing
+is charged to users or shops.
 
 ## Shops
 

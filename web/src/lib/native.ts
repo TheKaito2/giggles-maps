@@ -150,10 +150,11 @@ export function deliverPurchases(onDone: () => void) {
 
 /** Membership or Plus: the App Store in the iOS app (guideline 3.1.1), Stripe on the web (leaves the page).
  *  Resolves true when the iOS purchase is done, false if cancelled; on the web it doesn't come back. */
-export async function purchase(kind: "membership" | "plus", account: string | undefined): Promise<boolean> {
+export async function purchase(kind: "membership" | "plus" | "plus_year", account: string | undefined): Promise<boolean> {
   if (isNative) {
     if (!account) throw new (await import("./supabase")).ApiError("sign_in_required");
-    return buyInApp(kind, account);
+    // ponytail: StoreKit sells monthly Plus only; the app hides yearly, so a stray one buys monthly
+    return buyInApp(kind === "plus_year" ? "plus" : kind, account);
   }
   const { startCheckout } = await import("./api");
   location.href = (await startCheckout({ kind })).url;

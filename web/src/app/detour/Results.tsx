@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ChevronDown, Flag, GripVertical, MoreHorizontal, Plus, Search, Share2, Trash2, Camera, X } from "lucide-react";
+import { BedDouble, ChevronDown, ExternalLink, Flag, GripVertical, MoreHorizontal, Plus, Search, Share2, Ticket, Trash2, Camera, X } from "lucide-react";
 import Modal from "../Modal";
 import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, placesPerks, type RouteStop, routePlaces, searchPlaces, shareTrip, SITE, TIER_NAME } from "../../lib/api";
 import { errCode } from "../../lib/supabase";
@@ -15,6 +15,7 @@ import PlanProgress from "./PlanProgress";
 import Info from "../Info";
 import { metres } from "../nav/progress";
 import { nameOf } from "../../lib/i18n";
+import { AFFILIATE_IDS, bookingLinks } from "../../lib/affiliate";
 
 const MEAL_NAME: Record<Meal, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
 const PARTNER_TIP = "This shop pays Giggles Maps when you visit.";
@@ -189,7 +190,9 @@ function AlongList({ places, d, full, limit, at, leg, onAdded }: { places: Along
           {elsewhere.map((p) => row(p, "off route", true))}
         </>}
       </ul>
-      {full && <p className="fine">That's {d.cap} stops, the most a plan holds.{d.response?.member ? "" : " Members can have 15."} Remove one to add another.</p>}
+      {full && (d.response?.free_cap
+        ? <p className="fine">That's {d.cap} stops, the most a free plan holds. <button type="button" className="link" onClick={() => d.setGate("stop_limit_free")}>Members can add more stops</button></p>
+        : <p className="fine">That's {d.cap} stops, the most a plan holds. Remove one to add another.</p>)}
     </>
   );
 }
@@ -217,6 +220,22 @@ function AddStopSheet({ places, d, full, at, onClose }: { places: AlongPlace[]; 
         <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button></header>
       {leg.length > 1 ? <AlongList places={places} d={d} full={full} limit={30} at={at} leg={leg} onAdded={onClose} /> : <p className="fine">Nothing on this stretch.</p>}
     </Modal>
+  );
+}
+
+/** "Stay or do more near <destination>": Agoda hotels and Klook activities, affiliate links (hidden without both ids).
+ *  A plain new-tab link: the iOS app's web view sends target="_blank" links to the system browser, as PlaceSheet's do. */
+function StayNear({ place }: { place: string }) {
+  const links = bookingLinks(place, AFFILIATE_IDS);
+  if (!links) return null;
+  return (
+    <section className="stay-near" aria-labelledby="stay-near-title">
+      <p className="row between"><b id="stay-near-title">Stay or do more near <span translate="no">{place}</span></b><span className="fine">Partner links</span></p>
+      <div className="row tight">
+        <a className="btn soft small" href={links.hotels} target="_blank" rel="noopener noreferrer sponsored"><BedDouble size={15} aria-hidden /> Hotels · Agoda <ExternalLink size={13} aria-hidden /></a>
+        <a className="btn soft small" href={links.activities} target="_blank" rel="noopener noreferrer sponsored"><Ticket size={15} aria-hidden /> Things to do · Klook <ExternalLink size={13} aria-hidden /></a>
+      </div>
+    </section>
   );
 }
 
@@ -374,6 +393,9 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
                 <span className="fine num stop-leg">{legLine(start + plan.total_min - (shown.at(-1)!.eta_min + shown.at(-1)!.dwell_min), d.prefs.mode)}</span></span>
             </li>}
           </ol>}
+      {response.free_cap && plan.stops.length >= d.cap &&
+        <p className="fine">Free plans hold {d.cap} stops. <button type="button" className="link" onClick={() => d.setGate("stop_limit_free")}>Members can add more stops</button></p>}
+      <StayNear place={d.dest?.name.split(", ")[0] ?? ""} />
       {adding != null && <AddStopSheet places={current?.along ?? []} d={d} full={plan.stops.length >= d.cap} at={adding} onClose={() => setAdding(null)} />}
 
       <Along places={current?.along ?? []} d={d} full={plan.stops.length >= d.cap} />

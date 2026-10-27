@@ -14,6 +14,7 @@ import AdminEdits from "./AdminEdits";
 import Info from "./Info";
 import { useBack } from "../lib/useDialog";
 import { forgetTrip } from "./detour/useDetour";
+import { PlusTerm } from "./Upgrade";
 
 // Settings, iOS / Android style: an account card, then short titled groups of rows. Switches act at once; anything bigger
 // opens its own page inside the sheet (‹ back). Destructive actions sit last and ask first.
@@ -58,6 +59,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
   const [msg, setMsg] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [stamps, setStamps] = useState<string[]>([]);
+  const [plusYear, setPlusYear] = useState(false);   // yearly Plus picked (web only)
   const [sound, setSoundState] = useState(soundOn);
   const look = useAppearance();
 
@@ -79,7 +81,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
   }, [refreshKey, user?.id, !!plusUntil]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const go = (p: Page) => { setMsg(""); setPage(p); };
-  const buy = async (kind: "plus" | "membership") => {
+  const buy = async (kind: "plus" | "plus_year" | "membership") => {
     setMsg("");
     try { if (await purchase(kind, user?.id)) { setMsg("Thanks! It switches on in a moment."); setTimeout(onChange, 1500); } }
     catch (e) { setMsg(purchaseErrorText(e)); }
@@ -183,6 +185,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
         <ul className="perks">
           <li>No ads, forever</li>
           <li>Unlimited detours and added stops</li>
+          <li>Up to 15 stops a plan (free plans hold 3)</li>
           <li>Partner and Giggles Choice stops first</li>
           <li>Member perks at partner shops</li>
           <li>3 months of Plus free</li>
@@ -194,10 +197,11 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
       </div>}
 
       {page === "plus" && <div className="set-page" key="plus">
-        <div className="set-hero t-grape"><Sparkles size={28} aria-hidden /><b>{plusUntil ? `Plus until ${shortDate(plusUntil)}` : `฿${PRICES.plus} a month`}</b>
+        <div className="set-hero t-grape"><Sparkles size={28} aria-hidden /><b>{plusUntil ? `Plus until ${shortDate(plusUntil)}` : isNative ? `฿${PRICES.plus} a month` : `฿${PRICES.plus} a month or ฿${PRICES.plusYear} a year`}</b>
           <span className="fine">{plusUntil ? "Every Plus perk is on." : isNative ? "Renews monthly. Cancel any time in your Apple ID settings." : "No auto-renew: it simply runs out."}</span></div>
         <ul className="perks">
           <li>No ads</li>
+          <li>Up to 15 stops a plan (free plans hold 3)</li>
           <li>+20 coins every day you open the app</li>
           <li>The Plus shelf: covers, frames, flair and the Plus explorer title</li>
           <li>25% more coins from quests, a stamp every month</li>
@@ -205,7 +209,11 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
         {plusUntil && stamps.length > 0 && <div className="field"><span>Monthly stamps</span>
           <div className="month-stamps">{stamps.map((m) => <span key={m} className="month-stamp">{monthName(m)}</span>)}</div></div>}
         {guest ? <button type="button" className="btn" onClick={() => go("signin")}><LogIn size={16} aria-hidden /> Sign in first</button>
-          : <button type="button" className="btn gold" onClick={() => buy("plus")} disabled={isNative && !!plusUntil}>{plusUntil ? isNative ? "You have Plus" : "Add 30 days" : "Get Plus"} · ฿{PRICES.plus}</button>}
+          : <>
+            <PlusTerm year={plusYear} setYear={setPlusYear} />
+            <button type="button" className="btn gold" onClick={() => buy(plusYear ? "plus_year" : "plus")} disabled={isNative && !!plusUntil}>
+              {plusUntil ? isNative ? "You have Plus" : plusYear ? "Add a year" : "Add 30 days" : "Get Plus"} · ฿{plusYear ? PRICES.plusYear : PRICES.plus}</button>
+          </>}
         {!isNative && <p className="fine">Card or PromptPay.</p>}
       </div>}
 
