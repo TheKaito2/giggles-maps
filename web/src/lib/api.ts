@@ -59,6 +59,7 @@ export interface ThemedPlan {
   extra_min: number; total_min: number; meals: Meal[]; missed_meals: Meal[];
   unfit_required?: number[];   // picked places that didn't fit this plan
   road_extra_min?: number; stop_min?: number; wait_min?: number;   // where extra_min goes
+  extra_km?: number;   // how much further than the direct road the plan drives (older servers: absent)
   along?: AlongPlace[];
 }
 
@@ -74,7 +75,7 @@ export interface RoutePlan {
   meals?: Meal[]; missed_meals?: Meal[];
   unfit_required?: number[];   // picked places that didn't fit (Top picks)
   plans?: ThemedPlan[]; // top-level fields = Top picks
-  road_extra_min?: number; stop_min?: number; wait_min?: number;
+  road_extra_min?: number; stop_min?: number; wait_min?: number; extra_km?: number;
   budget_auto?: boolean;   // budget_min was picked by the server ("auto")
 }
 
@@ -82,7 +83,7 @@ export interface RoutePlan {
 export function choosePlan(plan: RoutePlan, id: string | null): RoutePlan {
   const p = plan.plans?.find((x) => x.id === id) ?? plan.plans?.[0];
   return p ? { ...plan, stops: p.stops, geometry: p.geometry, extra_min: p.extra_min, total_min: p.total_min,
-               road_extra_min: p.road_extra_min, stop_min: p.stop_min, wait_min: p.wait_min } : plan;
+               road_extra_min: p.road_extra_min, stop_min: p.stop_min, wait_min: p.wait_min, extra_km: p.extra_km } : plan;
 }
 
 export type Billing = "charged" | "no_qr" | "not_shown_on_route" | "repeat_visit_30d"

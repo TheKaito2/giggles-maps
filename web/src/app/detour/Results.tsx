@@ -5,7 +5,7 @@ import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, type R
 import { CHIPS } from "../ExploreChips";
 import { SkelRows } from "../Skeleton";
 import { GROUPS, kindOf } from "../kinds";
-import { budgetLabel, hhmm, MEALS, startMin } from "../prefs";
+import { budgetLabel, fuelLine, hhmm, MEALS, startMin } from "../prefs";
 import { type Detour, PRESETS } from "./useDetour";
 import PlanProgress from "./PlanProgress";
 import Info from "../Info";
@@ -283,6 +283,7 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
   }
   const plans = response.plans ?? [];
   const current = plans.find((p) => p.id === d.choice) ?? plans[0];
+  const fuel = fuelLine(plan.mode, plan.extra_km);
   return (
     <div className={`stack results${d.editing ? " updating" : ""}`} aria-busy={d.editing}>
       {d.editing && <PlanProgress editing />}
@@ -309,6 +310,7 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
           <span><b className="num">+{plan.extra_min}</b> <small>min vs straight</small></span>
           {plan.road_extra_min != null && plan.stops.length > 0 && <button type="button" className="link small-link" aria-expanded={details} onClick={() => setDetails(!details)}>
             Details <ChevronDown size={14} aria-hidden /></button>}</p>
+        {fuel && <p className="fine num">{fuel}</p>}
         {details && plan.road_extra_min != null && (
           <p className="fine num">+{plan.road_extra_min} min on the road · {plan.stop_min} min at stops{plan.wait_min ? ` · ${plan.wait_min} min waiting for a meal time` : ""} · straight there {plan.base_min} min</p>
         )}
@@ -343,8 +345,8 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
 
       <Along places={current?.along ?? []} d={d} full={plan.stops.length >= d.cap} />
       <p className="fine">How stops are picked <Info label="How stops are picked">Stops are picked on quality and how little time they
-        add. Paid Partner and Giggles Choice places are always labelled; free plans rank them like everyone else, and
-        members' plans give them a boost. "Partner picks" is a plan of paid partners only.</Info></p>
+        add, with a small nudge for places other travellers really checked in at. Paid Partner and Giggles Choice places
+        are always labelled; free plans rank them like everyone else, and members' plans give them a boost. "Partner picks" is a plan of paid partners only.</Info></p>
     </div>
   );
 }

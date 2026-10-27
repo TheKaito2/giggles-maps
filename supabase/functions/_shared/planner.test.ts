@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { insertBest, planDetour, type Stop, insertionCost } from "./planner.ts";
+import { insertBest, planDetour, popularity, type Stop, insertionCost } from "./planner.ts";
 import { fitsInterests, independent, mixWeight, themeWeight } from "./themes.ts";
 
 // grid world: travel minutes = manhattan distance between points
@@ -203,6 +203,24 @@ const lPlan = (budgetMin: number, maxStops?: number, stops = lStops) =>
 
 test("an OTOP shop beats an equally good, equally close café", () => {
   expect(lPlan(19, 1, lStops.slice(0, 2)).order.map((s) => s.id)).toEqual([3]);
+});
+
+// popularity from real trips: a gentle, capped boost
+test("a more-visited place beats an otherwise identical one, and the boost is capped", () => {
+  const twin = (visitors: number[]) => lPlan(19, 1, [
+    { idx: 2, id: 2, category: "cafe", rating: 4.5, dwellMin: 15, visitors: visitors[0] },
+    { idx: 3, id: 3, category: "cafe", rating: 4.5, dwellMin: 15, visitors: visitors[1] },
+  ]).order.map((s) => s.id);
+  expect(twin([0, 3])).toEqual([3]);
+  expect(twin([3, 0])).toEqual([2]);
+  expect(popularity(0)).toBe(1);
+  expect(popularity(15)).toBeCloseTo(1.4);
+  expect(popularity(1_000_000)).toBe(1.4);
+  // capped: a crowd can't lift an unrated place (3.5) past a 5-star one, 5 / 3.5 > 1.4
+  const crowd = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 19, travelMin: lMin, maxStops: 1, allowUnrated: true,
+    stops: [{ idx: 2, id: 2, category: "cafe", rating: null, dwellMin: 15, visitors: 1_000_000 },
+            { idx: 3, id: 3, category: "cafe", rating: 5, dwellMin: 15 }] });
+  expect(crowd.order.map((s) => s.id)).toEqual([3]);
 });
 
 test("a plan makes room for one local stop when it fits, and never breaks the budget for it", () => {

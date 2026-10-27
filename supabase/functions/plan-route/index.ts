@@ -14,6 +14,7 @@ interface Candidate {
   tier: Tier;   // 4 icon, 3 landmark, 2 worth a visit, 1 everyday
   frac?: number;   // 0 start .. 1 destination along the direct route (route shortlist only)
   local?: boolean; otop?: boolean; community?: boolean;   // local-first flags (route shortlist only)
+  visitors?: number;   // real travellers who checked in here in the last 180 days (shortlist RPCs only)
 }
 interface NearPlace {
   id: number; name: string; category: string; lat: number; lng: number; rating: number;
@@ -235,7 +236,7 @@ serve(async (req) => {
 
   const allStops: Stop[] = candidates.map((c, i) => ({
     idx: i + 2, id: c.id, category: c.category, rating: c.rating == null ? null : Number(c.rating), tier: c.tier ?? 2, dwellMin: dwellOf(c.dwell_min),
-    frac: c.frac, local: c.local, otop: c.otop, community: c.community,
+    frac: c.frac, local: c.local, otop: c.otop, community: c.community, visitors: c.visitors,
   }));
   const stops = allStops.filter((st) => !pitIds.has(st.id)), pitStops = allStops.filter((st) => pitIds.has(st.id));
   const travelMin = (a: number, b: number) => matrix[a][b];
@@ -393,11 +394,15 @@ serve(async (req) => {
   };
 
   const built = await Promise.all(themed.map(build));
+  // the length of a [lng, lat] line in km: the extra distance is the plan's road line minus the direct one
+  const lineKm = (g: [number, number][]) => g.slice(1).reduce((a, p, i) => a + haversineM({ lat: g[i][1], lng: g[i][0] }, { lat: p[1], lng: p[0] }), 0) / 1000;
+  const baseKm = lineKm(baseline?.geometry ?? [[origin.lng, origin.lat], [dest.lng, dest.lat]]);
   // where the extra time goes: more time on the road, time at the stops, and waiting for a meal window to open
   const split = (t: typeof themed[number]) => {
     const travel = t.travelMin ?? t.plan.totalMin, stopMin = t.plan.order.reduce((a, s) => a + s.dwellMin, 0);
     return { road_extra_min: Math.max(0, Math.round(travel - t.plan.baseMin)), stop_min: stopMin,
-             wait_min: Math.max(0, Math.round(t.plan.totalMin - travel - stopMin)) };
+             wait_min: Math.max(0, Math.round(t.plan.totalMin - travel - stopMin)),
+             extra_km: Math.max(0, Math.round((lineKm(t.geometry ?? []) - baseKm) * 10) / 10) };
   };
   const topIdx = themed.findIndex((t) => t.id === "top_picks");
   const plan = themed[topIdx].plan;

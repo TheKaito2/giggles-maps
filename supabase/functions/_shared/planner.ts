@@ -20,12 +20,16 @@ export interface Stop {
   local?: boolean;          // independent food/café/craft/market place (not a chain)
   otop?: boolean;           // OTOP shop (One Tambon One Product)
   community?: boolean;      // community enterprise
+  visitors?: number;        // different real travellers who checked in here lately (0 = unknown or none)
 }
 
 // Local first (docs/LOCAL-FIRST.md): a free, published boost for independent and community businesses. Paying
 // partners never change ranking; this does, for everyone equally.
 const localBoost = (s: Stop) => s.otop || s.community ? 1.6 : s.local ? 1.3 : 1;
 const isLocal = (s: Stop) => !!(s.otop || s.community || s.local);
+// Popularity from real trips: a gentle boost for places travellers actually stop at, capped (15+ visitors = x1.4)
+// so quality and minutes still decide.
+export const popularity = (visitors = 0) => Math.min(1.4, 1 + 0.1 * Math.log2(1 + visitors));
 
 export interface PlanInput {
   originIdx: number;
@@ -142,7 +146,8 @@ export function planDetour(input: PlanInput): Plan {
   const score = (s: Stop, order: Stop[], added: number) => {
     const variety = order.some((o) => o.category === s.category) ? 0.5 : 1;
     // value per minute, but sqrt(minutes): a landmark 40 min away should beat a cafe 5 min away
-    return (TIER_VALUE[s.tier ?? 2] * quality(s) * weight(s.category, s.tier) * variety * spread(s, order) * localBoost(s) * (input.boost?.(s.id) ?? 1))
+    return (TIER_VALUE[s.tier ?? 2] * quality(s) * weight(s.category, s.tier) * variety * spread(s, order) * localBoost(s) * popularity(s.visitors)
+      * (input.boost?.(s.id) ?? 1))
       / Math.sqrt(Math.max(added, 1));
   };
 

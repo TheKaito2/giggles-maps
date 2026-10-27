@@ -34,6 +34,14 @@ export const MEALS: { id: Meal; label: string; window: string }[] = [
 export const BUDGETS: (number | "auto")[] = ["auto", 15, 30, 45, 60, 90, 120, 180, 240];
 export const budgetLabel = (m: number | "auto") => m === "auto" ? "Auto" : m < 60 ? `${m} min` : m % 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m / 60} h`;
 
+// ponytail: typical 2026 Thai figures (pump price of 95 petrol / gasohol, an average car). Change them here.
+const FUEL_THB_PER_L = 35;
+const CAR_KM_PER_L = 14;
+/** "+12 km · ≈ ฿30 fuel" for the extra distance a driving plan adds; null when not driving or under 1 km. */
+export const fuelLine = (mode: string, extraKm?: number) =>
+  mode !== "auto" || extraKm == null || extraKm < 1 ? null
+    : `+${Math.round(extraKm)} km · ≈ ฿${Math.round(extraKm / CAR_KM_PER_L * FUEL_THB_PER_L / 5) * 5} fuel`;
+
 export const MODES: { id: TravelMode; label: string }[] = [
   { id: "pedestrian", label: "Walking" }, { id: "auto", label: "Driving" }, { id: "bicycle", label: "Cycling" },
 ];
