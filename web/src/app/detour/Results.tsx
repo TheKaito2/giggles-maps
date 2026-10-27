@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ChevronDown, Flag, GripVertical, MoreHorizontal, Plus, Search, Share2, Trash2, Camera, X } from "lucide-react";
 import Modal from "../Modal";
-import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, type RouteStop, routePlaces, searchPlaces, shareTrip, SITE, TIER_NAME } from "../../lib/api";
+import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, placesPerks, type RouteStop, routePlaces, searchPlaces, shareTrip, SITE, TIER_NAME } from "../../lib/api";
 import { errCode } from "../../lib/supabase";
 import { shareOrCopy } from "../../lib/native";
 import { demoOn } from "../../lib/demoGps";
@@ -61,7 +61,8 @@ const legLine = (gap: number, mode: keyof typeof MOVE, travel?: number, dwell?: 
     .filter(Boolean).join(" · ");
 };
 
-function StopRow({ s, i, d, sel, dragging, travel, roadMin, onDrag, onStep, onOpen, onCheckin }: { s: RouteStop; i: number; d: Detour; sel: boolean; dragging: boolean; travel: number | null; roadMin?: number;
+function StopRow({ s, i, d, sel, dragging, travel, roadMin, perk, onDrag, onStep, onOpen, onCheckin }: { s: RouteStop; i: number; d: Detour; sel: boolean; dragging: boolean; travel: number | null; roadMin?: number;
+  perk?: string;   // this partner's member perk
   onDrag: (e: React.PointerEvent) => void; onStep: (by: number) => void; onOpen: (s: RouteStop) => void; onCheckin: (t: CheckinTarget) => void }) {
   const [menu, setMenu] = useState(false);
   const more = useRef<HTMLDivElement>(null);
@@ -90,6 +91,7 @@ function StopRow({ s, i, d, sel, dragging, travel, roadMin, onDrag, onStep, onOp
           {/* mid-drag the numbers are stale: hidden, but keeping their space so rows don't jump under your finger */}
           <span className={`fine num stop-leg${travel == null ? " stale" : ""}`}>{legLine(travel ?? 0, d.prefs.mode, roadMin, s.dwell_min, s.eta_min + s.dwell_min)}</span>
           {tags.length > 0 && <span className="row tight">{tags.map((b) => <span key={b.text} className={`chip ${b.cls}`} title={b.title}>{b.text}</span>)}</span>}
+          {perk && <span className="chip perk" title={`Member perk: ${perk}`}>Member perk</span>}
         </span>
       </button>
       <div className="stop-more" ref={more}>
@@ -236,6 +238,13 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
   const rows = useRef<HTMLOListElement>(null);
   useEffect(() => { if (!d.editing && dragId == null) setOrder(null); }, [plan, d.editing]); // eslint-disable-line react-hooks/exhaustive-deps
   const visible = plan?.stops.filter((s) => !d.hidden.includes(s.id)) ?? [];
+  // partner stops' member perks (the place sheet shows the text)
+  const [perks, setPerks] = useState<Map<number, string>>(new Map());
+  const partnerIds = visible.filter((s) => s.partner_tier).map((s) => s.id).join();
+  useEffect(() => {
+    if (!partnerIds) { setPerks(new Map()); return; }
+    placesPerks(partnerIds.split(",").map(Number)).then(setPerks).catch(() => undefined);
+  }, [partnerIds]);
   // when the trip leaves: the first leg's travel time and the arrival below count from it ("now" was fixed when it was planned)
   const start = response?.start_min ?? startMin(d.prefs);
   const shown = order ? order.map((id) => visible.find((s) => s.id === id)).filter((s): s is RouteStop => !!s) : visible;
@@ -350,7 +359,7 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
         : <ol className="stop-rows" ref={rows}>
             {shown.map((s, i) => <Fragment key={s.id}>
               {i === 0 && <AddGap hidden={!!order} onAdd={() => setAdding(0)} />}
-              <StopRow s={s} i={i} d={d} sel={selected === s.id} dragging={dragId === s.id} onDrag={(e) => drag(s.id, e)} onStep={(by) => step(s.id, by)}
+              <StopRow s={s} i={i} d={d} sel={selected === s.id} perk={perks.get(s.id)} dragging={dragId === s.id} onDrag={(e) => drag(s.id, e)} onStep={(by) => step(s.id, by)}
                 travel={order ? null : s.eta_min - (i ? shown[i - 1].eta_min + shown[i - 1].dwell_min : start)}
                 // the road minutes only hold for the leg the plan made: with the stop before this one just removed (re-planning),
                 // the gap spans two legs, so it's all shown as travel rather than a bogus wait

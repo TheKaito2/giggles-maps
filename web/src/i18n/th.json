@@ -1450,5 +1450,19 @@
 "฿{0}, once": "฿{0} ครั้งเดียว",
 "฿{0}/month": "฿{0}/เดือน",
 "”. Try another spelling, or pick it on the map.": "”. ลองสะกดแบบอื่น หรือเลือกบนแผนที่",
-"✓ Quest done:": "✓ เควสต์สำเร็จ:"
+"✓ Quest done:": "✓ เควสต์สำเร็จ:",
+"Member perk": "สิทธิพิเศษสมาชิก",
+"Members get": "สมาชิกได้รับ",
+"Show this screen at the counter.": "แสดงหน้าจอนี้ที่เคาน์เตอร์",
+"See membership": "ดูสมาชิกภาพ",
+"Member perks at partner shops": "สิทธิพิเศษสมาชิกที่ร้านพาร์ทเนอร์",
+"Members get partner perks": "สมาชิกได้สิทธิพิเศษจากร้านพาร์ทเนอร์",
+"Member perk: {0}": "สิทธิพิเศษสมาชิก: {0}",
+"Perk saved. Members see it on your place page.": "บันทึกสิทธิพิเศษแล้ว สมาชิกจะเห็นในหน้าร้านของคุณ",
+"Perk removed.": "ลบสิทธิพิเศษแล้ว",
+"Member perks are for Partners.": "สิทธิพิเศษสมาชิกมีให้เฉพาะพาร์ทเนอร์",
+"Couldn't save the perk (up to {0} characters, no < or >).": "บันทึกสิทธิพิเศษไม่ได้ (ไม่เกิน {0} ตัวอักษร ห้ามใช้ < หรือ >)",
+"One short offer for Giggles members, shown on your place page and on routes. Only write what you'll honour at the counter.": "ข้อเสนอสั้น ๆ หนึ่งข้อสำหรับสมาชิก Giggles แสดงในหน้าร้านและบนเส้นทาง เขียนเฉพาะสิ่งที่ให้ได้จริงที่เคาน์เตอร์",
+"e.g. 10% off drinks for members": "เช่น ลดเครื่องดื่ม 10% สำหรับสมาชิก",
+"Save perk": "บันทึกสิทธิพิเศษ"
 }

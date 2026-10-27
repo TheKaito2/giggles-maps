@@ -8,9 +8,10 @@ import type { Gate } from "./detour/useDetour";
 import SignIn from "./SignIn";
 import RewardedAd from "./RewardedAd";
 
-type Why = Gate | "ads";
+type Why = Gate | "ads" | "perk";
 const TITLE: Record<Why, string> = {
   ads: "Go ad-free",
+  perk: "Members get partner perks",
   sign_in_required: "Sign in to plan more detours",
   sign_in_edits: "Sign in to keep changing it",
   detour_limit: "That's today's free detours",
@@ -40,8 +41,8 @@ export default function Upgrade({ gate, onClose, onRewarded }: { gate: Why; onCl
       <div className="modal upgrade" ref={box} tabIndex={-1}>
         <header className="modal-head"><h2>{TITLE[gate]}</h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button></header>
-        {signIn || (gate === "ads" && guest) ? <>
-          <p className="fine">{gate === "ads" ? "Sign in first, so it stays with your account."
+        {signIn || ((gate === "ads" || gate === "perk") && guest) ? <>
+          <p className="fine">{gate === "ads" || gate === "perk" ? "Sign in first, so it stays with your account."
             : gate === "sign_in_edits" ? "Guests get 3 changes a day; a free account makes 10. Your stamps, coins and photos come with you."
             : "Guests try one detour a day; a free account plans 3. Your stamps, coins and photos come with you."}</p>
           <SignIn />
@@ -60,6 +61,7 @@ export default function Upgrade({ gate, onClose, onRewarded }: { gate: Why; onCl
               <li>Unlimited detours and changes</li>
               <li>No ads, forever</li>
               <li>Partner and Giggles Choice stops first</li>
+              <li>Member perks at partner shops</li>
               <li>3 months of Plus free</li>
             </ul>
             <button type="button" className="btn gold" onClick={() => buy("membership")}><Sparkles size={16} aria-hidden /> Become a member · ฿{PRICES.membership}</button>

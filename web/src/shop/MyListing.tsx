@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { errCode } from "../lib/supabase";
 import { addOwnerPhoto, addShop, claimShop, deleteOwnerPhoto, deleteProduct, type FoundPlace, getMyPlaces, type OwnedPlace,
-  saveProduct, searchPlaces, shopPhotoUrl, suggestEdit, updateMyPlace, uploadShopPhoto } from "../lib/api";
+  PERK_MAX, saveProduct, searchPlaces, setMyPerk, shopPhotoUrl, suggestEdit, updateMyPlace, uploadShopPhoto } from "../lib/api";
 import { KINDS } from "../app/kinds";
 
 const ERR: Record<string, string> = {
@@ -22,10 +22,14 @@ function Listing({ p, onChange }: { p: OwnedPlace; onChange: () => void }) {
   const [stars, setStars] = useState<number | null>(p.otop_stars);
   const [community, setCommunity] = useState(p.community);
   const [product, setProduct] = useState({ name: "", price: "" });
+  const [perk, setPerk] = useState(p.perk_text ?? "");
   const [msg, setMsg] = useState("");
   const save = () => updateMyPlace(p.id, f)
     .then(() => { setMsg("Saved. Travellers see it on your place page now."); onChange(); })
     .catch(() => setMsg("Couldn't save. Check the website (e.g. facebook.com/yourshop) and phone (digits only)."));
+  const savePerk = () => setMyPerk(p.id, perk)
+    .then(() => { setMsg(perk.trim() ? "Perk saved. Members see it on your place page." : "Perk removed."); onChange(); })
+    .catch((e) => setMsg(errCode(e) === "partners_only" ? "Member perks are for Partners." : `Couldn't save the perk (up to ${PERK_MAX} characters, no < or >).`));
   // OTOP and community status earn travellers extra rewards, so we check them before they show
   const askOtop = () => suggestEdit(p.id, { ...(otop ? { otop: true } : {}), ...(otop && stars ? { otop_stars: stars } : {}), ...(community ? { community: true } : {}) })
     .then(() => setMsg("Sent! We check OTOP and community enterprise status (usually against the CDD register) before it shows."))
@@ -59,6 +63,16 @@ function Listing({ p, onChange }: { p: OwnedPlace; onChange: () => void }) {
         {(otop !== p.otop || community !== p.community || (otop && stars !== p.otop_stars)) && (otop || community) &&
           <button type="button" className="btn soft small" onClick={askOtop}>Ask us to confirm OTOP / community status</button>}
       </div>
+
+      {p.paid && <>
+        <h4>Member perk</h4>
+        <p className="fine">One short offer for Giggles members, shown on your place page and on routes. Only write what you'll honour at the counter.</p>
+        <div className="row">
+          <input className="text-in" maxLength={PERK_MAX} value={perk} placeholder="e.g. 10% off drinks for members" aria-label="Member perk" onChange={(e) => setPerk(e.target.value)} />
+          <span className="fine num">{perk.length}/{PERK_MAX}</span>
+          <button type="button" className="btn soft small" onClick={savePerk}>Save perk</button>
+        </div>
+      </>}
 
       <h4>Products</h4>
       <ul className="product-grid">

@@ -294,7 +294,7 @@ export default function App() {
               <LayersButton look={look} setLook={setLook} />
               {!nearby.watching && <button type="button" className="map-tool" onClick={nearby.start} aria-label="Show stops near me"><LocateFixed size={20} /></button>}
             </div>
-            {place && <Boundary onClose={() => setPlace(null)}><Suspense fallback={null}><PlaceSheet id={place} onClose={() => setPlace(null)}
+            {place && <Boundary onClose={() => setPlace(null)}><Suspense fallback={null}><PlaceSheet id={place} member={!!profile?.member} onClose={() => setPlace(null)}
               onDirections={(p) => { setPlace(null); d.goTo({ point: { lat: p.lat, lng: p.lng }, name: p.name }); }}
               onCheckin={checkInAt} onCoins={refresh} /></Suspense></Boundary>}
             {(zoneStop || paused) && (

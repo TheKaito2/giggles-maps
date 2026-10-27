@@ -253,6 +253,16 @@ export async function placesTiers(ids: number[]): Promise<Map<number, PartnerTie
   return d ? (await d).demoTiersFor(ids, real) : real;
 }
 
+// a paying partner's member perk ("10% off for members"), for those of these places that have one; demo partners have none
+export async function placesPerks(ids: number[]): Promise<Map<number, string>> {
+  if (!ids.length) return new Map();
+  const { data, error } = await supabase.rpc("places_perks", { p_ids: ids.slice(0, 300) });   // no session needed: public
+  if (error) throw new ApiError(error.message);
+  return new Map((data as { id: number; perk_text: string }[]).map((p) => [p.id, p.perk_text]));
+}
+export const PERK_MAX = 80;
+export const setMyPerk = (place: number, text: string) => rpc<void>("set_my_perk", { p_place: place, p_text: text });
+
 // bookings through Giggles Maps (partner places only); the shop pays a flat fee once you check in
 export type BookingStatus = "requested" | "accepted" | "declined" | "completed" | "cancelled";
 export interface Booking { id: number; place_id: number; place: string; day: string; party: number; note: string | null; status: BookingStatus }
@@ -527,6 +537,7 @@ export interface OwnedPlace {
   id: number; name: string; kind: string | null; shop_id: string; opening_hours: string | null; phone: string | null;
   website: string | null; description: string | null; otop: boolean; otop_stars: number | null; community: boolean;
   verified: boolean; qr_code: string | null;
+  perk_text?: string | null; paid?: boolean;   // the member perk; paid = the shop has a live Partner / Choice tier (can set one)
   products: { id: number; name: string; price: number | null; photo: string | null }[]; photos: { id: number; url: string }[];
 }
 export const getMyPlaces = () => rpc<OwnedPlace[]>("my_places");

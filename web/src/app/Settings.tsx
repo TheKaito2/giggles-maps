@@ -184,6 +184,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
           <li>No ads, forever</li>
           <li>Unlimited detours and added stops</li>
           <li>Partner and Giggles Choice stops first</li>
+          <li>Member perks at partner shops</li>
           <li>3 months of Plus free</li>
         </ul>
         {!member && (guest
