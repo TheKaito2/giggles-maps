@@ -5,7 +5,7 @@ import { type FoundPlace, PRICES, searchPlaces, shopReach, type ShopReach } from
 // The page a shop owner sees before they run a listing (Grab Merchant / Airbnb Host pattern): what they get, a real number
 // for their own shop, how to join, prices and an FAQ. Claiming and signing in sit right below it (#claim, #account).
 const REASONS = [
-  { icon: Store, title: "A free listing", text: "Your hours, photos, products and story on your place page." },
+  { icon: Store, title: "A free listing", text: "Your photos, products and story on your place page." },
   { icon: Star, title: "First on members' routes", text: `Partners (฿${PRICES.partner} a month) come first for members, with a Partner badge.` },
   { icon: CalendarCheck, title: "Bookings", text: `Partners take bookings through Giggles. ฿${PRICES.booking} per guest who shows up.` },
   { icon: BarChart3, title: "Your numbers", text: "How often travellers saw you, and who checked in." },

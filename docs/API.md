@@ -40,24 +40,22 @@ Request
   "must_include": [37420]
 }
 ```
-- `start_min`: minutes after local midnight (0–1439). Used for opening hours.
+- `start_min`: minutes after local midnight (0–1439). Used for meal windows and ETAs (opening hours are not used yet).
 - `budget_min`: extra minutes the user accepts (0–240), or `"auto"`: half the direct trip time, rounded to 15 min, between 45 min and 3 h (the response's `budget_min` is the chosen value and `budget_auto: true`). Never exceeded.
 - `mode`: `"pedestrian"` (default), `"bicycle"` or `"auto"`; anything else is 400 `bad_mode`.
 - Planner preferences (all optional; omitted = the defaults below):
   - `interests`: up to 6 of `food`, `cafes`, `culture`, `nature`, `shopping`, `landmarks`. **Only those kinds**: every plan uses just places the picks cover (`landmarks` = tier 3 of any kind), plus a restaurant when a meal is asked for and any `must_include` place. A **Your mix** plan (`id: "mix"`) comes first. Empty or omitted = any kind. 400 `bad_interests`.
-  - `open_only: true`: only places whose opening hours are known (the planner then checks you arrive while they're open; it does that for every place with known hours anyway). About 1 in 5 places lists hours, fewer in small towns.
+  - `open_only`: ignored (opening hours are not used yet; old clients may still send it).
   - `no_chains: true`: shops, cafés, restaurants and markets must be independent (`local`, OTOP or community); temples, parks and other sights are unaffected.
   - `min_rating`, `include_unrated`, `max_price`: still accepted, but the web app no longer sends them: OpenStreetMap has no ratings or prices, so they filter nothing useful until reviews and prices exist.
   - `min_rating`: `0`, `3.5`, `4` (default) or `4.5`. 400 `bad_min_rating`.
   - `include_unrated`: default **true**: unrated places (`rating: null`, most of the OpenStreetMap import) join routes, scored below rated ones (as 3.5/5). `false` = rated places only.
-  - `must_include`: up to 6 place ids the user picked or added (from `search_places` or a plan's `along`). They go into every plan when they fit the budget, opening hours and `max_stops`, even below the rating floor; the rest are listed in each plan's `unfit_required`. Stops have `picked: true`. 400 `bad_must_include`.
+  - `must_include`: up to 6 place ids the user picked or added (from `search_places` or a plan's `along`). They go into every plan when they fit the budget and `max_stops`, even below the rating floor; the rest are listed in each plan's `unfit_required`. Stops have `picked: true`. 400 `bad_must_include`.
   - `exclude`: up to 30 place ids never to use (stops the user removed or swapped out). 400 `bad_exclude`.
   - `keep_order` (optional): `true` = `must_include` is the route order, exactly; a list of stop ids = those stops keep that
     order and the rest of `must_include` is inserted where it fits best (400 `bad_keep_order` if it isn't a list of ids).
     The web app sends `true` after a drag or a + between two stops, and the current order as a list for "add along your
     route" once you've set the order yourself.
-  - Places with no listed opening hours are planned inside the usual hours for their kind (temples 06:00–18:00, parks
-    05:00–20:00, night and walking-street markets 17:00–23:00, …; `_shared/usual-hours.ts`).
   - Editing a plan, the way the web app does it: remove = `must_include` the other current stops + `exclude` the removed one; swap = the same (the planner picks the best replacement); add = `must_include` the current stops + the new place, with more `budget_min` when it doesn't fit. Send `theme` to keep the plan you were on first.
   - Each stop has `extra_min` (about how many minutes it adds: road detour + time there; null if unknown) and `photo` (a URL or null). Each plan has `along`: up to 30 shortlist places it left out, cheapest first, `{ id, name, name_th, category, lat, lng, tier, rating, local, otop, community, photo, extra_min }` (an estimate: "about +X min").
   - `max_stops`: 1–6 stops per plan; omitted = no cap. Meal stops count. 400 `bad_max_stops`.

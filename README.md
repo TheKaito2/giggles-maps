@@ -57,7 +57,7 @@ flowchart LR
 ```
 
 - **Planner.** `plan-route` shortlists places along the road corridor in PostGIS, gets real road times from Valhalla,
-  then picks and orders stops to fill your budget (insertion + 2-opt). Opening hours and meal windows are respected; a place with no listed hours gets the usual hours for its kind.
+  then picks and orders stops to fill your budget (insertion + 2-opt). Meal windows are respected; opening hours are not used yet (we have no trustworthy hours data).
   [Algorithm notes](docs/ARCHITECTURE.md) · [Thailand routing](docs/THAILAND-ROUTING.md)
 - **Trust.** Clients never write XP, coins, stamps or money. Every reward is a server function behind row-level security,
   check-ins are GPS-zoned and speed-checked, and payments arrive only through signed webhooks.

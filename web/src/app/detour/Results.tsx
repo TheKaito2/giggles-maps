@@ -30,7 +30,6 @@ export function Thumb({ s, size = 48 }: { s: { name: string; category: string; p
 // at most two badges per stop, the most telling first
 function badges(s: RouteStop): { text: string; cls: string; title?: string }[] {
   const all = [
-    s.closed && { text: "Closed then", cls: "closed", title: "You added it, but it's closed when you get there" },
     s.partner_tier && { text: TIER_NAME[s.partner_tier], cls: `tier-${s.partner_tier}`, title: TIER_TIP[s.partner_tier] },
     s.picked && { text: "You picked", cls: "picked" },
     s.pit_stop && { text: "Pit stop", cls: "pit", title: "A quick stop for snacks, a drink or the toilet" },
@@ -155,18 +154,12 @@ function AlongList({ places, d, full, limit, at, leg, onAdded }: { places: Along
     return () => { live = false; clearTimeout(t); };
   }, [needle, kind, byKind]); // eslint-disable-line react-hooks/exhaustive-deps
   const add = (id: number) => { d.addStop(id, at); onAdded?.(); };
-  // closed when you'd pass it: say when it opens (usual hours when none are listed)
-  const closedNote = (p: object) => {
-    const { closed, opens_min: opens } = p as { closed?: boolean; opens_min?: number | null };
-    return closed && <span className="chip closed" title="Probably closed when you pass it">{opens != null ? <><span className="opens-word">Opens </span>{hhmm(opens)}</> : "Closed then"}</span>;
-  };
   const row = (p: Row | FoundPlace, extra: string, off = false) => (
     <li key={`${off ? "e" : ""}${p.id}`}>
       <Thumb s={{ name: p.name, category: p.category ?? "", photo: "photo" in p ? p.photo ?? null : null }} size={40} />
       <span className="stop-text"><b>{nameOf(p)}</b>
         <span className="stop-meta"><b className={`num extra${off ? " off" : ""}`}>{extra}</b>
-          {/* closed then: when it opens takes the kind's place, so the row stays one line and "+NN min" stays visible */}
-          {closedNote(p) || <span className="fine">{kindOf(p.kind ?? null, p.category ?? "").en}{p.rating != null && ` · ★ ${p.rating.toFixed(1)}`}</span>}</span></span>
+          <span className="fine">{kindOf(p.kind ?? null, p.category ?? "").en}{p.rating != null && ` · ★ ${p.rating.toFixed(1)}`}</span></span></span>
       <button type="button" className="btn soft small add-btn" disabled={full || d.editing} onClick={() => add(p.id!)}
         aria-label={`Add ${p.name}`}><Plus size={15} aria-hidden /> Add</button>
     </li>
@@ -327,9 +320,7 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
       {plan.stops.length === 0
         ? <p className="fine">{plan.warnings?.some((w) => w === "places_unavailable" || w === "some_detours_unavailable")
             ? "Couldn't check road times right now. Try again in a moment."
-            : start % 1440 >= 21 * 60 || start % 1440 < 6 * 60   // at night it's closing hours, not too little time
-              ? <>Most places are closed at this hour. <button type="button" className="link" onClick={() => d.set({ depart: "custom", time: "08:00" })}>Leave at 08:00 instead</button></>
-              : "No stops fit this much time. Try a longer option or fewer filters."}</p>
+            : "No stops fit this much time. Try a longer option or fewer filters."}</p>
         : <ol className="stop-rows" ref={rows}>
             {shown.map((s, i) => <Fragment key={s.id}>
               {i === 0 && <AddGap hidden={!!order} onAdd={() => setAdding(0)} />}
@@ -351,7 +342,7 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
       {adding != null && <AddStopSheet places={current?.along ?? []} d={d} full={plan.stops.length >= d.cap} at={adding} onClose={() => setAdding(null)} />}
 
       <Along places={current?.along ?? []} d={d} full={plan.stops.length >= d.cap} />
-      <p className="fine">How stops are picked <Info label="How stops are picked">Stops are picked on quality, opening hours and how little time they
+      <p className="fine">How stops are picked <Info label="How stops are picked">Stops are picked on quality and how little time they
         add. Paid Partner and Giggles Choice places are always labelled; free plans rank them like everyone else, and
         members' plans give them a boost. "Partner picks" is a plan of paid partners only.</Info></p>
     </div>

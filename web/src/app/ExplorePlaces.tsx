@@ -77,7 +77,7 @@ export default function ExplorePlaces({ near, picks, setPicks }: { near: LatLng 
           ))}
         </div>
       )}
-      <p className="fine">Up to {MAX_PICKS} places. They go into every plan when they fit your time and opening hours.</p>
+      <p className="fine">Up to {MAX_PICKS} places. They go into every plan when they fit your time.</p>
     </div>
   );
 }

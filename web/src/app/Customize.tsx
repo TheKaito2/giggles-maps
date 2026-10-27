@@ -12,7 +12,7 @@ export const KIND_ICON: Record<Interest, LucideIcon> = {
 
 /** How many filters are on (shown on the More button). */
 export function filterCount(p: Prefs): number {
-  return [p.interests.length > 0, p.maxStops != null, p.picks.length > 0, p.meals.length > 0, p.openOnly, p.noChains].filter(Boolean).length;
+  return [p.interests.length > 0, p.maxStops != null, p.picks.length > 0, p.meals.length > 0, p.noChains].filter(Boolean).length;
 }
 
 /** All the ways to shape your stops, each a plain question. Edits a draft; "Show plans" applies it
@@ -72,16 +72,12 @@ export default function Filters({ prefs: start, apply, near, onClose }: { prefs:
             <span><b>Avoid chains</b><span className="fine">Only independent shops, cafés and restaurants. Temples and parks aren't affected.</span></span>
             <input type="checkbox" role="switch" className="switch" checked={prefs.noChains} onChange={(e) => set({ noChains: e.target.checked })} />
           </label>
-          <label className="pref-row">
-            <span><b>Only places with known opening hours</b><span className="fine">So you never arrive at a closed door. Few small-town places list hours, so you'll get fewer stops.</span></span>
-            <input type="checkbox" role="switch" className="switch" checked={prefs.openOnly} onChange={(e) => set({ openOnly: e.target.checked })} />
-          </label>
         </section>
 
         <div className="filters-foot">
           <p className="fine summary-line">{filterSummary(prefs)}</p>
           <div className="row between">
-            <button type="button" className="link" onClick={() => set({ interests: DEFAULT_PREFS.interests, meals: [], picks: [], maxStops: null, openOnly: false, noChains: false })}>Clear all</button>
+            <button type="button" className="link" onClick={() => set({ interests: DEFAULT_PREFS.interests, meals: [], picks: [], maxStops: null, noChains: false })}>Clear all</button>
             <button type="button" className="btn" onClick={() => { apply(prefs); onClose(); }}>Show plans</button>
           </div>
         </div>

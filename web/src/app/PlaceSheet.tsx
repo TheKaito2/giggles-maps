@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { usualHours } from "../../../supabase/functions/_shared/usual-hours.ts";
-import { Bookmark, BookmarkCheck, CalendarCheck, Camera, Clock, Coins, Crown, ExternalLink, Flag, Globe, ImagePlus, MapPin, Navigation, Pencil, Phone, Share2,
+import { Bookmark, BookmarkCheck, CalendarCheck, Camera, Coins, Crown, ExternalLink, Flag, Globe, ImagePlus, MapPin, Navigation, Pencil, Phone, Share2,
   Sparkles, Star, Trash2, X } from "lucide-react";
 import { errCode } from "../lib/supabase";
 import { addPlacePhoto, createList, deletePlacePhoto, deleteReview, getMyLists, getPlaceExtras, getPlacePage, type PlaceExtras, type PlacePage, type PlacePhoto,
@@ -9,12 +8,10 @@ import { addPlacePhoto, createList, deletePlacePhoto, deleteReview, getMyLists, 
 import { shrinkPhoto } from "../lib/photo";
 import BookingSheet from "./BookingSheet";
 import { GROUPS, kindOf } from "./kinds";
-import { openNow, readableHours } from "./hours";
 import Avatar from "./social/Avatar";
 import { SkelLines, SkelPlace } from "./Skeleton";
 import Info from "./Info";
 import { shareOrCopy } from "../lib/native";
-import { hhmm } from "./prefs";
 import { lang, nameOf } from "../lib/i18n";
 
 const ago = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -129,10 +126,6 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
 
   if (!page) return <aside className="place-sheet glass" aria-busy="true"><button type="button" className="icon-btn sheet-close" onClick={onClose} aria-label="Close"><X size={18} /></button>{msg ? <p className="fine place-msg">{msg}</p> : <SkelPlace />}</aside>;
   const k = kindOf(page.kind, page.category);
-  const open = openNow(page.opening_hours);
-  // no listed hours: the usual ones for its kind, the same table the planner uses
-  const usualPair = usualHours(page.category, page.name, null, null);
-  const usual = usualPair[0] != null && usualPair[1] != null ? usualPair as [number, number] : null;
   const share = async () => {
     if (await shareOrCopy(page.name, `${SITE}/app/?place=${page.id}`) === "copied") setMsg("Link copied.");
   };
@@ -237,10 +230,6 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
         </section>
       )}
       <ul className="place-info">
-        {page.opening_hours ? <li><Clock size={16} aria-hidden />
-          <span>{open === true ? <b className="open">Open now</b> : open === false ? <b className="closed">Closed now</b> : null} <span className="fine">{readableHours(page.opening_hours)}</span></span></li>
-          : usual && <li><Clock size={16} aria-hidden /><span><span className="fine">Usually {hhmm(usual[0])}–{hhmm(usual[1])}, the typical hours for this kind of place
-            (its own aren't listed; the planner uses these)</span></span></li>}
         {page.phone && <li><Phone size={16} aria-hidden /><a href={`tel:${page.phone.split(";")[0].replace(/\s/g, "")}`}>{page.phone.split(";")[0]}</a></li>}
         {page.website && <li><Globe size={16} aria-hidden /><a href={page.website.startsWith("http") ? page.website : `https://${page.website}`} target="_blank" rel="noopener noreferrer">{page.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}</a></li>}
         {page.address && <li><MapPin size={16} aria-hidden /><span>{page.address}</span></li>}

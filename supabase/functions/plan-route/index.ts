@@ -1,7 +1,6 @@
-import { usualHours } from "../_shared/usual-hours.ts";
 import { admin, HttpError, json, num, readJson, requireUser, serve, thaiPoint } from "../_shared/http.ts";
 import { type Meal, MEAL_WINDOWS } from "../_shared/meals.ts";
-import { insertBest, insertionCost, type Plan, planDetour, type Stop, visitIsOpen } from "../_shared/planner.ts";
+import { insertBest, insertionCost, type Plan, planDetour, type Stop } from "../_shared/planner.ts";
 import { fitsInterests, independent, INTERESTS, isInterest, mixWeight, type Tier, THEMES, toTheme } from "../_shared/themes.ts";
 import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan } from "../_shared/road-detour.ts";
 import { corridorMatrix } from "../_shared/corridor.ts";
@@ -9,7 +8,7 @@ import { createRouter, estimateMinutes, RoutingError, haversineM, type LatLng, m
 
 interface Candidate {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
-  open_min: number | null; close_min: number | null; dwell_min: number; rating: number | null;
+  dwell_min: number; rating: number | null;
   is_partner: boolean; is_demo: boolean;
   price_level: number | null;
   tier: Tier;   // 3 landmark, 2 worth a visit, 1 everyday
@@ -62,9 +61,9 @@ serve(async (req) => {
   const meals: Meal[] = body.meals ?? [];
   if (!Array.isArray(meals) || meals.length > 3 || !meals.every((m) => Object.hasOwn(MEAL_WINDOWS, m))) throw new HttpError(400, "bad_meals");
   const filters = { p_min_rating: minRating, p_unrated: includeUnrated, p_max_price: maxPrice };
-  // stricter filters (all optional): only places whose opening hours we know (the planner then checks you arrive
-  // while they're open), and no chain shops, cafés or restaurants
-  const openOnly = body.open_only === true, noChains = body.no_chains === true;
+  // stricter filter (optional): no chain shops, cafés or restaurants. Opening hours aren't used yet (no trustworthy data):
+  // an old client's open_only is ignored
+  const noChains = body.no_chains === true;
   // places the user picked or added from "along your route" (up to 6); they go into every plan when they fit
   const ids = (v: unknown, max: number, code: string): number[] => {
     if (v == null) return [];
@@ -133,7 +132,7 @@ serve(async (req) => {
   // place's usual visit time. Otherwise a 20-minute temple could never fit in 15 minutes and Quick came back empty.
   const quickStops = budgetMin < 30 && !meals.length;
   const dwellOf = (m: number) => quickStops ? Math.min(m, QUICK_DWELL_MIN) : m;
-  const narrowed = interests.length > 0 || openOnly || noChains;   // the filters below drop places: fetch more first
+  const narrowed = interests.length > 0 || noChains;   // the filters below drop places: fetch more first
   // spread stops along the way: 5 stretches on long drives, 3 on short ones, none inside a city block
   const segments = directM < 3000 ? 0 : directM < 30000 ? 3 : 5;
   const { data: cands, error } = baseline
@@ -150,18 +149,17 @@ serve(async (req) => {
       p_segments: segments,
       // filter the corridor itself, so a narrow filter still gets a full shortlist (keep() below re-checks)
       p_kinds: interests.length ? interests.flatMap((i) => INTERESTS[i]) : null, p_landmarks: interests.includes("landmarks"),
-      p_open_only: openOnly, p_no_chains: noChains,
+      p_no_chains: noChains,
     })
     : await db.rpc("detour_candidates", {
       o_lat: origin.lat, o_lng: origin.lng, d_lat: dest.lat, d_lng: dest.lng,
       extra_m: budgetMin * 80, max_n: 16 + exclude.size, p_level: level, p_per_group: 4 + Math.min(exclude.size, 3), ...filters, p_meal_slots: meals.length ? 4 : 0,
     });
   if (error) { console.error("candidate lookup failed", error); warnings.push("places_unavailable"); }
-  // "only these kinds" (a meal asked for still allows restaurants), confirmed opening hours, no chains;
+  // "only these kinds" (a meal asked for still allows restaurants), no chains;
   // places the user named as must-visit always stay in
   const keep = (c: Candidate) => mustInclude.includes(c.id) || (
     (fitsInterests(interests, c.category, c.tier) || (meals.length > 0 && c.category === "food"))
-    && (!openOnly || (c.open_min != null && c.close_min != null))
     && (!noChains || independent(c)));
   const candidates = ((cands ?? []) as Candidate[]).filter((c) => !exclude.has(c.id) && keep(c) && haversineM(c, origin) > END_CLEARANCE_M && haversineM(c, dest) > END_CLEARANCE_M)
     .slice(0, maxCandidates);   // over-fetched for the filters: the road-time matrix stays its usual size
@@ -235,15 +233,9 @@ serve(async (req) => {
     }
   }
 
-  // places without known hours get their kind's usual hours (a night plan used to visit temples at 04:00). Not the ones
-  // the user picked: those go in whatever the hours, and a guess must not mark them "closed when you get there".
-  const hoursOf = (c: { id: number; category: string; name: string; open_min: number | null; close_min: number | null }) => {
-    const [openMin, closeMin] = mustInclude.includes(c.id) ? [c.open_min, c.close_min] : usualHours(c.category, c.name, c.open_min, c.close_min);
-    return { openMin, closeMin };
-  };
   const allStops: Stop[] = candidates.map((c, i) => ({
     idx: i + 2, id: c.id, category: c.category, rating: c.rating == null ? null : Number(c.rating), tier: c.tier ?? 2, dwellMin: dwellOf(c.dwell_min),
-    ...hoursOf(c), frac: c.frac, local: c.local, otop: c.otop, community: c.community,
+    frac: c.frac, local: c.local, otop: c.otop, community: c.community,
   }));
   const stops = allStops.filter((st) => !pitIds.has(st.id)), pitStops = allStops.filter((st) => pitIds.has(st.id));
   const travelMin = (a: number, b: number) => matrix[a][b];
@@ -315,7 +307,7 @@ serve(async (req) => {
       const legs = []; let at = 0;
       for (const s of t.plan.order) { legs.push(matrix[at][s.idx]); at = s.idx; }
       legs.push(matrix[at][1]);
-      t.etaMin = scheduleStops(t.plan.order, legs, startMin, t.plan.mealOf, t.plan.requiredIds).etaMin;
+      t.etaMin = scheduleStops(t.plan.order, legs, startMin, t.plan.mealOf).etaMin;
       t.travelMin = legs.reduce((a, b) => a + b, 0);
       t.geometry = [origin, ...t.plan.order.map((s) => candidates[s.idx - 2]), dest].map((p) => [p.lng, p.lat]);
     }
@@ -374,7 +366,6 @@ serve(async (req) => {
         is_partner: c.is_partner && (!c.is_demo || body.demo === true), is_demo: c.is_demo && body.demo === true,
         rating: c.rating == null ? null : Number(c.rating), price_level: c.price_level, tier: c.tier ?? 2,
         dwell_min: s.dwellMin, eta_min: eta, travel_min: Math.round(leg), pit_stop: pitIds.has(c.id), meal, meal_late: !!late, picked: mustInclude.includes(c.id),
-        closed: plan.closedPicks.includes(c.id),   // you added it, but it's closed when you get there
         // about how many minutes this stop adds (road detour + time there): what removing it would save
         extra_min: ((x) => Number.isFinite(x) ? Math.round(x) : null)(insertionCost(plan.order.map((o) => o.idx), s.idx, travelMin, s.dwellMin)),
         photo: photoOf.get(c.id) ?? null,
@@ -395,12 +386,8 @@ serve(async (req) => {
       return { id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng, tier: c.tier ?? 2,
         rating: c.rating == null ? null : Number(c.rating), local: !!c.local, otop: !!c.otop, community: !!c.community,
         photo: photoOf.get(c.id) ?? null, partner_tier: tierOf.get(c.id) ?? null,
-        extra_min: Math.round(insertionCost(plan.order.map((x) => x.idx), st.idx, travelMin, st.dwellMin)),
-        // closed when you'd pass it (about: straight from the start), so "add along your route" doesn't offer a night
-        // market at 10:00 as if it were open; open ones come first
-        closed: !visitIsOpen(startMin + travelMin(0, st.idx), st.dwellMin, st.openMin, st.closeMin),
-        opens_min: st.openMin ?? null };   // so a closed one can say when it opens
-    }).filter((a) => Number.isFinite(a.extra_min)).sort((a, b) => Number(a.closed) - Number(b.closed) || a.extra_min - b.extra_min).slice(0, 30);
+        extra_min: Math.round(insertionCost(plan.order.map((x) => x.idx), st.idx, travelMin, st.dwellMin)) };
+    }).filter((a) => Number.isFinite(a.extra_min)).sort((a, b) => a.extra_min - b.extra_min).slice(0, 30);
 
     return { ordered, cards, geometry, along };
   };

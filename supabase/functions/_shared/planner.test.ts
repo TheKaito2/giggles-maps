@@ -11,7 +11,6 @@ const pts = [
   { x: 3, y: 1 },  // 4 café on the route
   { x: 9, y: 9 },  // 5 café far off the route
   { x: 6, y: 0 },  // 6 low-rated stop
-  { x: 7, y: 0 },  // 7 closed stop
 ];
 const travelMin = (a: number, b: number) => Math.abs(pts[a].x - pts[b].x) + Math.abs(pts[a].y - pts[b].y);
 const stops: Stop[] = [
@@ -20,7 +19,6 @@ const stops: Stop[] = [
   { idx: 4, id: 4, category: "cafe", rating: 4.3, dwellMin: 10 },
   { idx: 5, id: 5, category: "cafe", rating: 4.5, dwellMin: 10 },
   { idx: 6, id: 6, category: "food", rating: 3.2, dwellMin: 5 },
-  { idx: 7, id: 7, category: "art", rating: 4.9, dwellMin: 5, openMin: 900, closeMin: 1000 },
 ];
 const plan = (budgetMin: number) =>
   planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin, stops, travelMin });
@@ -36,9 +34,8 @@ test("quality per added minute: the on-route café beats the far one", () => {
   expect(p).not.toContain(5);
 });
 
-test("low-rated and closed stops are skipped; tiny budget adds nothing", () => {
+test("low-rated stops are skipped; tiny budget adds nothing", () => {
   expect(ids(plan(120))).not.toContain(6);
-  expect(ids(plan(120))).not.toContain(7);
   expect(plan(3).order).toHaveLength(0);
 });
 
@@ -139,18 +136,13 @@ test("a picked place goes in even below the rating floor, inside the budget", ()
   expect(p.extraMin).toBeLessThanOrEqual(30);
 });
 
-test("a picked place goes in past the budget, the stop cap and its opening hours (flagged closed)", () => {
+test("a picked place goes in past the budget and the stop cap", () => {
   const far = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 10, stops, travelMin, requiredIds: [5] });
   expect(far.order.map((s) => s.id)).toContain(5);
   expect(far.unfitRequired).toEqual([]);
   expect(far.extraMin).toBeGreaterThan(10);
   const capped = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 120, stops, travelMin, requiredIds: [2, 3], maxStops: 1 });
   expect(capped.order.map((s) => s.id).sort()).toEqual([2, 3]);
-  const closed = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 120, travelMin, requiredIds: [5],
-    stops: stops.map((s) => s.id === 5 ? { ...s, openMin: 0, closeMin: 60 } : s) });
-  expect(closed.order.map((s) => s.id)).toContain(5);
-  expect(closed.closedPicks).toEqual([5]);
-  expect(closed.unfitRequired).toEqual([]);
 });
 
 // landmark world: a cafe right on the route vs a landmark temple well off it

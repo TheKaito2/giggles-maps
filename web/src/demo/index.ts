@@ -2,11 +2,10 @@
 // on (dynamic import), so real users never get it. Nothing is written to the database: reactions, comments and nudges on
 // pretend people stay on this device.
 import { type Board, type BoardMetric, type BoardPeriod, type BoardRow, type BoardScope, type Card, type Champion, type Comment,
-  type FeedItem, type FriendPassport, type FriendQuest, mapPlaces, type PartnerTier, type PlacePage, type ProfilePage, type Social } from "../lib/api";
+  type FeedItem, type FriendPassport, type FriendQuest, mapPlaces, type PartnerTier, type ProfilePage, type Social } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { demoAt } from "../lib/demoGps";
 import { DEMO_INCOMING, DEMO_PEOPLE, demoChampions } from "./people";
-import { demoReviews } from "./reviews";
 import { demoComments, demoFeed, type DemoPlace } from "./feed";
 import { type DemoPerson, who } from "./types";
 
@@ -59,14 +58,6 @@ export async function demoFeedMerged(real: FeedItem[], scope: "all" | "friends" 
   return [...real, ...fake].sort((a, b) => b.at.localeCompare(a.at));
 }
 export const demoCommentsFor = (activity: number): Comment[] => demoComments(activity, DEMO_PEOPLE);
-
-/** A place page with a few pretend reviews when it has hardly any real ones. */
-export function demoPlacePage(page: PlacePage): PlacePage {
-  if (page.reviews.length >= 3) return page;
-  const d = demoReviews(page.id, page.category, DEMO_PEOPLE);
-  const reviews = [...page.reviews, ...d.reviews];
-  return { ...page, reviews, review_count: page.review_count + d.count, rating: page.rating ?? d.rating };
-}
 
 // pretend partners: the demo_partners table (readable by anyone, used only here and by plan-route's demo requests)
 let demoTiers: Map<number, PartnerTier> | null = null;

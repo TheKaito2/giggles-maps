@@ -38,7 +38,6 @@ export interface RouteStop {
   meal?: Meal | null; // engine v2: this stop covers a meal
   meal_late?: boolean; // the restaurant for that meal, outside the usual meal hours (the route couldn't reach them)
   picked?: boolean;   // the user asked for this place (must_include)
-  closed?: boolean;   // picked, but closed when the trip gets there (it stays in the plan)
   local?: boolean; otop?: boolean; community?: boolean;   // local first: independent / OTOP / community enterprise
   tier?: 1 | 2 | 3;   // 3 = landmark (must-go), 2 = worth a visit, 1 = everyday
   extra_min?: number | null;   // about how many minutes this stop adds (road detour + time there); null if unknown
@@ -50,8 +49,6 @@ export interface AlongPlace {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number; tier: 1 | 2 | 3;
   rating: number | null; local: boolean; otop: boolean; community: boolean; photo: string | null; extra_min: number;
   partner_tier?: PartnerTier | null;
-  closed?: boolean;   // closed when you'd pass it (about)
-  opens_min?: number | null;   // its opening time (minutes after midnight), usual hours when none are listed
 }
 
 export type Meal = "breakfast" | "lunch" | "dinner";
@@ -147,7 +144,6 @@ export interface PlanRequest {
   exclude?: number[];           // stops the user removed or swapped out
   theme?: string;               // this plan comes first
   meals?: Meal[];               // meals to stop for; omitted = no food stop forced
-  open_only?: boolean;          // only places whose opening hours are known
   no_chains?: boolean;          // independent shops, cafés and restaurants only
 }
 
@@ -484,10 +480,7 @@ export interface PlacePage {
   photos: PlacePhoto[]; busy: number[] | null; saved_in: string[];
   regular: { who: Who; visits: number; friend: boolean; mine: boolean } | null;   // most visit-days here in 60 days (2+)
 }
-export async function getPlacePage(id: number): Promise<PlacePage | null> {
-  const real = await rpc<PlacePage | null>("place_page", { p_id: id }), d = demo();
-  return d && real ? (await d).demoPlacePage(real) : real;
-}
+export const getPlacePage = (id: number) => rpc<PlacePage | null>("place_page", { p_id: id });
 /** A written review (60+ characters) of a place earns one bonus Siam Si shake there, once. */
 export const REVIEW_SHAKE_CHARS = 60;
 export const writeReview = (place: number, rating: number, body: string) =>

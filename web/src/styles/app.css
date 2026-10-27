@@ -172,7 +172,6 @@ body { background: var(--paper); overflow: hidden; }
 .tag.picked { display: inline-flex; align-items: center; gap: 6px; background: var(--brand-soft); color: var(--brand); border-color: transparent; font-weight: 700; }
 .tag.picked button { border: 0; background: none; color: inherit; padding: 0; display: grid; }
 .chip.picked { background: var(--good); color: var(--card); }
-.chip.closed { background: var(--bad); color: var(--card); }
 
 /* landmarks (tier 3): the must-go places detours are built around */
 .chip.landmark { background: var(--marigold); color: #241a00; margin-left: 6px; vertical-align: middle; }
@@ -516,8 +515,6 @@ body { background: var(--paper); overflow: hidden; }
 .place-info { list-style: none; padding: 12px 0 0; display: grid; gap: 10px; border-top: 2px solid var(--paper); }
 .place-info li { display: flex; gap: 12px; align-items: flex-start; overflow-wrap: anywhere; }
 .place-info svg { flex: none; color: var(--ink-2); margin-top: 2px; }
-.open { color: var(--good); }
-.closed { color: var(--bad); }
 .busy-bars { display: flex; align-items: flex-end; gap: 3px; height: 66px; }
 .busy-bars span { flex: 1; background: color-mix(in srgb, var(--brand) 35%, var(--card)); border-radius: 4px 4px 0 0; }
 .busy-bars span.now { background: var(--brand); }
@@ -1447,4 +1444,3 @@ html.native .toast { top: calc(64px + env(safe-area-inset-top, 0px)); }
 .along-list .stop-meta .chip { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* phone on its side: the sheet is full height, so it covers the map's Layers button (it sat on "Swap") */
 @media (max-width: 959px) and (max-height: 500px) { .sheet.snap-half { z-index: 7; } }
-@media (max-width: 360px) { .along-list .opens-word { display: none; } }   /* "05:00" alone fits a 320 px row */

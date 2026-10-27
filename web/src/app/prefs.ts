@@ -10,7 +10,6 @@ export interface Prefs {
   maxStops: number | null;       // null = Auto
   picks: Pick[];                  // must-visit places, sent as must_include
   meals: Meal[];                  // a food stop arriving inside each meal's window
-  openOnly: boolean;              // only places whose opening hours we know (and that are open when you arrive)
   noChains: boolean;              // independent shops, cafés and restaurants only
 }
 // ponytail: rating and price filters are gone until real data exists (OpenStreetMap has neither; 0 reviews so far)
@@ -23,7 +22,7 @@ export const hhmm = (m: number) => { const r = Math.round(m); return `${String(M
 
 export const DEFAULT_PREFS: Prefs = {
   mode: "auto", depart: "now", time: hhmm(Math.max(nowMin(), 9 * 60)), budget: "auto",
-  interests: [], maxStops: null, picks: [], meals: [], openOnly: false, noChains: false,
+  interests: [], maxStops: null, picks: [], meals: [], noChains: false,
 };
 
 export const MAX_BUDGET = 240;
@@ -57,7 +56,6 @@ export function toRequest(p: Prefs, origin: LatLng, dest: LatLng): PlanRequest {
   return {
     origin, dest, start_min: startMin(p), budget_min: p.budget === "auto" ? "auto" : Math.min(p.budget, MAX_BUDGET), mode: p.mode,
     ...(p.interests.length ? { interests: p.interests } : {}),
-    ...(p.openOnly ? { open_only: true } : {}),
     ...(p.noChains ? { no_chains: true } : {}),
     ...(p.picks.length ? { must_include: p.picks.map((x) => x.id) } : {}),
     ...(p.meals.length ? { meals: p.meals } : {}),
@@ -75,6 +73,5 @@ export function filterSummary(p: Prefs): string {
   if (p.picks.length) parts.push(`${p.picks.length} must-visit`);
   if (p.maxStops) parts.push(`up to ${p.maxStops} stop${p.maxStops === 1 ? "" : "s"}`);
   if (p.noChains) parts.push("no chains");
-  if (p.openOnly) parts.push("known hours only");
   return parts.join(" · ");
 }

@@ -1,13 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan, visitIsOpen } from "./road-detour.ts";
+import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan } from "./road-detour.ts";
 import { planDetour, type Plan, type Stop } from "./planner.ts";
 import { createRouter, decodePolyline6, type RoadRoute } from "./valhalla.ts";
 
 const origin = { lat: 16.44, lng: 102.83 }, dest = { lat: 17.16, lng: 104.15 };
 const baseline: RoadRoute = { geometry: [[102.83, 16.44], [103, 16.5], [104.15, 17.16]], legMin: [20], travelMin: 20 };
 const stop = (id: number, category = "park"): Stop => ({ idx: id + 1, id, category, rating: 4.5, dwellMin: 10 });
-const proposal = (order: Stop[]): Plan => ({ order, baseMin: 20, totalMin: 20, extraMin: 0, mealOf: new Map(), lateMeals: new Map(), missedMeals: [], requiredIds: [], unfitRequired: [], closedPicks: [] });
+const proposal = (order: Stop[]): Plan => ({ order, baseMin: 20, totalMin: 20, extraMin: 0, mealOf: new Map(), lateMeals: new Map(), missedMeals: [], requiredIds: [], unfitRequired: [] });
 const candidates = [{ lat: 16.5, lng: 103 }, { lat: 16.6, lng: 103.2 }];
 const run = (plan: Plan, route: (points: typeof origin[]) => Promise<RoadRoute>, budgetMin = 45) =>
   verifyRoadPlan({ plan, route, origin, dest, candidates, mode: "auto", baseline, startMin: 700, budgetMin });
@@ -61,12 +61,8 @@ test("shared theme scoring produces food/nature alternatives without paid placem
   assert.equal(planDetour({ ...args, theme: "nature" }).order[0].id, 1);
   assert.equal(planDetour({ ...args, theme: "food" }).order[0].id, 2);
 });
-test("closed visits and malformed leg durations fail verification", () => {
-  assert.equal(scheduleStops([{ ...stop(1), openMin: 100, closeMin: 200 }], [10, 20], 600, new Map()).failed, 0);
+test("malformed leg durations fail verification", () => {
   assert.equal(scheduleStops([stop(1)], [Infinity, 20], 600, new Map()).failed, 0);
-  assert.equal(visitIsOpen(1500, 30, 1320, 120), true);
-  assert.equal(visitIsOpen(1438, 10, 0, 1440), true);   // a 24/7 shop at 23:58: the visit runs past midnight
-  assert.equal(visitIsOpen(1438, 10, 360, 1080), false);
 });
 test("routing outages reject without manufacturing a road line", async () => {
   const route = createRouter("https://example.invalid", async () => new Response("down", { status: 503 }));
@@ -95,20 +91,4 @@ test("the user's picks stay even when the real road takes the trip past the budg
   assert.deepEqual(p.plan.order.map((s) => s.id), [1]);   // the planner's own stop goes, the pick stays
   assert.ok(p.plan.extraMin > 45);
   assert.deepEqual(p.plan.unfitRequired, []);
-});
-
-test("a pick the user added although it's closed then stays in on the real road", async () => {
-  const shut = { ...stop(1), openMin: 0, closeMin: 60 };
-  const p = await run({ ...proposal([shut]), requiredIds: [1], closedPicks: [1] },
-    async (points) => ({ geometry: baseline.geometry, legMin: points.slice(1).map(() => 10), travelMin: 10 * (points.length - 1) }));
-  assert.deepEqual(p.plan.order.map((s) => s.id), [1]);
-});
-
-test("a pick that turns out closed on the real road stays in, flagged closed", async () => {
-  // the estimate said open; the real road gets there at 700 + 50 = 750, after its 12:00 (720) close
-  const shut = { ...stop(1), openMin: 600, closeMin: 720 };
-  const p = await run({ ...proposal([shut]), requiredIds: [1] },
-    async (points) => ({ geometry: baseline.geometry, legMin: points.slice(1).map(() => 50), travelMin: 50 * (points.length - 1) }), 200);
-  assert.deepEqual(p.plan.order.map((s) => s.id), [1]);
-  assert.deepEqual(p.plan.closedPicks, [1]);
 });
