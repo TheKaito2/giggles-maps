@@ -17,13 +17,13 @@ interface BookOwner {
 const STAMPS_PER_PAGE = 8, PLACES_PER_PAGE = 3, PHOTOS_PER_PAGE = 4, TRIPS_PER_PAGE = 2;
 interface Album {
   title: string; sub: string; photos: PassportPhoto[];
-  stamp: { kind: "province"; id: number; at: string } | { kind: "landmark"; tier: 1 | 2 | 3; at: string; nameTh: string | null; province: string | null };
+  stamp: { kind: "province"; id: number; at: string } | { kind: "landmark"; tier: 1 | 2 | 3 | 4; at: string; nameTh: string | null; province: string | null };
 }
 /** Who's sharing (your own passport only): your name on milestone cards, and whether Plus designs are unlocked. */
 interface ShareAs { name: string; hasPlus: boolean }
 
 /** Cards to share from a stamp: one photo (in the large view), or the stamp itself. */
-function stampCards(album: Album, photo: PassportPhoto | null, url: string | undefined, name: string, tierOf: (p: PassportPhoto) => 1 | 2 | 3): CardOption[] {
+function stampCards(album: Album, photo: PassportPhoto | null, url: string | undefined, name: string, tierOf: (p: PassportPhoto) => 1 | 2 | 3 | 4): CardOption[] {
   const s = album.stamp;
   if (photo) {
     const base = { place: photo.place, placeTh: null, tier: tierOf(photo), province: s.kind === "landmark" ? s.province : album.title, at: new Date(photo.at), level: null };
@@ -37,7 +37,7 @@ function stampCards(album: Album, photo: PassportPhoto | null, url: string | und
 
 /** Every photo from one province or landmark, opened from its stamp. Tap a photo to see it large. */
 function StampPhotos({ album, urls, shareAs, tierOf, onClose }: {
-  album: Album; urls: Record<string, string>; shareAs?: ShareAs; tierOf: (p: PassportPhoto) => 1 | 2 | 3; onClose: () => void;
+  album: Album; urls: Record<string, string>; shareAs?: ShareAs; tierOf: (p: PassportPhoto) => 1 | 2 | 3 | 4; onClose: () => void;
 }) {
   const box = useDialog(onClose);
   const [big, setBig] = useState<number | null>(null);
@@ -205,7 +205,7 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
     )),
   ];
   const visaPages = Math.ceil(ordered.length / STAMPS_PER_PAGE);
-  const landmarks = stamps.filter((s) => s.tier === 3);
+  const landmarks = stamps.filter((s) => s.tier >= 3);
   chunk(landmarks, PLACES_PER_PAGE).forEach((list, i) => pages.push(
     <Page key={`places-${i}`} n={3 + visaPages + i} className="places">
       <h3 className="page-h">LANDMARKS · แลนด์มาร์ก</h3>

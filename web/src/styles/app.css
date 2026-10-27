@@ -179,15 +179,15 @@ body { background: var(--paper); overflow: hidden; }
 /* PokéStop-style stops: gold landmark, silver worth a visit, bronze everyday; glow when you're in the zone */
 .stop-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgb(0 0 0 / .35); background: #b8743c; }
 .stop-dot.tier-2 { background: #9aa3b5; }
-.stop-dot.tier-3 { background: var(--marigold); width: 18px; height: 18px; }
+.stop-dot.tier-3, .stop-dot.tier-4 { background: var(--marigold); width: 18px; height: 18px; }
 .stop-dot.stamped { opacity: .55; }
 .stop-dot.stamped::after { content: "✓"; display: grid; place-items: center; height: 100%; font: 700 var(--fs-micro)/var(--lh-micro) var(--font-body); color: #fff; }
 .stop-dot.in-zone { animation: glow 1.4s ease-in-out infinite; }
 @keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 rgb(233 164 0 / .7); } 50% { box-shadow: 0 0 0 10px rgb(233 164 0 / 0); } }
 .me-dot { width: 16px; height: 16px; border-radius: 50%; background: #2f7bf5; border: 3px solid #fff; box-shadow: 0 0 0 6px rgb(47 123 245 / .2); }
 .checkin-cta { box-shadow: var(--shadow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.checkin-cta.tier-3 { background: var(--marigold); color: #241a00; }
-.stamp.tier-3 { color: var(--gold-ink); border-color: var(--marigold); }
+.checkin-cta.tier-3, .checkin-cta.tier-4 { background: var(--marigold); color: #241a00; }
+.stamp.tier-3, .stamp.tier-4 { color: var(--gold-ink); border-color: var(--marigold); }
 .stamp.tier-2 { color: var(--tier2-ink); border-color: #9aa3b5; }
 .stamp.tier-1 { color: var(--tier1-ink); border-color: #b8743c; }
 .challenge-done { font-weight: 700; color: var(--good); }
@@ -401,7 +401,7 @@ body { background: var(--paper); overflow: hidden; }
 .entry.big b { font-size: var(--fs-headline); }
 .entry span { font-size: var(--fs-micro); }
 .entry-tier { font-size: var(--fs-micro); letter-spacing: .12em; font-weight: 700; }
-.entry.tier-3 { color: var(--gold-ink); border-color: var(--marigold); }
+.entry.tier-3, .entry.tier-4 { color: var(--gold-ink); border-color: var(--marigold); }
 .entry.tier-2 { color: var(--tier2-ink); border-color: #9aa3b5; }
 .entry.tier-1 { color: var(--tier1-ink); border-color: #b8743c; }
 
@@ -803,7 +803,7 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .strip-cell .more { position: absolute; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / .5); color: #fff; font: 800 var(--fs-display)/var(--lh-display) var(--font-body); }
 .place-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .place-chips li { font: 700 var(--fs-caption)/var(--lh-caption) var(--font-body); padding: 4px 10px; border-radius: 999px; border: 1.5px dashed currentColor; color: var(--tier1-ink); }
-.place-chips li.tier-3 { color: var(--gold-ink); border-style: solid; background: var(--marigold-soft); }
+.place-chips li.tier-3, .place-chips li.tier-4 { color: var(--gold-ink); border-style: solid; background: var(--marigold-soft); }
 .place-chips li.tier-2 { color: var(--tier2-ink); }
 .comments { display: grid; gap: 8px; padding: 0 16px 14px; }
 .comment { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: start; }
@@ -939,7 +939,7 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .log-dot { display: block; }
 .log-main { display: grid; min-width: 0; } .log-main b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .log-tier { font: 700 var(--fs-micro)/var(--lh-micro) var(--font-data); text-transform: uppercase; letter-spacing: .06em; padding: 3px 7px; border-radius: 6px; color: var(--tier1-ink); background: color-mix(in srgb, #b8743c 18%, var(--card)); }
-.log-tier.tier-3 { color: var(--gold-ink); background: var(--marigold-soft); } .log-tier.tier-2 { color: var(--tier2-ink); background: color-mix(in srgb, #9aa3b5 22%, var(--card)); }
+.log-tier.tier-3, .log-tier.tier-4 { color: var(--gold-ink); background: var(--marigold-soft); } .log-tier.tier-2 { color: var(--tier2-ink); background: color-mix(in srgb, #9aa3b5 22%, var(--card)); }
 @media (max-width: 420px) { .profile-hero { grid-template-columns: 1fr; justify-items: start; } }
 
 /* passport: landmark stamps (everyday places live in the Logbook) */
@@ -964,11 +964,11 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 /* arrival: the check-in card on the map and in turn-by-turn */
 .arrive-card { display: grid; justify-items: center; text-align: center; gap: 4px; width: min(360px, calc(100vw - 32px)); padding: 16px 18px 18px;
   border-radius: 22px; background: var(--card); border: 3px solid var(--brand); box-shadow: 0 10px 30px rgb(10 12 30 / .3); animation: arrive-in .35s ease-out; }
-.arrive-card.tier-3 { border-color: var(--marigold); }
+.arrive-card.tier-3, .arrive-card.tier-4 { border-color: var(--marigold); }
 .arrive-card > b { font: 800 var(--fs-headline)/var(--lh-headline) var(--font-display); line-height: 1.2; }
 .arrive-card .fine { margin: 0 0 6px; }
 .checkin-go { width: 100%; justify-content: center; position: relative; }
-.arrive-card.tier-3 .checkin-go { background: var(--marigold); color: #241a00; }
+.arrive-card.tier-3 .checkin-go, .arrive-card.tier-4 .checkin-go { background: var(--marigold); color: #241a00; }
 .checkin-go::after { content: ""; position: absolute; inset: -4px; border-radius: inherit; border: 3px solid currentColor; opacity: 0; animation: go-ring 1.8s ease-out infinite; pointer-events: none; }
 @keyframes go-ring { 0% { opacity: .55; transform: scale(.96); } 100% { opacity: 0; transform: scale(1.08); } }
 @keyframes arrive-in { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }

@@ -53,7 +53,7 @@ const TABS: { id: Tab; label: string; short: string; icon: React.ReactNode }[] =
 // shared empty arrays: a fresh [] each render would make the map refit the route on every position update
 const NONE: never[] = [];
 
-const TIER_WORD = { 3: "landmark", 2: "worth-a-visit", 1: "everyday" } as const;
+const TIER_WORD = { 4: "icon", 3: "landmark", 2: "worth-a-visit", 1: "everyday" } as const;
 
 export default function App() {
   const [tab, setTabState] = useState<Tab>(() => readCodeParam("friend") ? "profile" : "map");

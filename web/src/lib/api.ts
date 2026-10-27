@@ -39,14 +39,14 @@ export interface RouteStop {
   meal_late?: boolean; // the restaurant for that meal, outside the usual meal hours (the route couldn't reach them)
   picked?: boolean;   // the user asked for this place (must_include)
   local?: boolean; otop?: boolean; community?: boolean;   // local first: independent / OTOP / community enterprise
-  tier?: 1 | 2 | 3;   // 3 = landmark (must-go), 2 = worth a visit, 1 = everyday
+  tier?: 1 | 2 | 3 | 4;   // 4 = icon (major landmark), 3 = landmark (must-go), 2 = worth a visit, 1 = everyday
   extra_min?: number | null;   // about how many minutes this stop adds (road detour + time there); null if unknown
   photo?: string | null;  // a photo of the place, when we have one
 }
 
 // a place the plan left out that you can add ("along your route"); extra_min is an estimate
 export interface AlongPlace {
-  id: number; name: string; name_th: string | null; category: string; lat: number; lng: number; tier: 1 | 2 | 3;
+  id: number; name: string; name_th: string | null; category: string; lat: number; lng: number; tier: 1 | 2 | 3 | 4;
   rating: number | null; local: boolean; otop: boolean; community: boolean; photo: string | null; extra_min: number;
   partner_tier?: PartnerTier | null;
 }
@@ -97,7 +97,7 @@ export interface CheckinResult {
   spin: Spin | null;
   xp_gained?: number; xp?: number; level?: number; level_up?: boolean; member?: boolean;
   required_level?: number; // with reason "level_locked"
-  stamp?: { tier: 1 | 2 | 3; new_province: boolean; province: string | null; event: string | null } | null;   // first visit
+  stamp?: { tier: 1 | 2 | 3 | 4; new_province: boolean; province: string | null; event: string | null } | null;   // first visit
   challenges?: { slug: string; title: string; title_th: string; xp: number; coins: number }[];                 // completed now
   coins?: number;   // members' coin balance
   group_bonus?: boolean;   // ride along: a trip-mate checked in here within the hour, +50%
@@ -190,7 +190,7 @@ export async function uploadSelfie(blob: Blob): Promise<string> {
 export const setPhoto = (checkinId: string, hidden: boolean, caption?: string) =>
   rpc<void>("set_photo", { p_checkin: checkinId, p_hidden: hidden, p_caption: caption ?? null });
 
-export interface PassportStamp { place_id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3;
+export interface PassportStamp { place_id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3 | 4;
   province_id: number | null; event: string | null; earned_at: string; photo: string | null }
 export interface PassportPhoto { checkin_id: string; path: string; caption: string | null; place: string; province_id: number | null; place_id?: number; at: string }
 export interface Challenge { slug: string; kind: "daily" | "weekly" | "province" | "collection" | "friend"; title_en: string; title_th: string;
@@ -211,7 +211,7 @@ export async function photoUrls(paths: string[]): Promise<Record<string, string>
   return Object.fromEntries((data ?? []).filter((d) => d.signedUrl).map((d) => [d.path!, d.signedUrl]));
 }
 
-export interface Stop { id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3;
+export interface Stop { id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3 | 4;
   lat: number; lng: number; zone_m: number; distance_m: number; stamped: boolean }
 /** Places around you, landmarks first, with their check-in zone and whether you have the stamp. */
 export const stopsNear = async (p: LatLng, radiusM = 1500) =>
@@ -398,7 +398,7 @@ export const buySet = (id: string) => rpc<number>("buy_set", { p_id: id });
 export const setAvatar = (look: AvatarLook) => rpc<AvatarLook>("set_avatar", { p: look });
 
 export interface Badge { slug: string; name_en: string; name_th: string; icon: string; value: number; tier: number; goals: number[]; next: number }
-export type Pin = ({ type: "badge" } & Badge) | { type: "stamp"; id: number; name: string; name_th: string | null; tier: 1 | 2 | 3;
+export type Pin = ({ type: "badge" } & Badge) | { type: "stamp"; id: number; name: string; name_th: string | null; tier: 1 | 2 | 3 | 4;
   earned_at: string; province: string | null };
 export interface ProfilePage extends Omit<Card, "rank"> { friend_code: string | null; photos: number; friends: number; rank: number | null; badges: Badge[];
   showcase: Pin[]; crowns: { id: number; name_en: string; name_th: string; visits: number }[] }
@@ -413,7 +413,7 @@ export type Reaction = "heart" | "fire" | "clap" | "wow";
 export interface FeedItem {
   id: number; kind: "stamp" | "province" | "level" | "challenge" | "badge" | "nudge" | "fortune" | "comment" | "award"; at: string; mine: boolean;
   data: Record<string, unknown>; who: Who; to: Who | null;
-  place: { id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3 } | null;
+  place: { id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3 | 4 } | null;
   province: { id: number; iso: string; name_en: string; name_th: string } | null;
   photo: string | null; caption: string | null; reactions: Partial<Record<Reaction, number>>; my_reaction: Reaction | null; comments: number;
 }

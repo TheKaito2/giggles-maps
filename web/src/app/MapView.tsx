@@ -3,6 +3,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { type LatLng, mapPlaces, type MapPlace, type RouteStop, type Stop, type TripMember } from "../lib/api";
 import { addPinIcons } from "./pinIcons";
+import { addLandmarkIcons, landmarkIconOf } from "./landmarkIcons";
 import { colourOf, kindIdOf } from "./kinds";
 import { isNight, type MapLook, offlineStyle, styleUrl } from "./mapLayers";
 import { useTheme } from "../lib/theme";
@@ -104,13 +105,29 @@ export default function MapView({ origin, dest, stops, geometry, alternates = NO
         }
       }
       m.addSource("gm-pois", { type: "geojson", data: poisRef.current });
-      addPinIcons(m).then(() => {
+      const placeName: maplibregl.ExpressionSpecification = lang() === "th" ? ["coalesce", ["get", "name_th"], ["get", "name"]] : ["get", "name"];
+      Promise.all([addPinIcons(m), addLandmarkIcons(m)]).then(() => {
         if (m.getLayer("gm-pois") || !m.getSource("gm-pois")) return;
-        m.addLayer({ id: "gm-pois", type: "symbol", source: "gm-pois", layout: {
+        // landmarks (tier 3) from zoom 9 and icons (tier 4) always are drawn by gm-icons below, never twice
+        // (zoom in a filter is read at whole zoom levels)
+        m.addLayer({ id: "gm-pois", type: "symbol", source: "gm-pois",
+          filter: ["any", ["<", ["get", "tier"], 3], ["all", ["==", ["get", "tier"], 3], ["<", ["zoom"], 9]]], layout: {
           "icon-image": ["concat", "k-", ["get", "icon"]], "icon-allow-overlap": false, "symbol-sort-key": ["get", "rank"],
-          "text-field": ["step", ["zoom"], "", 15, lang() === "th" ? ["coalesce", ["get", "name_th"], ["get", "name"]] : ["get", "name"]], "text-size": 12, "text-offset": [0, 1.3], "text-anchor": "top",
+          "text-field": ["step", ["zoom"], "", 15, placeName], "text-size": 12, "text-offset": [0, 1.3], "text-anchor": "top",
           "text-optional": true, "text-max-width": 9, "text-font": ["Noto Sans Regular"],
         }, paint: { "text-color": lookRef.current.night ? "#e3eafa" : ["get", "colour"],   // at night the kind colours were too dark to read
+          "text-halo-color": lookRef.current.night ? "#1c1f26" : "#ffffff", "text-halo-width": 1.6 } }, "route-casing");
+        // Roadtrippers-style landmark icons: icons (tier 4) at every zoom and named, landmarks (tier 3) smaller from zoom 9
+        // and named from 13. Added above the pins, so they're placed first; the server sends icons first, most famous on
+        // top, so "rank" lets the famous ones win a collision.
+        m.addLayer({ id: "gm-icons", type: "symbol", source: "gm-pois",
+          filter: ["any", ["==", ["get", "tier"], 4], ["all", ["==", ["get", "tier"], 3], [">=", ["zoom"], 9]]], layout: {
+          "icon-image": ["concat", "lm-", ["get", "lm"]], "icon-size": ["case", ["==", ["get", "tier"], 4], 0.95, 0.7],
+          "icon-allow-overlap": false, "symbol-sort-key": ["get", "rank"],
+          "text-field": ["step", ["zoom"], ["case", ["==", ["get", "tier"], 4], placeName, ""], 13, placeName],
+          "text-size": ["case", ["==", ["get", "tier"], 4], 12.5, 11.5], "text-offset": [0, 1.7], "text-anchor": "top",
+          "text-optional": true, "text-max-width": 8, "text-font": ["Noto Sans Regular"],
+        }, paint: { "text-color": lookRef.current.night ? "#e3eafa" : "#0e2440",
           "text-halo-color": lookRef.current.night ? "#1c1f26" : "#ffffff", "text-halo-width": 1.6 } }, "route-casing");
       }).catch((e) => console.error("place pin icons failed", e));
       m.addSource("alternates", { type: "geojson", data: altRef.current });
@@ -129,7 +146,8 @@ export default function MapView({ origin, dest, stops, geometry, alternates = NO
       mapPlaces(b.getWest(), b.getSouth(), b.getEast(), b.getNorth(), m.getZoom(), kindsRef.current).then((list) => {
         if (id !== pinRequest.current) return;
         poisRef.current = { type: "FeatureCollection", features: list.map((p, i) => ({ type: "Feature",
-          properties: { ...p, rank: i, colour: colourOf(p.kind, p.category), icon: kindIdOf(p.kind, p.category) },
+          properties: { ...p, rank: i, colour: colourOf(p.kind, p.category), icon: kindIdOf(p.kind, p.category),
+            lm: p.tier >= 3 ? landmarkIconOf(p) : null },
           geometry: { type: "Point", coordinates: [p.lng, p.lat] } })) };
         (m.getSource("gm-pois") as maplibregl.GeoJSONSource | undefined)?.setData(poisRef.current);
       }).catch(() => undefined);
@@ -139,12 +157,14 @@ export default function MapView({ origin, dest, stops, geometry, alternates = NO
     m.on("load", loadPins);
     // the basemap asks for icons its sprite lacks ("office", "atm", "gate"): a blank one instead of a console warning each time
     m.on("styleimagemissing", (e) => { if (!m.hasImage(e.id)) m.addImage(e.id, { width: 1, height: 1, data: new Uint8Array(4) }); });
-    m.on("click", "gm-pois", (e) => {
-      const f = e.features?.[0];
-      if (f && !pickingRef.current) onPlaceRef.current?.(f.properties as unknown as MapPlace);
-    });
-    m.on("mouseenter", "gm-pois", () => { m.getCanvas().style.cursor = "pointer"; });
-    m.on("mouseleave", "gm-pois", () => { m.getCanvas().style.cursor = pickingRef.current ? "crosshair" : ""; });
+    for (const layer of ["gm-pois", "gm-icons"]) {   // a landmark icon opens the place sheet like a pin
+      m.on("click", layer, (e) => {
+        const f = e.features?.[0];
+        if (f && !pickingRef.current) onPlaceRef.current?.(f.properties as unknown as MapPlace);
+      });
+      m.on("mouseenter", layer, () => { m.getCanvas().style.cursor = "pointer"; });
+      m.on("mouseleave", layer, () => { m.getCanvas().style.cursor = pickingRef.current ? "crosshair" : ""; });
+    }
     reloadPins.current = loadPins;
     map.current = m;
     return () => { clearTimeout(t); sized.disconnect(); m.remove(); };

@@ -8,7 +8,7 @@ export interface DemoPlace {
   name: string;
   name_th: string | null;
   category: string;
-  tier: 1 | 2 | 3;
+  tier: 1 | 2 | 3 | 4;
   province: { id: number; iso: string; name_en: string; name_th: string } | null;
 }
 

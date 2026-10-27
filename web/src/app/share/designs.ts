@@ -11,7 +11,7 @@ export const DESIGNS = {
 export type Design = keyof typeof DESIGNS;
 
 export type Card =
-  | { kind: "photo" | "sticker"; place: string; placeTh: string | null; tier: 1 | 2 | 3; province: string | null; at: Date; level: number | null; photo?: string }
+  | { kind: "photo" | "sticker"; place: string; placeTh: string | null; tier: 1 | 2 | 3 | 4; province: string | null; at: Date; level: number | null; photo?: string }
   | { kind: "progress"; name: string; visited: Set<number> }
   | { kind: "stats"; name: string; visited: Set<number>; level: number; stamps: number }   // transparent sticker
   | { kind: "milestone"; what: "province"; province: number | string; at: Date; name: string }   // province id or English name

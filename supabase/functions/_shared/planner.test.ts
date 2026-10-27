@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { insertBest, planDetour, type Stop, insertionCost } from "./planner.ts";
-import { fitsInterests, independent, mixWeight } from "./themes.ts";
+import { fitsInterests, independent, mixWeight, themeWeight } from "./themes.ts";
 
 // grid world: travel minutes = manhattan distance between points
 const pts = [
@@ -228,6 +228,7 @@ test("fitsInterests: only the picked kinds, landmarks by tier; independent: chai
   expect(fitsInterests(["cafes"], "temple")).toBe(false);
   expect(fitsInterests(["landmarks"], "park", 3)).toBe(true);
   expect(fitsInterests(["landmarks"], "park", 2)).toBe(false);
+  expect(fitsInterests(["landmarks"], "temple", 4)).toBe(true);   // an icon is a landmark too
   expect(independent({ category: "cafe", local: false })).toBe(false);
   expect(independent({ category: "cafe", local: true })).toBe(true);
   expect(independent({ category: "temple" })).toBe(true);
@@ -266,4 +267,15 @@ test("two places 0 minutes apart are planned as one stop", () => {
   const tm = (a: number, b: number) => (a === 8 ? travelMin(2, b) : b === 8 ? travelMin(a, 2) : travelMin(a, b));   // 8 sits on 2
   const p = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 120, stops: twin, travelMin: tm }).order.map((s) => s.id);
   expect(p.includes(2) && p.includes(8)).toBe(false);
+});
+
+test("an icon (tier 4) beats an equally good landmark (tier 3) at the same spot; Local gems skips both", () => {
+  const twins: Stop[] = [
+    { idx: 2, id: 30, category: "temple", rating: 4.6, dwellMin: 15, tier: 3 },
+    { idx: 2, id: 40, category: "temple", rating: 4.6, dwellMin: 15, tier: 4 },
+  ];
+  const p = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 60, stops: twins, travelMin, maxStops: 1 });
+  expect(p.order.map((s) => s.id)).toEqual([40]);
+  expect(themeWeight("local", "temple", 4)).toBe(0);
+  expect(themeWeight("top_picks", "temple", 4)).toBe(2);
 });

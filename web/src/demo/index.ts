@@ -49,7 +49,7 @@ async function nearbyPlaces(): Promise<DemoPlace[]> {
   const d = 0.12;
   const list = await mapPlaces(at.lng - d, at.lat - d, at.lng + d, at.lat + d, 13, null).catch(() => []);
   places = list.filter((p) => p.tier >= 2 || p.local || p.otop).slice(0, 40)
-    .map((p) => ({ id: p.id, name: p.name, name_th: p.name_th, category: p.category, tier: (p.tier >= 1 && p.tier <= 3 ? p.tier : 2) as 1 | 2 | 3, province: null }));
+    .map((p) => ({ id: p.id, name: p.name, name_th: p.name_th, category: p.category, tier: (p.tier >= 1 && p.tier <= 4 ? p.tier : 2) as 1 | 2 | 3 | 4, province: null }));
   placesFor = key;
   return places;
 }

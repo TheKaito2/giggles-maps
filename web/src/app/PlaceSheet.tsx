@@ -187,7 +187,7 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
           </span>
           <span className="row tight">
             {tier && <span className={`chip tier-${tier}`}>{TIER_NAME[tier]}</span>}
-            {page.tier === 3 && <span className="chip landmark">Landmark</span>}
+            {page.tier >= 3 && <span className="chip landmark">{page.tier === 4 ? "Icon" : "Landmark"}</span>}
             {page.otop && <span className="chip otop">OTOP{extras?.otop_stars ? ` ${"★".repeat(extras.otop_stars)}` : ""}</span>}
             {extras?.verified && <span className="chip">Verified shop</span>}
             {page.community && <span className="chip otop">Community enterprise</span>}
@@ -216,7 +216,8 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
       {msg && <p className="fine" role="status">{msg}</p>}
 
       {extras?.description ? <p className="place-about">{extras.description}</p>
-        : <p className="place-about fine">{page.tier === 3 ? "A landmark: one of the best-known places around here."
+        : <p className="place-about fine">{page.tier === 4 ? "An icon: one of the best-known places in Thailand."
+          : page.tier === 3 ? "A landmark: one of the best-known places around here."
           : page.tier === 2 ? "Worth a stop on the way." : "An everyday place, handy on the way."}</p>}
       {(page.otop || page.community) && <p className="local-note">{page.community
         ? "A community enterprise: your visit supports local makers directly."

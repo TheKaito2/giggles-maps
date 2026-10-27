@@ -14,7 +14,7 @@ export interface Stop {
   id: number;
   category: string;
   rating: number | null;   // null = unrated
-  tier?: Tier;             // 3 landmark, 2 worth a visit, 1 everyday (default 2)
+  tier?: Tier;             // 4 icon, 3 landmark, 2 worth a visit, 1 everyday (default 2)
   dwellMin: number;
   frac?: number;            // where along the direct route it sits: 0 start, 1 destination
   local?: boolean;          // independent food/café/craft/market place (not a chain)
@@ -61,7 +61,8 @@ export interface Plan {
 const UNRATED = 3.5;   // unrated places score like a middling rating, below the 4.0 default floor
 const quality = (s: Stop) => (s.rating ?? UNRATED) / 5;
 // Landmarks are what a detour is for: they outweigh a nearby cafe even when they add more minutes.
-const TIER_VALUE: Record<Tier, number> = { 3: 3, 2: 1.2, 1: 0.5 };
+// Icons (the country's major landmarks) a notch above.
+const TIER_VALUE: Record<Tier, number> = { 4: 4.5, 3: 3, 2: 1.2, 1: 0.5 };
 
 export function planDetour(input: PlanInput): Plan {
   const { originIdx, destIdx, startMin, budgetMin, travelMin, minRating = 4.0, allowUnrated = false,

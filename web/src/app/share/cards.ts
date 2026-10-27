@@ -78,7 +78,7 @@ function speckle(g: CanvasRenderingContext2D, x: number, y: number, w: number, h
 }
 
 /** A round rubber stamp for a place: double ring, words around the edge, the tier in the middle and a date band. */
-function placeStamp(g: CanvasRenderingContext2D, cx: number, cy: number, r: number, ink: string, tier: 1 | 2 | 3, at: Date, seed: number, paper?: string) {
+function placeStamp(g: CanvasRenderingContext2D, cx: number, cy: number, r: number, ink: string, tier: 1 | 2 | 3 | 4, at: Date, seed: number, paper?: string) {
   const c = document.createElement("canvas");
   c.width = c.height = Math.ceil(r * 2 + 40);
   const s = c.getContext("2d")!, o = c.width / 2;

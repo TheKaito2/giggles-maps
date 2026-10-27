@@ -11,7 +11,7 @@ interface Candidate {
   dwell_min: number; rating: number | null;
   is_partner: boolean; is_demo: boolean;
   price_level: number | null;
-  tier: Tier;   // 3 landmark, 2 worth a visit, 1 everyday
+  tier: Tier;   // 4 icon, 3 landmark, 2 worth a visit, 1 everyday
   frac?: number;   // 0 start .. 1 destination along the direct route (route shortlist only)
   local?: boolean; otop?: boolean; community?: boolean;   // local-first flags (route shortlist only)
 }

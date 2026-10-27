@@ -34,7 +34,7 @@ function badges(s: RouteStop): { text: string; cls: string; title?: string }[] {
     s.picked && { text: "You picked", cls: "picked" },
     s.pit_stop && { text: "Pit stop", cls: "pit", title: "A quick stop for snacks, a drink or the toilet" },
     s.meal && { text: s.meal_late ? `Late ${MEAL_NAME[s.meal].toLowerCase()}` : MEAL_NAME[s.meal], cls: "meal" },
-    s.tier === 3 && { text: "Landmark", cls: "landmark" },
+    (s.tier ?? 0) >= 3 && { text: s.tier === 4 ? "Icon" : "Landmark", cls: "landmark" },
     (s.otop || s.community) && { text: s.otop ? "OTOP" : "Community", cls: "otop" },
     !s.otop && !s.community && s.local && { text: "Local", cls: "" },
     !s.partner_tier && s.is_partner && { text: s.is_demo ? "Example partner" : "Partner", cls: "partner", title: PARTNER_TIP },
