@@ -20,6 +20,7 @@ import { loadLook, type MapLook, saveLook } from "./mapLayers";
 import ExploreChips, { CHIPS } from "./ExploreChips";
 import DemoBar from "./DemoBar";
 import { demoOn, onDemoChange } from "../lib/demoGps";
+import { FREE_STOPS } from "./prefs";
 import { SkelLines } from "./Skeleton";
 import Boundary from "./Boundary";
 import Modal from "./Modal";
@@ -131,7 +132,7 @@ export default function App() {
   const [selected, setSelected] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const d = useDetour(setError);
+  const d = useDetour(setError, adFree(profile) || demoOn());   // members, Plus and demo plan 15 stops, free plans 3
   // Back steps through the trip (results, then time options, then the map) and closes a place sheet, instead of leaving
   // the app and losing the plan
   useBack(() => (d.stage === "results" ? d.setStage("choose") : d.close()), tab === "map" && d.stage !== "browse", d.stage);
@@ -238,10 +239,12 @@ export default function App() {
 
   // "Plan this trip" on a shared trip page: its destination, start (when it had one) and stops as must-visit picks, planned
   // afresh from your own start time. A trip shared from "Your location" starts from yours.
+  const sharedLimit = d.unlimited ? 15 : FREE_STOPS;
   const planShared = (t: SharedTrip) => {
     setSharedTrip(null);
     if (t.origin.lat != null && t.origin.lng != null) d.setOrigin({ point: { lat: t.origin.lat, lng: t.origin.lng }, name: t.origin.name });
-    d.set({ mode: t.mode, picks: t.stops.slice(0, 10).map((s) => ({ id: s.id, name: s.name })) });   // 10 = a free plan's stop limit
+    // a free plan takes the first 3 picks (TripView says so); members, Plus and demo take them all
+    d.set({ mode: t.mode, picks: t.stops.slice(0, sharedLimit).map((s) => ({ id: s.id, name: s.name })) });
     d.goTo({ point: { lat: t.dest.lat, lng: t.dest.lng }, name: t.dest.name });
     setTab("map");
   };
@@ -364,7 +367,7 @@ export default function App() {
       {nav && <Navigate waypoints={nav} mode={d.prefs.mode} onClose={() => { setNav(null); liveTrip.end(); }}
         onCheckin={(stop, rest) => { setNav(null); setPaused(rest.length ? rest : null); if (stop.id != null) checkInAt({ ...stop, id: stop.id }); }} />}
       {etaToken && <EtaView token={etaToken} onClose={() => setEtaToken(null)} />}
-      {sharedTrip && <TripView id={sharedTrip} onClose={() => setSharedTrip(null)} onPlan={planShared} />}
+      {sharedTrip && <TripView id={sharedTrip} limit={sharedLimit} onClose={() => setSharedTrip(null)} onPlan={planShared} />}
       {overlay === "avatar" && profile && <AvatarBuilder profile={profile} onClose={() => setOverlay(null)} onSaved={() => { setOverlay(null); refresh(); }} />}
       {overlay === "ride" && (
         <Modal label="Ride along" onClose={() => setOverlay(null)}>

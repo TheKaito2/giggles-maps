@@ -718,6 +718,8 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .meal-pill { display: grid; justify-items: start; gap: 0; padding: 8px 12px; }
 .filter-q input[type="range"] { width: 100%; accent-color: var(--brand); }
 .range-ticks { display: flex; justify-content: space-between; padding: 0 2px; }
+.plus-term { margin: 4px 0 8px; flex-wrap: wrap; }
+.locked-more { margin-top: 8px; border-style: dashed; color: var(--ink-2); }
 .filter-q .pref-row > span { display: grid; gap: 2px; }
 .elsewhere { display: grid; gap: 4px; }
 .elsewhere .btn { gap: 6px; text-decoration: none; }
@@ -1139,6 +1141,8 @@ p.chase { margin: 0; }
 .stop-meta > b.extra { color: var(--brand); }
 .stop-leg { color: var(--ink-2); }
 .dest-row { padding: 6px 0 6px 28px; }
+.stay-near { display: grid; gap: 6px; padding: 8px 0; border-top: 2px solid var(--paper); }
+.stay-near p { margin: 0; gap: 8px; }
 .stop-num.dest { background: var(--ink); }
 
 /* + between stops (detour Results): appears next to the stop you hover; faint but there on touch screens */

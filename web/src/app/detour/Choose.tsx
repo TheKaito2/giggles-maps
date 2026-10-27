@@ -112,7 +112,8 @@ export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => voi
         <button type="button" className="btn soft small" onClick={() => setFilters(true)}>
           <SlidersHorizontal size={15} aria-hidden /> More filters{n ? ` · ${n}` : ""}</button>
       </div>
-      {filters && <Filters prefs={d.prefs} apply={(p) => d.set(p)} near={d.origin?.point ?? null} onClose={() => setFilters(false)} />}
+      {filters && <Filters prefs={d.prefs} apply={(p) => d.set(p)} near={d.origin?.point ?? null} onClose={() => setFilters(false)}
+        onMore={d.unlimited ? undefined : () => { setFilters(false); d.setGate("stop_limit_free"); }} />}
     </div>
   );
 }

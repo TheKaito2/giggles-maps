@@ -4,6 +4,7 @@ import { insertBest, insertionCost, type Plan, planDetour, type Stop } from "../
 import { fitsInterests, independent, INTERESTS, isInterest, mixWeight, type Tier, THEMES, toTheme } from "../_shared/themes.ts";
 import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan } from "../_shared/road-detour.ts";
 import { corridorMatrix } from "../_shared/corridor.ts";
+import { plannedStops, STOP_CAP, stopCap as capFor, stopLimitCode } from "../_shared/tiers.ts";
 import { createRouter, estimateMinutes, RoutingError, haversineM, type LatLng, matrixMinutes, METERS_PER_MIN, type Mode, type RoadRoute } from "../_shared/valhalla.ts";
 
 interface Candidate {
@@ -22,7 +23,6 @@ interface NearPlace {
 }
 
 const MAX_BUDGET = 240; // 4-hour detours for everyone (Plus is cosmetic only)
-const STOP_CAP = { free: 10, member: 15 };   // the most stops a plan holds, generated or added by hand
 const CARD_CATEGORIES = new Set(["park", "viewpoint", "temple"]); // "Near this spot" cards sit under these
 const MAX_CARDS = 2;
 const QUICK_DWELL_MIN = 10; // time counted at each stop on a short (Quick) detour
@@ -87,8 +87,13 @@ serve(async (req) => {
   const { data: profile } = await db.from("profiles").select("plus_until, member_since").eq("id", user.id).maybeSingle();
   const plus = !!profile?.plus_until && new Date(profile.plus_until) > new Date();
   const member = !!profile?.member_since;
-  const stopCap = member ? STOP_CAP.member : STOP_CAP.free;
-  if (mustInclude.length > stopCap) throw new HttpError(400, "stop_limit");
+  // stops a plan holds (tiers.ts): free plans 3, members and Plus 15. Demo mode stays unlimited for showing the app off.
+  // ponytail: demo is the client's own flag (body.demo), so anyone who switches demo mode on gets 15 stops; tie it to a
+  // server-side demo account if that ever matters.
+  const unlimited = member || plus || body.demo === true;
+  const stopCap = capFor(unlimited);
+  const stopRefusal = stopLimitCode(mustInclude.length, unlimited);
+  if (stopRefusal) throw new HttpError(stopRefusal === "stop_limit_free" ? 403 : 400, stopRefusal);
   // quotas: free accounts plan 3 destinations and make 10 edits a day; members are unlimited, everyone is rate-limited.
   // A detour is keyed by its destination (~100 m), so the 3 preset plans and preference changes count once; an edit by what it
   // keeps and removes, so the planner's own retries of one edit count once.
@@ -253,7 +258,7 @@ serve(async (req) => {
     // Partner picks: only places we hand-picked (Giggles Choice), for everyone, when any are along the way
     ...(choiceStops.some((st) => tierOf.get(st.id) === "choice") ? [{ id: "giggles", name: "Partner picks", only: choiceStops }] : []),
   ];
-  const prefs = { minRating, allowUnrated: includeUnrated, maxStops: maxStops ?? stopCap, requiredIds: mustInclude };
+  const prefs = { minRating, allowUnrated: includeUnrated, maxStops: plannedStops(maxStops, unlimited), requiredIds: mustInclude };
   for (const t of variants) {
     const pool = ("only" in t && t.only) || stops;
     const sightsWithin = (budget: number, keep?: number[], drop?: Set<number>) => planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin: budget,
@@ -263,7 +268,8 @@ serve(async (req) => {
       segments, theme: "theme" in t ? t.theme : undefined, weight: "weight" in t ? t.weight : undefined });
     // Quick: plan the sight leaving room for a pit stop, then add the cheapest store that fits; no store fits, the sight gets it all
     const sights = pitStops.length ? sightsWithin(budgetMin - PIT_RESERVE_MIN) : null;
-    const plan = (sights && pitStops.map((pit) => insertBest(sights, pit, travelMin, budgetMin)).filter((x): x is Plan => !!x)
+    // a free plan already at its 3 stops gets no pit stop on top
+    const plan = (sights && sights.order.length < stopCap && pitStops.map((pit) => insertBest(sights, pit, travelMin, budgetMin)).filter((x): x is Plan => !!x)
       .sort((a, b) => a.extraMin - b.extraMin)[0]) || sightsWithin(budgetMin);
     const stopsKey = plan.order.map((s) => s.id).join(",");
     if (t.id === "giggles" && !plan.order.some((st) => tierOf.get(st.id) === "choice")) continue;   // no Choice place fits the time
@@ -430,7 +436,7 @@ serve(async (req) => {
     route_id: route.id, routing, mode, plus, member, level,
     base_min: Math.round(plan.baseMin), total_min: Math.round(plan.totalMin),
     extra_min: Math.round(plan.extraMin), budget_min: budgetMin, budget_auto: autoBudget, quick_stops: quickStops, ...split(themed[topIdx]),
-    max_budget_min: MAX_BUDGET, max_stops: stopCap, start_min: startMin,
+    max_budget_min: MAX_BUDGET, max_stops: stopCap, free_cap: !unlimited, start_min: startMin,
     candidates_considered: candidates.length,
     stops: ordered, geometry, base_geometry: baseline?.geometry ?? [],
     warnings: [...new Set(warnings)],

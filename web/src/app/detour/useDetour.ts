@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError, errCode } from "../../lib/supabase";
 import { isGuest, useUser } from "../../lib/auth";
 import { choosePlan, planRoute, type RoutePlan } from "../../lib/api";
-import { DEFAULT_PREFS, MAX_BUDGET, type Place, type Prefs, toRequest } from "../prefs";
+import { DEFAULT_PREFS, FREE_STOPS, MAX_BUDGET, type Place, type Prefs, toRequest } from "../prefs";
 
 // Detour flow, Google-Maps style: browse the map -> pick where to -> pick how much time (Quick, Relaxed, Day out and Half day
 // are planned in parallel; none is picked until you tap one) -> results you can edit (remove or add stops).
@@ -17,8 +17,9 @@ export const PRESETS = [
 export type PresetId = (typeof PRESETS)[number]["id"] | "custom";
 type Result = RoutePlan | "loading" | { error: string; gate?: Gate };   // gate: sign in or upgrade, not worth a retry
 // v5: why a plan was refused, for the sign-in / membership sheet
-export type Gate = "sign_in_required" | "sign_in_edits" | "detour_limit" | "edit_limit";
-const GATES = new Set<string>(["sign_in_required", "sign_in_edits", "detour_limit", "edit_limit"]);
+// stop_limit_free: a free plan holds 3 stops; membership (or Plus) lifts it
+export type Gate = "sign_in_required" | "sign_in_edits" | "detour_limit" | "edit_limit" | "stop_limit_free";
+const GATES = new Set<string>(["sign_in_required", "sign_in_edits", "detour_limit", "edit_limit", "stop_limit_free"]);
 
 const errorText = (e: unknown) => {
   const code = errCode(e);
@@ -29,6 +30,7 @@ const errorText = (e: unknown) => {
     : code === "edit_limit" ? "That's today's 10 free changes."
     : code === "slow_down" ? "Lots of plans at once. Wait a moment, then try again."
     : code === "day_cap" ? "That's all the plans for today. Sign in free for more, or come back tomorrow."
+    : code === "stop_limit_free" ? `Free plans hold ${FREE_STOPS} stops. Members can add more.`
     : code === "stop_limit" ? "That's the most stops a plan holds. Remove one to add another."
     : code === "too_far_for_mode" ? "That's too far to walk or cycle in one go. Try Driving."
     : code === "bad_origin" || code === "bad_dest" ? "Pick a start and destination inside Thailand." : "Couldn't plan this one. Try again in a moment.";
@@ -64,7 +66,8 @@ function savedTrip(): Saved | null {
   } catch { return null; }
 }
 
-export function useDetour(onError: (m: string) => void) {
+/** `unlimited`: member, Plus or demo mode (plans hold 15 stops); everyone else plans 3 (the server decides; this is for the UI). */
+export function useDetour(onError: (m: string) => void, unlimited = true) {
   const restored = useRef(savedTrip()).current;
   const guest = isGuest(useUser());
   const [gate, setGate] = useState<Gate | null>(null);
@@ -188,7 +191,7 @@ export function useDetour(onError: (m: string) => void) {
   const current = preset ? results[preset] : undefined;
   const response = current && typeof current === "object" && "route_id" in current ? current : null;
   const plan = response && choosePlan(response, choice);
-  const cap = response?.max_stops ?? 10;   // stops a plan holds: 10, members 15 (= STOP_CAP in plan-route)
+  const cap = response?.max_stops ?? (unlimited ? 15 : FREE_STOPS);   // stops a plan holds: free 3, members 15 (= STOP_CAP in tiers.ts)
 
   // edits re-plan the shown preset: kept stops stay in (must_include), removed ones stay out (exclude), and the planner works
   // out the best order again. Kept stops always stay, past the preset's time if need be: the time only shapes the generated
@@ -231,7 +234,7 @@ export function useDetour(onError: (m: string) => void) {
   return {
     stage, setStage, origin, setOrigin, dest, setDest, prefs, set, results, preset, setPreset: choosePreset, choice,
     setChoice: (c: string | null) => { setManual(false); setChoice(c); }, plan, response,
-    cap, editing, locating, hidden, retry, notify: onError, gate, setGate, replanAll: () => { reuseKey.current = null; setAgain((n) => n + 1); }, goTo, close, pickCustom, budgetOf, removeStop, addStop, reorder,
+    cap, unlimited, editing, locating, hidden, retry, notify: onError, gate, setGate, replanAll: () => { reuseKey.current = null; setAgain((n) => n + 1); }, goTo, close, pickCustom, budgetOf, removeStop, addStop, reorder,
     swap: () => { if (origin && dest) { setOrigin(dest); setDest(origin); } },
   };
 }

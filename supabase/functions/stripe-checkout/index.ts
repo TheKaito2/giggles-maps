@@ -3,11 +3,13 @@ import { admin, HttpError, json, readJson, requireUser, serve } from "../_shared
 // What can be bought on the web (Stripe). iOS/Android sell Plus through StoreKit / Play Billing instead.
 //   credit     : prepaid visit credit for a shop (each verified visit deducts the shop's bid)
 //   plus       : Giggles Plus for a user, 30 days (no ads, daily coins, Plus shelf and title, themes and flair)
+//   plus_year  : Giggles Plus for a user, 365 days (web only; the iOS app sells monthly Plus through StoreKit)
 //   membership : one-time lifetime membership (no ads, unlimited detours, partners first, 3 months of Plus), never renews
 //   partner    : a shop's Partner tier, 30 days (members' routes put it first; guests can book it)
 //   choice     : Giggles Choice, 30 days: a Partner we hand-picked (needs our approval first), also in the Partner picks plan
 const CREDIT_PACKS = [500, 1000, 3000];
-const PLUS_THB = 59;
+// ponytail: prices are defaults awaiting the owner's decision (= PRICES.plus / plusYear in web/src/lib/api.ts)
+const PLUS_THB = { plus: 59, plus_year: 590 } as const;
 const MEMBERSHIP_THB = 349;
 const TIER_THB = { partner: 299, choice: 799 } as const;
 
@@ -18,19 +20,19 @@ serve(async (req) => {
   if (!/^(sk|rk)_test_/.test(key) && Deno.env.get("STRIPE_LIVE") !== "1") throw new HttpError(503, "live_payments_disabled");
 
   const body = await readJson(req);
-  const kind = ["credit", "plus", "membership", "partner", "choice"].includes(body.kind) ? body.kind : "credit";
+  const kind = ["credit", "plus", "plus_year", "membership", "partner", "choice"].includes(body.kind) ? body.kind : "credit";
   const site = Deno.env.get("SITE_URL") ?? "https://giggles-maps.pages.dev";
 
   let amount: number, name: string, back: string;
   const meta: Record<string, string> = { kind };
-  if (kind === "plus" || kind === "membership") {
+  if (kind === "plus" || kind === "plus_year" || kind === "membership") {
     if (user.is_anonymous) throw new HttpError(403, "sign_in_required"); // must survive a reinstall
     if (kind === "membership") {
       const { data: p } = await admin().from("profiles").select("member_since").eq("id", user.id).maybeSingle();
       if (p?.member_since) throw new HttpError(409, "already_member");
     }
-    amount = kind === "plus" ? PLUS_THB : MEMBERSHIP_THB;
-    name = kind === "plus" ? "Giggles Plus, 30 days" : "Giggles Maps membership (one-time)";
+    amount = kind === "membership" ? MEMBERSHIP_THB : PLUS_THB[kind as keyof typeof PLUS_THB];
+    name = kind === "plus" ? "Giggles Plus, 30 days" : kind === "plus_year" ? "Giggles Plus, 1 year" : "Giggles Maps membership (one-time)";
     back = `${site}/app/`;
     meta.user_id = user.id;
   } else if (kind === "partner" || kind === "choice") {

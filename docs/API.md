@@ -58,7 +58,7 @@ Request
     route" once you've set the order yourself.
   - Editing a plan, the way the web app does it: remove = `must_include` the other current stops + `exclude` the removed one; swap = the same (the planner picks the best replacement); add = `must_include` the current stops + the new place, with more `budget_min` when it doesn't fit. Send `theme` to keep the plan you were on first.
   - Each stop has `extra_min` (about how many minutes it adds: road detour + time there; null if unknown) and `photo` (a URL or null). Each plan has `along`: up to 30 shortlist places it left out, cheapest first, `{ id, name, name_th, category, lat, lng, tier, rating, local, otop, community, photo, extra_min }` (an estimate: "about +X min").
-  - `max_stops`: 1–6 stops per plan; omitted = no cap. Meal stops count. 400 `bad_max_stops`.
+  - `max_stops`: 1–6 stops per plan; omitted = up to the account's cap. Meal stops count. 400 `bad_max_stops`.
   - `max_price`: 0 (free) to 3 (฿฿฿). Drops places whose **known** price is higher; places with no listed price stay. 400 `bad_max_price`.
 - `theme` (optional): `top_picks` (Landmarks), `nature` or `scenic` (Scenic), `culture` (Culture & heritage), `local` (Local gems), `food` or `shopping`. Only reorders `plans` so that one comes first; anything else is 400 `bad_theme`.
 - Coordinates must be inside Thailand (lat 5–21, lng 97–106).
@@ -92,6 +92,12 @@ Response
   second destination or 403 `sign_in_edits` for a 4th edit (migrations 073, 080; show the sign-in sheet, not a retry). Free accounts: 3 detours (destinations) and 10 edits a Bangkok
   day (429 `detour_limit` / `edit_limit`); a request with `must_include` or `exclude` is an edit. Everyone: 20 plans a minute,
   members 300 and free accounts 100 a day (429 `slow_down`). An edit of a destination not planned today counts as a detour. `my_plan_usage()` reports today's counts.
+- **Stop cap by tier** (`_shared/tiers.ts`): guests and free accounts get at most **3 stops** a plan; members, Plus and demo
+  mode (`demo: true`) 15. The planner fills up to the cap (a larger `max_stops` is trimmed to it; a Quick plan already at 3
+  stops gets no pit stop). More `must_include` places than the cap: 403 `stop_limit_free` for a free plan (show the
+  membership sheet), 400 `stop_limit` past 15. The response has `max_stops` (the cap) and `free_cap: true` when the free
+  cap applies: show "Members can add more stops" when a plan has `max_stops` stops. Shared trips ("Plan this trip") load the
+  first 3 stops for free users.
 - Stops are chosen by quality (rating, variety, fit inside the budget). For members, paid tiers score higher: Giggles Choice ×2,
   Partner ×1.5. Every stop and `along` place has `partner_tier: "partner" | "choice" | null`; show its badge whenever set.
 - `plans` can include `{id: "giggles", name: "Partner picks"}`: Giggles Choice places only (plus picks), for everyone, when a
@@ -107,7 +113,7 @@ Response
 - Each stop has `tier`: 3 = landmark (must-go: Wikipedia/Wikidata-linked, national parks, heritage, waterfalls, named peaks), 2 = worth a visit, 1 = everyday (cafes, food, crafts). Shown as a Landmark chip for tier 3.
 - Each stop has `rating` (number, or `null` = unrated) and `price_level` (0 free, 1–3 = ฿–฿฿฿, `null` = not listed).
 
-Errors: `not_signed_in` 401, `routing_unavailable` 503, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_mode` / `bad_theme` / `bad_interests` / `bad_min_rating` / `bad_max_stops` / `bad_max_price` / `bad_must_include` / `bad_exclude` / `bad_meals` / `bad_json` 400.
+Errors: `not_signed_in` 401, `routing_unavailable` 503, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_mode` / `bad_theme` / `bad_interests` / `bad_min_rating` / `bad_max_stops` / `bad_max_price` / `bad_must_include` / `bad_exclude` / `bad_meals` / `bad_json` / `stop_limit` 400, `stop_limit_free` 403 (plus the quota codes above).
 
 Quick detours (budget under 30 min, no meal asked for): each stop counts as 10 minutes, every kind of place qualifies, and
 after the sight the cheapest convenience store on the way (`route_pit_stops`, 5 minutes there) is added when it fits.
@@ -167,6 +173,7 @@ Body `{}`. Deletes the user's selfies, then the auth user (cascades check-ins, b
 |---|---|
 | `{ "kind": "credit", "shop_id": "uuid", "pack": 500 \| 1000 \| 3000 }` | Prepaid visit credit for a shop |
 | `{ "kind": "plus" }` | Giggles Plus for the signed-in user, ฿59 / 30 days (403 `sign_in_required` for guests) |
+| `{ "kind": "plus_year" }` | Giggles Plus for a year, ฿590 / 365 days (same rules as `plus`; web only, the iOS app sells monthly Plus) |
 | `{ "kind": "membership" }` | Lifetime membership, ฿349, with 90 days of Plus (403 `sign_in_required` for guests, 409 `already_member`) |
 | `{ "kind": "partner", "shop_id": "uuid" }` | Partner tier for 30 days, ฿299 (403 `not_your_shop`, 409 `not_verified`) |
 | `{ "kind": "choice", "shop_id": "uuid" }` | Giggles Choice for 30 days, ฿799 (also 409 `choice_not_approved`) |
@@ -185,7 +192,7 @@ Errors: `sign_in_required` 403 (guests), `invalid_transaction` 400, `bought_by_a
 
 ## `stripe-webhook`
 
-Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`, then applies the payment once per Checkout session (`apply_payment`: credit → wallet, plus → `profiles.plus_until` +30 days, membership → `profiles.member_since`) on `checkout.session.completed` (paid) or `checkout.session.async_payment_succeeded` (PromptPay).
+Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`, then applies the payment once per Checkout session (`apply_payment`: credit → wallet, plus → `profiles.plus_until` +30 days, plus_year → +365 days (migration 089), membership → `profiles.member_since`) on `checkout.session.completed` (paid) or `checkout.session.async_payment_succeeded` (PromptPay).
 
 ## Passport (RPCs, signed-in user)
 

@@ -20,7 +20,7 @@ const pin = (cls: string, text: string, label: string) => {
 
 /** A shared trip page (/app/?trip=ID): the route, its numbered stops and times, read-only. "Plan this trip" loads it into
  *  the normal detour flow, planned again from your own start time. */
-export default function TripView({ id, onClose, onPlan }: { id: string; onClose: () => void; onPlan: (t: SharedTrip) => void }) {
+export default function TripView({ id, limit, onClose, onPlan }: { id: string; limit: number; onClose: () => void; onPlan: (t: SharedTrip) => void }) {
   const dialog = useDialog(onClose);
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -87,6 +87,7 @@ export default function TripView({ id, onClose, onPlan }: { id: string; onClose:
         </ol>
         <p className="fine">Times count from when you leave.</p>
         {msg && <p className="fine" role="status">{msg}</p>}
+        {trip.stops.length > limit && <p className="fine">Free plans load the first {limit} stops. Members get them all.</p>}
         <div className="row">
           <button type="button" className="btn big find" onClick={() => onPlan(trip)}><Route size={18} aria-hidden /> Plan this trip</button>
           <button type="button" className="btn soft" onClick={share}><Share2 size={16} aria-hidden /> Share</button>

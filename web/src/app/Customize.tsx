@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Coffee, Landmark, type LucideIcon, ShoppingBag, Sparkles, Trees, UtensilsCrossed, X } from "lucide-react";
+import { Coffee, Landmark, Lock, type LucideIcon, ShoppingBag, Sparkles, Trees, UtensilsCrossed, X } from "lucide-react";
 import type { Interest, LatLng } from "../lib/api";
 import ExplorePlaces from "./ExplorePlaces";
-import { DEFAULT_PREFS, filterSummary, INTERESTS, MEALS, type Prefs } from "./prefs";
+import { DEFAULT_PREFS, filterSummary, FREE_STOPS, INTERESTS, MEALS, type Prefs } from "./prefs";
 import Info from "./Info";
 import Modal from "./Modal";
 
@@ -16,9 +16,12 @@ export function filterCount(p: Prefs): number {
 }
 
 /** All the ways to shape your stops, each a plain question. Edits a draft; "Show plans" applies it
- *  (each change re-plans every time option, so not on every tap). */
-export default function Filters({ prefs: start, apply, near, onClose }: { prefs: Prefs; apply: (p: Prefs) => void; near: LatLng | null; onClose: () => void }) {
+ *  (each change re-plans every time option, so not on every tap). `onMore` set = a free plan (3 stops at most): the stop
+ *  count goes to 3 and "More stops · Members" opens the membership sheet. */
+export default function Filters({ prefs: start, apply, near, onClose, onMore }: { prefs: Prefs; apply: (p: Prefs) => void; near: LatLng | null;
+  onClose: () => void; onMore?: () => void }) {
   const [prefs, setDraft] = useState(start);
+  const most = onMore ? FREE_STOPS : 6;
   const set = (patch: Partial<Prefs> | ((p: Prefs) => Partial<Prefs>)) =>
     setDraft((p) => ({ ...p, ...(typeof patch === "function" ? patch(p) : patch) }));
   const toggle = (id: Interest) =>
@@ -60,10 +63,11 @@ export default function Filters({ prefs: start, apply, near, onClose }: { prefs:
 
         <section className="filter-q" aria-labelledby="q-stops">
           <h3 id="q-stops">How many stops? <b className="num stops-now">{prefs.maxStops ? `Up to ${prefs.maxStops}` : "As many as fit"}</b></h3>
-          <input type="range" min={0} max={6} step={1} value={prefs.maxStops ?? 0} aria-labelledby="q-stops"
+          <input type="range" min={0} max={most} step={1} value={Math.min(prefs.maxStops ?? 0, most)} aria-labelledby="q-stops"
             aria-valuetext={prefs.maxStops ? `Up to ${prefs.maxStops} stops` : "As many as fit"}
             onChange={(e) => set({ maxStops: Number(e.target.value) || null })} />
-          <div className="range-ticks fine" aria-hidden><span>Any</span>{[1, 2, 3, 4, 5, 6].map((n) => <span key={n}>{n}</span>)}</div>
+          <div className="range-ticks fine" aria-hidden><span>Any</span>{Array.from({ length: most }, (_, i) => <span key={i}>{i + 1}</span>)}</div>
+          {onMore && <button type="button" className="pill locked-more" onClick={onMore}><Lock size={14} aria-hidden /> More stops · Members</button>}
         </section>
 
         <section className="filter-q" aria-labelledby="q-more">
