@@ -85,6 +85,15 @@ export function onAuthCallback(cb: (params: URLSearchParams) => void) {
   });
 }
 
+/** iOS: calls back with each https://giggles-maps.pages.dev/app/ link the app is opened with (universal links, see
+ *  public/.well-known/apple-app-site-association). The web app reads the same links from location.search instead. */
+export function onSiteLink(cb: (params: URLSearchParams) => void) {
+  if (!isNative) return;
+  void CapApp.addListener("appUrlOpen", ({ url }) => {
+    if (url.startsWith(`${SITE}/app/`)) cb(new URL(url).searchParams);
+  });
+}
+
 // ── our own Swift plugins (ios/App/App/Plugins) ──
 type Tx = { jws: string; id: string; product: string };
 interface AttestPlugin {

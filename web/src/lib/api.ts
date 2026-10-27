@@ -585,8 +585,31 @@ export const SITE = "https://giggles-maps.pages.dev";
 // "?friend=CODE" (friend QR) and "?trip=CODE" (ride-along QR)
 export const readCodeParam = (name: "friend" | "trip") => {
   const m = /^[A-Za-z0-9]{6,10}$/.exec(new URLSearchParams(location.search).get(name) ?? "");
+  if (name === "trip" && m?.[0].length === 8) return null;   // 8 characters: a shared trip page (readSharedTripParam); ride codes are 10
   return m ? m[0].toUpperCase() : null;
 };
+
+// ---------- shared trip pages: /app/?trip=<8 base62 characters> ----------
+/** A stop on a shared trip; minutes count from when the trip leaves. */
+export interface SharedStop { id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
+  arrive_min: number; leave_min: number; dwell_min: number }
+export interface SharedTrip {
+  id: string; created_at: string; title: string; mode: TravelMode;
+  origin: { name: string; lat: number | null; lng: number | null };   // no point when it started at the sharer's location
+  dest: { name: string; lat: number; lng: number };
+  stops: SharedStop[]; extra_min: number; total_min: number; geometry: [number, number][]; note: string | null; demo: boolean;
+  who: Omit<Who, "id"> | null;
+}
+/** What the app sends: the server looks up each stop's name, kind and position itself and builds the title. */
+export interface TripSnapshot {
+  mode: TravelMode; origin_name: string; origin_lat: number | null; origin_lng: number | null;
+  dest_name: string; dest_lat: number; dest_lng: number; stops: { id: number; arrive_min: number; dwell_min: number }[];
+  extra_min: number; total_min: number; geometry: [number, number][]; note: string | null; demo: boolean;
+}
+/** Saves the trip as a public page and returns its id. Errors: share_limit (30 a day), bad_trip. */
+export const shareTrip = (t: TripSnapshot) => rpc<string>("share_trip", { p_trip: t });
+export const viewSharedTrip = (id: string) => rpc<SharedTrip | null>("view_shared_trip", { p_id: id });
+export const readSharedTripParam = () => /^[A-Za-z0-9]{8}$/.exec(new URLSearchParams(location.search).get("trip") ?? "")?.[0] ?? null;
 
 // Collects this month's Plus stamp (no-op without Plus), then lists them: "2026-10-01", newest first
 export async function getMonthlyStamps(): Promise<string[]> {

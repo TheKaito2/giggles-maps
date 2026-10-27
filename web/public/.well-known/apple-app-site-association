@@ -3,7 +3,8 @@
     "details": [
       {
         "appIDs": ["97BS2K8UQ2.com.kristpaul.gigglesmaps"],
-        "components": [{ "/": "/app/*", "?": { "scan": "*" }, "comment": "shop QR sticker opens check-in" }]
+        "components": [{ "/": "/app/*", "?": { "scan": "*" }, "comment": "shop QR sticker opens check-in" },
+                       { "/": "/app/*", "?": { "trip": "????????" }, "comment": "shared trip page (8 characters; 10-character ride-along codes stay on the web)" }]
       }
     ]
   }

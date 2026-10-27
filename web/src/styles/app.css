@@ -1444,3 +1444,9 @@ html.native .toast { top: calc(64px + env(safe-area-inset-top, 0px)); }
 .along-list .stop-meta .chip { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* phone on its side: the sheet is full height, so it covers the map's Layers button (it sat on "Swap") */
 @media (max-width: 959px) and (max-height: 500px) { .sheet.snap-half { z-index: 7; } }
+
+/* ---------- shared trip page (/app/?trip=ID) ---------- */
+.trip-page .nav-bottom { max-height: 55vh; overflow-y: auto; }
+.trip-page .nav-bottom .row { gap: 8px; }
+.trip-page .nav-bottom .btn.big { flex: 1; width: auto; }
+.share-trip { align-items: center; }

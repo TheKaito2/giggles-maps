@@ -1,7 +1,11 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ChevronDown, Flag, GripVertical, MoreHorizontal, Plus, Search, Trash2, Camera, X } from "lucide-react";
+import { ChevronDown, Flag, GripVertical, MoreHorizontal, Plus, Search, Share2, Trash2, Camera, X } from "lucide-react";
 import Modal from "../Modal";
-import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, type RouteStop, routePlaces, searchPlaces, TIER_NAME } from "../../lib/api";
+import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, type RouteStop, routePlaces, searchPlaces, shareTrip, SITE, TIER_NAME } from "../../lib/api";
+import { errCode } from "../../lib/supabase";
+import { shareOrCopy } from "../../lib/native";
+import { demoOn } from "../../lib/demoGps";
+import { snapshot } from "./shareTrip";
 import { CHIPS } from "../ExploreChips";
 import { SkelRows } from "../Skeleton";
 import { GROUPS, kindOf } from "../kinds";
@@ -222,6 +226,9 @@ const AddGap = ({ onAdd, hidden }: { onAdd: () => void; hidden: boolean }) =>
 export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour; selected: number | null; onOpen: (s: RouteStop) => void; onCheckin: (t: CheckinTarget) => void }) {
   const [details, setDetails] = useState(false);
   const [adding, setAdding] = useState<number | null>(null);   // the "Add a stop" sheet: the gap its + sits in (0 = before the first stop)
+  const [sharing, setSharing] = useState(false);
+  const [shareMsg, setShareMsg] = useState("");
+  const shared = useRef<{ line: [number, number][]; id: string } | null>(null);
   const { response, plan } = d;
   // hold a stop's handle and drag it: the list reorders as you move, and letting go reroutes in that order
   const [order, setOrder] = useState<number[] | null>(null);   // stop ids while dragging, then until the new route arrives
@@ -283,6 +290,20 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
   }
   const plans = response.plans ?? [];
   const current = plans.find((p) => p.id === d.choice) ?? plans[0];
+  // a public page of this trip (/app/?trip=ID); tapping again for the same route shares the same page
+  const shareThis = async () => {
+    if (sharing || !d.origin || !d.dest) return;
+    setSharing(true); setShareMsg("");
+    try {
+      if (shared.current?.line !== plan.geometry) {
+        shared.current = { line: plan.geometry, id: await shareTrip(snapshot(plan, d.origin, d.dest, d.prefs.mode, start, demoOn())) };
+      }
+      const title = `${d.origin.name === "Your location" ? "Start" : d.origin.name.split(", ")[0]} → ${d.dest.name.split(", ")[0]}`;
+      if (await shareOrCopy(title, `${SITE}/app/?trip=${shared.current.id}`) === "copied") setShareMsg("Link copied.");
+    } catch (e) {
+      setShareMsg(errCode(e) === "share_limit" ? "That's 30 shared trips today. Share again tomorrow." : "Couldn't share this trip. Try again in a moment.");
+    } finally { setSharing(false); }
+  };
   const fuel = fuelLine(plan.mode, plan.extra_km);
   return (
     <div className={`stack results${d.editing ? " updating" : ""}`} aria-busy={d.editing}>
@@ -311,6 +332,9 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
           {plan.road_extra_min != null && plan.stops.length > 0 && <button type="button" className="link small-link" aria-expanded={details} onClick={() => setDetails(!details)}>
             Details <ChevronDown size={14} aria-hidden /></button>}</p>
         {fuel && <p className="fine num">{fuel}</p>}
+        {plan.stops.length > 0 && <p className="row tight share-trip">
+          <button type="button" className="btn soft small" disabled={sharing || d.editing} onClick={shareThis}><Share2 size={15} aria-hidden /> Share trip</button>
+          {shareMsg && <span className="fine" role="status">{shareMsg}</span>}</p>}
         {details && plan.road_extra_min != null && (
           <p className="fine num">+{plan.road_extra_min} min on the road · {plan.stop_min} min at stops{plan.wait_min ? ` · ${plan.wait_min} min waiting for a meal time` : ""} · straight there {plan.base_min} min</p>
         )}

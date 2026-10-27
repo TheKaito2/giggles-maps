@@ -1,14 +1,14 @@
 import { Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Camera, Coins, LocateFixed, Map as MapIcon, Navigation, ScrollText, Trophy, UserRound, Users, X } from "lucide-react";
 import { ensureSession, supabase } from "../lib/supabase";
-import { addFriend, adFree, type CheckinTarget, getProfile, type LatLng, levelFor, levelProgress, pendingLevels, plusDaily, type Profile, readCodeParam, readScanParam } from "../lib/api";
+import { addFriend, adFree, type CheckinTarget, getProfile, type LatLng, levelFor, levelProgress, pendingLevels, plusDaily, type Profile, readCodeParam, readScanParam, readSharedTripParam, type SharedTrip } from "../lib/api";
 import Sheet, { type Snap } from "./detour/Sheet";
 import WhereTo from "./detour/WhereTo";
 import Choose, { TripHead } from "./detour/Choose";
 import Results from "./detour/Results";
 import { useDetour } from "./detour/useDetour";
 import { listenForAuthCallback, resumeSignIn, useUser } from "../lib/auth";
-import { buzz, deliverPurchases, liveTrip } from "../lib/native";
+import { buzz, deliverPurchases, liveTrip, onSiteLink } from "../lib/native";
 import { useStops } from "./useStops";
 import Nickname from "./social/Nickname";
 import RideAlong, { useTrip } from "./social/RideAlong";
@@ -41,6 +41,7 @@ const PlaceSheet = lazyRetry(() => import("./PlaceSheet"));
 const AddPlace = lazyRetry(() => import("./AddPlace"));
 const Navigate = lazyRetry(() => import("./nav/Navigate"));
 const EtaView = lazyRetry(() => import("./nav/EtaView"));
+const TripView = lazyRetry(() => import("./TripView"));
 
 type Tab = "map" | "board" | "quests" | "feed" | "profile";
 // short = the phone tab bar's caption (icons alone were guesswork: swords read "battle", a bell reads "notifications")
@@ -117,6 +118,13 @@ export default function App() {
     if (id) history.replaceState(history.state, "", location.pathname);   // read once: a reload doesn't reopen a closed sheet
     return id;
   });
+  // a shared trip page: /app/?trip=<8 characters> (a 10-character code there is a ride-along QR)
+  const [sharedTrip, setSharedTrip] = useState<string | null>(() => {
+    const id = readSharedTripParam();
+    if (id) history.replaceState(history.state, "", location.pathname);   // read once, like ?place=
+    return id;
+  });
+  useEffect(() => onSiteLink((q) => { const id = /^[A-Za-z0-9]{8}$/.exec(q.get("trip") ?? "")?.[0]; if (id) setSharedTrip(id); }), []);   // iOS app: the same link
   const [picking, setPicking] = useState<"origin" | "dest" | null>(null);
   const [error, setError] = useState("");
   const [checkin, setCheckin] = useState<{ target: CheckinTarget; code?: string } | null>(null);
@@ -228,6 +236,16 @@ export default function App() {
     document.getElementById(`stop-${id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, []);
 
+  // "Plan this trip" on a shared trip page: its destination, start (when it had one) and stops as must-visit picks, planned
+  // afresh from your own start time. A trip shared from "Your location" starts from yours.
+  const planShared = (t: SharedTrip) => {
+    setSharedTrip(null);
+    if (t.origin.lat != null && t.origin.lng != null) d.setOrigin({ point: { lat: t.origin.lat, lng: t.origin.lng }, name: t.origin.name });
+    d.set({ mode: t.mode, picks: t.stops.slice(0, 10).map((s) => ({ id: s.id, name: s.name })) });   // 10 = a free plan's stop limit
+    d.goTo({ point: { lat: t.dest.lat, lng: t.dest.lng }, name: t.dest.name });
+    setTab("map");
+  };
+
   const refresh = () => setRefreshKey((k) => k + 1);
   useEffect(() => deliverPurchases(refresh), []); // eslint-disable-line react-hooks/exhaustive-deps   iOS: App Store purchases not yet on the server
   const level = levelFor(profile?.xp ?? 0);
@@ -331,7 +349,7 @@ export default function App() {
         </main>
       )}
 
-      <Boundary onClose={() => { setOverlay(null); d.setGate(null); setAdSheet(false); if (nav) { setNav(null); liveTrip.end(); } setEtaToken(null); setNameSheet(false); setNameLater(true); }}><Suspense fallback={null}>
+      <Boundary onClose={() => { setOverlay(null); d.setGate(null); setAdSheet(false); if (nav) { setNav(null); liveTrip.end(); } setEtaToken(null); setSharedTrip(null); setNameSheet(false); setNameLater(true); }}><Suspense fallback={null}>
       {(overlay === "shop" || overlay === "bag") && (
         <Modal label="Shop" className="shop-modal" onClose={() => setOverlay(null)}>
           <header className="modal-head"><h2>Shop</h2><button type="button" className="icon-btn" onClick={() => setOverlay(null)} aria-label="Close"><X size={20} /></button></header>
@@ -346,6 +364,7 @@ export default function App() {
       {nav && <Navigate waypoints={nav} mode={d.prefs.mode} onClose={() => { setNav(null); liveTrip.end(); }}
         onCheckin={(stop, rest) => { setNav(null); setPaused(rest.length ? rest : null); if (stop.id != null) checkInAt({ ...stop, id: stop.id }); }} />}
       {etaToken && <EtaView token={etaToken} onClose={() => setEtaToken(null)} />}
+      {sharedTrip && <TripView id={sharedTrip} onClose={() => setSharedTrip(null)} onPlan={planShared} />}
       {overlay === "avatar" && profile && <AvatarBuilder profile={profile} onClose={() => setOverlay(null)} onSaved={() => { setOverlay(null); refresh(); }} />}
       {overlay === "ride" && (
         <Modal label="Ride along" onClose={() => setOverlay(null)}>
