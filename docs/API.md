@@ -280,6 +280,9 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
   `delete_place_photo(p_id)` (yours; then delete the file), `report_place_photo(p_id)` (3 reports hide it). In `place_page.photos`
   they have `source: "traveller"`, `id`, `url: "place-photos/<path>"` and `mine`; `place_page.photo_reward` = your first photo here still pays.
   `place_photos` holds Wikimedia Commons photos (`supabase/tools/wikimedia_photos.py`, free licences only).
+- More Commons photos (migration 088): `place_commons_photos(p_place)` (anon or signed in) returns up to 8
+  `{url (1280 px), small_url (500 px), author, licence, licence_url, page_url, width, height}` for a Landmark/Icon, `[]` otherwise.
+  Show them after the place's own photos, each with "Photo: <author> · <licence> · Wikimedia Commons" linking to `page_url`.
 - Lists: `my_lists()` (makes "Want to go" + "Favourites" on first call), `save_place(p_list, p_place, p_saved)`,
   `create_list(p_name)`, `update_list(p_list, p_name, p_shared, p_delete)`, `friend_lists(p_friend)` (shared ones, friends only).
 - Edits: `suggest_edit(p_place | null, p_payload, p_here_lat, p_here_lng)`: payload keys name, name_th, kind,

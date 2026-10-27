@@ -25,10 +25,14 @@ const SQL = `select json_build_object(
   'provinces', (select json_agg(json_build_object('id', id, 'en', name_en, 'th', name_th) order by name_en) from public.provinces),
   'places', (select json_agg(row_to_json(t)) from (
     select p.id, p.name, p.name_th, p.kind, p.category, p.province_id, p.rating, p.wikidata,
-           round(extensions.st_y(p.location::extensions.geometry)::numeric, 5) lat, ph.url photo, ph.credit, ph.licence
+           round(extensions.st_y(p.location::extensions.geometry)::numeric, 5) lat,
+           coalesce(ph.url, cp.url) photo, coalesce(ph.credit, cp.author) credit, coalesce(ph.licence, cp.licence) licence
       from public.places p
       left join lateral (select f.url, f.credit, f.licence from public.place_photos f
                           where f.place_id = p.id and f.source = 'wikimedia' and not f.hidden order by f.id limit 1) ph on true
+      -- no stored Wikimedia photo: the first Commons one (migration 088 + supabase/data/commons_photos.sql must be live)
+      left join lateral (select c.url, c.author, c.licence from public.place_commons_photos c
+                          where c.place_id = p.id order by c.rank limit 1) cp on true
      where p.tier >= 3 and p.province_id is not null and not p.is_demo and p.min_level = 0) t)) as data`;
 const raw = execFileSync("supabase", ["db", "query", "--linked", "-o", "json", SQL], { cwd: join(WEB, ".."), encoding: "utf8", maxBuffer: 64 << 20 });
 const { provinces, places } = JSON.parse(raw).rows[0].data;

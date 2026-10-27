@@ -1464,5 +1464,10 @@
 "Couldn't save the perk (up to {0} characters, no < or >).": "บันทึกสิทธิพิเศษไม่ได้ (ไม่เกิน {0} ตัวอักษร ห้ามใช้ < หรือ >)",
 "One short offer for Giggles members, shown on your place page and on routes. Only write what you'll honour at the counter.": "ข้อเสนอสั้น ๆ หนึ่งข้อสำหรับสมาชิก Giggles แสดงในหน้าร้านและบนเส้นทาง เขียนเฉพาะสิ่งที่ให้ได้จริงที่เคาน์เตอร์",
 "e.g. 10% off drinks for members": "เช่น ลดเครื่องดื่ม 10% สำหรับสมาชิก",
-"Save perk": "บันทึกสิทธิพิเศษ"
+"Save perk": "บันทึกสิทธิพิเศษ",
+"Photo:": "ภาพ:",
+"· Wikimedia Commons": "· Wikimedia Commons",
+"Photo": "รูปภาพ",
+"Close photo": "ปิดรูป",
+"Open photo": "เปิดรูป"
 }

@@ -9,3 +9,6 @@ build/
 
 # graphify knowledge graph (local; rebuilt by the post-commit hook)
 graphify-out/
+
+# commons_photos.py API cache and exports
+supabase/tools/.cache/

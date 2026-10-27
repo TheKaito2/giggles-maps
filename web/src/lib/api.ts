@@ -492,6 +492,10 @@ export interface PlacePage {
   regular: { who: Who; visits: number; friend: boolean; mine: boolean } | null;   // most visit-days here in 60 days (2+)
 }
 export const getPlacePage = (id: number) => rpc<PlacePage | null>("place_page", { p_id: id });
+/** A freely licensed Wikimedia Commons photo of a landmark; author, licence and page_url must be shown with it (CC BY / BY-SA). */
+export interface CommonsPhoto { url: string; small_url: string; author: string; licence: string; licence_url: string | null;
+  page_url: string; width: number; height: number }
+export const getCommonsPhotos = (id: number) => rpc<CommonsPhoto[]>("place_commons_photos", { p_place: id });
 /** A written review (60+ characters) of a place earns one bonus Siam Si shake there, once. */
 export const REVIEW_SHAKE_CHARS = 60;
 export const writeReview = (place: number, rating: number, body: string) =>

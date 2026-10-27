@@ -2,7 +2,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { Bookmark, BookmarkCheck, CalendarCheck, Camera, Coins, Crown, ExternalLink, Flag, Globe, ImagePlus, MapPin, Navigation, Pencil, Phone, Share2,
   Sparkles, Ticket, Star, Trash2, X } from "lucide-react";
 import { errCode } from "../lib/supabase";
-import { addPlacePhoto, createList, deletePlacePhoto, deleteReview, getMyLists, getPlaceExtras, getPlacePage, type PlaceExtras, type PlacePage, type PlacePhoto,
+import { addPlacePhoto, type CommonsPhoto, createList, deletePlacePhoto, deleteReview, getCommonsPhotos, getMyLists, getPlaceExtras, getPlacePage, type PlaceExtras, type PlacePage, type PlacePhoto,
   photoUrls, placePhotoUrl, reportPlacePhoto, reportReview, REVIEW_SHAKE_CHARS, type PartnerTier, placesPerks, placesTiers, type SavedList, savePlace, shopPhotoUrl, SITE,
   suggestEdit, TIER_NAME, writeReview } from "../lib/api";
 import { shrinkPhoto } from "../lib/photo";
@@ -14,6 +14,7 @@ import Info from "./Info";
 import { shareOrCopy } from "../lib/native";
 import { lang, nameOf } from "../lib/i18n";
 import { lazyRetry } from "../lib/lazy";
+import { useDialog } from "../lib/useDialog";
 
 const Upgrade = lazyRetry(() => import("./Upgrade"));
 
@@ -85,6 +86,21 @@ const photoSrc = (ph: PlacePhoto, urls: Record<string, string>) => ph.url?.start
   : ph.url?.startsWith("place-photos/") ? placePhotoUrl(ph.url) : ph.url ?? (ph.path ? urls[ph.path] : undefined);
 const photoCredit = (ph: PlacePhoto) => ph.source === "wikimedia" ? `${ph.credit} · ${ph.licence} · Wikimedia` : ph.source === "owner" ? "From the owner"
   : `by ${ph.mine ? "you" : ph.credit}`;
+// CC BY / BY-SA: the author, the licence and a link to the source go with every Commons photo, wherever it's shown
+const CommonsCredit = ({ c }: { c: CommonsPhoto }) => <a className="photo-credit" href={c.page_url} target="_blank" rel="noopener noreferrer">
+  Photo: <span translate="no">{c.author}</span> · {c.licence} · Wikimedia Commons</a>;
+
+/** One Commons photo, opened: the 1280 px version over the page, with its credit. */
+function CommonsViewer({ c, alt, onClose }: { c: CommonsPhoto; alt: string; onClose: () => void }) {
+  const box = useDialog<HTMLElement>(onClose);
+  return <div className="sheet-backdrop photo-view" role="dialog" aria-modal="true" aria-label="Photo" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <figure ref={box} tabIndex={-1}>
+      <button type="button" className="icon-btn" onClick={onClose} aria-label="Close photo"><X size={18} /></button>
+      <img src={c.url} alt={alt} width={c.width} height={c.height} />
+      <CommonsCredit c={c} />
+    </figure>
+  </div>;
+}
 
 export default function PlaceSheet({ id, member, onClose, onDirections, onCheckin, onCoins }: {
   id: number; member: boolean; onClose: () => void; onDirections: (p: PlacePage) => void; onCheckin: (p: PlacePage) => void;
@@ -93,6 +109,8 @@ export default function PlaceSheet({ id, member, onClose, onDirections, onChecki
   const [page, setPage] = useState<PlacePage | null>(null);
   const [extras, setExtras] = useState<PlaceExtras | null>(null);
   const [urls, setUrls] = useState<Record<string, string>>({});
+  const [commons, setCommons] = useState<CommonsPhoto[]>([]);   // Wikimedia Commons photos, after everyone's own
+  const [opened, setOpened] = useState<number | null>(null);
   const [menu, setMenu] = useState<"save" | "edit" | "book" | null>(null);
   const [tier, setTier] = useState<PartnerTier | null>(null);   // a paying partner: labelled, and you can book it
   const [perk, setPerk] = useState<string | null>(null);   // that partner's member perk, in the shop's own words
@@ -119,6 +137,7 @@ export default function PlaceSheet({ id, member, onClose, onDirections, onChecki
     return () => document.removeEventListener("keydown", esc);
   }, [onClose]);
   useEffect(() => {
+    setCommons([]); setOpened(null); getCommonsPhotos(id).then((c) => { if (shown.current === id) setCommons(c ?? []); }).catch(() => undefined);
     setPage(null); setExtras(null); setMenu(null); setMsg(""); setRating(0); setBody(""); load();
     getPlaceExtras(id).then((x) => { if (shown.current === id) setExtras(x); }).catch(() => undefined);
     setTier(null); placesTiers([id]).then((m) => { if (shown.current === id) setTier(m.get(id) ?? null); }).catch(() => undefined);
@@ -168,10 +187,11 @@ export default function PlaceSheet({ id, member, onClose, onDirections, onChecki
     <aside className="place-sheet glass" aria-label={page.name}>
       <button type="button" className="icon-btn sheet-close" onClick={onClose} aria-label="Close place"><X size={18} /></button>
       {/* no photo yet: a cover in the kind's colour instead of an empty gap (the first public photo here earns coins) */}
-      {page.photos.length === 0 && <div className="place-cover" style={{ background: GROUPS[k.group].colour }} aria-hidden><k.icon size={40} /></div>}
-      {page.photos.length > 0 && (
+      {page.photos.length + commons.length === 0 && <div className="place-cover" style={{ background: GROUPS[k.group].colour }} aria-hidden><k.icon size={40} /></div>}
+      {page.photos.length + commons.length > 0 && (
         <ul className="photo-strip" aria-label="Photos">
-          {page.photos.map((ph, i) => {
+          {/* owners' and travellers' photos first, then the Wikimedia ones */}
+          {[...page.photos.filter((ph) => ph.source !== "wikimedia"), ...page.photos.filter((ph) => ph.source === "wikimedia")].map((ph, i) => {
             const src = photoSrc(ph, urls);
             return <li key={ph.id ?? ph.url ?? ph.path ?? i}>{src ? <img src={src} alt={`${page.name} photo ${i + 1}`} loading="lazy" /> : <div className="ph" />}
               <span className="photo-credit">{photoCredit(ph)}</span>
@@ -179,8 +199,13 @@ export default function PlaceSheet({ id, member, onClose, onDirections, onChecki
                 ? <button type="button" className="photo-act" onClick={() => removePhoto(ph)} aria-label="Remove your photo"><Trash2 size={14} /></button>
                 : <button type="button" className="photo-act" onClick={() => reportPhoto(ph)} aria-label="Report this photo"><Flag size={14} /></button>)}</li>;
           })}
+          {commons.map((c, i) => <li key={c.url}>
+            <button type="button" className="photo-open" onClick={() => setOpened(i)} aria-label="Open photo">
+              <img src={c.small_url} alt={`${page.name} photo ${page.photos.length + i + 1}`} loading="lazy" decoding="async" /></button>
+            <CommonsCredit c={c} /></li>)}
         </ul>
       )}
+      {opened != null && commons[opened] && <CommonsViewer c={commons[opened]} alt={page.name} onClose={() => setOpened(null)} />}
       <header className="place-head">
         <span className="place-card-icon big" style={{ background: GROUPS[k.group].colour }}><k.icon size={22} aria-hidden /></span>
         <div className="person-main">
