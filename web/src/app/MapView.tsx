@@ -117,18 +117,21 @@ export default function MapView({ origin, dest, stops, geometry, alternates = NO
           "text-optional": true, "text-max-width": 9, "text-font": ["Noto Sans Regular"],
         }, paint: { "text-color": lookRef.current.night ? "#e3eafa" : ["get", "colour"],   // at night the kind colours were too dark to read
           "text-halo-color": lookRef.current.night ? "#1c1f26" : "#ffffff", "text-halo-width": 1.6 } }, "route-casing");
-        // Roadtrippers-style landmark icons: icons (tier 4) at every zoom and named, landmarks (tier 3) smaller from zoom 9
+        // Roadtrippers-style landmark dioramas, standing on their place: icons (tier 4) at every zoom and named, landmarks (tier 3) smaller from zoom 9
         // and named from 13. Added above the pins, so they're placed first; the server sends icons first, most famous on
         // top, so "rank" lets the famous ones win a collision.
         m.addLayer({ id: "gm-icons", type: "symbol", source: "gm-pois",
           filter: ["any", ["==", ["get", "tier"], 4], ["all", ["==", ["get", "tier"], 3], [">=", ["zoom"], 9]]], layout: {
-          "icon-image": ["concat", "lm-", ["get", "lm"]], "icon-size": ["case", ["==", ["get", "tier"], 4], 0.95, 0.7],
-          "icon-allow-overlap": false, "symbol-sort-key": ["get", "rank"],
+          // lm is "place-<id>" for the famous few with their own scene, else the kind's scene (landmarkIconOf)
+          "icon-image": ["concat", "lm-", ["get", "lm"]], "icon-size": ["case", ["==", ["get", "tier"], 4], 0.875, 0.6],
+          "icon-anchor": "bottom", "icon-allow-overlap": false, "symbol-sort-key": ["get", "rank"],
           "text-field": ["step", ["zoom"], ["case", ["==", ["get", "tier"], 4], placeName, ""], 13, placeName],
-          "text-size": ["case", ["==", ["get", "tier"], 4], 12.5, 11.5], "text-offset": [0, 1.7], "text-anchor": "top",
-          "text-optional": true, "text-max-width": 8, "text-font": ["Noto Sans Regular"],
-        }, paint: { "text-color": lookRef.current.night ? "#e3eafa" : "#0e2440",
-          "text-halo-color": lookRef.current.night ? "#1c1f26" : "#ffffff", "text-halo-width": 1.6 } }, "route-casing");
+          "text-size": ["case", ["==", ["get", "tier"], 4], 12.5, 11.5], "text-offset": [0, 0.15], "text-anchor": "top",
+          "text-optional": true, "text-max-width": 8,
+          // bold where the glyph server has it (OpenFreeMap); offline packs (protomaps glyphs) only have Medium
+          "text-font": [String(m.getStyle().glyphs).includes("protomaps") ? "Noto Sans Medium" : "Noto Sans Bold"],
+        }, paint: { "text-color": lookRef.current.night ? "#eef2fb" : "#1a2233",
+          "text-halo-color": lookRef.current.night ? "#1c1f26" : "#ffffff", "text-halo-width": 1.8 } }, "route-casing");
       }).catch((e) => console.error("place pin icons failed", e));
       m.addSource("alternates", { type: "geojson", data: altRef.current });
       m.addLayer({ id: "alternates", type: "line", source: "alternates", paint: { "line-color": "#8a93ad", "line-width": 5, "line-opacity": 0.45 },
