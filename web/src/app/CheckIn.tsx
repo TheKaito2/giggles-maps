@@ -10,10 +10,7 @@ import ProvinceStamp from "./passport/ProvinceStamp";
 import { checkinClient, checkinFix } from "../lib/native";
 import { useProvinces } from "./passport/useProvinces";
 import { ROMAN, STAMP_TIER } from "../lib/format";
-
-const CONSENT_KEY = "giggles.photoConsent.v3";   // v2: photos are kept for the passport album; v3: who sees them, how long
-const readConsent = () => { try { return localStorage.getItem(CONSENT_KEY) === "yes"; } catch { return false; } };
-const saveConsent = () => { try { localStorage.setItem(CONSENT_KEY, "yes"); } catch { /* storage blocked: ask again next time */ } };
+import { PhotoConsentTerms, readConsent, saveConsent } from "./PhotoConsent";
 
 const REASON_TEXT: Record<string, string> = {
   too_far: "You're outside this place's check-in zone (150 m for landmarks and parks, 50 m elsewhere).",
@@ -148,12 +145,7 @@ export default function CheckIn({ target, initialCode, hasPlus, luck = 0, nickna
         {step === "consent" && (
           <div className="stack">
             <p>Check in with one photo of the moment and your location at this place.</p>
-            <ul className="fine">
-              <li>We check that you're inside this place's check-in zone (50 m, or 150 m for landmarks and parks).</li>
-              <li>Any photo: you, your friends, the view, the food. We don't analyse faces.</li>
-              <li>Your photos go into your passport album. Your friends can see them, and so can trip-mates for photos from a ride-along together.</li>
-              <li>Photos of check-ins that aren't accepted are deleted after 30 days. The rest are kept until you delete your account (Profile → Settings → Delete account); to remove one photo, email kristpaulm@gmail.com.</li>
-            </ul>
+            <PhotoConsentTerms />
             <button className="btn" onClick={() => { saveConsent(); setStep("camera"); }}>I agree, open camera</button>
           </div>
         )}

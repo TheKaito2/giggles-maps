@@ -2,7 +2,8 @@ import { admin, HttpError, json, serve } from "../_shared/http.ts";
 
 // Called daily by pg_cron. Check-in photos are the passport album now and stay until the user deletes them;
 // this only clears, after 30 days (PDPA: keep only as long as needed), photos of check-ins that earned nothing
-// (rejected, or review: GPS too rough, and nobody reviews those) and uploads that never got a check-in or nomination.
+// (rejected, or review: GPS too rough, and nobody reviews those), uploads that never got a check-in or nomination, and
+// nomination photos 30 days after the nomination closed (selfie_orphans, migration 092).
 serve(async (req) => {
   if (req.headers.get("x-cron-secret") !== Deno.env.get("CRON_SECRET")) throw new HttpError(401, "unauthorized");
   const db = admin();

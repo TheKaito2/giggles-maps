@@ -160,7 +160,7 @@ Any photo counts: there is no face check (`face_count` is optional and ignored).
 
 `billing` (what happened on the shop side): `charged` · `no_qr` · `not_shown_on_route` (not shown to this user in the last 3 h) · `repeat_visit_30d` · `wallet_empty` · `not_rewarded` · `not_partner` · `demo` (a demo check-in: never charged). A shop is charged only when the check-in is rewarded, the QR matches, the stop/card was shown to this user within 3 h, and it's the user's first billed visit there in 30 days.
 
-`spin`: free coupon spin after every rewarded non-demo check-in (never sold). 50% overall win chance among active coupons from signed-up shops with credit within 3 km; `odds` is this prize's chance. `null` when no coupons are available.
+`spin`: free coupon spin after every rewarded non-demo check-in (never sold). 50% overall win chance among active coupons from signed-up shops with credit within 3 km (never the example shops, `is_demo`); `odds` is this prize's chance. `null` when no coupons are available.
 
 All of it runs in one DB transaction (`public.record_checkin`).
 
@@ -225,7 +225,7 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
   stop) and sends `client.demo: true`. Demo check-ins work at any place, skip the speed check, and are rewarded like real
   ones (stamp, XP, coins, badges, Siam Si); they stay marked `client.demo = true` in `checkins`, and the pace limit still
   applies. They never move money (migration 090): no shop billing (`billing: "demo"`), no booking completion or fee, no coupon
-  spin. A demo check-in is also never the speed check's "last location", so it can't reject a later real one.
+  spin. A demo check-in's new province gives no bonus shake, and its shake never wins an XP boost (coins instead; migration 092). A demo check-in is also never the speed check's "last location", so it can't reject a later real one.
 - The all-time leaderboard (migration 053) ranks by XP minus what demo check-ins earned (their stamps and Siam Si shakes),
   and its cards count only non-demo stamps and provinces. Your own profile still shows everything. Quests a demo
   check-in completes still count (a small leak, accepted).

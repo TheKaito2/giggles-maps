@@ -54,7 +54,7 @@ Giggles Maps fills the extra time a traveller allows on a trip with local stops 
 
 ## Privacy (PDPA) and store rules
 
-- Selfies: private bucket, owner-only folder. They are the passport album: visible to the user's friends and to trip-mates (photos from that ride-along), kept until the account is deleted. Photos of rejected and `review` check-ins, and uploads with no check-in or nomination, are deleted after 30 days (`purge-selfies`, pg_cron daily 03:17 UTC). Consent screen before the first photo.
+- Selfies: private bucket, owner-only folder. They are the passport album: visible to the user's friends and to trip-mates (photos from that ride-along), kept until the account is deleted. Photos of rejected and `review` check-ins, and uploads with no check-in or nomination, are deleted after 30 days, and nomination photos 30 days after the nomination goes live, expires or is rejected (`purge-selfies`, pg_cron daily 03:17 UTC). Consent screen before the first photo.
 - No face recognition or embeddings anywhere.
 - In-app account deletion (`delete-account`), App Store 5.1.1(v).
 - Sign in with Apple must ship on iOS once Google/LINE login exists (4.8).
