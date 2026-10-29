@@ -132,7 +132,7 @@ export default function App() {
   const [selected, setSelected] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const d = useDetour(setError, adFree(profile) || demoOn());   // members, Plus and demo plan 15 stops, free plans 3
+  const d = useDetour(setError, adFree(profile));   // members and Plus plan 15 stops, free plans 3 (demo mode too)
   // Back steps through the trip (results, then time options, then the map) and closes a place sheet, instead of leaving
   // the app and losing the plan
   useBack(() => (d.stage === "results" ? d.setStage("choose") : d.close()), tab === "map" && d.stage !== "browse", d.stage);

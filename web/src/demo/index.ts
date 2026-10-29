@@ -61,13 +61,13 @@ export const demoCommentsFor = (activity: number): Comment[] => demoComments(act
 
 // pretend partners: the demo_partners table (readable by anyone, used only here and by plan-route's demo requests)
 let demoTiers: Map<number, PartnerTier> | null = null;
-export async function demoTiersFor(ids: number[], real: Map<number, PartnerTier>): Promise<Map<number, PartnerTier>> {
+export async function demoTiersFor(ids: number[], real: Map<number, { tier: PartnerTier; example: boolean }>): Promise<Map<number, { tier: PartnerTier; example: boolean }>> {
   if (!demoTiers) {
     const { data } = await supabase.from("demo_partners").select("place_id, tier");
     demoTiers = new Map(((data ?? []) as { place_id: number; tier: PartnerTier }[]).map((d) => [d.place_id, d.tier]));
   }
   const out = new Map(real);
-  for (const id of ids) if (!out.has(id) && demoTiers.has(id)) out.set(id, demoTiers.get(id)!);
+  for (const id of ids) if (!out.has(id) && demoTiers.has(id)) out.set(id, { tier: demoTiers.get(id)!, example: true });   // labelled "Example …"
   return out;
 }
 

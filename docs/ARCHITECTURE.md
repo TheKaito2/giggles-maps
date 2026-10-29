@@ -25,7 +25,7 @@ Giggles Maps fills the extra time a traveller allows on a trip with local stops 
 | Routing | Valhalla | Free, walking + driving, time matrix API. Public FOSSGIS server caps 100 location pairs per request, so we chunk |
 | Maps | MapLibre GL + OpenFreeMap (web), MapKit (iOS), Maps Compose or MapLibre (Android) | No API keys or map bills; the route line comes from our server |
 | Payments | Stripe Thailand, prepaid credit packs | Stripe's PromptPay is one-time only, so prepaid packs avoid recurring billing; shop billing stays on the web so the iOS app needs no in-app purchase |
-| Face check | MediaPipe (web), Vision (iOS), ML Kit (Android) | On-device face *presence* count only: no recognition, so no biometric identification data under PDPA |
+| Face check | None: any photo counts at check-in (`face_count` is optional and ignored) | No face analysis or recognition, so no biometric identification data under PDPA |
 | Hosting | Cloudflare Pages | Free, fast in Thailand |
 
 ## Algorithms
@@ -34,17 +34,17 @@ Giggles Maps fills the extra time a traveller allows on a trip with local stops 
 
 **2. Detour planner (`_shared/planner.ts`).** One Valhalla time matrix for origin, destination and candidates, then:
 - Phase 0, meals (`_shared/meals.ts`): for each meal the user asked to stop for (request `meals`), insert the best cafe/food/market stop that arrives inside the meal window (early arrival waits for the window; the wait counts as extra time). None fits → `missed_meals`.
-- Phase 1: greedy insertion choosing the stop and position with the highest `tier value × quality × style weight × variety / √added_minutes` (tier value: landmark 3, worth a visit 1.2, everyday 0.5; quality = rating / 5, unrated 0.7; style weight ×2 for the style's kinds, Landmarks style ×2 for tier 3, Local gems excludes tier 3; a repeated category counts half). The square root lets a farther landmark beat a café on the main road. Hard limits: extra time ≤ budget, stop cap. Opening hours are not used yet (no trustworthy hours data); the `open_min`/`close_min` columns are kept for later.
+- Phase 1: greedy insertion choosing the stop and position with the highest `tier value × quality × style weight × variety / √added_minutes` (tier value: landmark 3, worth a visit 1.2, everyday 0.5; quality = rating / 5, unrated 0.7; style weight ×2 for the style's kinds, Landmarks style ×2 for tier 3, Local gems excludes tier 3; a repeated category counts half). The square root lets a farther landmark beat a café on the main road. Hard limits for every stop the user didn't pick: extra time ≤ budget, stop cap. Opening hours are not used yet (no trustworthy hours data); the `open_min`/`close_min` columns are kept for later.
 - Preferences (`interests`, `min_rating`, `include_unrated`, `max_stops`, `max_price`, `mode: bicycle`): the candidate SQL filters rating and known price; the planner takes the rating floor, a stop cap and, for **Your mix**, a ×2 weight on every kind the user's interest chips cover (`_shared/themes.ts` `INTERESTS`). Unrated places score as 3.5/5.
 - `plan-route` runs the planner once per theme on the same shortlist and matrix (no extra routing calls), drops duplicate plans, and fetches road geometry per plan in parallel (straight-line fallback).
 - The planner never sees whether a place pays (monetization v3: no paid placement).
 - "Near this spot" cards (`places_near`): under park/viewpoint/temple stops, the best place within 400 m by rating then distance, signed up or not.
 
-**Search.** `search_places` (SQL, trigram index on Thai + English names) finds our ~49k places by name or kind, nearest first. Places the user picks are sent as `must_include` and inserted before meals (planner phase 0a); they skip the rating floor but never the budget or stop cap. Addresses we don't hold come from Apple MapKit search (iOS) or Photon (web), both free and OpenStreetMap/Apple based, never Google.
+**Search.** `search_places` (SQL, trigram index on Thai + English names) finds our ~49k places by name or kind, nearest first. Places the user picks are sent as `must_include` and inserted before meals (planner phase 0a); they skip the rating floor and always go in, even past the budget (`extra_min` > `budget_min`) and past the request's `max_stops` (more picks than the account's stop cap are refused up front: `stop_limit_free` / `stop_limit`); only a pick with no road to it is left out (`unfit_required`). Addresses we don't hold come from Apple MapKit search (iOS) or Photon (web), both free and OpenStreetMap/Apple based, never Google.
 
 **3. Conversion estimate (`place_stats` view).** `p_checkin = (verified_visits + 0.3·10) / (impressions + 10)`: Bayesian average with prior 0.3. Every stop shown on a route is an impression (`route_stops`).
 
-**4. Check-in verification (SQL `record_checkin`).** Distance ≤ 60 m, face present, selfie exists, not mock GPS, speed since last check-in ≤ 150 km/h, accuracy ≤ 50 m (else review), one reward per place per Bangkok day. Billing, wallet debit (row-locked) and badge awards run in the same transaction.
+**4. Check-in verification (SQL `record_checkin`).** Inside the place's zone (150 m for landmarks and parks, 50 m elsewhere), any photo (no face check), selfie exists, not mock GPS, speed since the last non-demo check-in ≤ 150 km/h (not checked for demo check-ins), accuracy ≤ 75 m (else `review`: no reward, and nobody reviews it), rewards (stamp) only on the first visit to a place (`already_stamped` after). Billing, wallet debit (row-locked) and badge awards run in the same transaction. Demo check-ins (`client.demo`) are rewarded but never bill a shop, complete a booking or spin coupons.
 
 **5. Badges.** Collections (`temple-trail`, `cafe-hopper`, `indigo-and-silk`, `city-explorer`) list their places; a badge is awarded when a user's distinct rewarded places in the collection reach `required_count`.
 
@@ -54,7 +54,7 @@ Giggles Maps fills the extra time a traveller allows on a trip with local stops 
 
 ## Privacy (PDPA) and store rules
 
-- Selfies: private bucket, owner-only folder, deleted after 30 days (`purge-selfies`, pg_cron daily 03:17 UTC). Consent screen before the first selfie.
+- Selfies: private bucket, owner-only folder. They are the passport album: visible to the user's friends and to trip-mates (photos from that ride-along), kept until the account is deleted. Photos of rejected and `review` check-ins, and uploads with no check-in or nomination, are deleted after 30 days (`purge-selfies`, pg_cron daily 03:17 UTC). Consent screen before the first photo.
 - No face recognition or embeddings anywhere.
 - In-app account deletion (`delete-account`), App Store 5.1.1(v).
 - Sign in with Apple must ship on iOS once Google/LINE login exists (4.8).

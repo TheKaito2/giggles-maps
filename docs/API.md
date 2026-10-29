@@ -50,7 +50,7 @@ Request
   - `min_rating`, `include_unrated`, `max_price`: still accepted, but the web app no longer sends them: OpenStreetMap has no ratings or prices, so they filter nothing useful until reviews and prices exist.
   - `min_rating`: `0`, `3.5`, `4` (default) or `4.5`. 400 `bad_min_rating`.
   - `include_unrated`: default **true**: unrated places (`rating: null`, most of the OpenStreetMap import) join routes, scored below rated ones (as 3.5/5). `false` = rated places only.
-  - `must_include`: up to 6 place ids the user picked or added (from `search_places` or a plan's `along`). They go into every plan when they fit the budget and `max_stops`, even below the rating floor; the rest are listed in each plan's `unfit_required`. Stops have `picked: true`. 400 `bad_must_include`.
+  - `must_include`: up to 6 place ids the user picked or added (from `search_places` or a plan's `along`). They go into every plan, even below the rating floor and even when that takes the plan past `budget_min` or past the request's `max_stops`: user picks always go in (more picks than the account's stop cap is refused instead, see below) (the response's `extra_min` can then be more than `budget_min`; clients should warn when it is). Only picks the planner can't reach by road are left out and listed in each plan's `unfit_required`. Stops have `picked: true`. 400 `bad_must_include`.
   - `exclude`: up to 30 place ids never to use (stops the user removed or swapped out). 400 `bad_exclude`.
   - `keep_order` (optional): `true` = `must_include` is the route order, exactly; a list of stop ids = those stops keep that
     order and the rest of `must_include` is inserted where it fits best (400 `bad_keep_order` if it isn't a list of ids).
@@ -92,14 +92,16 @@ Response
   second destination or 403 `sign_in_edits` for a 4th edit (migrations 073, 080; show the sign-in sheet, not a retry). Free accounts: 3 detours (destinations) and 10 edits a Bangkok
   day (429 `detour_limit` / `edit_limit`); a request with `must_include` or `exclude` is an edit. Everyone: 20 plans a minute,
   members 300 and free accounts 100 a day (429 `slow_down`). An edit of a destination not planned today counts as a detour. `my_plan_usage()` reports today's counts.
-- **Stop cap by tier** (`_shared/tiers.ts`): guests and free accounts get at most **3 stops** a plan; members, Plus and demo
-  mode (`demo: true`) 15. The planner fills up to the cap (a larger `max_stops` is trimmed to it; a Quick plan already at 3
+- **Stop cap by tier** (`_shared/tiers.ts`): guests and free accounts get at most **3 stops** a plan; members and Plus 15.
+  Demo mode (`demo: true`) doesn't change the cap. The planner fills up to the cap (a larger `max_stops` is trimmed to it; a Quick plan already at 3
   stops gets no pit stop). More `must_include` places than the cap: 403 `stop_limit_free` for a free plan (show the
   membership sheet), 400 `stop_limit` past 15. The response has `max_stops` (the cap) and `free_cap: true` when the free
   cap applies: show "Members can add more stops" when a plan has `max_stops` stops. Shared trips ("Plan this trip") load the
   first 3 stops for free users.
 - Stops are chosen by quality (rating, variety, fit inside the budget). For members, paid tiers score higher: Giggles Choice ×2,
   Partner ×1.5. Every stop and `along` place has `partner_tier: "partner" | "choice" | null`; show its badge whenever set.
+  `partner_demo: true` means the tier is demo mode's pretend one (`demo_partners`, real places that haven't signed up): label it
+  **Example partner** / **Example Giggles Choice** and say it's pretend for the demo, never that the place pays.
 - `plans` can include `{id: "giggles", name: "Partner picks"}`: Giggles Choice places only (plus picks), for everyone, when a
   Choice place fits.
 - `is_partner: true` means the place is a signed-up shop that pays per verified visit. It can appear any number of times, only on merit. Show a **Partner** label (`Example partner` when `is_demo`) so users know the shop pays.
@@ -144,24 +146,25 @@ Response
 
 | Rule | Result | Reason code |
 |---|---|---|
-| More than 60 m from the place | rejected | `too_far` |
-| `face_count < 1` | rejected | `no_face` |
+| Outside the place's zone: 150 m for landmarks and parks (tier ≥ 3 or category `park`), 50 m elsewhere | rejected | `too_far` |
 | Selfie missing from the user's folder | rejected | `no_selfie` |
 | `client.is_mock` | rejected | `mock_location` |
-| Faster than 150 km/h since last check-in (24 h) | rejected | `speed_jump` |
-| GPS accuracy over 50 m | review | `low_accuracy` |
-| Already rewarded here today (Bangkok time) | approved, no stamp | `already_rewarded_today` |
+| Faster than 150 km/h since the last non-rejected, non-demo check-in (24 h); not checked for demo check-ins | rejected | `speed_jump` |
+| GPS accuracy over 75 m | review: no reward, nobody reviews it; tell the user GPS was too imprecise and to try again with better signal (the photo is deleted after 30 days) | `low_accuracy` |
+| Already has this place's stamp (rewards only on the first visit ever) | approved, no stamp; photo added to the passport | `already_stamped` |
 | Exclusive place above the user's unlock level (or event outside its window) | rejected, nothing recorded; response has `required_level` | `level_locked` |
+
+Any photo counts: there is no face check (`face_count` is optional and ignored).
 
 `qr_code` is the code under the counter QR sticker (also arrives via the sticker link `/app/?scan=<place_id>-<code>`). Example shops use `DEMO`.
 
-`billing` (what happened on the shop side): `charged` · `no_qr` · `not_shown_on_route` (not shown to this user in the last 3 h) · `repeat_visit_30d` · `wallet_empty` · `not_rewarded` · `not_partner`. A shop is charged only when the check-in is rewarded, the QR matches, the stop/card was shown to this user within 3 h, and it's the user's first billed visit there in 30 days.
+`billing` (what happened on the shop side): `charged` · `no_qr` · `not_shown_on_route` (not shown to this user in the last 3 h) · `repeat_visit_30d` · `wallet_empty` · `not_rewarded` · `not_partner` · `demo` (a demo check-in: never charged). A shop is charged only when the check-in is rewarded, the QR matches, the stop/card was shown to this user within 3 h, and it's the user's first billed visit there in 30 days.
 
-`spin`: free coupon spin after every rewarded check-in (never sold). 50% overall win chance among active coupons from signed-up shops with credit within 3 km; `odds` is this prize's chance. `null` when no coupons are available.
+`spin`: free coupon spin after every rewarded non-demo check-in (never sold). 50% overall win chance among active coupons from signed-up shops with credit within 3 km; `odds` is this prize's chance. `null` when no coupons are available.
 
 All of it runs in one DB transaction (`public.record_checkin`).
 
-Errors: `place_not_found` 404, `demo_only_at_example_places` 403, `bad_*` 400.
+Errors: `place_not_found` 404, `bad_*` 400.
 
 ## `delete-account`
 
@@ -220,7 +223,9 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
   still `approved` (photo kept) but `rewarded: false` with reason `slow_down`; the place can be stamped on a later visit.
 - Demo mode (migration 052, anyone, Profile → Demo mode): the app fakes its location (tap the map, fast-forward to the next
   stop) and sends `client.demo: true`. Demo check-ins work at any place, skip the speed check, and are rewarded like real
-  ones; they stay marked `client.demo = true` in `checkins`, and the pace limit still applies.
+  ones (stamp, XP, coins, badges, Siam Si); they stay marked `client.demo = true` in `checkins`, and the pace limit still
+  applies. They never move money (migration 090): no shop billing (`billing: "demo"`), no booking completion or fee, no coupon
+  spin. A demo check-in is also never the speed check's "last location", so it can't reject a later real one.
 - The all-time leaderboard (migration 053) ranks by XP minus what demo check-ins earned (their stamps and Siam Si shakes),
   and its cards count only non-demo stamps and provinces. Your own profile still shows everything. Quests a demo
   check-in completes still count (a small leak, accepted).

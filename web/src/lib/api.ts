@@ -25,6 +25,9 @@ export interface NearbyPartner {
 // v5: a verified shop paying monthly. Members' plans put these first; "choice" ones also make the Partner picks plan.
 export type PartnerTier = "partner" | "choice";
 export const TIER_NAME: Record<PartnerTier, string> = { partner: "Partner", choice: "Giggles Choice" };
+// demo mode's pretend tiers sit on real places that haven't signed up: always labelled as examples, never as paying
+export const EXAMPLE_TIER_NAME: Record<PartnerTier, string> = { partner: "Example partner", choice: "Example Giggles Choice" };
+export const EXAMPLE_TIER_TIP = "Pretend, for the demo only: this place hasn't signed up and doesn't pay Giggles Maps.";
 
 export interface RouteStop {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
@@ -35,6 +38,7 @@ export interface RouteStop {
   price_level?: number | null; // 0 free, 1-3 = ฿-฿฿฿, null = not listed
   nearby_partner: NearbyPartner | null;
   partner_tier?: PartnerTier | null;
+  partner_demo?: boolean;   // partner_tier is demo mode's pretend one (an example, not a paying shop)
   meal?: Meal | null; // engine v2: this stop covers a meal
   meal_late?: boolean; // the restaurant for that meal, outside the usual meal hours (the route couldn't reach them)
   picked?: boolean;   // the user asked for this place (must_include)
@@ -49,6 +53,7 @@ export interface AlongPlace {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number; tier: 1 | 2 | 3 | 4;
   rating: number | null; local: boolean; otop: boolean; community: boolean; photo: string | null; extra_min: number;
   partner_tier?: PartnerTier | null;
+  partner_demo?: boolean;
 }
 
 export type Meal = "breakfast" | "lunch" | "dinner";
@@ -88,7 +93,7 @@ export function choosePlan(plan: RoutePlan, id: string | null): RoutePlan {
 }
 
 export type Billing = "charged" | "no_qr" | "not_shown_on_route" | "repeat_visit_30d"
-  | "wallet_empty" | "not_rewarded" | "not_partner";
+  | "wallet_empty" | "not_rewarded" | "not_partner" | "demo";
 
 export interface Spin { won: boolean; odds: number; title?: string; place?: string; code?: string }
 
@@ -248,12 +253,12 @@ export const claimAdReward = (id: number) => rpc<void>("claim_ad_reward", { p_id
 // Plus: +20 coins the first time you open the app each day (0 when already collected or no Plus)
 export const plusDaily = () => rpc<number>("plus_daily");
 
-// paid tier of these places, when they have one (Partner / Giggles Choice)
-export async function placesTiers(ids: number[]): Promise<Map<number, PartnerTier>> {
+// paid tier of these places, when they have one (Partner / Giggles Choice); example = demo mode's pretend tier
+export async function placesTiers(ids: number[]): Promise<Map<number, { tier: PartnerTier; example: boolean }>> {
   if (!ids.length) return new Map();
   const { data, error } = await supabase.rpc("places_tiers", { p_ids: ids.slice(0, 300) });   // no session needed: public
   if (error) throw new ApiError(error.message);
-  const real = new Map((data as { id: number; tier: PartnerTier }[]).map((t) => [t.id, t.tier])), d = demo();
+  const real = new Map((data as { id: number; tier: PartnerTier }[]).map((t) => [t.id, { tier: t.tier, example: false }])), d = demo();
   return d ? (await d).demoTiersFor(ids, real) : real;
 }
 

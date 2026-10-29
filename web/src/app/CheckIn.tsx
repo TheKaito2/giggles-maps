@@ -11,7 +11,7 @@ import { checkinClient, checkinFix } from "../lib/native";
 import { useProvinces } from "./passport/useProvinces";
 import { ROMAN, STAMP_TIER } from "../lib/format";
 
-const CONSENT_KEY = "giggles.photoConsent.v2";   // v2: photos are kept for the passport album
+const CONSENT_KEY = "giggles.photoConsent.v3";   // v2: photos are kept for the passport album; v3: who sees them, how long
 const readConsent = () => { try { return localStorage.getItem(CONSENT_KEY) === "yes"; } catch { return false; } };
 const saveConsent = () => { try { localStorage.setItem(CONSENT_KEY, "yes"); } catch { /* storage blocked: ask again next time */ } };
 
@@ -21,7 +21,7 @@ const REASON_TEXT: Record<string, string> = {
   no_selfie: "The photo didn't upload.",
   mock_location: "Your location looks simulated.",
   speed_jump: "You moved faster than a car since your last check-in.",
-  low_accuracy: "GPS was too rough (over 75 m). A person will review it.",
+  low_accuracy: "GPS was too imprecise (over 75 m) to verify you're here, so no stamp. Try again with better signal, e.g. outdoors.",
   already_rewarded_today: "Already stamped here today. Come back tomorrow.",
   already_stamped: "You already have this stamp. The photo is added to your passport.",
   level_locked: "This place is for members at a higher level.",
@@ -35,6 +35,7 @@ const BILLING_TEXT: Partial<Record<Billing, string>> = {
   not_shown_on_route: "This shop wasn't on your route in the last 3 hours, so it isn't charged.",
   repeat_visit_30d: "Already counted for this shop in the last 30 days, so it isn't charged again.",
   wallet_empty: "The shop's credit ran out, so it isn't charged.",
+  demo: "Demo mode: shops are never charged.",
 };
 
 type Step = "consent" | "camera" | "working" | "result" | "error";
@@ -148,9 +149,10 @@ export default function CheckIn({ target, initialCode, hasPlus, luck = 0, nickna
           <div className="stack">
             <p>Check in with one photo of the moment and your location at this place.</p>
             <ul className="fine">
+              <li>We check that you're inside this place's check-in zone (50 m, or 150 m for landmarks and parks).</li>
               <li>Any photo: you, your friends, the view, the food. We don't analyse faces.</li>
-              <li>Your photos go into your passport album. Only you can see them, and you can hide or delete any of them.</li>
-              <li>You can delete your account, check-ins and photos any time in Passport.</li>
+              <li>Your photos go into your passport album. Your friends can see them, and so can trip-mates for photos from a ride-along together.</li>
+              <li>Photos of check-ins that aren't accepted are deleted after 30 days. The rest are kept until you delete your account (Profile → Settings → Delete account); to remove one photo, email kristpaulm@gmail.com.</li>
             </ul>
             <button className="btn" onClick={() => { saveConsent(); setStep("camera"); }}>I agree, open camera</button>
           </div>
@@ -203,7 +205,7 @@ export default function CheckIn({ target, initialCode, hasPlus, luck = 0, nickna
             )}
             <p className={`verdict ${result.status}`}>
               {result.status === "approved" ? (result.stamp ? "New stamp!" : "Photo added to your passport.")
-                : result.status === "review" ? "Sent for review." : "Check-in not accepted."}
+                : result.status === "review" ? "Couldn't verify your location." : "Check-in not accepted."}
             </p>
             {result.stamp?.new_province && (() => {
               const f = provinces.find((x) => x.properties.name_en === result.stamp!.province || x.id === Number(result.stamp!.province));

@@ -4,7 +4,7 @@ import { Bookmark, BookmarkCheck, CalendarCheck, Camera, Coins, Crown, ExternalL
 import { errCode } from "../lib/supabase";
 import { addPlacePhoto, type CommonsPhoto, createList, deletePlacePhoto, deleteReview, getCommonsPhotos, getMyLists, getPlaceExtras, getPlacePage, type PlaceExtras, type PlacePage, type PlacePhoto,
   photoUrls, placePhotoUrl, reportPlacePhoto, reportReview, REVIEW_SHAKE_CHARS, type PartnerTier, placesPerks, placesTiers, type SavedList, savePlace, shopPhotoUrl, SITE,
-  suggestEdit, TIER_NAME, writeReview } from "../lib/api";
+  suggestEdit, TIER_NAME, EXAMPLE_TIER_NAME, EXAMPLE_TIER_TIP, writeReview } from "../lib/api";
 import { shrinkPhoto } from "../lib/photo";
 import BookingSheet from "./BookingSheet";
 import { GROUPS, kindOf } from "./kinds";
@@ -112,7 +112,7 @@ export default function PlaceSheet({ id, member, onClose, onDirections, onChecki
   const [commons, setCommons] = useState<CommonsPhoto[]>([]);   // Wikimedia Commons photos, after everyone's own
   const [opened, setOpened] = useState<number | null>(null);
   const [menu, setMenu] = useState<"save" | "edit" | "book" | null>(null);
-  const [tier, setTier] = useState<PartnerTier | null>(null);   // a paying partner: labelled, and you can book it
+  const [tier, setTier] = useState<{ tier: PartnerTier; example: boolean } | null>(null);   // a paying partner: labelled, and you can book it (not demo's pretend ones)
   const [perk, setPerk] = useState<string | null>(null);   // that partner's member perk, in the shop's own words
   const [join, setJoin] = useState(false);   // the membership sheet, from "Members get"
   const [rating, setRating] = useState(0);
@@ -217,7 +217,9 @@ export default function PlaceSheet({ id, member, onClose, onDirections, onChecki
             <span className="fine">· {k.en}</span>
           </span>
           <span className="row tight">
-            {tier && <span className={`chip tier-${tier}`}>{TIER_NAME[tier]}</span>}
+            {tier && (tier.example
+              ? <span className={`chip tier-${tier.tier}`} title={EXAMPLE_TIER_TIP}>{EXAMPLE_TIER_NAME[tier.tier]}</span>
+              : <span className={`chip tier-${tier.tier}`}>{TIER_NAME[tier.tier]}</span>)}
             {page.tier >= 3 && <span className="chip landmark">{page.tier === 4 ? "Icon" : "Landmark"}</span>}
             {page.otop && <span className="chip otop">OTOP{extras?.otop_stars ? ` ${"★".repeat(extras.otop_stars)}` : ""}</span>}
             {extras?.verified && <span className="chip">Verified shop</span>}
@@ -231,7 +233,7 @@ export default function PlaceSheet({ id, member, onClose, onDirections, onChecki
       <div className="place-actions">
         {page.detour && <button type="button" className="btn gold small" onClick={() => onCheckin(page)}><Camera size={15} aria-hidden /> Check in</button>}
         <button type="button" className={`btn small${page.detour ? " soft" : ""}`} onClick={() => onDirections(page)}><Navigation size={15} aria-hidden /> Directions</button>
-        {tier && <button type="button" className="btn gold small" onClick={() => setMenu(menu === "book" ? null : "book")}><CalendarCheck size={15} aria-hidden /> Book</button>}
+        {tier && !tier.example && <button type="button" className="btn gold small" onClick={() => setMenu(menu === "book" ? null : "book")}><CalendarCheck size={15} aria-hidden /> Book</button>}
         <button type="button" className="btn soft small" onClick={() => setMenu(menu === "save" ? null : "save")}>
           {page.saved_in.length ? <BookmarkCheck size={15} aria-hidden /> : <Bookmark size={15} aria-hidden />} {page.saved_in.length ? "Saved" : "Save"}</button>
         <button type="button" className="btn soft small" onClick={share}><Share2 size={15} aria-hidden /> Share</button>

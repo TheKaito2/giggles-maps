@@ -87,10 +87,9 @@ serve(async (req) => {
   const { data: profile } = await db.from("profiles").select("plus_until, member_since").eq("id", user.id).maybeSingle();
   const plus = !!profile?.plus_until && new Date(profile.plus_until) > new Date();
   const member = !!profile?.member_since;
-  // stops a plan holds (tiers.ts): free plans 3, members and Plus 15. Demo mode stays unlimited for showing the app off.
-  // ponytail: demo is the client's own flag (body.demo), so anyone who switches demo mode on gets 15 stops; tie it to a
-  // server-side demo account if that ever matters.
-  const unlimited = member || plus || body.demo === true;
+  // stops a plan holds (tiers.ts): free plans 3, members and Plus 15. Demo mode doesn't change it: demo is the client's own
+  // flag (body.demo), so it can't unlock anything that's paid for.
+  const unlimited = member || plus;
   const stopCap = capFor(unlimited);
   const stopRefusal = stopLimitCode(mustInclude.length, unlimited);
   if (stopRefusal) throw new HttpError(stopRefusal === "stop_limit_free" ? 403 : 400, stopRefusal);
@@ -194,6 +193,7 @@ serve(async (req) => {
   }
   // paid tiers: Partner and Giggles Choice. Members' plans put them first; the Partner picks plan uses Choice stops only.
   const tierOf = new Map<number, "partner" | "choice">();
+  const pretend = new Set<number>();   // tiers from demo_partners: real places that haven't signed up, labelled as examples
   if (candidates.length) {
     const { data: tiers, error: tErr } = await db.rpc("places_tiers", { p_ids: candidates.map((c) => c.id) });
     if (tErr) console.error("partner tiers failed", tErr);
@@ -202,7 +202,7 @@ serve(async (req) => {
     if (body.demo === true) {
       const { data: demo, error: dErr } = await db.from("demo_partners").select("place_id, tier").in("place_id", candidates.map((c) => c.id));
       if (dErr) console.error("demo partners failed", dErr);
-      for (const d of (demo ?? []) as { place_id: number; tier: "partner" | "choice" }[]) if (!tierOf.has(d.place_id)) tierOf.set(d.place_id, d.tier);
+      for (const d of (demo ?? []) as { place_id: number; tier: "partner" | "choice" }[]) if (!tierOf.has(d.place_id)) { tierOf.set(d.place_id, d.tier); pretend.add(d.place_id); }
     }
   }
   const boost = member ? (id: number) => tierOf.get(id) === "choice" ? 2 : tierOf.get(id) === "partner" ? 1.5 : 1 : undefined;
@@ -377,7 +377,7 @@ serve(async (req) => {
         extra_min: ((x) => Number.isFinite(x) ? Math.round(x) : null)(insertionCost(plan.order.map((o) => o.idx), s.idx, travelMin, s.dwellMin)),
         photo: photoOf.get(c.id) ?? null,
         local: !!c.local, otop: !!c.otop, community: !!c.community,
-        partner_tier: tierOf.get(c.id) ?? null,
+        partner_tier: tierOf.get(c.id) ?? null, partner_demo: pretend.has(c.id),
         // field name kept for existing clients; the card is any nearby place, picked by quality
         nearby_partner: card
           ? { id: card.id, name: card.name, category: card.category, lat: card.lat, lng: card.lng,
@@ -392,7 +392,7 @@ serve(async (req) => {
       const c = byId.get(st.id)!;
       return { id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng, tier: c.tier ?? 2,
         rating: c.rating == null ? null : Number(c.rating), local: !!c.local, otop: !!c.otop, community: !!c.community,
-        photo: photoOf.get(c.id) ?? null, partner_tier: tierOf.get(c.id) ?? null,
+        photo: photoOf.get(c.id) ?? null, partner_tier: tierOf.get(c.id) ?? null, partner_demo: pretend.has(c.id),
         extra_min: Math.round(insertionCost(plan.order.map((x) => x.idx), st.idx, travelMin, st.dwellMin)) };
     }).filter((a) => Number.isFinite(a.extra_min)).sort((a, b) => a.extra_min - b.extra_min).slice(0, 30);
 

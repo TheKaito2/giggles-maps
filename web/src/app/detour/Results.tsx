@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { BedDouble, ChevronDown, ExternalLink, Flag, GripVertical, MoreHorizontal, Plus, Search, Share2, Ticket, Trash2, Camera, X } from "lucide-react";
 import Modal from "../Modal";
-import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, placesPerks, type RouteStop, routePlaces, searchPlaces, shareTrip, SITE, TIER_NAME } from "../../lib/api";
+import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, placesPerks, type RouteStop, routePlaces, searchPlaces, shareTrip, SITE, TIER_NAME, EXAMPLE_TIER_NAME, EXAMPLE_TIER_TIP } from "../../lib/api";
 import { errCode } from "../../lib/supabase";
 import { shareOrCopy } from "../../lib/native";
 import { demoOn } from "../../lib/demoGps";
@@ -35,7 +35,9 @@ export function Thumb({ s, size = 48 }: { s: { name: string; category: string; p
 // at most two badges per stop, the most telling first
 function badges(s: RouteStop): { text: string; cls: string; title?: string }[] {
   const all = [
-    s.partner_tier && { text: TIER_NAME[s.partner_tier], cls: `tier-${s.partner_tier}`, title: TIER_TIP[s.partner_tier] },
+    s.partner_tier && (s.partner_demo
+      ? { text: EXAMPLE_TIER_NAME[s.partner_tier], cls: `tier-${s.partner_tier}`, title: EXAMPLE_TIER_TIP }
+      : { text: TIER_NAME[s.partner_tier], cls: `tier-${s.partner_tier}`, title: TIER_TIP[s.partner_tier] }),
     s.picked && { text: "You picked", cls: "picked" },
     s.pit_stop && { text: "Pit stop", cls: "pit", title: "A quick stop for snacks, a drink or the toilet" },
     s.meal && { text: s.meal_late ? `Late ${MEAL_NAME[s.meal].toLowerCase()}` : MEAL_NAME[s.meal], cls: "meal" },

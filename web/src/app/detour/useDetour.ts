@@ -66,7 +66,7 @@ function savedTrip(): Saved | null {
   } catch { return null; }
 }
 
-/** `unlimited`: member, Plus or demo mode (plans hold 15 stops); everyone else plans 3 (the server decides; this is for the UI). */
+/** `unlimited`: member or Plus (plans hold 15 stops); everyone else plans 3 (the server decides; this is for the UI). */
 export function useDetour(onError: (m: string) => void, unlimited = true) {
   const restored = useRef(savedTrip()).current;
   const guest = isGuest(useUser());
