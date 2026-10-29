@@ -23,3 +23,13 @@ test("snapshot from your location: no start point, line starts at the first stop
   const named = snapshot(plan, { name: "Hotel", point: { lat: 17.1, lng: 104.1 } }, { name: "B", point: { lat: 17.1, lng: 105.1 } }, "auto", 600, true);
   expect([named.origin_name, named.origin_lat, named.geometry[0][0], named.demo]).toEqual(["Hotel", 17.1, 104.1, true]);
 });
+
+test("snapshot to your location (after Swap): no end point, line ends at the last stop", () => {
+  const plan = { geometry: line, extra_min: 5, total_min: 80,
+    stops: [{ id: 7, lat: 17.1, lng: 104.6, eta_min: 610, dwell_min: 20 }] } as unknown as RoutePlan;
+  const s = snapshot(plan, { name: "Hotel", point: { lat: 17.1, lng: 104.1 } }, { name: "Your location", point: { lat: 17.123456, lng: 105.1 } }, "auto", 600, false);
+  expect([s.dest_name, s.dest_lat, s.dest_lng]).toEqual(["End", 17.1, 104.6]);
+  expect(s.geometry[0][0]).toBeCloseTo(104.1, 3);
+  expect(s.geometry.at(-1)).toEqual([104.6, 17.1]);
+  expect(s.geometry.every(([lng]) => lng <= 104.6)).toBe(true);
+});

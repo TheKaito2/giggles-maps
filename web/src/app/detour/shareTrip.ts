@@ -20,23 +20,27 @@ export function simplify(line: [number, number][]): [number, number][] {
 }
 
 /** The trip as a public page holds it. A trip from "Your location" keeps no start point, and its line starts at the first
- *  stop, so the page never shows where the sharer was (their home, often). */
+ *  stop, so the page never shows where the sharer was (their home, often). A trip to "Your location" (after Swap) ends
+ *  at the last stop the same way. */
 export function snapshot(plan: RoutePlan, origin: Place, dest: Place, mode: TravelMode, start: number, demo: boolean): TripSnapshot {
   const here = origin.name === "Your location";
+  const last = dest.name === "Your location" ? plan.stops.at(-1) : undefined;
   let line = plan.geometry;
-  if (here && plan.stops.length) {
-    const first = plan.stops[0];
+  const nearest = (to: { lat: number; lng: number }) => {
     let best = 0;
-    line.forEach((p, i) => { if (metres(pt(p), first) < metres(pt(line[best]), first)) best = i; });
-    line = line.slice(best);
-  }
+    line.forEach((p, i) => { if (metres(pt(p), to) < metres(pt(line[best]), to)) best = i; });
+    return best;
+  };
+  if (here && plan.stops.length) line = line.slice(nearest(plan.stops[0]));
+  if (last) line = [...line.slice(0, nearest(last) + 1), [last.lng, last.lat]];
+  const end = last ? { name: "End", point: { lat: last.lat, lng: last.lng } } : dest;
   const geometry = simplify(line);   // no road line (or only the bit after the sharer's start): straight from stop to stop
   return {
     mode, origin_name: here ? "Start" : origin.name, origin_lat: here ? null : origin.point.lat, origin_lng: here ? null : origin.point.lng,
-    dest_name: dest.name, dest_lat: dest.point.lat, dest_lng: dest.point.lng,
+    dest_name: end.name, dest_lat: end.point.lat, dest_lng: end.point.lng,
     stops: plan.stops.map((s) => ({ id: s.id, arrive_min: Math.max(0, Math.round(s.eta_min - start)), dwell_min: s.dwell_min })),
     extra_min: Math.max(0, Math.round(plan.extra_min)), total_min: Math.max(0, Math.round(plan.total_min)),
-    geometry: geometry.length >= 2 ? geometry : [...plan.stops.map((s): [number, number] => [s.lng, s.lat]), [dest.point.lng, dest.point.lat]],
+    geometry: geometry.length >= 2 ? geometry : [...plan.stops.map((s): [number, number] => [s.lng, s.lat]), [end.point.lng, end.point.lat]],
     note: null, demo,
   };
 }

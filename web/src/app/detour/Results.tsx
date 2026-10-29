@@ -320,6 +320,9 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
   }
   const plans = response.plans ?? [];
   const current = plans.find((p) => p.id === d.choice) ?? plans[0];
+  // demo mode's Partner picks, made only of pretend Choice tiers, isn't a plan of paid partners
+  const examplePicks = (p: (typeof plans)[number]) => p.id === "giggles" && p.stops.every((s) => s.partner_tier !== "choice" || s.partner_demo);
+  const demoPicks = plans.some(examplePicks);
   // a public page of this trip (/app/?trip=ID); tapping again for the same route shares the same page
   const shareThis = async () => {
     if (sharing || !d.origin || !d.dest) return;
@@ -346,7 +349,7 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
             <button key={p.id} type="button" role="radio" aria-checked={p.id === current?.id} className={`plan-card${p.id === current?.id ? " on" : ""}`}
               onClick={() => d.setChoice(p.id)}>
               <span className="thumbs" aria-hidden>{p.stops.slice(0, 4).map((s) => <Thumb key={s.id} s={s} size={30} />)}</span>
-              <b>{p.name}</b>
+              <b>{examplePicks(p) ? "Example partner picks" : p.name}</b>
               <span className="preset-stats"><span><b className="num">{p.stops.length}</b> <small>{p.stops.length === 1 ? "stop" : "stops"}</small></span>
                 <span><b className="num">+{p.extra_min}</b> <small>min</small></span></span>
             </button>
@@ -403,7 +406,7 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
       <Along places={current?.along ?? []} d={d} full={plan.stops.length >= d.cap} />
       <p className="fine">How stops are picked <Info label="How stops are picked">Stops are picked on quality and how little time they
         add, with a small nudge for places other travellers really checked in at. Paid Partner and Giggles Choice places
-        are always labelled; free plans rank them like everyone else, and members' plans give them a boost. "Partner picks" is a plan of paid partners only.</Info></p>
+        are always labelled; free plans rank them like everyone else, and members' plans give them a boost.{!demoPicks && ' "Partner picks" is a plan of paid partners only.'}</Info></p>
     </div>
   );
 }
