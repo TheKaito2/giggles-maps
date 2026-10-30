@@ -10,7 +10,7 @@ export function PhotoConsentTerms() {
       <li>Any photo: you, your friends, the view, the food. We don't analyse faces.</li>
       <li>Your photos go into your passport album. Your friends can see them, and so can trip-mates for photos from a ride-along together.</li>
       <li>Photos of check-ins that aren't accepted are deleted after 30 days. The rest are kept until you delete your account (Profile → Settings → Delete account); to remove one photo, email kristpaulm@gmail.com.</li>
-      <li>A photo of a shop you nominate isn't shown to anyone else: it helps us check the place, and it's deleted 30 days after the nomination goes live, expires or is turned down.</li>
+      <li>A photo of a shop you nominate isn't shown to anyone else: we keep it for up to 30 days after the nomination goes live, expires or is turned down, in case we need to check the place, then delete it.</li>
     </ul>
   );
 }

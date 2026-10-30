@@ -227,8 +227,8 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
   applies. They never move money (migration 090): no shop billing (`billing: "demo"`), no booking completion or fee, no coupon
   spin. A demo check-in's new province gives no bonus shake, and its shake never wins an XP boost (coins instead; migration 092). A demo check-in is also never the speed check's "last location", so it can't reject a later real one.
 - The all-time leaderboard (migration 053) ranks by XP minus what demo check-ins earned (their stamps and Siam Si shakes),
-  and its cards count only non-demo stamps and provinces. Your own profile still shows everything. Quests a demo
-  check-in completes still count (a small leak, accepted).
+  and its cards count only non-demo stamps and provinces. Your own profile still shows everything. A demo check-in never
+  progresses quests or challenges: its stamp isn't counted and it doesn't do the daily check-in (migration 093).
 
 ## Profile, feed, quests (migration 024)
 - `me()` also returns `avatar`, `joined`, `coins`, `provinces`.

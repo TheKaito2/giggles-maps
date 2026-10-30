@@ -24,7 +24,7 @@ export default function AddPlace({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const local = LOCAL_KINDS.includes(kind);
   const send = () => {
-    if (local && !photo) { setMsg("Add a photo of the shop: it helps us check the place, and it's deleted 30 days after the nomination closes."); return; }
+    if (local && !photo) { setMsg("Add a photo of the shop: we keep it for up to 30 days after the nomination closes in case we need to check the place, then delete it."); return; }
     setBusy(true); setMsg("Getting your location…");
     navigator.geolocation.getCurrentPosition((pos) => {
       const here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -60,8 +60,10 @@ export default function AddPlace({ onClose }: { onClose: () => void }) {
           : <div className="stack"><span>Photo of the shop (required)</span><PhotoConsentTerms />
               <button type="button" className="btn soft" onClick={() => { saveConsent(); setConsent(true); }}>I agree, add a photo</button></div>)}
         <p className="fine">{local ? "Local shops go live when two other travellers confirm them on the spot." : "We check other places before they go on the map."}</p>
-        <label className="field"><span>Opening hours (optional)</span><input className="text-in" value={hours} placeholder="Mo-Su 08:00-17:00" onChange={(e) => setHours(e.target.value)} /></label>
-        <label className="field"><span>Phone (optional)</span><input className="text-in" value={phone} inputMode="tel" onChange={(e) => setPhone(e.target.value)} /></label>
+        {!local && <>   {/* a nomination doesn't carry hours or phone */}
+          <label className="field"><span>Opening hours (optional)</span><input className="text-in" value={hours} placeholder="Mo-Su 08:00-17:00" onChange={(e) => setHours(e.target.value)} /></label>
+          <label className="field"><span>Phone (optional)</span><input className="text-in" value={phone} inputMode="tel" onChange={(e) => setPhone(e.target.value)} /></label>
+        </>}
         {msg && <p className="fine" role="status">{msg}</p>}
         <button className="btn" type="submit" disabled={busy || name.trim().length < 2}>{local ? "Nominate this shop" : "Send for review"}</button>
     </Modal>
