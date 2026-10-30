@@ -252,7 +252,7 @@ export default function Book({ owner, theme = "classic", frame = "none", stamps,
       </section>)}
     </Page>));
   if (pages.length % 2 === 0) pages.push(<Page key="notes" className="notes"><h3 className="page-h">NOTES</h3></Page>);
-  pages.push(<div key="back" className={`page cover back theme-${theme}`}><span className="cover-top">giggles-maps.pages.dev</span></div>);
+  pages.push(<div key="back" className={`page cover back theme-${theme}`}><span className="cover-top">gigglesmap.xyz</span></div>);
 
   const leaves = spread
     ? chunk(pages, 2).map(([front, back]) => ({ front, back }))

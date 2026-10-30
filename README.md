@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://giggles-maps.pages.dev"><img alt="Live" src="https://img.shields.io/badge/live-giggles--maps.pages.dev-0a72d6?style=flat-square" /></a>
+  <a href="https://gigglesmap.xyz"><img alt="Live" src="https://img.shields.io/badge/live-gigglesmap.xyz-0a72d6?style=flat-square" /></a>
   <img alt="React 18" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square&logo=typescript&logoColor=white" />
   <img alt="Supabase" src="https://img.shields.io/badge/Supabase-Postgres%20%2B%20PostGIS-3ecf8e?style=flat-square&logo=supabase&logoColor=white" />

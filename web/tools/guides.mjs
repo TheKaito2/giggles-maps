@@ -13,7 +13,7 @@ import { kindOf } from "../src/app/kinds.ts";
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(WEB, "public/guides");
-const SITE = "https://giggles-maps.pages.dev";
+const SITE = "https://gigglesmap.xyz";
 const MAX_ICONS = 12, MAX_LANDMARKS = 8;
 
 // Icons (tier 4) are the places in supabase/data/icon_places.csv: migration 084 sets their tier, but this works before it's live

@@ -123,7 +123,7 @@ function header(g: CanvasRenderingContext2D, colour: string, right: string) {
 }
 function footer(g: CanvasRenderingContext2D, colour: string) {
   g.fillStyle = colour; g.globalAlpha = 0.7; g.textAlign = "center"; g.font = `600 32px ${MONO}`;
-  g.fillText("giggles-maps.pages.dev", W / 2, 1850); g.globalAlpha = 1;
+  g.fillText("gigglesmap.xyz", W / 2, 1850); g.globalAlpha = 1;
 }
 /** Thailand, visited provinces filled, fitted into a box of height h. Returns its width. */
 function thailand(g: CanvasRenderingContext2D, features: ProvinceFeature[], visited: (f: ProvinceFeature) => string | null, x: number, y: number, h: number,

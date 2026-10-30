@@ -605,7 +605,7 @@ export const stopEta = () => rpc<void>("stop_eta");
 export interface EtaView { who: Who; dest: { lat: number; lng: number; name: string | null }; eta_at: string | null; at: { lat: number; lng: number; seen_at: string } | null }
 export const viewEta = (token: string) => rpc<EtaView | null>("view_eta", { p_token: token });
 
-export const SITE = "https://giggles-maps.pages.dev";
+export const SITE = "https://gigglesmap.xyz";
 // "?friend=CODE" (friend QR) and "?trip=CODE" (ride-along QR)
 export const readCodeParam = (name: "friend" | "trip") => {
   const m = /^[A-Za-z0-9]{6,10}$/.exec(new URLSearchParams(location.search).get(name) ?? "");

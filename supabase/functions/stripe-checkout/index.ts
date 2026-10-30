@@ -21,7 +21,7 @@ serve(async (req) => {
 
   const body = await readJson(req);
   const kind = ["credit", "plus", "plus_year", "membership", "partner", "choice"].includes(body.kind) ? body.kind : "credit";
-  const site = Deno.env.get("SITE_URL") ?? "https://giggles-maps.pages.dev";
+  const site = Deno.env.get("SITE_URL") ?? "https://gigglesmap.xyz";
 
   let amount: number, name: string, back: string;
   const meta: Record<string, string> = { kind };

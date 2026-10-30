@@ -8,7 +8,9 @@ import { Share } from "@capacitor/share";
 // The iOS app is this same web app inside a Capacitor shell. These wrappers pick the native way on the phone and keep the
 // web way everywhere else, so screens call one function and never check the platform themselves.
 export const isNative = Capacitor.isNativePlatform();
-const SITE = "https://giggles-maps.pages.dev";   // = SITE in api.ts (not imported: api needs the Vite env, tests run without it)
+const SITE = "https://gigglesmap.xyz";   // = SITE in api.ts (not imported: api needs the Vite env, tests run without it)
+// links shared before the move to gigglesmap.xyz still open the app
+const SITE_HOSTS = ["gigglesmap.xyz", "www.gigglesmap.xyz", "giggles-maps.pages.dev"];
 export const AUTH_CALLBACK = "giggles://auth-callback";
 
 /** A buzz for a moment in a ceremony. iPhones have no navigator.vibrate, so the app uses the Taptic Engine. */
@@ -85,12 +87,13 @@ export function onAuthCallback(cb: (params: URLSearchParams) => void) {
   });
 }
 
-/** iOS: calls back with each https://giggles-maps.pages.dev/app/ link the app is opened with (universal links, see
+/** iOS: calls back with each https://gigglesmap.xyz/app/ link (or the older giggles-maps.pages.dev one) the app is opened with (universal links, see
  *  public/.well-known/apple-app-site-association). The web app reads the same links from location.search instead. */
 export function onSiteLink(cb: (params: URLSearchParams) => void) {
   if (!isNative) return;
   void CapApp.addListener("appUrlOpen", ({ url }) => {
-    if (url.startsWith(`${SITE}/app/`)) cb(new URL(url).searchParams);
+    const u = new URL(url);
+    if (SITE_HOSTS.includes(u.host) && u.pathname.startsWith("/app/")) cb(u.searchParams);
   });
 }
 
