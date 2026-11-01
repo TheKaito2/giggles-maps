@@ -18,7 +18,6 @@ export default function AddPlace({ onClose }: { onClose: () => void }) {
   const [consent, setConsent] = useState(readConsent);   // the same photo consent as check-in, asked once
   const [name, setName] = useState("");
   const [kind, setKind] = useState("restaurant");
-  const [hours, setHours] = useState("");
   const [phone, setPhone] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
@@ -37,7 +36,7 @@ export default function AddPlace({ onClose }: { onClose: () => void }) {
           .finally(() => setBusy(false));
         return;
       }
-      suggestEdit(null, { name: name.trim(), kind, ...here, ...(hours.trim() ? { opening_hours: hours.trim() } : {}), ...(phone.trim() ? { phone: phone.trim() } : {}) }, here)
+      suggestEdit(null, { name: name.trim(), kind, ...here, ...(phone.trim() ? { phone: phone.trim() } : {}) }, here)
         .then(() => setMsg("Thanks! We'll check it and add it to the map. +50 XP when it's approved."))
         .catch((e) => setMsg(errCode(e) === "too_many_edits" ? "That's a lot of suggestions today. Try again tomorrow." : "Couldn't send that. Try again."))
         .finally(() => setBusy(false));
@@ -60,8 +59,7 @@ export default function AddPlace({ onClose }: { onClose: () => void }) {
           : <div className="stack"><span>Photo of the shop (required)</span><PhotoConsentTerms />
               <button type="button" className="btn soft" onClick={() => { saveConsent(); setConsent(true); }}>I agree, add a photo</button></div>)}
         <p className="fine">{local ? "Local shops go live when two other travellers confirm them on the spot." : "We check other places before they go on the map."}</p>
-        {!local && <>   {/* a nomination doesn't carry hours or phone */}
-          <label className="field"><span>Opening hours (optional)</span><input className="text-in" value={hours} placeholder="Mo-Su 08:00-17:00" onChange={(e) => setHours(e.target.value)} /></label>
+        {!local && <>   {/* a nomination doesn't carry a phone */}
           <label className="field"><span>Phone (optional)</span><input className="text-in" value={phone} inputMode="tel" onChange={(e) => setPhone(e.target.value)} /></label>
         </>}
         {msg && <p className="fine" role="status">{msg}</p>}

@@ -40,7 +40,7 @@ stamps, XP, coins and Siam Si fortune sticks. Shops pay only for visits that rea
 | ✍️ **Give back, get rewarded** | A written review of a place you visited earns a Siam Si shake; your first photo of a stop on its page earns coins. |
 | 🏆 **Play with friends** | Weekly and all-time leaderboards, province champions, quests and chests, a friends feed, ride-along trips with live positions and a shared album. |
 | 🌙 **Dark mode** | Light, Dark, or Auto (follows your phone). The map goes dark with it. |
-| 🏪 **For shops** | Claim your listing free, add products and photos, see how many trips pass your door. Partners (฿299/month) show first on members' routes, always labelled, and take bookings. |
+| 🏪 **For shops** | Claim your listing free, add products and photos, see how many trips pass your door. Partners (฿299/month) get a boost on members' routes, always labelled, and take bookings. |
 
 ## How it works
 

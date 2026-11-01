@@ -76,7 +76,7 @@ export default function Upgrade({ gate, onClose, onRewarded }: { gate: Why; onCl
               <li>Unlimited detours and changes</li>
               <li>Up to 15 stops a plan (free plans hold 3)</li>
               <li>No ads, forever</li>
-              <li>Partner and Giggles Choice stops first</li>
+              <li>Partner and Giggles Choice stops boosted</li>
               <li>Member perks at partner shops</li>
               <li>3 months of Plus free</li>
             </ul>

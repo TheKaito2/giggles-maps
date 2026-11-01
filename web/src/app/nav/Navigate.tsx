@@ -11,7 +11,7 @@ import { buzz, shareOrCopy } from "../../lib/native";
 import { useBack } from "../../lib/useDialog";
 import { clockTime } from "../../lib/format";
 
-export interface Waypoint extends LatLng { name: string; id?: number; dwell?: number }   // id: a place you can check in at; dwell: minutes there
+export interface Waypoint extends LatLng { name: string; id?: number; dwell?: number; partner?: string | null }   // id: a place you can check in at; dwell: minutes there; partner: its paid label
 const ARRIVE_M = 50;   // this close to a stop counts as there: the arrival card comes up
 const LEAVE_M = 100;   // this far from it again: you drove on, the card goes away (twice ARRIVE_M so GPS jitter doesn't flicker it)
 const OFF_ROUTE_M = 60, OFF_ROUTE_S = 10, REROUTE_GAP_S = 20;
@@ -220,6 +220,7 @@ export default function Navigate({ waypoints, mode, onClose, onCheckin }: {
         <div className="arrive-card nav-arrive" role="alertdialog" aria-labelledby="arrive-title">
           <span className="eyebrow">You've arrived</span>
           <b id="arrive-title">{atStop.name}</b>
+          {atStop.partner && <span className="chip partner">{atStop.partner}</span>}
           {atStop.id != null
             ? <><p className="fine">Directions pause while you check in.</p>
                 <button type="button" className="btn big checkin-go" onClick={() => { if (share) stopEta().catch(() => undefined); onCheckin(atStop, left.filter((w) => w !== atStop)); }}>

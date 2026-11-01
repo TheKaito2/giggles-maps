@@ -1,7 +1,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Camera, Coins, LocateFixed, Map as MapIcon, Navigation, ScrollText, Trophy, UserRound, Users, X } from "lucide-react";
 import { ensureSession, supabase } from "../lib/supabase";
-import { addFriend, adFree, type CheckinTarget, getProfile, type LatLng, levelFor, levelProgress, pendingLevels, plusDaily, type Profile, readCodeParam, readScanParam, readSharedTripParam, type SharedTrip } from "../lib/api";
+import { addFriend, adFree, partnerLabel, type CheckinTarget, getProfile, type LatLng, levelFor, levelProgress, pendingLevels, plusDaily, type Profile, readCodeParam, readScanParam, readSharedTripParam, type SharedTrip } from "../lib/api";
 import Sheet, { type Snap } from "./detour/Sheet";
 import WhereTo from "./detour/WhereTo";
 import Choose, { TripHead } from "./detour/Choose";
@@ -327,7 +327,7 @@ export default function App() {
             head={d.stage !== "browse" && <TripHead d={d} onBack={d.stage === "results" ? () => d.setStage("choose") : d.close}
               backLabel={d.stage === "results" ? "Back to time options" : "Close this trip"} onSearch={() => setSnap("full")} />}
             foot={d.stage === "results" && plan && plan.stops.length > 0 && (
-              <button type="button" className="btn big find" onClick={() => { setPaused(null); setNav([...plan.stops.map((st) => ({ lat: st.lat, lng: st.lng, name: nameOf(st), id: st.id, dwell: st.dwell_min })),
+              <button type="button" className="btn big find" onClick={() => { setPaused(null); setNav([...plan.stops.map((st) => ({ lat: st.lat, lng: st.lng, name: nameOf(st), id: st.id, dwell: st.dwell_min, partner: partnerLabel(st) })),
                 { ...d.dest!.point, name: d.dest!.name }]); liveTrip.start(plan.stops, d.dest!.name); }}><Navigation size={18} aria-hidden /> Start · {plan.stops.length} stop{plan.stops.length === 1 ? "" : "s"}</button>
             )}>
             {error && <p className="error" role="alert">{error}<button type="button" className="icon-btn" onClick={() => setError("")} aria-label="Dismiss"><X size={16} /></button></p>}

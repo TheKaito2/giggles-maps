@@ -27,6 +27,9 @@ export type PartnerTier = "partner" | "choice";
 export const TIER_NAME: Record<PartnerTier, string> = { partner: "Partner", choice: "Giggles Choice" };
 // demo mode's pretend tiers sit on real places that haven't signed up: always labelled as examples, never as paying
 export const EXAMPLE_TIER_NAME: Record<PartnerTier, string> = { partner: "Example partner", choice: "Example Giggles Choice" };
+/** The label a paid stop must carry, or null. */
+export const partnerLabel = (s: { partner_tier?: PartnerTier | null; partner_demo?: boolean; is_partner?: boolean; is_demo?: boolean }): string | null =>
+  s.partner_tier ? (s.partner_demo ? EXAMPLE_TIER_NAME : TIER_NAME)[s.partner_tier] : s.is_partner ? (s.is_demo ? "Example partner" : "Partner") : null;
 export const EXAMPLE_TIER_TIP = "Pretend, for the demo only: this place hasn't signed up and doesn't pay Giggles Maps.";
 
 export interface RouteStop {
@@ -616,7 +619,8 @@ export const readCodeParam = (name: "friend" | "trip") => {
 // ---------- shared trip pages: /app/?trip=<8 base62 characters> ----------
 /** A stop on a shared trip; minutes count from when the trip leaves. */
 export interface SharedStop { id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
-  arrive_min: number; leave_min: number; dwell_min: number }
+  arrive_min: number; leave_min: number; dwell_min: number;
+  partner_tier?: PartnerTier | null; partner_demo?: boolean; is_partner?: boolean; is_demo?: boolean }
 export interface SharedTrip {
   id: string; created_at: string; title: string; mode: TravelMode;
   origin: { name: string; lat: number | null; lng: number | null };   // no point when it started at the sharer's location

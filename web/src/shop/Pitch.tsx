@@ -6,9 +6,9 @@ import { type FoundPlace, PRICES, searchPlaces, shopReach, type ShopReach } from
 // for their own shop, how to join, prices and an FAQ. Claiming and signing in sit right below it (#claim, #account).
 const REASONS = [
   { icon: Store, title: "A free listing", text: "Your photos, products and story on your place page." },
-  { icon: Star, title: "First on members' routes", text: `Partners (฿${PRICES.partner} a month) come first for members, with a Partner badge.` },
+  { icon: Star, title: "Boosted on members' routes", text: `Partners (฿${PRICES.partner} a month) get a boost on members' routes, with a Partner badge.` },
   { icon: CalendarCheck, title: "Bookings", text: `Partners take bookings through Giggles. ฿${PRICES.booking} per guest who shows up.` },
-  { icon: BarChart3, title: "Your numbers", text: "How often travellers saw you, and who checked in." },
+  { icon: BarChart3, title: "Your numbers", text: "How often travellers saw you, and your verified visits." },
 ];
 const STEPS = [
   { title: "Claim your shop", text: "Search your name below, or add it while you're standing in it." },
@@ -83,7 +83,7 @@ export default function Pitch() {
         <div className="ladder">
           <article><span className="eyebrow">Listing</span><b className="num">Free</b><span className="fine">On the map and in routes, with your sticker and numbers.</span></article>
           <article className="hot"><span className="eyebrow">Partner</span><b className="num">฿{PRICES.partner}<small>/month</small></b>
-            <span className="fine">First on members' routes, Partner badge, bookings.</span></article>
+            <span className="fine">Boosted on members' routes, Partner badge, bookings.</span></article>
           <article><span className="eyebrow">Giggles Choice</span><b><Sparkles size={18} aria-hidden /> By invitation</b>
             <span className="fine">Partners apply; the ones we choose can switch it on (฿{PRICES.choice}/month) and join the Partner picks plan.</span></article>
         </div>

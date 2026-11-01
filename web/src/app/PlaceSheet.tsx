@@ -53,12 +53,11 @@ function SaveMenu({ page, onClose, onChange }: { page: PlacePage; onClose: () =>
 }
 
 function EditForm({ page, onDone }: { page: PlacePage; onDone: (msg: string) => void }) {
-  const [hours, setHours] = useState(page.opening_hours ?? "");
   const [phone, setPhone] = useState(page.phone ?? "");
   const [website, setWebsite] = useState(page.website ?? "");
   const [closed, setClosed] = useState(false);
   const send = () => {
-    const payload = closed ? { closed: true } : Object.fromEntries(Object.entries({ opening_hours: hours, phone, website })
+    const payload = closed ? { closed: true } : Object.fromEntries(Object.entries({ phone, website })
       .filter(([k, v]) => v.trim() && v.trim() !== (page as unknown as Record<string, string | null>)[k]));
     if (!Object.keys(payload).length) { onDone("Nothing changed."); return; }
     suggestEdit(page.id, payload).then(() => onDone("Thanks! We'll check it and update the place. +50 XP when it's approved."))
@@ -66,7 +65,6 @@ function EditForm({ page, onDone }: { page: PlacePage; onDone: (msg: string) => 
   };
   return (
     <form className="stack edit-form" onSubmit={(e) => { e.preventDefault(); send(); }}>
-      <label className="field"><span>Opening hours</span><input className="text-in" value={hours} placeholder="Mo-Su 08:00-17:00" onChange={(e) => setHours(e.target.value)} /></label>
       <label className="field"><span>Phone</span><input className="text-in" value={phone} inputMode="tel" onChange={(e) => setPhone(e.target.value)} /></label>
       <label className="field"><span>Website</span><input className="text-in" value={website} inputMode="url" onChange={(e) => setWebsite(e.target.value)} /></label>
       <label className="toggle"><input type="checkbox" checked={closed} onChange={(e) => setClosed(e.target.checked)} /><span>This place has closed for good</span></label>

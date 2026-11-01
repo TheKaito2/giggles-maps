@@ -1,7 +1,7 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
-import { type LatLng, mapPlaces, type MapPlace, type RouteStop, type Stop, type TripMember } from "../lib/api";
+import { type LatLng, mapPlaces, type MapPlace, partnerLabel, type RouteStop, type Stop, type TripMember } from "../lib/api";
 import { addPinIcons } from "./pinIcons";
 import { addLandmarkIcons, landmarkIconOf } from "./landmarkIcons";
 import { colourOf, kindIdOf } from "./kinds";
@@ -204,7 +204,7 @@ export default function MapView({ origin, dest, stops, geometry, alternates = NO
     if (origin) add(pin("start", "A", "Start"), origin);
     if (dest) add(pin("end", "B", "Destination"), dest);
     stops.forEach((s, i) => {
-      const el = pin(s.is_partner ? "stop partner" : "stop", String(i + 1), `Stop ${i + 1}: ${s.name}`);
+      const el = pin(s.is_partner ? "stop partner" : "stop", String(i + 1), `Stop ${i + 1}: ${s.name}${partnerLabel(s) ? `, ${partnerLabel(s)}` : ""}`);
       el.addEventListener("click", (ev) => { ev.stopPropagation(); onSelectStop(s.id); });
       add(el, s);
     });

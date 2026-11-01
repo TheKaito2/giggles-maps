@@ -44,7 +44,6 @@ function Listing({ p, onChange }: { p: OwnedPlace; onChange: () => void }) {
         {p.verified ? <span className="chip">Verified shop</span> : <span className="chip review">Verified after the first QR scan</span>}</div>
       <a className="link" href={`/app/?place=${p.id}`} target="_blank" rel="noreferrer">See your place page</a>
       <div className="listing-grid">
-        <label className="field"><span>Opening hours</span><input className="text-in" value={f.opening_hours} placeholder="Mo-Su 08:00-17:00" onChange={(e) => setF({ ...f, opening_hours: e.target.value })} /></label>
         <label className="field"><span>Phone</span><input className="text-in" value={f.phone} inputMode="tel" onChange={(e) => setF({ ...f, phone: e.target.value })} /></label>
         <label className="field"><span>Website or Facebook</span><input className="text-in" value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} /></label>
         <label className="field wide"><span>About your shop (shown to travellers)</span>

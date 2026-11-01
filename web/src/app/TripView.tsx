@@ -1,7 +1,7 @@
 import maplibregl from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import { Route, Share2, X } from "lucide-react";
-import { SITE, type SharedTrip, viewSharedTrip } from "../lib/api";
+import { partnerLabel, SITE, type SharedTrip, viewSharedTrip } from "../lib/api";
 import { shareOrCopy } from "../lib/native";
 import { useDialog } from "../lib/useDialog";
 import { nameOf } from "../lib/i18n";
@@ -77,7 +77,7 @@ export default function TripView({ id, limit, onClose, onPlan }: { id: string; l
         <ol className="stop-rows">
           {trip.stops.map((s, i) => <li key={s.id} className="stop-row">
             <span className="stop-num" aria-hidden>{i + 1}</span>
-            <span className="stop-text"><b>{nameOf(s)}</b>
+            <span className="stop-text"><b>{nameOf(s)}</b>{partnerLabel(s) && <> <span className="chip partner">{partnerLabel(s)}</span></>}
               <span className="stop-meta"><b className="num">+{budgetLabel(s.arrive_min)}</b><span className="fine">{kindOf(null, s.category).en}</span></span>
               <span className="fine num stop-leg">{`${s.dwell_min} min there`}</span></span>
           </li>)}
