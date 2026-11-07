@@ -9,13 +9,30 @@ export type Mode = "pedestrian" | "bicycle" | "auto";   // Valhalla costing name
 export const METERS_PER_MIN: Record<Mode, number> = { pedestrian: 80, bicycle: 250, auto: 500 };
 export interface LatLng { lat: number; lng: number }
 
-const post = async (path: string, body: unknown) => {
-  const res = await fetch(`${BASE}/${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Client-Id": "giggles-maps.pages.dev" },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(8000),
-  });
+// our server only answers requests carrying this token (a Cloudflare rule checks it)
+const TOKEN = env("VALHALLA_TOKEN");
+// Stadia Maps runs Valhalla under versioned paths: the backup for when our server is off or failing
+const STADIA_PATHS = { route: "route/v1", sources_to_targets: "matrix/v1" };
+
+/** POST to our routing server; on a network error or a 5xx, to Stadia Maps instead when VALHALLA_API_KEY (a Stadia key) is set. */
+export async function valhallaPost(path: keyof typeof STADIA_PATHS, body: unknown,
+  { base = BASE, fetcher = fetch as typeof fetch, timeoutMs = 8000, backupKey = env("VALHALLA_API_KEY") } = {}): Promise<Response> {
+  const send = (url: string, headers: Record<string, string>) => fetcher(url, { method: "POST",
+    headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs) });
+  try {
+    const res = await send(`${base.replace(/\/$/, "")}/${path}`,
+      { "X-Client-Id": "giggles-maps.pages.dev", ...(TOKEN ? { "X-Route-Token": TOKEN } : {}) });
+    if (res.status < 500 || !backupKey) return res;
+    console.error(`routing server ${path} ${res.status}, using backup`);
+  } catch (error) {
+    if (!backupKey) throw error;
+    console.error(`routing server ${path} unreachable, using backup`, error);
+  }
+  return send(`https://api.stadiamaps.com/${STADIA_PATHS[path]}`, { Authorization: `Stadia-Auth ${backupKey}` });
+}
+
+const post = async (path: keyof typeof STADIA_PATHS, body: unknown) => {
+  const res = await valhallaPost(path, body);
   if (!res.ok) throw new Error(`valhalla ${path} ${res.status}`);
   return res.json();
 };
@@ -73,12 +90,8 @@ export function pieces<T>(points: T[], max = MAX_LOCATIONS): T[][] {
 
 export function createRouter(base: string, fetcher: typeof fetch = fetch) {
   const piece = async (points: LatLng[], mode: Mode) => {
-    const response = await fetcher(`${base.replace(/\/$/, "")}/route`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Client-Id": "giggles-maps.pages.dev" },
-      body: JSON.stringify({ locations: points.map((p) => ({ lat: p.lat, lon: p.lng, type: "break" })), costing: mode, units: "kilometers" }),
-      signal: AbortSignal.timeout(8000),
-    });
+    const response = await valhallaPost("route",
+      { locations: points.map((p) => ({ lat: p.lat, lon: p.lng, type: "break" })), costing: mode, units: "kilometers" }, { base, fetcher });
     // keep the provider's reason ("Path distance exceeds the max distance limit", "No path could be found")
     if (!response.ok) throw new RoutingError(`route provider returned ${response.status}: ${String((await response.json().catch(() => null))?.error ?? "")}`);
     const data = await response.json();

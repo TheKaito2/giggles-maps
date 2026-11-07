@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan } from "./road-detour.ts";
 import { planDetour, type Plan, type Stop } from "./planner.ts";
-import { createRouter, decodePolyline6, type RoadRoute } from "./valhalla.ts";
+import { createRouter, decodePolyline6, type RoadRoute, valhallaPost } from "./valhalla.ts";
 
 const origin = { lat: 16.44, lng: 102.83 }, dest = { lat: 17.16, lng: 104.15 };
 const baseline: RoadRoute = { geometry: [[102.83, 16.44], [103, 16.5], [104.15, 17.16]], legMin: [20], travelMin: 20 };
@@ -67,6 +67,19 @@ test("malformed leg durations fail verification", () => {
 test("routing outages reject without manufacturing a road line", async () => {
   const route = createRouter("https://example.invalid", async () => new Response("down", { status: 503 }));
   await assert.rejects(route([origin, dest], "auto")); assert.throws(() => decodePolyline6("_"));
+});
+test("our routing server down: the backup gets the request, a route refusal does not", async () => {
+  const seen: string[] = [];
+  const fetcher = (status: number) => async (url: string | URL | Request, options?: RequestInit) => {
+    seen.push(`${url} ${(options!.headers as Record<string, string>).Authorization ?? ""}`);
+    return new Response("{}", { status: String(url).includes("stadiamaps") ? 200 : status });
+  };
+  assert.equal((await valhallaPost("route", {}, { base: "https://r.test", fetcher: fetcher(530), backupKey: "k" })).status, 200);
+  assert.deepEqual(seen, ["https://r.test/route ", "https://api.stadiamaps.com/route/v1 Stadia-Auth k"]);
+  seen.length = 0;
+  assert.equal((await valhallaPost("sources_to_targets", {}, { base: "https://r.test", fetcher: fetcher(400), backupKey: "k" })).status, 400);
+  assert.equal(seen.length, 1);
+  await assert.rejects(valhallaPost("route", {}, { base: "https://r.test", fetcher: async () => { throw Error("refused"); }, backupKey: undefined }));
 });
 test("valid road provider response preserves leg times and encoded geometry", async () => {
   const route = createRouter("https://example.invalid/", async (url, options) => {

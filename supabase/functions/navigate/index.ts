@@ -1,8 +1,7 @@
 import { admin, HttpError, json, readJson, requireUser, serve, thaiPoint } from "../_shared/http.ts";
 import { toNavRoute } from "../_shared/navigation.ts";
-import { type LatLng, MAX_LOCATIONS, type Mode, pieces } from "../_shared/valhalla.ts";
+import { type LatLng, MAX_LOCATIONS, type Mode, pieces, valhallaPost } from "../_shared/valhalla.ts";
 
-const BASE = Deno.env.get("VALHALLA_URL") ?? "https://valhalla1.openstreetmap.de";
 const MODES = new Set(["pedestrian", "bicycle", "auto"]);
 
 // Turn-by-turn route for nav mode: from where you are, through the stops left, to the destination.
@@ -24,13 +23,9 @@ serve(async (req) => {
   if (!allowed) throw new HttpError(429, "slow_down");
   // the routing server takes MAX_LOCATIONS points a request: a longer trip goes in pieces, joined leg by leg
   const piece = async (part: LatLng[]) => {
-    const res = await fetch(`${BASE.replace(/\/$/, "")}/route`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Client-Id": "giggles-maps.pages.dev" },
-      body: JSON.stringify({ locations: part.map((p) => ({ lat: p.lat, lon: p.lng, type: "break" })),
-        costing: mode, costing_options, directions_options: { units: "kilometers", language: "en-US" } }),
-      signal: AbortSignal.timeout(12000),
-    }).catch((e) => { console.error("navigate routing", e); throw new HttpError(502, "routing_unavailable"); });
+    const res = await valhallaPost("route", { locations: part.map((p) => ({ lat: p.lat, lon: p.lng, type: "break" })),
+        costing: mode, costing_options, directions_options: { units: "kilometers", language: "en-US" } }, { timeoutMs: 12000 })
+      .catch((e) => { console.error("navigate routing", e); throw new HttpError(502, "routing_unavailable"); });
     if (!res.ok) throw new HttpError(502, "routing_unavailable");
     const data = await res.json().catch(() => { throw new HttpError(502, "routing_unavailable"); });
     if (data.trip?.status !== 0 || !Array.isArray(data.trip?.legs)) throw new HttpError(502, "routing_unavailable");

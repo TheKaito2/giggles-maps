@@ -115,7 +115,8 @@ cd web && npm run build && npx wrangler pages deploy dist --project-name giggles
 ```
 
 Edge Function secrets (`supabase secrets set`): `CRON_SECRET`, `SITE_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
-`VALHALLA_URL`.
+`VALHALLA_URL` (our routing server), `VALHALLA_TOKEN` (the `X-Route-Token` its Cloudflare rule checks), `VALHALLA_API_KEY`
+(a Stadia Maps key, the backup when our server is down).
 
 Offline province maps are Protomaps packs in the R2 bucket `giggles-maps-offline`; rebuild with
 `python3 supabase/tools/offline_packs.py --build <YYYYMMDD> --upload` (needs the `pmtiles` CLI).
