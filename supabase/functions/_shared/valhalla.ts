@@ -2,6 +2,14 @@ const env = (name: string) => typeof Deno === "undefined" ? undefined : Deno.env
 // Routing via Valhalla. MVP uses the public FOSSGIS server (fair use, no key);
 // production sets VALHALLA_URL to our own instance built from the Thailand OSM extract.
 const BASE = env("VALHALLA_URL") ?? "https://valhalla1.openstreetmap.de";
+// Hosted Valhalla (Stadia Maps, VALHALLA_URL=https://api.stadiamaps.com) takes a key and versioned paths;
+// a plain Valhalla server uses /route and /sources_to_targets with no key.
+const KEY = env("VALHALLA_API_KEY");
+export const valhallaUrl = (base: string, path: "route" | "sources_to_targets") =>
+  `${base.replace(/\/$/, "")}/${KEY ? (path === "route" ? "route/v1" : "matrix/v1") : path}`;
+export const valhallaHeaders = (): Record<string, string> => ({
+  "Content-Type": "application/json", "X-Client-Id": "giggles-maps.pages.dev", ...(KEY ? { Authorization: `Stadia-Auth ${KEY}` } : {}),
+});
 
 export type Mode = "pedestrian" | "bicycle" | "auto";   // Valhalla costing names
 
@@ -9,10 +17,10 @@ export type Mode = "pedestrian" | "bicycle" | "auto";   // Valhalla costing name
 export const METERS_PER_MIN: Record<Mode, number> = { pedestrian: 80, bicycle: 250, auto: 500 };
 export interface LatLng { lat: number; lng: number }
 
-const post = async (path: string, body: unknown) => {
-  const res = await fetch(`${BASE}/${path}`, {
+const post = async (path: "route" | "sources_to_targets", body: unknown) => {
+  const res = await fetch(valhallaUrl(BASE, path), {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Client-Id": "giggles-maps.pages.dev" },
+    headers: valhallaHeaders(),
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(8000),
   });
@@ -73,9 +81,9 @@ export function pieces<T>(points: T[], max = MAX_LOCATIONS): T[][] {
 
 export function createRouter(base: string, fetcher: typeof fetch = fetch) {
   const piece = async (points: LatLng[], mode: Mode) => {
-    const response = await fetcher(`${base.replace(/\/$/, "")}/route`, {
+    const response = await fetcher(valhallaUrl(base, "route"), {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Client-Id": "giggles-maps.pages.dev" },
+      headers: valhallaHeaders(),
       body: JSON.stringify({ locations: points.map((p) => ({ lat: p.lat, lon: p.lng, type: "break" })), costing: mode, units: "kilometers" }),
       signal: AbortSignal.timeout(8000),
     });
