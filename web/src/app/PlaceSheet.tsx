@@ -214,6 +214,8 @@ export default function PlaceSheet({ id, member, onClose, onDirections, onChecki
               : <span className="fine">{page.review_count ? `${page.review_count} review${page.review_count > 1 ? "s" : ""}` : "No reviews yet"}</span>}
             <span className="fine">· {k.en}</span>
           </span>
+          {!!page.visits && <span className="fine num">{page.visits} {page.visits === 1 ? "traveller" : "travellers"} checked in here
+            {page.scanned_visits ? ` · ${page.scanned_visits} scanned at the counter` : ""}</span>}
           <span className="row tight">
             {tier && (tier.example
               ? <span className={`chip tier-${tier.tier}`} title={EXAMPLE_TIER_TIP}>{EXAMPLE_TIER_NAME[tier.tier]}</span>
@@ -308,6 +310,7 @@ export default function PlaceSheet({ id, member, onClose, onDirections, onChecki
           <article key={i} className="review">
             <header className="row tight"><Avatar name={r.who.nickname} colour={r.who.colour} avatar={r.who.avatar} size={32} />
               <b>{r.who.nickname}</b><Stars value={r.rating} size={13} /><span className="fine">{ago(r.at)}</span>
+              {r.scanned && <span className="chip">Scanned at the counter</span>}
               {!r.mine && <button type="button" className="icon-btn" aria-label="Report review" title="Report"
                 onClick={() => reportReview(r.who.id, page.id).then(() => setMsg("Reported. Thanks."))}><Flag size={14} /></button>}
             </header>

@@ -490,7 +490,8 @@ serve(async (req) => {
     const shownMap = new Map<number, { position: number | null; kind: string }>();
     for (const b of built) b.ordered.forEach((s, i) => { if (shownMap.get(s.id)?.kind !== "stop") shownMap.set(s.id, { position: i, kind: "stop" }); });
     for (const b of built) for (const c of b.cards.values()) if (!shownMap.has(c.id)) shownMap.set(c.id, { position: null, kind: "card" });
-    const impressions = [...shownMap].map(([place_id, v]) => ({ route_id: route.id, user_id: user.id, place_id, ...v }));
+    // demo-mode plans are marked: they never count toward a shop's route-appearance fee
+    const impressions = [...shownMap].map(([place_id, v]) => ({ route_id: route.id, user_id: user.id, place_id, ...v, demo: body.demo === true }));
     if (impressions.length) {
       const { error: sErr } = await db.from("route_stops").insert(impressions);
       if (sErr) throw sErr;

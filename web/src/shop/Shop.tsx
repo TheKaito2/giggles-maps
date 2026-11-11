@@ -20,7 +20,7 @@ interface PlaceStat {
   impressions_30d: number; card_impressions_30d: number; visits_30d: number;
 }
 interface Overview { wallet_thb: number; places: PlaceStat[]; weeks?: Week[] }
-const LOW_CREDIT = 200;   // below this, warn: visits and bookings stop being paid for, and bookings can't be accepted
+const LOW_CREDIT = 200;   // below this, warn: bookings can't be accepted without credit
 interface Visit { id: number; amount_thb: number; created_at: string; status: "charged" | "disputed"; places: { name: string } | null }
 
 const PACKS = [500, 1000, 3000];
@@ -38,10 +38,11 @@ function Sticker({ place }: { place: PlaceStat }) {
     <figure className="sticker">
       {src && <img src={src} width={180} height={180} alt={`QR code for ${place.name}`} />}
       <figcaption>
-        <b>Check in with Giggles Maps</b>
+        <b>Scan here for bonus XP on Giggles Maps</b>
         <span className="num sticker-code">{place.qr_code}</span>
-        <span className="fine">Print and stick it at your counter. Visitors scan it to check in.</span>
-        <span className="fine">{place.last_qr_scan_at ? `Last scan ${fmt(place.last_qr_scan_at)}` : "Not scanned yet. Visits only count when travellers scan it."}</span>
+        <span className="fine">Print it and put it on your counter. Travellers who scan it on their first visit get +25 XP, their review shows "scanned at the
+          counter", and your page counts every traveller who checked in. Free: scans never cost you anything.</span>
+        <span className="fine">{place.last_qr_scan_at ? `Last scan ${fmt(place.last_qr_scan_at)}` : "Not scanned yet."}</span>
       </figcaption>
     </figure>
   );
@@ -113,7 +114,8 @@ export default function Shop() {
   const totals = (overview?.places ?? []).reduce((t, p) => ({
     shown: t.shown + p.impressions_30d, cards: t.cards + p.card_impressions_30d, visits: t.visits + p.visits_30d,
   }), { shown: 0, cards: 0, visits: 0 });
-  const spent = visits.filter((v) => v.status === "charged").reduce((sum, v) => sum + Number(v.amount_thb), 0);
+  // fees over the 8 weeks the funnel shows (route appearances and bookings; visits are free since prices v7)
+  const spent = (overview?.weeks ?? []).reduce((sum, w) => sum + Number(w.spent), 0);
 
   const pay = async (p: Parameters<typeof startCheckout>[0]) => {
     setMsg("");
@@ -122,7 +124,7 @@ export default function Shop() {
     } catch (e) {
       const code = errCode(e);
       setMsg(code === "payments_not_configured" ? "Payments aren't switched on yet."
-        : code === "not_verified" ? "Get your counter sticker scanned by a visitor first: partners must be verified."
+        : code === "no_place" ? "Claim your place first, then become a Partner."
         : code === "choice_not_approved" ? "Giggles Choice is by invitation: apply first and we'll review your shop."
         : code === "already_subscribed" ? "You already pay monthly. Stop renewing first to switch, or pay 30 days once."
         : code === "sign_in_required" ? "Sign in at the bottom of this page first." : "Couldn't start checkout. Try again.");
@@ -145,9 +147,9 @@ export default function Shop() {
         : <button className="link" onClick={() => renew("cancel")}>Stop renewing</button>}</>;
     return <>
       {live && <span className="chip">Until {day(shop!.tier_until!)}</span>}
-      <button className="btn gold" disabled={!shopId || !verified} onClick={() => pay({ kind, shop_id: shopId })}>
+      <button className="btn gold" disabled={!shopId} onClick={() => pay({ kind, shop_id: shopId })}>
         {live ? "Renew monthly" : `Become a ${name}`} · ฿{price.toLocaleString()}/month</button>
-      <button className="link" disabled={!shopId || !verified} onClick={() => pay({ kind, shop_id: shopId, once: true })}>
+      <button className="link" disabled={!shopId} onClick={() => pay({ kind, shop_id: shopId, once: true })}>
         Or pay 30 days once (PromptPay)</button></>;
   };
   const wallet = Number(overview?.wallet_thb ?? 0);
@@ -179,8 +181,8 @@ export default function Shop() {
         </label>}
       </div>
       {shop?.is_demo && <p className="fine notice">Example shop for the demo. This business hasn't signed up; numbers come from test check-ins.</p>}
-      {lowCredit && <p className="notice low-credit" role="alert">Credit is low (฿{wallet.toLocaleString()}). Below ฿{PRICES.booking} a visit isn't
-        paid for and you can't accept bookings. <button className="link" onClick={() => setTab("partner")}>Add credit</button></p>}
+      {lowCredit && <p className="notice low-credit" role="alert">Credit is low (฿{wallet.toLocaleString()}). Without credit you can't accept bookings.
+        <button className="link" onClick={() => setTab("partner")}>Add credit</button></p>}
       <div className="seg dash-tabs" role="tablist" aria-label="Dashboard">
         {TABS.map(([id, label]) => <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? "on" : ""}
           onClick={() => setTab(id)}>{label}{id === "bookings" && bookings.some((b) => b.status === "requested") && <span className="dot-new" aria-label="new" />}</button>)}
@@ -189,11 +191,11 @@ export default function Shop() {
       {tab === "overview" && <>
         <section className="tiles" aria-label="Last 30 days">
           <div className="tile"><span className="fine">Shown on routes (30 days)</span><b className="num">{totals.shown}</b><span className="fine num">{totals.cards} as "Near this spot" cards</span></div>
-          <div className="tile"><span className="fine">Verified visits (30 days)</span><b className="num">{totals.visits}</b></div>
+          <div className="tile"><span className="fine">Check-ins (30 days)</span><b className="num">{totals.visits}</b></div>
           <div className="tile"><span className="fine">Bookings waiting</span><b className="num">{bookings.filter((b) => b.status === "requested").length}</b></div>
-          <div className="tile"><span className="fine">Credit left</span><b className="num">฿{Number(overview?.wallet_thb ?? 0).toLocaleString()}</b><span className="fine num">฿{spent.toLocaleString()} spent</span></div>
+          <div className="tile"><span className="fine">Credit left</span><b className="num">฿{Number(overview?.wallet_thb ?? 0).toLocaleString()}</b><span className="fine num">฿{spent.toLocaleString()} spent in 8 weeks</span></div>
         </section>
-        <p className="next-step">{!verified ? <>Next: print your <button className="link" onClick={() => setTab("sticker")}>counter sticker</button>. The first visitor scan verifies your shop.</>
+        <p className="next-step">{!verified ? <>Next: print your <button className="link" onClick={() => setTab("sticker")}>counter sticker</button>. Travellers scan it for bonus XP and verified reviews.</>
           : !tierLive ? <>Next: <button className="link" onClick={() => setTab("partner")}>become a Partner</button> to come first on Plus routes and take bookings.</>
           : <>You're a {tierLive === "choice" ? "Giggles Choice" : "Partner"} until {day(shop!.tier_until!)}.</>}</p>
         {overview?.weeks && <Funnel weeks={overview.weeks} />}
@@ -207,7 +209,7 @@ export default function Shop() {
             <span className="fine">Boosted on Plus routes, a Partner badge, bookings.</span>
             {tierLive === "choice" ? <span className="chip">Included in Giggles Choice</span> : <>
               {plan("partner", tierLive === "partner")}
-              {!verified && <span className="fine">Get your sticker scanned once first.</span>}</>}</article>
+              </>}</article>
           <article className={tierLive === "choice" ? "here" : ""}><span className="eyebrow">Giggles Choice</span><b>By invitation</b>
             <span className="fine">Hand-picked partners. A Choice badge, ×2 on Plus routes and the Partner picks plan.</span>
             {tierLive === "choice" ? plan("choice", true)
@@ -220,7 +222,7 @@ export default function Shop() {
           </article>
         </div>
         <h3>Credit</h3>
-        <p className="fine">Pays for verified visits and bookings (฿{PRICES.booking} each, once the guest checks in at your counter). Card or PromptPay.</p>
+        <p className="fine">Pays for bookings (฿{PRICES.booking} a table or visit once the guest checks in, {PRICES.stayPct}% of a stay) and ฿{PRICES.per1000} per 1,000 times your shop is shown on a route. Card or PromptPay.</p>
         <div className="row">
           {PACKS.map((p) => <button key={p} className="btn soft" onClick={() => pay({ kind: "credit", shop_id: shopId, pack: p })} disabled={!shopId}>Add <span className="num">฿{p.toLocaleString()}</span></button>)}
         </div>
@@ -230,7 +232,7 @@ export default function Shop() {
 
       {tab === "visits" && <>
         {visits.length === 0
-          ? <p className="fine">No verified visits yet. They appear here the moment a traveller checks in.</p>
+          ? <p className="fine">No visit charges: since prices v7 visits are free for shops. Charges from before then are listed here.</p>
           : <div className="table-wrap"><table>
               <thead><tr><th>When</th><th>Place</th><th className="r">Charged</th><th>Status</th></tr></thead>
               <tbody>{visits.map((v) => {
