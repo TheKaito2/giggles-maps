@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { errCode, supabase } from "../lib/supabase";
-import { PRICES, requestChoice, type ShopBooking, shopBookings, SITE, startCheckout } from "../lib/api";
+import { PRICES, requestChoice, type ShopBooking, shopBookings, shopSubscription, SITE, startCheckout } from "../lib/api";
+import Statement from "./Statement";
 import { isGuest, resumeSignIn, useUser } from "../lib/auth";
 import { bookingChime } from "../lib/sfx";
 import { lang, setLang } from "../lib/i18n";
@@ -12,6 +13,7 @@ import Pitch from "./Pitch";
 import ShopBookings from "./ShopBookings";
 
 interface ShopRow { id: string; name: string; is_demo: boolean; owner_id: string | null; tier: "partner" | "choice" | null; tier_until: string | null;
+  subscription_status?: "active" | "cancelling" | "cancelled" | null;
   choice_approved: boolean; choice_requested_at: string | null }
 interface PlaceStat {
   id: number; name: string; bid_thb: number; qr_code: string | null; last_qr_scan_at: string | null;
@@ -66,7 +68,7 @@ export default function Shop() {
   useEffect(() => {
     (async () => {
       // no guest sign-up just for looking: the example shops are public (every visit used to create an anonymous account)
-      const { data } = await supabase.from("shops").select("id, name, is_demo, owner_id, tier, tier_until, choice_approved, choice_requested_at")
+      const { data } = await supabase.from("shops").select("id, name, is_demo, owner_id, tier, tier_until, choice_approved, choice_requested_at, subscription_status")
         .order("is_demo").order("name");
       const rows = (data ?? []) as ShopRow[];
       setShops(rows);
@@ -122,11 +124,32 @@ export default function Shop() {
       setMsg(code === "payments_not_configured" ? "Payments aren't switched on yet."
         : code === "not_verified" ? "Get your counter sticker scanned by a visitor first: partners must be verified."
         : code === "choice_not_approved" ? "Giggles Choice is by invitation: apply first and we'll review your shop."
+        : code === "already_subscribed" ? "You already pay monthly. Stop renewing first to switch, or pay 30 days once."
         : code === "sign_in_required" ? "Sign in at the bottom of this page first." : "Couldn't start checkout. Try again.");
     }
   };
   const tierLive = shop?.tier && shop.tier_until && new Date(shop.tier_until) > new Date() ? shop.tier : null;
   const verified = (overview?.places ?? []).some((p) => p.qr_code && p.last_qr_scan_at);
+  // a tier's buttons: monthly autopay by card (the default), or one 30-day payment by PromptPay; once subscribed, when it
+  // renews and a way to stop (or restart) renewing
+  const subbed = shop?.subscription_status === "active" || shop?.subscription_status === "cancelling";
+  const renew = (action: "cancel" | "resume") => shopSubscription(shopId, action)
+    .then(({ status }) => setShops((xs) => xs.map((x) => x.id === shopId ? { ...x, subscription_status: status } : x)))
+    .catch(() => setMsg("Couldn't change the renewal. Try again."));
+  const plan = (kind: "partner" | "choice", live: boolean) => {
+    const price = kind === "choice" ? PRICES.choice : PRICES.partner, name = kind === "choice" ? "Giggles Choice" : "Partner";
+    if (live && subbed) return <>
+      <span className="chip">{shop!.subscription_status === "cancelling" ? "Ends" : "Renews"} {day(shop!.tier_until!)}</span>
+      {shop!.subscription_status === "cancelling"
+        ? <button className="btn small" onClick={() => renew("resume")}>Keep renewing</button>
+        : <button className="link" onClick={() => renew("cancel")}>Stop renewing</button>}</>;
+    return <>
+      {live && <span className="chip">Until {day(shop!.tier_until!)}</span>}
+      <button className="btn gold" disabled={!shopId || !verified} onClick={() => pay({ kind, shop_id: shopId })}>
+        {live ? "Renew monthly" : `Become a ${name}`} · ฿{price.toLocaleString()}/month</button>
+      <button className="link" disabled={!shopId || !verified} onClick={() => pay({ kind, shop_id: shopId, once: true })}>
+        Or pay 30 days once (PromptPay)</button></>;
+  };
   const wallet = Number(overview?.wallet_thb ?? 0);
   const lowCredit = ownsShop && wallet < LOW_CREDIT && (!!tierLive || waiting > 0);
   const apply = () => requestChoice(shopId).then(() => { setMsg("Thanks! We'll review your shop for Giggles Choice."); setShops((xs) =>
@@ -182,19 +205,15 @@ export default function Shop() {
             <span className="fine">On the map and in routes.</span>{!tierLive && <span className="chip">You're here</span>}</article>
           <article className={tierLive === "partner" ? "here hot" : "hot"}><span className="eyebrow">Partner</span><b className="num">฿{PRICES.partner}<small>/month</small></b>
             <span className="fine">Boosted on Plus routes, a Partner badge, bookings.</span>
-            {tierLive === "partner" && <span className="chip">Until {day(shop!.tier_until!)}</span>}
             {tierLive === "choice" ? <span className="chip">Included in Giggles Choice</span> : <>
-              <button className="btn gold" disabled={!shopId || !verified} onClick={() => pay({ kind: "partner", shop_id: shopId })}>
-                {tierLive === "partner" ? "Add 30 days" : "Become a partner"}</button>
+              {plan("partner", tierLive === "partner")}
               {!verified && <span className="fine">Get your sticker scanned once first.</span>}</>}</article>
           <article className={tierLive === "choice" ? "here" : ""}><span className="eyebrow">Giggles Choice</span><b>By invitation</b>
             <span className="fine">Hand-picked partners. A Choice badge, ×2 on Plus routes and the Partner picks plan.</span>
-            {tierLive === "choice" ? <>
-                <span className="chip">Until {day(shop!.tier_until!)}</span>
-                <button className="btn gold" onClick={() => pay({ kind: "choice", shop_id: shopId })}>Add 30 days · ฿{PRICES.choice}</button></>
+            {tierLive === "choice" ? plan("choice", true)
               : shop?.choice_approved ? <>
                 <span className="chip chosen"><Sparkles size={13} aria-hidden /> You've been chosen</span>
-                <button className="btn gold" onClick={() => pay({ kind: "choice", shop_id: shopId })}>Switch on Giggles Choice · ฿{PRICES.choice}/month</button></>
+                {plan("choice", false)}</>
               : !tierLive ? <span className="fine">Partners can apply to be chosen.</span>
               : shop?.choice_requested_at ? <span className="chip">Applied · under review</span>
               : <button className="btn" onClick={apply}>Apply to be Giggles Choice</button>}
@@ -238,6 +257,7 @@ export default function Shop() {
               })}</tbody>
             </table></div>}
         <p className="fine">Dispute a charge within 7 days: the credit comes back right away while we check it.</p>
+        {ownsShop && <Statement shopId={shopId} />}
       </>}
 
       {tab === "listing" && (owner ? <MyListing signedIn /> : <p className="fine">Your own listing appears here once you claim your shop.</p>)}

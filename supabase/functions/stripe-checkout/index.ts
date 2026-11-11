@@ -27,6 +27,7 @@ serve(async (req) => {
   const site = Deno.env.get("SITE_URL") ?? "https://gigglesmap.xyz";
 
   let amount: number, name: string, back: string;
+  let subscribe = false;   // Partner / Choice paid monthly by card (Stripe Billing); else a one-off payment
   const meta: Record<string, string> = { kind };
   if (kind === "trip_pass" || kind === "plus_year" || kind === "lifetime") {
     if (user.is_anonymous) throw new HttpError(403, "sign_in_required"); // must survive a reinstall
@@ -42,14 +43,18 @@ serve(async (req) => {
     if (user.is_anonymous) throw new HttpError(403, "sign_in_required");
     const shopId = typeof body.shop_id === "string" ? body.shop_id : "";
     const db = admin();
-    const { data: shop } = await db.from("shops").select("id, name, owner_id, choice_approved").eq("id", shopId).maybeSingle();
+    const { data: shop } = await db.from("shops").select("id, name, owner_id, choice_approved, subscription_status").eq("id", shopId).maybeSingle();
     if (!shop || shop.owner_id !== user.id) throw new HttpError(403, "not_your_shop");
     const { count } = await db.from("places").select("id", { count: "exact", head: true })
       .eq("shop_id", shop.id).not("qr_code", "is", null).not("last_qr_scan_at", "is", null);
     if (!count) throw new HttpError(409, "not_verified");
     if (kind === "choice" && !shop.choice_approved) throw new HttpError(409, "choice_not_approved");
+    // monthly autopay by card unless the shop asks for one 30-day payment (PromptPay can't renew by itself)
+    subscribe = body.once !== true;
+    // one subscription per shop (a cancelled-but-running one is resumed from the dashboard instead)
+    if (subscribe && (shop.subscription_status === "active" || shop.subscription_status === "cancelling")) throw new HttpError(409, "already_subscribed");
     amount = TIER_THB[kind as keyof typeof TIER_THB];
-    name = `${kind === "choice" ? "Giggles Choice" : "Giggles Partner"}, 30 days — ${shop.name}`;
+    name = `${kind === "choice" ? "Giggles Choice" : "Giggles Partner"}${subscribe ? ", monthly" : ", 30 days"} — ${shop.name}`;
     back = `${site}/shop/`;
     meta.shop_id = shop.id;
   } else {
@@ -64,9 +69,8 @@ serve(async (req) => {
   }
 
   const form = new URLSearchParams({
-    mode: "payment",
+    mode: subscribe ? "subscription" : "payment",
     "payment_method_types[0]": "card",
-    "payment_method_types[1]": "promptpay",
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": "thb",
     "line_items[0][price_data][unit_amount]": String(amount * 100), // satang
@@ -74,7 +78,13 @@ serve(async (req) => {
     success_url: `${back}?paid=success`,
     cancel_url: `${back}?paid=cancelled`,
   });
-  for (const [k, v] of Object.entries(meta)) form.set(`metadata[${k}]`, v);
+  if (subscribe) form.set("line_items[0][price_data][recurring][interval]", "month");
+  else form.set("payment_method_types[1]", "promptpay");
+  for (const [k, v] of Object.entries(meta)) {
+    form.set(`metadata[${k}]`, v);
+    // each monthly invoice carries the shop and tier, so stripe-webhook knows what it paid for
+    if (subscribe) form.set(`subscription_data[metadata][${k}]`, v);
+  }
   if (user.email) form.set("customer_email", user.email);
 
   const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {

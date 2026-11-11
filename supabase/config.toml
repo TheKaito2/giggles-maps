@@ -428,5 +428,9 @@ verify_jwt = false
 [functions.purge-selfies]
 verify_jwt = false
 
+# cron only (x-cron-secret), like purge-selfies
+[functions.build-place-links]
+verify_jwt = false
+
 [functions.apple-notifications]
 verify_jwt = false

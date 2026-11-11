@@ -116,3 +116,12 @@ td .row { flex-wrap: nowrap; }
 .lang-toggle { justify-self: end; }
 .calc .booking-fields { align-items: end; }
 .calc .field input, .calc .field textarea { width: 100%; box-sizing: border-box; min-height: 44px; }
+
+/* the monthly statement prints on its own (Print or save PDF) */
+.statement-sheet tfoot th { text-align: left; }
+@media print {
+  body * { visibility: hidden; }
+  .statement-sheet, .statement-sheet * { visibility: visible; }
+  .statement-sheet { position: absolute; left: 0; top: 0; width: 100%; }
+  .no-print { display: none; }
+}

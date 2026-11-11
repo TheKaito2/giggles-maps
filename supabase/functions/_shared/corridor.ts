@@ -74,14 +74,14 @@ export function planCalls(points: LatLng[], spots: Spot[], mode: Mode = "auto", 
 /** The long-trip matrix for [origin, dest, ...stops]. Fetch failures just leave the model in place.
  *  `cache`: road minutes by pairKey, read first and filled with what's fetched. */
 export async function corridorMatrix(points: LatLng[], baseline: RoadRoute, mode: Mode, fetchPairs = pairsMinutes,
-  cache: Map<string, number> = new Map()) {
+  cache: Map<string, number> = new Map(), maxCalls = MAX_CALLS) {
   const spots = onRoute(points, baseline);
   const real = new Map<string, number>();
   points.forEach((p, i) => {
     if (i >= 2 && cache.has(pairKey(p, spots[i].anchor))) real.set(`${i},a`, cache.get(pairKey(p, spots[i].anchor))!);
     points.forEach((q, j) => { if (i !== j && cache.has(pairKey(p, q))) real.set(`${i},${j}`, cache.get(pairKey(p, q))!); });
   });
-  const calls = planCalls(points, spots, mode, (a, b) => cache.has(pairKey(a, b))).slice(0, MAX_CALLS);
+  const calls = planCalls(points, spots, mode, (a, b) => cache.has(pairKey(a, b))).slice(0, maxCalls);
   for (let c = 0; c < calls.length; c += 2) {   // two at a time: the public routing server is shared
     await Promise.all(calls.slice(c, c + 2).map(async ({ sources, targets }) => {
       const keys = [...targets.keys()];

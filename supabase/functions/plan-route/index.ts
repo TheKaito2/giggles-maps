@@ -7,7 +7,7 @@ import { corridorMatrix } from "../_shared/corridor.ts";
 import { plannedStops, STOP_CAP, stopCap as capFor, stopLimitCode } from "../_shared/tiers.ts";
 import { loadTrip, saveTrip, tripKey } from "../_shared/trip-cache.ts";
 import { createRouter, estimateMinutes, RoutingError, haversineM, type LatLng, matrixMinutes, METERS_PER_MIN, type Mode, pairsMinutes,
-  type RoadRoute } from "../_shared/valhalla.ts";
+  pairKey, type RoadRoute } from "../_shared/valhalla.ts";
 
 interface Candidate {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
@@ -136,7 +136,7 @@ serve(async (req) => {
   // the same trip in the last 30 minutes: its direct route and road times are reused
   const cacheKey = tripKey(mode, origin, dest);
   const trip = await loadTrip(db, cacheKey);
-  const knownPairs = trip.pairs.size;   // compared at the end: the row is rewritten only when something new was routed
+  let knownPairs = trip.pairs.size;   // compared at the end: the row is rewritten only when something new was routed
   let baseline: RoadRoute | null = trip.baseline;
   if (!baseline) {
     try { baseline = await routeRoad([origin, dest], mode); }
@@ -245,6 +245,17 @@ serve(async (req) => {
     }
   }
   const boost = unlimited ? (id: number) => tierOf.get(id) === "choice" ? 2 : tierOf.get(id) === "partner" ? 1.5 : 1 : undefined;
+  // precomputed road minutes between nearby places (place_links, built from our own routing server): pairs known there
+  // aren't fetched again (they're counted as already known, so they don't rewrite the trip cache either)
+  if (baseline && union.length > 1) {
+    const { data: links, error: plErr } = await db.from("place_links").select("a, b, minutes").eq("mode", mode).in("a", unionIds).in("b", unionIds);
+    if (plErr) console.error("place links failed", plErr);
+    const place = new Map(union.map((c) => [c.id, c]));
+    for (const l of (links ?? []) as { a: number; b: number; minutes: number }[]) {
+      const a = place.get(l.a), b = place.get(l.b);
+      if (a && b && !trip.pairs.has(pairKey(a, b))) { trip.pairs.set(pairKey(a, b), l.minutes); knownPairs++; }
+    }
+  }
   const points: LatLng[] = [origin, dest, ...union.map((c) => ({ lat: c.lat, lng: c.lng }))];
   let matrix = estimateMinutes(points, mode);
   if (baseline && shortTrip) {
@@ -256,7 +267,8 @@ serve(async (req) => {
   }
   // Long trips: off the route + along it + back on, with real road times for stops near each other (corridor.ts).
   // Still only proposals: the plan on screen is road-checked below.
-  if (baseline && !shortTrip) matrix = (await corridorMatrix(points, baseline, mode, fetchPairs, trip.pairs)).matrix;
+  // more time options share more places: a little more room for matrix calls (6 for one option, up to 12)
+  if (baseline && !shortTrip) matrix = (await corridorMatrix(points, baseline, mode, fetchPairs, trip.pairs, Math.min(12, 4 + 2 * budgets.length))).matrix;
   // a short trip whose road matrix failed: straight lines scaled to the known direct road time
   if (baseline && shortTrip && warnings.includes("matrix_unavailable")) {
     const scale = matrix[0][1] > 0 ? baseline.travelMin / matrix[0][1] : 1;

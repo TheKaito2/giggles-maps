@@ -242,8 +242,20 @@ export const verifyCheckin = (p: {
 // Stripe Checkout (web only). Returns the hosted payment page URL.
 export type PlusKind = "trip_pass" | "plus_year" | "lifetime";
 export const startCheckout = (p: { kind: PlusKind } | { kind: "credit"; shop_id: string; pack: number }
-  | { kind: "partner" | "choice"; shop_id: string }) =>
+  | { kind: "partner" | "choice"; shop_id: string; once?: boolean }) =>   // once: one 30-day payment (PromptPay), else monthly by card
   callFn<{ url: string }>("stripe-checkout", p);
+/** Stop or restart a shop's monthly renewal (the tier runs to the end of what was paid). */
+export const shopSubscription = (shop: string, action: "cancel" | "resume") =>
+  callFn<{ status: "active" | "cancelling" }>("shop-subscription", { shop_id: shop, action });
+export interface Statement { shop: string; month: string;
+  payments: { at: string; kind: string; amount: number; ref: string }[];
+  visits: { at: string; place: string; amount: number; status: "charged" | "disputed" }[];
+  bookings: { at: string; place: string; kind: BookingKind; amount: number | null }[] }
+/** A month's statement for a shop: money in (top-ups, plans) and what credit paid for. `month`: "YYYY-MM". */
+export const shopStatement = (shop: string, month: string) => rpc<Statement>("shop_statement", { p_shop: shop, p_month: `${month}-01` });
+export interface SponsorLead { id: number; org: string; contact: string; message: string | null; at: string }
+export const sponsorLeads = () => rpc<SponsorLead[]>("sponsor_leads_admin");
+export const sponsorLeadDone = (id: number) => rpc<void>("sponsor_lead_done", { p_id: id });
 
 // v6 prices (THB); stripe-checkout and the App Store products have the same numbers. Monthly Plus and the ฿349
 // membership are no longer sold (members who bought it keep it).

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
-import { approveChoice, choiceRequests, getAdminEdits, getLocalStats, type LocalStat, type PendingEdit, reviewEdit } from "../lib/api";
+import { approveChoice, choiceRequests, getAdminEdits, getLocalStats, type LocalStat, type PendingEdit, reviewEdit, type SponsorLead,
+  sponsorLeadDone, sponsorLeads } from "../lib/api";
 
 /** Admin only: suggested edits and missing places waiting for review. Approving applies it and pays the author 50 XP. */
 export default function AdminEdits() {
@@ -13,9 +14,23 @@ export default function AdminEdits() {
   const [choice, setChoice] = useState<Awaited<ReturnType<typeof choiceRequests>>>([]);
   const loadChoice = () => choiceRequests().then(setChoice).catch(() => setChoice([]));
   useEffect(() => { loadChoice(); }, []);
+  // provinces and brands asking about a sponsored quest (the /shop form)
+  const [leads, setLeads] = useState<SponsorLead[]>([]);
+  const loadLeads = () => sponsorLeads().then(setLeads).catch(() => setLeads([]));
+  useEffect(() => { loadLeads(); }, []);
   if (!edits) return null;
   return (
     <section className="stack" aria-label="Edits to review">
+      {leads.length > 0 && <>
+        <h3>Sponsored-quest enquiries ({leads.length})</h3>
+        {leads.map((l) => (
+          <article key={l.id} className="glass admin-edit">
+            <b>{l.org}</b><span className="fine">{l.contact} · {new Date(l.at).toLocaleDateString("en-GB")}</span>
+            {l.message && <p className="fine">{l.message}</p>}
+            <button type="button" className="btn ghost small" onClick={() => sponsorLeadDone(l.id).then(loadLeads)}><Check size={14} aria-hidden /> Replied</button>
+          </article>
+        ))}
+      </>}
       {choice.length > 0 && <>
         <h3>Giggles Choice applications ({choice.length})</h3>
         {choice.map((c) => (
