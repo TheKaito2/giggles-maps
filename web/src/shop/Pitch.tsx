@@ -11,12 +11,12 @@ const REASONS = [
   { icon: Store, title: "A free listing", text: "Your photos, products and story on your place page." },
   { icon: Star, title: "Boosted on Plus routes", text: `Partners (฿${PRICES.partner} a month) come first on Giggles Plus travellers' routes, with a Partner badge.` },
   { icon: CalendarCheck, title: "Bookings", text: `Tables and visits cost ฿${PRICES.booking} per guest who shows up; stays ${PRICES.stayPct}% of the price you set.` },
-  { icon: BarChart3, title: "Your numbers", text: "Every week: how often travellers saw you, verified visits, bookings and what they cost." },
+  { icon: BarChart3, title: "Your numbers", text: "Every week: how often travellers saw you, check-ins, bookings and what they cost." },
 ];
 const STEPS = [
   { title: "Claim your shop", text: "Search your name below, or add it while you're standing in it." },
   { title: "Print your sticker", text: "Your counter QR code. Visitors scan it to check in." },
-  { title: "Get verified", text: "The first visitor scan verifies your shop." },
+  { title: "Put it on your counter", text: "Travellers scan it for bonus XP and a review that says they were really there." },
   { title: "Become a Partner", text: `฿${PRICES.partner} a month. Cancel any time: it simply runs out.` },
   { title: "Apply for Giggles Choice", text: "Partners can apply. We hand-pick the best." },
 ];
@@ -24,7 +24,8 @@ const FAQ = [
   { q: "Is the listing really free?", a: "Yes. A free listing stays on the map and in routes like any other place." },
   { q: "What does Partner change?", a: "Giggles Plus travellers see partners first. Everyone sees the Partner badge, so it's always clear." },
   { q: "How do I become Giggles Choice?", a: "Be a Partner, then apply in your dashboard. If we pick you, you can switch it on." },
-  { q: "When do I pay for a visit or a booking?", a: `Only when the traveller checks in at your counter: ฿${PRICES.booking} from your prepaid credit (a stay: ${PRICES.stayPct}% of its price). Declines and no-shows are free.` },
+  { q: "What do I pay for?", a: `Your monthly plan, ฿${PRICES.booking} for a booking once the guest checks in (a stay: ${PRICES.stayPct}% of its price), and ฿${PRICES.per1000} per 1,000 times your shop is shown on a traveller's route, from prepaid credit. Walk-in visits, declines and no-shows are free.` },
+  { q: "What is the counter sticker for?", a: "Travellers who scan it get bonus XP, their review says they scanned at your counter, and your page counts every traveller who checked in. It never costs you anything." },
   { q: "What do you share about visitors?", a: "A nickname, party size and their note. Never their phone or email." },
 ];
 
@@ -55,34 +56,38 @@ function Reach({ onReach }: { onReach: (r: ShopReach) => void }) {
   );
 }
 
-/** What being a Partner would return: the shop's own average bill × the verified visits it expects, against the fees. */
+/** What being a Partner would return: the shop's own average bill × the bookings it expects, against the fees (the
+ *  monthly tier, the booking fees and ฿50 per 1,000 route appearances; visits themselves cost nothing). */
 function Calculator({ reach }: { reach: ShopReach | null }) {
   const [bill, setBill] = useState(250);
-  const [visits, setVisits] = useState(20);
-  const [stay, setStay] = useState(false);   // hotels and homestays pay 10% of each completed stay, not ฿25 a visit
-  const sales = bill * visits;
-  const perVisit = stay ? Math.max(Math.round((bill * PRICES.stayPct) / 100), PRICES.booking) : PRICES.booking;
-  const cost = PRICES.partner + perVisit * visits;
-  // what Giggles data says so far: this shop's route appearances × how often a shown stop gets visited, all shops
-  const fromData = reach?.visit_rate != null ? Math.round(reach.shown_30d * reach.visit_rate) : null;
+  const [bookings, setBookings] = useState(20);
+  const [stay, setStay] = useState(false);   // hotels and homestays pay 10% of each completed stay, not ฿25 a booking
+  const sales = bill * bookings;
+  const perBooking = stay ? Math.max(Math.round((bill * PRICES.stayPct) / 100), PRICES.booking) : PRICES.booking;
+  // this shop's own route appearances last month when we know them, else none counted
+  const shown = reach?.shown_30d ?? 0;
+  const appearances = Math.round((shown * PRICES.per1000) / 1000);
+  const cost = PRICES.partner + perBooking * bookings + appearances;
   return (
     <div className="calc">
       <div className="booking-fields">
         <label className="field"><span>{stay ? "Your average stay (฿)" : "Your average bill (฿)"}</span><input type="number" inputMode="numeric" min={0} value={bill}
           onChange={(e) => setBill(Math.max(0, Number(e.target.value) || 0))} /></label>
-        <label className="field"><span>{stay ? "Completed stays a month" : "Verified visits a month"}</span><input type="number" inputMode="numeric" min={0} max={10000} value={visits}
-          onChange={(e) => setVisits(Math.max(0, Math.min(10000, Number(e.target.value) || 0)))} /></label>
+        <label className="field"><span>{stay ? "Completed stays a month" : "Bookings a month"}</span><input type="number" inputMode="numeric" min={0} max={10000} value={bookings}
+          onChange={(e) => setBookings(Math.max(0, Math.min(10000, Number(e.target.value) || 0)))} /></label>
       </div>
       <label className="row tight"><input type="checkbox" checked={stay} onChange={(e) => setStay(e.target.checked)} /> We're a hotel or homestay</label>
       <div className="calc-out">
         <span className="fine">About</span>
         <b>฿{sales.toLocaleString()} of sales for ฿{cost.toLocaleString()}</b>
         <span className="fine">{stay
-          ? `Partner ฿${PRICES.partner} a month + ${PRICES.stayPct}% of each of the ${visits} completed stays (at least ฿${PRICES.booking} each).`
-          : `Partner ฿${PRICES.partner} a month + ฿${PRICES.booking} for each of the ${visits} verified visits.`}</span>
+          ? `Partner ฿${PRICES.partner} a month + ${PRICES.stayPct}% of each of the ${bookings} completed stays (at least ฿${PRICES.booking} each)`
+          : `Partner ฿${PRICES.partner} a month + ฿${PRICES.booking} for each of the ${bookings} bookings`}{reach
+          ? ` + ฿${appearances} for ${shown.toLocaleString()} route appearances (฿${PRICES.per1000} per 1,000).`
+          : `, + ฿${PRICES.per1000} per 1,000 route appearances.`}</span>
       </div>
-      <p className="fine">An estimate, not a promise: it assumes every visitor spends your average bill, and you choose the number of visits.
-        {fromData != null && ` For ${reach!.name}, Giggles trips so far point to about ${fromData} a month (${reach!.shown_30d} times on a route × how often shown stops get visited).`}</p>
+      <p className="fine">An estimate, not a promise: it assumes every guest spends your average bill, and you choose the number of bookings.
+        Travellers who walk in without booking cost you nothing.</p>
     </div>
   );
 }
@@ -148,7 +153,7 @@ export default function Pitch() {
           <article><span className="eyebrow">Giggles Choice</span><b className="num">฿{PRICES.choice.toLocaleString()}<small>/month</small></b>
             <span className="fine"><Sparkles size={13} aria-hidden /> By invitation. Partners apply; the ones we choose get a Choice badge, ×2 on Plus routes and the Partner picks plan.</span></article>
         </div>
-        <p className="fine">On top: ฿{PRICES.booking} per verified visit or booked table, {PRICES.stayPct}% of a completed stay, paid from prepaid credit. Card or PromptPay.</p>
+        <p className="fine">On top: ฿{PRICES.booking} per booked table or visit, {PRICES.stayPct}% of a completed stay, and ฿{PRICES.per1000} per 1,000 route appearances, paid from prepaid credit. Walk-ins cost nothing. Card or PromptPay.</p>
       </section>
 
       <section aria-labelledby="calc-h">

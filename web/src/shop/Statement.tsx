@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Printer } from "lucide-react";
-import { type Statement as Data, shopStatement } from "../lib/api";
+import { PRICES, type Statement as Data, shopStatement } from "../lib/api";
 
 const KIND: Record<string, string> = { credit: "Credit top-up", partner: "Partner", choice: "Giggles Choice" };
 const thisMonth = () => new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 7);   // Bangkok
@@ -19,7 +19,8 @@ export default function Statement({ shopId }: { shopId: string }) {
   }, [shopId, month]);
   const paidIn = (data?.payments ?? []).reduce((a, p) => a + Number(p.amount), 0);
   const used = (data?.visits ?? []).filter((v) => v.status === "charged").reduce((a, v) => a + Number(v.amount), 0)
-    + (data?.bookings ?? []).reduce((a, b) => a + Number(b.amount ?? 0), 0);
+    + (data?.bookings ?? []).reduce((a, b) => a + Number(b.amount ?? 0), 0)
+    + (data?.impressions ?? []).reduce((a, i) => a + Number(i.amount), 0);
   return (
     <section className="statement stack" aria-labelledby="statement-h">
       <div className="row between no-print">
@@ -37,8 +38,10 @@ export default function Statement({ shopId }: { shopId: string }) {
             {data.payments.map((p) => <tr key={p.ref}><td className="num">{when(p.at)}</td><td>{KIND[p.kind] ?? p.kind} (paid)</td><td className="num r">{baht(p.amount)}</td></tr>)}
             {data.visits.map((v, i) => <tr key={`v${i}`}><td className="num">{when(v.at)}</td>
               <td>Verified visit · {v.place}{v.status === "disputed" ? " (disputed, refunded)" : ""}</td><td className="num r">−{baht(v.status === "charged" ? v.amount : 0)}</td></tr>)}
+            {(data.impressions ?? []).map((m) => <tr key={`i${m.day}`}><td className="num">{m.day}</td>
+              <td>Shown on {m.impressions.toLocaleString()} routes (฿{PRICES.per1000} per 1,000)</td><td className="num r">−{baht(m.amount)}</td></tr>)}
             {data.bookings.map((b, i) => <tr key={`b${i}`}><td className="num">{when(b.at)}</td><td>Booking ({b.kind}) · {b.place}</td><td className="num r">−{baht(b.amount)}</td></tr>)}
-            {!data.payments.length && !data.visits.length && !data.bookings.length && <tr><td colSpan={3} className="fine">Nothing this month.</td></tr>}
+            {!data.payments.length && !data.visits.length && !data.bookings.length && !data.impressions?.length &&<tr><td colSpan={3} className="fine">Nothing this month.</td></tr>}
           </tbody>
           <tfoot>
             <tr><th colSpan={2}>Paid in</th><th className="num r">{baht(paidIn)}</th></tr>

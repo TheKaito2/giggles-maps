@@ -39,15 +39,15 @@ serve(async (req) => {
     back = `${site}/app/`;
     meta.user_id = user.id;
   } else if (kind === "partner" || kind === "choice") {
-    // a signed-in owner of a verified place (its counter QR has been scanned) only
+    // a signed-in shop owner only
     if (user.is_anonymous) throw new HttpError(403, "sign_in_required");
     const shopId = typeof body.shop_id === "string" ? body.shop_id : "";
     const db = admin();
     const { data: shop } = await db.from("shops").select("id, name, owner_id, choice_approved, subscription_status").eq("id", shopId).maybeSingle();
     if (!shop || shop.owner_id !== user.id) throw new HttpError(403, "not_your_shop");
-    const { count } = await db.from("places").select("id", { count: "exact", head: true })
-      .eq("shop_id", shop.id).not("qr_code", "is", null).not("last_qr_scan_at", "is", null);
-    if (!count) throw new HttpError(409, "not_verified");
+    // prices v7: no first sticker scan needed (the sticker is for travellers now), only a listed place
+    const { count } = await db.from("places").select("id", { count: "exact", head: true }).eq("shop_id", shop.id);
+    if (!count) throw new HttpError(409, "no_place");
     if (kind === "choice" && !shop.choice_approved) throw new HttpError(409, "choice_not_approved");
     // monthly autopay by card unless the shop asks for one 30-day payment (PromptPay can't renew by itself)
     subscribe = body.once !== true;

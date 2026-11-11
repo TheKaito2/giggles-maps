@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Modal from "./Modal";
 import { ApiError } from "../lib/supabase";
 import ShareSheet, { type CardOption } from "./share/ShareSheet";
-import { type Billing, type CheckinResult, type CheckinTarget, setPhoto, setPublicPhoto, uploadSelfie, verifyCheckin } from "../lib/api";
+import { type CheckinResult, type CheckinTarget, setPhoto, setPublicPhoto, uploadSelfie, verifyCheckin } from "../lib/api";
 import { Spinner } from "./Skeleton";
 import ProvinceStamp from "./passport/ProvinceStamp";
 import { checkinClient, checkinFix } from "../lib/native";
@@ -25,15 +25,6 @@ const REASON_TEXT: Record<string, string> = {
   slow_down: "You're stamping fast! Stamps here are paused for a bit; your photo is saved. Check in again later for the stamp.",
 };
 
-// what happened on the shop's side (shown as "Business view" for the demo)
-const BILLING_TEXT: Partial<Record<Billing, string>> = {
-  charged: "The shop paid its bid for this verified visit.",
-  no_qr: "No counter code, so the shop isn't charged.",
-  not_shown_on_route: "This shop wasn't on your route in the last 3 hours, so it isn't charged.",
-  repeat_visit_30d: "Already counted for this shop in the last 30 days, so it isn't charged again.",
-  wallet_empty: "The shop's credit ran out, so it isn't charged.",
-  demo: "Demo mode: shops are never charged.",
-};
 
 type Step = "consent" | "camera" | "working" | "result" | "error";
 
@@ -120,7 +111,6 @@ export default function CheckIn({ target, initialCode, hasPlus, luck = 0, nickna
     img.src = src;
   };
 
-  const billing = result ? BILLING_TEXT[result.billing] : undefined;
   const shareOptions = (r: CheckinResult): CardOption[] => {
     const at = new Date(), name = nickname ?? "Explorer";
     const base = { place: target.name, placeTh: null, tier: r.stamp?.tier ?? 2, province: r.stamp?.province ?? null, at,
@@ -222,9 +212,9 @@ export default function CheckIn({ target, initialCode, hasPlus, luck = 0, nickna
               <button type="button" className="btn soft" onClick={() => setSharing(true)}>Share your stamp</button>
             )}
 
-            {billing && (
-              <p className="fine biz">Business view: {billing}{result.billed_thb > 0 && <> (<span className="num">฿{result.billed_thb}</span>)</>}</p>
-            )}
+            {/* the +25 comes with the first stamp here (not at your own shop, not in demo mode) */}
+            {result.qr_ok && result.status === "approved" && <p className="fine biz">{result.rewarded && !(demo || demoOn()) ? "Scanned at the counter: +25 XP in there, and your"
+              : "Scanned at the counter: your"} review of this place will say you scanned it.</p>}
             {result.shake && !shaken && !fortuneOpen && <button className="btn gold" onClick={() => setFortuneOpen(true)}>Shake your Siam Si stick</button>}
             <button className="btn" onClick={onClose}>Done</button>
           </div>

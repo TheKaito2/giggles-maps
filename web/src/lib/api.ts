@@ -34,7 +34,7 @@ export const EXAMPLE_TIER_TIP = "Pretend, for the demo only: this place hasn't s
 
 export interface RouteStop {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
-  is_partner: boolean; // signed-up shop that pays per verified visit; never affects ranking
+  is_partner: boolean; // signed-up shop; never affects ranking
   is_demo: boolean; rating: number | null; dwell_min: number; eta_min: number;
   travel_min?: number;   // road minutes from the previous stop; eta_min - previous leave - travel_min = waiting for a meal time
   pit_stop?: boolean;   // Quick plans: a convenience store after the sight (snacks, toilet)
@@ -249,7 +249,8 @@ export const shopSubscription = (shop: string, action: "cancel" | "resume") =>
   callFn<{ status: "active" | "cancelling" }>("shop-subscription", { shop_id: shop, action });
 export interface Statement { shop: string; month: string;
   payments: { at: string; kind: string; amount: number; ref: string }[];
-  visits: { at: string; place: string; amount: number; status: "charged" | "disputed" }[];
+  visits: { at: string; place: string; amount: number; status: "charged" | "disputed" }[];   // before prices v7 only
+  impressions?: { day: string; impressions: number; amount: number }[];   // route appearances, ฿50 per 1,000
   bookings: { at: string; place: string; kind: BookingKind; amount: number | null }[] }
 /** A month's statement for a shop: money in (top-ups, plans) and what credit paid for. `month`: "YYYY-MM". */
 export const shopStatement = (shop: string, month: string) => rpc<Statement>("shop_statement", { p_shop: shop, p_month: `${month}-01` });
@@ -259,7 +260,8 @@ export const sponsorLeadDone = (id: number) => rpc<void>("sponsor_lead_done", { 
 
 // v6 prices (THB); stripe-checkout and the App Store products have the same numbers. Monthly Plus and the ฿349
 // membership are no longer sold (members who bought it keep it).
-export const PRICES = { tripPass: 79, plusYear: 890, lifetime: 2990, partner: 990, choice: 2490, booking: 25, stayPct: 10 } as const;
+// v7 (12 Nov): nothing per visit; Partner/Choice shops pay `per1000` for every 1,000 times they're shown on a route
+export const PRICES = { tripPass: 79, plusYear: 890, lifetime: 2990, partner: 990, choice: 2490, booking: 25, stayPct: 10, per1000: 50 } as const;
 /** Lifetime costs this many years of yearly Plus (3.4). */
 export const LIFETIME_YEARS = Math.round((10 * PRICES.lifetime) / PRICES.plusYear) / 10;
 /** Lifetime Plus is stored as Plus until 2100: any date from 2099 on reads as "forever". */
@@ -535,7 +537,8 @@ export async function mapPlaces(w: number, s: number, e: number, n: number, zoom
 }
 
 // ---------- place page: reviews, photos, lists, edits ----------
-export interface PlaceReview { who: Who; rating: number; body: string | null; at: string; mine: boolean }
+export interface PlaceReview { who: Who; rating: number; body: string | null; at: string; mine: boolean;
+  scanned?: boolean }   // the writer scanned the counter sticker on a check-in here
 export interface PlacePhoto { id?: number; url?: string; path?: string; credit: string | null; licence?: string | null;
   source: "wikimedia" | "owner" | "checkin" | "traveller"; mine?: boolean }
 export interface PlacePage {
@@ -543,6 +546,7 @@ export interface PlacePage {
   opening_hours: string | null; phone: string | null; website: string | null; address: string | null;
   local: boolean; otop: boolean; community: boolean; detour: boolean;
   rating: number | null; review_count: number; reviews: PlaceReview[]; checked_in: boolean; stamped: boolean;
+  visits?: number; scanned_visits?: number;   // travellers who checked in here, and how many of them scanned the counter
   photo_reward: boolean; review_shake: boolean;   // your first photo here still pays coins; a written review still earns a shake
   photos: PlacePhoto[]; busy: number[] | null; saved_in: string[];
   regular: { who: Who; visits: number; friend: boolean; mine: boolean } | null;   // most visit-days here in 60 days (2+)
