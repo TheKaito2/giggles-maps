@@ -1,17 +1,18 @@
 import { admin, HttpError, json, readJson, requireUser, serve } from "../_shared/http.ts";
 
 // What can be bought on the web (Stripe). iOS/Android sell Plus through StoreKit / Play Billing instead.
-//   credit     : prepaid visit credit for a shop (each verified visit deducts the shop's bid)
-//   plus       : Giggles Plus for a user, 30 days (no ads, daily coins, Plus shelf and title, themes and flair)
-//   plus_year  : Giggles Plus for a user, 365 days (web only; the iOS app sells monthly Plus through StoreKit)
-//   membership : one-time lifetime membership (no ads, unlimited detours, partners first, 3 months of Plus), never renews
+//   credit     : prepaid credit for a shop (verified visits and bookings are paid from it)
+//   trip_pass  : Giggles Plus for a user, 7 days (no ads, unlimited detours and stops, daily coins, themes and flair)
+//   plus_year  : Giggles Plus for a user, 365 days, the main plan
+//   lifetime   : Plus forever, one payment, never renews
 //   partner    : a shop's Partner tier, 30 days (members' routes put it first; guests can book it)
 //   choice     : Giggles Choice, 30 days: a Partner we hand-picked (needs our approval first), also in the Partner picks plan
+// Prices v6 (= PRICES in web/src/lib/api.ts and the App Store products). Monthly Plus and the ฿349 membership are no longer sold.
 const CREDIT_PACKS = [500, 1000, 3000];
-// ponytail: prices are defaults awaiting the owner's decision (= PRICES.plus / plusYear in web/src/lib/api.ts)
-const PLUS_THB = { plus: 59, plus_year: 590 } as const;
-const MEMBERSHIP_THB = 349;
-const TIER_THB = { partner: 299, choice: 799 } as const;
+const PLUS_THB = { trip_pass: 79, plus_year: 890 } as const;
+const LIFETIME_THB = 2990;
+const TIER_THB = { partner: 990, choice: 2490 } as const;
+const KINDS = ["credit", "trip_pass", "plus_year", "lifetime", "partner", "choice"];
 
 serve(async (req) => {
   const user = await requireUser(req);
@@ -20,19 +21,21 @@ serve(async (req) => {
   if (!/^(sk|rk)_test_/.test(key) && Deno.env.get("STRIPE_LIVE") !== "1") throw new HttpError(503, "live_payments_disabled");
 
   const body = await readJson(req);
-  const kind = ["credit", "plus", "plus_year", "membership", "partner", "choice"].includes(body.kind) ? body.kind : "credit";
+  // an app older than v6 asking for monthly Plus or the membership: no longer sold
+  if (body.kind === "plus" || body.kind === "membership") throw new HttpError(410, "no_longer_sold");
+  const kind = KINDS.includes(body.kind) ? body.kind : "credit";
   const site = Deno.env.get("SITE_URL") ?? "https://gigglesmap.xyz";
 
   let amount: number, name: string, back: string;
+  let subscribe = false;   // Partner / Choice paid monthly by card (Stripe Billing); else a one-off payment
   const meta: Record<string, string> = { kind };
-  if (kind === "plus" || kind === "plus_year" || kind === "membership") {
+  if (kind === "trip_pass" || kind === "plus_year" || kind === "lifetime") {
     if (user.is_anonymous) throw new HttpError(403, "sign_in_required"); // must survive a reinstall
-    if (kind === "membership") {
-      const { data: p } = await admin().from("profiles").select("member_since").eq("id", user.id).maybeSingle();
-      if (p?.member_since) throw new HttpError(409, "already_member");
-    }
-    amount = kind === "membership" ? MEMBERSHIP_THB : PLUS_THB[kind as keyof typeof PLUS_THB];
-    name = kind === "plus" ? "Giggles Plus, 30 days" : kind === "plus_year" ? "Giggles Plus, 1 year" : "Giggles Maps membership (one-time)";
+    // Lifetime already: nothing more to buy
+    const { data: p } = await admin().from("profiles").select("plus_until").eq("id", user.id).maybeSingle();
+    if (p?.plus_until && new Date(p.plus_until).getUTCFullYear() >= 2099) throw new HttpError(409, "already_lifetime");
+    amount = kind === "lifetime" ? LIFETIME_THB : PLUS_THB[kind as keyof typeof PLUS_THB];
+    name = kind === "trip_pass" ? "Giggles Trip Pass, 7 days" : kind === "plus_year" ? "Giggles Plus, 1 year" : "Giggles Plus Lifetime (one-time)";
     back = `${site}/app/`;
     meta.user_id = user.id;
   } else if (kind === "partner" || kind === "choice") {
@@ -40,14 +43,18 @@ serve(async (req) => {
     if (user.is_anonymous) throw new HttpError(403, "sign_in_required");
     const shopId = typeof body.shop_id === "string" ? body.shop_id : "";
     const db = admin();
-    const { data: shop } = await db.from("shops").select("id, name, owner_id, choice_approved").eq("id", shopId).maybeSingle();
+    const { data: shop } = await db.from("shops").select("id, name, owner_id, choice_approved, subscription_status").eq("id", shopId).maybeSingle();
     if (!shop || shop.owner_id !== user.id) throw new HttpError(403, "not_your_shop");
     const { count } = await db.from("places").select("id", { count: "exact", head: true })
       .eq("shop_id", shop.id).not("qr_code", "is", null).not("last_qr_scan_at", "is", null);
     if (!count) throw new HttpError(409, "not_verified");
     if (kind === "choice" && !shop.choice_approved) throw new HttpError(409, "choice_not_approved");
+    // monthly autopay by card unless the shop asks for one 30-day payment (PromptPay can't renew by itself)
+    subscribe = body.once !== true;
+    // one subscription per shop (a cancelled-but-running one is resumed from the dashboard instead)
+    if (subscribe && (shop.subscription_status === "active" || shop.subscription_status === "cancelling")) throw new HttpError(409, "already_subscribed");
     amount = TIER_THB[kind as keyof typeof TIER_THB];
-    name = `${kind === "choice" ? "Giggles Choice" : "Giggles Partner"}, 30 days — ${shop.name}`;
+    name = `${kind === "choice" ? "Giggles Choice" : "Giggles Partner"}${subscribe ? ", monthly" : ", 30 days"} — ${shop.name}`;
     back = `${site}/shop/`;
     meta.shop_id = shop.id;
   } else {
@@ -62,9 +69,8 @@ serve(async (req) => {
   }
 
   const form = new URLSearchParams({
-    mode: "payment",
+    mode: subscribe ? "subscription" : "payment",
     "payment_method_types[0]": "card",
-    "payment_method_types[1]": "promptpay",
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": "thb",
     "line_items[0][price_data][unit_amount]": String(amount * 100), // satang
@@ -72,7 +78,13 @@ serve(async (req) => {
     success_url: `${back}?paid=success`,
     cancel_url: `${back}?paid=cancelled`,
   });
-  for (const [k, v] of Object.entries(meta)) form.set(`metadata[${k}]`, v);
+  if (subscribe) form.set("line_items[0][price_data][recurring][interval]", "month");
+  else form.set("payment_method_types[1]", "promptpay");
+  for (const [k, v] of Object.entries(meta)) {
+    form.set(`metadata[${k}]`, v);
+    // each monthly invoice carries the shop and tier, so stripe-webhook knows what it paid for
+    if (subscribe) form.set(`subscription_data[metadata][${k}]`, v);
+  }
   if (user.email) form.set("customer_email", user.email);
 
   const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {

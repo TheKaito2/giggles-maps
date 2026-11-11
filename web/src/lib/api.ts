@@ -69,6 +69,7 @@ export interface ThemedPlan {
   road_extra_min?: number; stop_min?: number; wait_min?: number;   // where extra_min goes
   extra_km?: number;   // how much further than the direct road the plan drives (older servers: absent)
   along?: AlongPlace[];
+  verified?: boolean;   // false: times are estimates until the plan is opened (the app asks the server to road-check it)
 }
 
 export interface RoutePlan {
@@ -86,13 +87,16 @@ export interface RoutePlan {
   plans?: ThemedPlan[]; // top-level fields = Top picks
   road_extra_min?: number; stop_min?: number; wait_min?: number; extra_km?: number;
   budget_auto?: boolean;   // budget_min was picked by the server ("auto")
+  verified?: boolean;      // the chosen plan was road-checked (choosePlan copies it from the plan)
+  routing_calls?: { route: number; matrix: number; cached_baseline: boolean; ms?: Record<string, number> };
 }
 
 /** The trip with the picked themed plan swapped in (first plan when none is picked). */
 export function choosePlan(plan: RoutePlan, id: string | null): RoutePlan {
   const p = plan.plans?.find((x) => x.id === id) ?? plan.plans?.[0];
   return p ? { ...plan, stops: p.stops, geometry: p.geometry, extra_min: p.extra_min, total_min: p.total_min,
-               road_extra_min: p.road_extra_min, stop_min: p.stop_min, wait_min: p.wait_min, extra_km: p.extra_km } : plan;
+               road_extra_min: p.road_extra_min, stop_min: p.stop_min, wait_min: p.wait_min, extra_km: p.extra_km,
+               verified: p.verified !== false } : plan;
 }
 
 export type Billing = "charged" | "no_qr" | "not_shown_on_route" | "repeat_visit_30d"
@@ -187,6 +191,9 @@ export async function searchAddresses(query: string, near?: LatLng | null, signa
 }
 
 export const planRoute = (p: PlanRequest) => callFn<RoutePlan>("plan-route", demoOn() ? { ...p, demo: true } : p);   // demo: pretend partners too
+/** Several time options in one request: they share one direct route and one road-time matrix. Answers in the order asked. */
+export const planRoutes = async (p: PlanRequest, budgets: (number | "auto")[]) =>
+  (await callFn<{ results: RoutePlan[] }>("plan-route", { ...p, budget_min: undefined, budgets_min: budgets, ...(demoOn() && { demo: true }) })).results;
 
 export async function uploadSelfie(blob: Blob): Promise<string> {
   const session = await ensureSession();
@@ -233,15 +240,30 @@ export const verifyCheckin = (p: {
 }) => callFn<CheckinResult>("verify-checkin", p);
 
 // Stripe Checkout (web only). Returns the hosted payment page URL.
-export const startCheckout = (p: { kind: "plus" | "plus_year" } | { kind: "membership" } | { kind: "credit"; shop_id: string; pack: number }
-  | { kind: "partner" | "choice"; shop_id: string }) =>
+export type PlusKind = "trip_pass" | "plus_year" | "lifetime";
+export const startCheckout = (p: { kind: PlusKind } | { kind: "credit"; shop_id: string; pack: number }
+  | { kind: "partner" | "choice"; shop_id: string; once?: boolean }) =>   // once: one 30-day payment (PromptPay), else monthly by card
   callFn<{ url: string }>("stripe-checkout", p);
+/** Stop or restart a shop's monthly renewal (the tier runs to the end of what was paid). */
+export const shopSubscription = (shop: string, action: "cancel" | "resume") =>
+  callFn<{ status: "active" | "cancelling" }>("shop-subscription", { shop_id: shop, action });
+export interface Statement { shop: string; month: string;
+  payments: { at: string; kind: string; amount: number; ref: string }[];
+  visits: { at: string; place: string; amount: number; status: "charged" | "disputed" }[];
+  bookings: { at: string; place: string; kind: BookingKind; amount: number | null }[] }
+/** A month's statement for a shop: money in (top-ups, plans) and what credit paid for. `month`: "YYYY-MM". */
+export const shopStatement = (shop: string, month: string) => rpc<Statement>("shop_statement", { p_shop: shop, p_month: `${month}-01` });
+export interface SponsorLead { id: number; org: string; contact: string; message: string | null; at: string }
+export const sponsorLeads = () => rpc<SponsorLead[]>("sponsor_leads_admin");
+export const sponsorLeadDone = (id: number) => rpc<void>("sponsor_lead_done", { p_id: id });
 
-// v5 prices (THB); the server has the same numbers
-// ponytail: plus / plusYear are defaults awaiting the owner's decision (= PLUS_THB in stripe-checkout)
-export const PRICES = { membership: 349, plus: 59, plusYear: 590, partner: 299, choice: 799, booking: 20 } as const;
-/** What yearly Plus saves against 12 months (17% at ฿590 vs ฿59). */
-export const PLUS_YEAR_SAVE = Math.round(100 * (1 - PRICES.plusYear / (12 * PRICES.plus)));
+// v6 prices (THB); stripe-checkout and the App Store products have the same numbers. Monthly Plus and the ฿349
+// membership are no longer sold (members who bought it keep it).
+export const PRICES = { tripPass: 79, plusYear: 890, lifetime: 2990, partner: 990, choice: 2490, booking: 25, stayPct: 10 } as const;
+/** Lifetime costs this many years of yearly Plus (3.4). */
+export const LIFETIME_YEARS = Math.round((10 * PRICES.lifetime) / PRICES.plusYear) / 10;
+/** Lifetime Plus is stored as Plus until 2100: any date from 2099 on reads as "forever". */
+export const forever = (until: string | Date | null | undefined) => !!until && new Date(until).getUTCFullYear() >= 2099;
 // v5: who sees ads (everyone but members and Plus)
 export const adFree = (p: Profile | null) => !!p && (p.member || !!p.plusUntil);
 
@@ -276,19 +298,41 @@ export const PERK_MAX = 80;
 export const setMyPerk = (place: number, text: string) => rpc<void>("set_my_perk", { p_place: place, p_text: text });
 
 // bookings through Giggles Maps (partner places only); the shop pays a flat fee once you check in
-export type BookingStatus = "requested" | "accepted" | "declined" | "completed" | "cancelled";
-export interface Booking { id: number; place_id: number; place: string; day: string; party: number; note: string | null; status: BookingStatus }
-export interface ShopBooking { id: number; place: string; guest: string; day: string; party: number; note: string | null; status: BookingStatus;
+// expired: the shop never answered before the day; no_show: accepted but nobody checked in (free for the shop)
+export type BookingStatus = "requested" | "accepted" | "declined" | "completed" | "cancelled" | "expired" | "no_show";
+// table (food, café, bar): a time; stay: check-out and rooms, priced by the shop on accept (10% fee); visit: a time
+export type BookingKind = "table" | "stay" | "visit";
+export const bookingKind = (category: string): BookingKind =>
+  category === "stay" ? "stay" : ["food", "cafe", "bar"].includes(category) ? "table" : "visit";   // = booking_kind() in SQL
+interface BookingDetail { kind: BookingKind; time: string | null; check_out: string | null; rooms: number | null; price: number | null;
+  cancel_reason: string | null; cancelled_by: "guest" | "shop" | null }
+export interface Booking extends BookingDetail { id: number; place_id: number; place: string; day: string; party: number; note: string | null; status: BookingStatus }
+export interface ShopBooking extends BookingDetail { id: number; place: string; guest: string; day: string; party: number; note: string | null; status: BookingStatus;
   fee: number; charged: number | null }
-export const requestBooking = (place: number, day: string, party: number, note: string) =>
-  rpc<number>("request_booking", { p_place: place, p_day: day, p_party: party, p_note: note || null });
+export const requestBooking = (place: number, day: string, party: number, note: string,
+  extra: { time?: string; check_out?: string; rooms?: number } = {}) =>
+  rpc<number>("request_booking", { p_place: place, p_day: day, p_party: party, p_note: note || null,
+    p_time: extra.time || null, p_check_out: extra.check_out || null, p_rooms: extra.rooms ?? null });
 export const myBookings = () => rpc<Booking[]>("my_bookings");
 export const cancelBooking = (id: number) => rpc<void>("cancel_booking", { p_id: id });
 export const shopBookings = (shop: string) => rpc<ShopBooking[]>("shop_bookings", { p_shop: shop });
-export const answerBooking = (id: number, accept: boolean) => rpc<void>("answer_booking", { p_id: id, p_accept: accept });
+/** Accept or decline; a stay is accepted with its price (the shop pays 10% of it once the guest checks in). */
+export const answerBooking = (id: number, accept: boolean, price?: number) =>
+  rpc<void>("answer_booking", { p_id: id, p_accept: accept, p_price: price ?? null });
+const shortDay = (iso: string) => new Date(`${iso}T00:00:00+07:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+/** "Sat 15 Nov · 12:30 · 4 people", or for a stay "Sat 15 Nov – Mon 17 Nov · 1 room · 2 guests". */
+export const bookingWhen = (b: Pick<Booking, "day" | "kind" | "time" | "check_out" | "rooms" | "party">) =>
+  b.kind === "stay" && b.check_out
+    ? `${shortDay(b.day)} – ${shortDay(b.check_out)} · ${b.rooms ?? 1} ${b.rooms === 1 ? "room" : "rooms"} · ${b.party} ${b.party === 1 ? "guest" : "guests"}`
+    : `${shortDay(b.day)}${b.time ? ` · ${b.time.slice(0, 5)}` : ""} · ${b.party} ${b.party === 1 ? "person" : "people"}`;
+export const shopCancelBooking =(id: number, reason: string) => rpc<void>("shop_cancel_booking", { p_id: id, p_reason: reason });
 export const requestChoice = (shop: string) => rpc<void>("request_choice", { p_shop: shop });
 // the shop pitch's real number: trips planned near a place and times it was on a route (30 days)
-export interface ShopReach { name: string; shown_30d: number; trips_near_30d: number }
+export interface ShopReach { name: string; shown_30d: number; trips_near_30d: number;
+  visit_rate?: number | null }   // shown stops visited, all shops, 30 days (null: nothing shown yet)
+/** The "for provinces and brands" form: a sponsored-quest enquiry (read by the team only). */
+export const sendSponsorLead = (org: string, contact: string, message: string) =>
+  rpc<void>("send_sponsor_lead", { p_org: org, p_contact: contact, p_message: message || null });
 export const shopReach = (place: number) => rpc<ShopReach>("shop_reach", { p_place: place });
 export const approveChoice = (shop: string, ok: boolean) => rpc<void>("approve_choice", { p_shop: shop, p_ok: ok });
 export const choiceRequests = () => rpc<{ shop: string; name: string; tier: PartnerTier | null; at: string }[]>("choice_requests");

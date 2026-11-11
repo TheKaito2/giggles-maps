@@ -98,3 +98,30 @@ td .row { flex-wrap: nowrap; }
   .pitch-hero > :not(.reach) { grid-column: 1; }
   .pitch-hero > .reach { grid-column: 2; grid-row: 1 / span 4; }
 }
+
+/* dashboard v2: low credit, weekly funnel, stay prices */
+.low-credit { background: var(--marigold-soft); box-shadow: inset 0 0 0 2px var(--marigold); }
+.funnel { display: grid; gap: 10px; }
+.funnel h3 { margin: 8px 0 0; }
+.funnel td:nth-child(2) { min-width: 140px; }
+.funnel-bar { display: inline-block; height: 10px; min-width: 2px; max-width: calc(100% - 44px); border-radius: 5px; background: var(--brand); vertical-align: middle; }
+.avg-bill { max-width: 260px; }
+.price-in input { width: 120px; }
+
+/* pitch v6: return calculator and the provinces section */
+.calc { display: grid; gap: 12px; padding: 16px; border-radius: 20px; background: var(--card); border: 2px solid var(--line); max-width: 640px; }
+.calc-out { display: grid; gap: 4px; }
+.calc-out b { font: 800 var(--fs-title)/var(--lh-title) var(--font-data); }
+.compare { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.lang-toggle { justify-self: end; }
+.calc .booking-fields { align-items: end; }
+.calc .field input, .calc .field textarea { width: 100%; box-sizing: border-box; min-height: 44px; }
+
+/* the monthly statement prints on its own (Print or save PDF) */
+.statement-sheet tfoot th { text-align: left; }
+@media print {
+  body * { visibility: hidden; }
+  .statement-sheet, .statement-sheet * { visibility: visible; }
+  .statement-sheet { position: absolute; left: 0; top: 0; width: 100%; }
+  .no-print { display: none; }
+}

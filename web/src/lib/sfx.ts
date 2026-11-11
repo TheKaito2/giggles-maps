@@ -90,6 +90,14 @@ export function reveal(rarity: Rarity) {
   if (rarity === "legendary") { tone(a, t + 0.2, 98, 2.5, 0.35, "sine"); tone(a, t + 0.2, 147, 2.2, 0.12, "sine"); }   // a temple gong underneath
 }
 
+/** A booking came in or was answered: two bright notes, like a shop doorbell. */
+export function bookingChime() {
+  const a = audio();
+  if (!a) return;
+  const t = a.currentTime;
+  tone(a, t, SCALE[4], 0.5, 0.22); tone(a, t + 0.16, SCALE[2], 0.8, 0.22);
+}
+
 /** The chest bursts open: a lid thud, coins spilling out, a little fanfare. */
 export function chestOpen() {
   const a = audio();

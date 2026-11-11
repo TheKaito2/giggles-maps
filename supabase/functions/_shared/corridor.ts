@@ -3,7 +3,7 @@
 // up a country road costs its real slow-road minutes instead of highway speed (the old scaled straight line, which
 // planned stops the road check then had to drop). Pairs close together, and each stop's way back to the route, get
 // real road times from a few matrix calls; the rest use the model.
-import { haversineM, type LatLng, MAX_PAIRS, METERS_PER_MIN, type Mode, pairsMinutes, type RoadRoute } from "./valhalla.ts";
+import { haversineM, type LatLng, MAX_PAIRS, METERS_PER_MIN, type Mode, pairKey, pairsMinutes, type RoadRoute } from "./valhalla.ts";
 
 const NEAR_M = 40000;    // stops closer than this get real road times between them (walking: the limit below)
 // the public routing server refuses a whole matrix call if any pair is further apart than this (straight line)
@@ -40,13 +40,14 @@ export function corridorMinutes(spots: Spot[], mode: Mode, real: Map<string, num
 
 /** Which road times to fetch, packed into calls of at most MAX_PAIRS: each stop to its route anchor and to its nearest
  *  neighbours, sources taken in route order so neighbouring rows share targets. */
-export function planCalls(points: LatLng[], spots: Spot[], mode: Mode = "auto") {
+export function planCalls(points: LatLng[], spots: Spot[], mode: Mode = "auto", known: (from: LatLng, to: LatLng) => boolean = () => false) {
   const limit = MATRIX_LIMIT_M[mode], reach = Math.min(NEAR_M, limit);
   type Target = { key: string; at: LatLng };
   const wants = points.map((p, i) => {
     const near = points.map((q, j) => ({ j, d: haversineM(p, q) })).filter(({ j, d }) => j !== i && d <= reach)
       .sort((a, b) => a.d - b.d).slice(0, NEIGHBOURS).map(({ j }) => ({ key: `${j}`, at: points[j] }));
-    return [...(i < 2 ? [] : [{ key: "a", at: spots[i].anchor }]), ...near] as Target[];
+    // road times already fetched (this request or the trip cache) aren't asked for again
+    return ([...(i < 2 ? [] : [{ key: "a", at: spots[i].anchor }]), ...near] as Target[]).filter((t) => !known(p, t.at));
   });
   const calls: { sources: number[]; targets: Map<string, LatLng> }[] = [];
   let cur = { sources: [] as number[], targets: new Map<string, LatLng>() };
@@ -70,11 +71,17 @@ export function planCalls(points: LatLng[], spots: Spot[], mode: Mode = "auto") 
   return calls;
 }
 
-/** The long-trip matrix for [origin, dest, ...stops]. Fetch failures just leave the model in place. */
-export async function corridorMatrix(points: LatLng[], baseline: RoadRoute, mode: Mode, fetchPairs = pairsMinutes) {
+/** The long-trip matrix for [origin, dest, ...stops]. Fetch failures just leave the model in place.
+ *  `cache`: road minutes by pairKey, read first and filled with what's fetched. */
+export async function corridorMatrix(points: LatLng[], baseline: RoadRoute, mode: Mode, fetchPairs = pairsMinutes,
+  cache: Map<string, number> = new Map(), maxCalls = MAX_CALLS) {
   const spots = onRoute(points, baseline);
   const real = new Map<string, number>();
-  const calls = planCalls(points, spots, mode).slice(0, MAX_CALLS);
+  points.forEach((p, i) => {
+    if (i >= 2 && cache.has(pairKey(p, spots[i].anchor))) real.set(`${i},a`, cache.get(pairKey(p, spots[i].anchor))!);
+    points.forEach((q, j) => { if (i !== j && cache.has(pairKey(p, q))) real.set(`${i},${j}`, cache.get(pairKey(p, q))!); });
+  });
+  const calls = planCalls(points, spots, mode, (a, b) => cache.has(pairKey(a, b))).slice(0, maxCalls);
   for (let c = 0; c < calls.length; c += 2) {   // two at a time: the public routing server is shared
     await Promise.all(calls.slice(c, c + 2).map(async ({ sources, targets }) => {
       const keys = [...targets.keys()];
@@ -83,6 +90,7 @@ export async function corridorMatrix(points: LatLng[], baseline: RoadRoute, mode
         sources.forEach((i, r) => keys.forEach((k, t) => {
           const min = rows[r]?.[t];
           if (!Number.isFinite(min)) return;
+          cache.set(pairKey(points[i], targets.get(k)!), min);
           if (k === `a${i}`) real.set(`${i},a`, min);
           else if (!k.startsWith("a")) real.set(`${i},${k}`, min);
         }));

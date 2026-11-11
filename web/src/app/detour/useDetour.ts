@@ -2,7 +2,7 @@ import { myLocation } from "../../lib/demoGps";
 import { useEffect, useRef, useState } from "react";
 import { ApiError, errCode } from "../../lib/supabase";
 import { isGuest, useUser } from "../../lib/auth";
-import { choosePlan, planRoute, type RoutePlan } from "../../lib/api";
+import { choosePlan, planRoute, planRoutes, type PlanRequest, type RoutePlan } from "../../lib/api";
 import { DEFAULT_PREFS, FREE_STOPS, MAX_BUDGET, type Place, type Prefs, toRequest } from "../prefs";
 
 // Detour flow, Google-Maps style: browse the map -> pick where to -> pick how much time (Quick, Relaxed, Day out and Half day
@@ -30,7 +30,7 @@ const errorText = (e: unknown) => {
     : code === "edit_limit" ? "That's today's 10 free changes."
     : code === "slow_down" ? "Lots of plans at once. Wait a moment, then try again."
     : code === "day_cap" ? "That's all the plans for today. Sign in free for more, or come back tomorrow."
-    : code === "stop_limit_free" ? `Free plans hold ${FREE_STOPS} stops. Members can add more.`
+    : code === "stop_limit_free" ? `Free plans hold ${FREE_STOPS} stops. Plus can add more.`
     : code === "stop_limit" ? "That's the most stops a plan holds. Remove one to add another."
     : code === "too_far_for_mode" ? "That's too far to walk or cycle in one go. Try Driving."
     : code === "bad_origin" || code === "bad_dest" ? "Pick a start and destination inside Thailand." : "Couldn't plan this one. Try again in a moment.";
@@ -135,12 +135,29 @@ export function useDetour(onError: (m: string) => void, unlimited = true) {
 
   const budgetOf = (id: PresetId) => id === "custom" ? prefs.budget : PRESETS.find((p) => p.id === id)!.min;
 
+  // the request behind each option's plans on screen: opening another plan card asks the server to road-check that plan
+  // with the same request (same kept and removed stops), so the answer matches what's shown
+  const asked = useRef<Partial<Record<PresetId, PlanRequest>>>({});
+  const failed = (e: unknown): Result => ({ error: errorText(e), gate: GATES.has(errCode(e)) ? errCode(e) as Gate : undefined });
   const planPreset = (k: PresetId, id: number) => {
     if (!origin || !dest) return;
     setResults((all) => ({ ...all, [k]: "loading" }));
-    planRoute(toRequest({ ...prefs, budget: budgetOf(k) }, origin.point, dest.point))
+    const req = toRequest({ ...prefs, budget: budgetOf(k) }, origin.point, dest.point);
+    asked.current[k] = req;
+    planRoute(req)
       .then((r) => { if (id === request.current) { plannedAt.current = Date.now(); setResults((all) => ({ ...all, [k]: r })); } })
-      .catch((e) => { if (id === request.current) { gated(e); setResults((all) => ({ ...all, [k]: { error: errorText(e), gate: GATES.has(errCode(e)) ? errCode(e) as Gate : undefined } })); } });
+      .catch((e) => { if (id === request.current) { gated(e); setResults((all) => ({ ...all, [k]: failed(e) })); } });
+  };
+  // a new trip: every option in one request (one direct route and one road-time matrix for all of them)
+  const planAll = (ks: PresetId[], id: number) => {
+    if (!origin || !dest) return;
+    const reqs = ks.map((k) => toRequest({ ...prefs, budget: budgetOf(k) }, origin.point, dest.point));
+    ks.forEach((k, i) => { asked.current[k] = reqs[i]; });
+    planRoutes(reqs[0], reqs.map((r) => r.budget_min))
+      // an option the server couldn't plan answers { error } in its place; the others still show
+      .then((rs) => { if (id === request.current) { plannedAt.current = Date.now();
+        setResults(Object.fromEntries(ks.map((k, i) => [k, rs[i] && "route_id" in rs[i] ? rs[i] : { error: errorText(null) }]))); } })
+      .catch((e) => { if (id === request.current) { gated(e); setResults(Object.fromEntries(ks.map((k) => [k, failed(e)]))); } });
   };
   // a new trip plans all four options at once (Relaxed first), plus a custom time if that's the one picked;
   // the cards fill in as each returns
@@ -156,7 +173,7 @@ export function useDetour(onError: (m: string) => void, unlimited = true) {
     // guests plan too (one destination a day, server-side): the server answers sign_in_required after that
     setResults(Object.fromEntries(ids.map((k) => [k, "loading"])));
     // a short pause first: tapping several filter chips in a row sends one round of plans, not one per tap
-    const t = setTimeout(() => { for (const k of ids) planPreset(k, id); }, 400);
+    const t = setTimeout(() => planAll(ids, id), 400);
     return () => clearTimeout(t);
   }, [origin, dest, prefs, stage === "browse", guest, again]); // eslint-disable-line react-hooks/exhaustive-deps
   const retry = (k: PresetId) => planPreset(k, request.current);
@@ -193,6 +210,36 @@ export function useDetour(onError: (m: string) => void, unlimited = true) {
   const plan = response && choosePlan(response, choice);
   const cap = response?.max_stops ?? (unlimited ? 15 : FREE_STOPS);   // stops a plan holds: free 3, members 15 (= STOP_CAP in tiers.ts)
 
+  // the server road-checks only the plan on screen; another plan card opened (or a first plan that fell through) comes
+  // with estimated times, so ask for that one, with the request that made what's shown. Each plan once per request:
+  // one the roads can't take isn't asked again and again.
+  const shown = response?.plans?.find((x) => x.id === choice) ?? response?.plans?.[0];
+  const checked = useRef(new Set<string>());
+  useEffect(() => {
+    // routing down (estimate): nothing a second ask would fix
+    if (stage === "browse" || !origin || !dest || !preset || !shown || shown.verified !== false || editing || response?.routing === "estimate") return;
+    const req = asked.current[preset] ?? toRequest({ ...prefs, budget: budgetOf(preset) }, origin.point, dest.point);
+    const key = JSON.stringify([req, shown.id]);
+    if (checked.current.has(key)) return;
+    checked.current.add(key);
+    const id = ++edit.current, k = preset, theme = shown.id;
+    setEditing(true);
+    planRoute({ ...req, theme })
+      // only this plan is swapped in, so plans already road-checked stay checked; one the roads can't take is dropped
+      .then((r) => {
+        if (id !== edit.current) return;
+        const checkedPlan = r.plans?.find((x) => x.id === theme && x.verified !== false);
+        setResults((all) => {
+          const cur = all[k];
+          if (!cur || typeof cur !== "object" || !("route_id" in cur)) return { ...all, [k]: r };
+          return { ...all, [k]: { ...cur, plans: (cur.plans ?? []).flatMap((x) => x.id !== theme ? [x] : checkedPlan ? [checkedPlan] : []) } };
+        });
+        setChoice(checkedPlan ? theme : null);
+      })
+      .catch((e) => { if (id === edit.current) { gated(e); onError(errorText(e)); } })
+      .finally(() => { if (id === edit.current) setEditing(false); });
+  }, [shown, preset, editing, stage]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // edits re-plan the shown preset: kept stops stay in (must_include), removed ones stay out (exclude), and the planner works
   // out the best order again. Kept stops always stay, past the preset's time if need be: the time only shapes the generated
   // plans, it never refuses a stop you chose. `fixed`: keep exactly this order (a place added in a gap goes right there).
@@ -204,10 +251,12 @@ export function useDetour(onError: (m: string) => void, unlimited = true) {
       const theme = choice ?? response.plans?.[0]?.id;
       const base = budgetOf(preset);
       const budget = base === "auto" ? "auto" : Math.min(MAX_BUDGET, base);
-      const r = await planRoute({ ...toRequest({ ...prefs, budget }, origin.point, dest.point),
+      const req: PlanRequest = { ...toRequest({ ...prefs, budget }, origin.point, dest.point),
         must_include: [...new Set([...keep, ...prefs.picks.map((p) => p.id)])].slice(0, cap), keep_order: fixed || undefined,
-        exclude: out.slice(-30), theme });
+        exclude: out.slice(-30), theme };
+      const r = await planRoute(req);
       if (id !== edit.current) return;
+      asked.current[preset] = req;
       plannedAt.current = Date.now();
       setExclude(out); setResults((all) => ({ ...all, [preset!]: r })); setChoice(theme ?? null);
     } catch (e) { if (id === edit.current) { gated(e); onError(errorText(e)); } }

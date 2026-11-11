@@ -19,9 +19,9 @@ import { AFFILIATE_IDS, bookingLinks } from "../../lib/affiliate";
 
 const MEAL_NAME: Record<Meal, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
 const PARTNER_TIP = "This shop pays Giggles Maps when you visit.";
-// paid placement is always labelled: members' plans put these places first
-const TIER_TIP = { partner: "A verified shop that pays Giggles Maps monthly. Members' plans put partners first.",
-  choice: "Hand-picked by Giggles and pays monthly. Members' plans put it first; the Partner picks plan uses only these." } as const;
+// paid placement is always labelled: Plus and members' plans put these places first
+const TIER_TIP = { partner: "A verified shop that pays Giggles Maps monthly. Plus plans put partners first.",
+  choice: "Hand-picked by Giggles and pays monthly. Plus plans put it first; the Partner picks plan uses only these." } as const;
 
 /** A place's photo, or its kind icon on its group colour. */
 export function Thumb({ s, size = 48 }: { s: { name: string; category: string; photo?: string | null }; size?: number }) {

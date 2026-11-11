@@ -243,7 +243,7 @@ export default function PlaceSheet({ id, member, onClose, onDirections, onChecki
         </label>}
       </div>
       {menu === "save" && <SaveMenu page={page} onClose={() => setMenu(null)} onChange={load} />}
-      {menu === "book" && <BookingSheet place={page.id} name={page.name} onClose={() => setMenu(null)} onDone={(m) => { setMenu(null); setMsg(m); }} />}
+      {menu === "book" && <BookingSheet place={page.id} name={page.name} category={page.category}onClose={() => setMenu(null)} onDone={(m) => { setMenu(null); setMsg(m); }} />}
       {msg && <p className="fine" role="status">{msg}</p>}
       {tier && perk && <div className={`perk-card${member ? " on" : ""}`}>
         <Ticket size={20} aria-hidden />

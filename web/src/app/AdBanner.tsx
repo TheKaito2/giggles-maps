@@ -8,8 +8,8 @@ import { PRICES } from "../lib/api";
 const CLIENT = import.meta.env.VITE_ADSENSE_CLIENT as string | undefined;
 const SLOT = import.meta.env.VITE_ADSENSE_SLOT as string | undefined;
 const HOUSE = [
-  { icon: <Ban size={20} aria-hidden />, title: "Remove ads forever", sub: `Membership · ฿${PRICES.membership} once, 3 months of Plus free`, act: "upgrade" },
-  { icon: <Sparkles size={20} aria-hidden />, title: "Try Giggles Plus", sub: `No ads and +20 coins a day · ฿${PRICES.plus}/month`, act: "upgrade" },
+  { icon: <Ban size={20} aria-hidden />, title: "On a trip this week?", sub: `Trip Pass · no ads and unlimited detours for 7 days, ฿${PRICES.tripPass}`, act: "upgrade" },
+  { icon: <Sparkles size={20} aria-hidden />, title: "Giggles Plus for a year", sub: `No ads, unlimited detours, +20 coins a day · ฿${PRICES.plusYear}/year`, act: "upgrade" },
   { icon: <Store size={20} aria-hidden />, title: "Own a shop or café?", sub: "Become a Giggles partner and take bookings", act: "partner" },
 ] as const;
 

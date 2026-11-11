@@ -27,6 +27,7 @@ import Modal from "./Modal";
 import { lazyRetry } from "../lib/lazy";
 import { dialogsOpen, LOAD, ours, quietBack, quietPop, useBack } from "../lib/useDialog";
 import { nameOf } from "../lib/i18n";
+import { bookingChime } from "../lib/sfx";
 
 // Only the map and the detour sheet load up front; tabs and sheets arrive when first opened.
 const MapView = lazyRetry(() => import("./MapView"));   // maplibre is most of the code: the sheet paints first
@@ -140,7 +141,7 @@ export default function App() {
   const plan = d.stage === "results" ? d.plan : null;
   const mapPlan = d.stage === "browse" ? null : d.plan;   // while choosing, the highlighted option's route previews
   // the other plan cards' routes, faint on the map behind the one you picked
-  const alternates = useMemo(() => d.stage === "results" && plan ? (d.response?.plans ?? []).filter((p) => p.geometry !== plan.geometry).map((p) => p.geometry) : NONE,
+  const alternates = useMemo(() => d.stage === "results" && plan ? (d.response?.plans ?? []).filter((p) => p.geometry !== plan.geometry && p.verified !== false).map((p) => p.geometry) : NONE,
     [d.stage, d.response, plan?.geometry]); // eslint-disable-line react-hooks/exhaustive-deps
   const [focus, setFocus] = useState<LatLng | null>(null);
   // the sheet rises as you go: peek while browsing, half while choosing and on results (drag for more)
@@ -186,6 +187,22 @@ export default function App() {
   const [notice, setNotice] = useState("");
   // a notice goes away by itself after 8 s (it sits above pop-ups; "location is off" used to stay over the Shop for good)
   useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(""), 8000); return () => clearTimeout(t); }, [notice]);
+  // a shop answering your booking: a chime and a notice, live, wherever you are in the app (row-level security sends only
+  // your own bookings)
+  useEffect(() => {
+    if (!user || user.is_anonymous) return;
+    const ch = supabase.channel(`my-bookings-${user.id}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "bookings", filter: `user_id=eq.${user.id}` }, (e) => {
+        const b = e.new as { status?: string; cancelled_by?: string | null; kind?: string };
+        const text = b.status === "accepted" ? (b.kind === "stay" ? "Your stay was accepted, with its price. See it in Profile settings." : "Your booking was accepted. See you there!")
+          : b.status === "declined" ? "A shop couldn't take your booking. Try another time or place."
+          : b.status === "cancelled" && b.cancelled_by === "shop" ? "A shop cancelled your booking. The reason is in Profile settings."
+          : b.status === "expired" ? "A shop didn't answer your booking in time." : "";
+        if (text) { bookingChime(); setNotice(text); }
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(ch); };
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [pendingFriend, setPendingFriend] = useState(() => readCodeParam("friend"));
 
   // ride-along QR: /app/?trip=CODE joins straight away
@@ -287,7 +304,7 @@ export default function App() {
             )}
             <Boundary><Suspense fallback={null}><MapView origin={d.stage === "browse" ? null : d.origin?.point ?? null} dest={d.dest?.point ?? null}
               stops={mapPlan?.stops ?? NONE} geometry={mapPlan?.geometry ?? NONE}
-              alternates={alternates} focus={focus} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop}
+              alternates={alternates} focus={focus} estimated={plan?.routing === "estimate" || plan?.verified === false} picking={picking} onPick={onPick} onSelectStop={onSelectStop}
               nearby={nearby.stops} here={nearby.here} inZone={nearby.inZoneIds}
               members={trip.trip?.members ?? NONE} skin={profile?.look.map ?? "liberty"} look={look}
               kinds={d.stage === "browse" ? CHIPS.find((c) => c.id === chip)?.kinds ?? null : null} onPlace={(p) => setPlace(p.id)} /></Suspense></Boundary>
