@@ -1,21 +1,22 @@
-import { useEffect, useRef, useState } from "react";
-import { usualHours } from "../../../supabase/functions/_shared/usual-hours.ts";
-import { Bookmark, BookmarkCheck, CalendarCheck, Camera, Clock, Coins, Crown, ExternalLink, Flag, Globe, ImagePlus, MapPin, Navigation, Pencil, Phone, Share2,
-  Sparkles, Star, Trash2, X } from "lucide-react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { Bookmark, BookmarkCheck, CalendarCheck, Camera, Coins, Crown, ExternalLink, Flag, Globe, ImagePlus, MapPin, Navigation, Pencil, Phone, Share2,
+  Sparkles, Ticket, Star, Trash2, X } from "lucide-react";
 import { errCode } from "../lib/supabase";
-import { addPlacePhoto, createList, deletePlacePhoto, deleteReview, getMyLists, getPlaceExtras, getPlacePage, type PlaceExtras, type PlacePage, type PlacePhoto,
-  photoUrls, placePhotoUrl, reportPlacePhoto, reportReview, REVIEW_SHAKE_CHARS, type PartnerTier, placesTiers, type SavedList, savePlace, shopPhotoUrl, SITE,
-  suggestEdit, TIER_NAME, writeReview } from "../lib/api";
+import { addPlacePhoto, type CommonsPhoto, createList, deletePlacePhoto, deleteReview, getCommonsPhotos, getMyLists, getPlaceExtras, getPlacePage, type PlaceExtras, type PlacePage, type PlacePhoto,
+  photoUrls, placePhotoUrl, reportPlacePhoto, reportReview, REVIEW_SHAKE_CHARS, type PartnerTier, placesPerks, placesTiers, type SavedList, savePlace, shopPhotoUrl, SITE,
+  suggestEdit, TIER_NAME, EXAMPLE_TIER_NAME, EXAMPLE_TIER_TIP, writeReview } from "../lib/api";
 import { shrinkPhoto } from "../lib/photo";
 import BookingSheet from "./BookingSheet";
 import { GROUPS, kindOf } from "./kinds";
-import { openNow, readableHours } from "./hours";
 import Avatar from "./social/Avatar";
 import { SkelLines, SkelPlace } from "./Skeleton";
 import Info from "./Info";
 import { shareOrCopy } from "../lib/native";
-import { hhmm } from "./prefs";
 import { lang, nameOf } from "../lib/i18n";
+import { lazyRetry } from "../lib/lazy";
+import { useDialog } from "../lib/useDialog";
+
+const Upgrade = lazyRetry(() => import("./Upgrade"));
 
 const ago = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
@@ -52,12 +53,11 @@ function SaveMenu({ page, onClose, onChange }: { page: PlacePage; onClose: () =>
 }
 
 function EditForm({ page, onDone }: { page: PlacePage; onDone: (msg: string) => void }) {
-  const [hours, setHours] = useState(page.opening_hours ?? "");
   const [phone, setPhone] = useState(page.phone ?? "");
   const [website, setWebsite] = useState(page.website ?? "");
   const [closed, setClosed] = useState(false);
   const send = () => {
-    const payload = closed ? { closed: true } : Object.fromEntries(Object.entries({ opening_hours: hours, phone, website })
+    const payload = closed ? { closed: true } : Object.fromEntries(Object.entries({ phone, website })
       .filter(([k, v]) => v.trim() && v.trim() !== (page as unknown as Record<string, string | null>)[k]));
     if (!Object.keys(payload).length) { onDone("Nothing changed."); return; }
     suggestEdit(page.id, payload).then(() => onDone("Thanks! We'll check it and update the place. +50 XP when it's approved."))
@@ -65,7 +65,6 @@ function EditForm({ page, onDone }: { page: PlacePage; onDone: (msg: string) => 
   };
   return (
     <form className="stack edit-form" onSubmit={(e) => { e.preventDefault(); send(); }}>
-      <label className="field"><span>Opening hours</span><input className="text-in" value={hours} placeholder="Mo-Su 08:00-17:00" onChange={(e) => setHours(e.target.value)} /></label>
       <label className="field"><span>Phone</span><input className="text-in" value={phone} inputMode="tel" onChange={(e) => setPhone(e.target.value)} /></label>
       <label className="field"><span>Website</span><input className="text-in" value={website} inputMode="url" onChange={(e) => setWebsite(e.target.value)} /></label>
       <label className="toggle"><input type="checkbox" checked={closed} onChange={(e) => setClosed(e.target.checked)} /><span>This place has closed for good</span></label>
@@ -85,16 +84,35 @@ const photoSrc = (ph: PlacePhoto, urls: Record<string, string>) => ph.url?.start
   : ph.url?.startsWith("place-photos/") ? placePhotoUrl(ph.url) : ph.url ?? (ph.path ? urls[ph.path] : undefined);
 const photoCredit = (ph: PlacePhoto) => ph.source === "wikimedia" ? `${ph.credit} · ${ph.licence} · Wikimedia` : ph.source === "owner" ? "From the owner"
   : `by ${ph.mine ? "you" : ph.credit}`;
+// CC BY / BY-SA: the author, the licence and a link to the source go with every Commons photo, wherever it's shown
+const CommonsCredit = ({ c }: { c: CommonsPhoto }) => <a className="photo-credit" href={c.page_url} target="_blank" rel="noopener noreferrer">
+  Photo: <span translate="no">{c.author}</span> · {c.licence} · Wikimedia Commons</a>;
 
-export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoins }: {
-  id: number; onClose: () => void; onDirections: (p: PlacePage) => void; onCheckin: (p: PlacePage) => void;
+/** One Commons photo, opened: the 1280 px version over the page, with its credit. */
+function CommonsViewer({ c, alt, onClose }: { c: CommonsPhoto; alt: string; onClose: () => void }) {
+  const box = useDialog<HTMLElement>(onClose);
+  return <div className="sheet-backdrop photo-view" role="dialog" aria-modal="true" aria-label="Photo" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <figure ref={box} tabIndex={-1}>
+      <button type="button" className="icon-btn" onClick={onClose} aria-label="Close photo"><X size={18} /></button>
+      <img src={c.url} alt={alt} width={c.width} height={c.height} />
+      <CommonsCredit c={c} />
+    </figure>
+  </div>;
+}
+
+export default function PlaceSheet({ id, member, onClose, onDirections, onCheckin, onCoins }: {
+  id: number; member: boolean; onClose: () => void; onDirections: (p: PlacePage) => void; onCheckin: (p: PlacePage) => void;
   onCoins?: () => void;   // coins or a Siam Si shake earned here: the top bar refreshes
 }) {
   const [page, setPage] = useState<PlacePage | null>(null);
   const [extras, setExtras] = useState<PlaceExtras | null>(null);
   const [urls, setUrls] = useState<Record<string, string>>({});
+  const [commons, setCommons] = useState<CommonsPhoto[]>([]);   // Wikimedia Commons photos, after everyone's own
+  const [opened, setOpened] = useState<number | null>(null);
   const [menu, setMenu] = useState<"save" | "edit" | "book" | null>(null);
-  const [tier, setTier] = useState<PartnerTier | null>(null);   // a paying partner: labelled, and you can book it
+  const [tier, setTier] = useState<{ tier: PartnerTier; example: boolean } | null>(null);   // a paying partner: labelled, and you can book it (not demo's pretend ones)
+  const [perk, setPerk] = useState<string | null>(null);   // that partner's member perk, in the shop's own words
+  const [join, setJoin] = useState(false);   // the membership sheet, from "Members get"
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState("");
   const [msg, setMsg] = useState("");
@@ -117,9 +135,11 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
     return () => document.removeEventListener("keydown", esc);
   }, [onClose]);
   useEffect(() => {
+    setCommons([]); setOpened(null); getCommonsPhotos(id).then((c) => { if (shown.current === id) setCommons(c ?? []); }).catch(() => undefined);
     setPage(null); setExtras(null); setMenu(null); setMsg(""); setRating(0); setBody(""); load();
     getPlaceExtras(id).then((x) => { if (shown.current === id) setExtras(x); }).catch(() => undefined);
     setTier(null); placesTiers([id]).then((m) => { if (shown.current === id) setTier(m.get(id) ?? null); }).catch(() => undefined);
+    setPerk(null); placesPerks([id]).then((m) => { if (shown.current === id) setPerk(m.get(id) ?? null); }).catch(() => undefined);
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   // signed photo links: fetched when the photos change, not on every reload of the page (a saved review, a list toggle)
   const photoKey = (page?.photos ?? []).map((p) => p.path).filter(Boolean).join("|");
@@ -129,10 +149,6 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
 
   if (!page) return <aside className="place-sheet glass" aria-busy="true"><button type="button" className="icon-btn sheet-close" onClick={onClose} aria-label="Close"><X size={18} /></button>{msg ? <p className="fine place-msg">{msg}</p> : <SkelPlace />}</aside>;
   const k = kindOf(page.kind, page.category);
-  const open = openNow(page.opening_hours);
-  // no listed hours: the usual ones for its kind, the same table the planner uses
-  const usualPair = usualHours(page.category, page.name, null, null);
-  const usual = usualPair[0] != null && usualPair[1] != null ? usualPair as [number, number] : null;
   const share = async () => {
     if (await shareOrCopy(page.name, `${SITE}/app/?place=${page.id}`) === "copied") setMsg("Link copied.");
   };
@@ -169,10 +185,11 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
     <aside className="place-sheet glass" aria-label={page.name}>
       <button type="button" className="icon-btn sheet-close" onClick={onClose} aria-label="Close place"><X size={18} /></button>
       {/* no photo yet: a cover in the kind's colour instead of an empty gap (the first public photo here earns coins) */}
-      {page.photos.length === 0 && <div className="place-cover" style={{ background: GROUPS[k.group].colour }} aria-hidden><k.icon size={40} /></div>}
-      {page.photos.length > 0 && (
+      {page.photos.length + commons.length === 0 && <div className="place-cover" style={{ background: GROUPS[k.group].colour }} aria-hidden><k.icon size={40} /></div>}
+      {page.photos.length + commons.length > 0 && (
         <ul className="photo-strip" aria-label="Photos">
-          {page.photos.map((ph, i) => {
+          {/* owners' and travellers' photos first, then the Wikimedia ones */}
+          {[...page.photos.filter((ph) => ph.source !== "wikimedia"), ...page.photos.filter((ph) => ph.source === "wikimedia")].map((ph, i) => {
             const src = photoSrc(ph, urls);
             return <li key={ph.id ?? ph.url ?? ph.path ?? i}>{src ? <img src={src} alt={`${page.name} photo ${i + 1}`} loading="lazy" /> : <div className="ph" />}
               <span className="photo-credit">{photoCredit(ph)}</span>
@@ -180,8 +197,13 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
                 ? <button type="button" className="photo-act" onClick={() => removePhoto(ph)} aria-label="Remove your photo"><Trash2 size={14} /></button>
                 : <button type="button" className="photo-act" onClick={() => reportPhoto(ph)} aria-label="Report this photo"><Flag size={14} /></button>)}</li>;
           })}
+          {commons.map((c, i) => <li key={c.url}>
+            <button type="button" className="photo-open" onClick={() => setOpened(i)} aria-label="Open photo">
+              <img src={c.small_url} alt={`${page.name} photo ${page.photos.length + i + 1}`} loading="lazy" decoding="async" /></button>
+            <CommonsCredit c={c} /></li>)}
         </ul>
       )}
+      {opened != null && commons[opened] && <CommonsViewer c={commons[opened]} alt={page.name} onClose={() => setOpened(null)} />}
       <header className="place-head">
         <span className="place-card-icon big" style={{ background: GROUPS[k.group].colour }}><k.icon size={22} aria-hidden /></span>
         <div className="person-main">
@@ -193,8 +215,10 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
             <span className="fine">· {k.en}</span>
           </span>
           <span className="row tight">
-            {tier && <span className={`chip tier-${tier}`}>{TIER_NAME[tier]}</span>}
-            {page.tier === 3 && <span className="chip landmark">Landmark</span>}
+            {tier && (tier.example
+              ? <span className={`chip tier-${tier.tier}`} title={EXAMPLE_TIER_TIP}>{EXAMPLE_TIER_NAME[tier.tier]}</span>
+              : <span className={`chip tier-${tier.tier}`}>{TIER_NAME[tier.tier]}</span>)}
+            {page.tier >= 3 && <span className="chip landmark">{page.tier === 4 ? "Icon" : "Landmark"}</span>}
             {page.otop && <span className="chip otop">OTOP{extras?.otop_stars ? ` ${"★".repeat(extras.otop_stars)}` : ""}</span>}
             {extras?.verified && <span className="chip">Verified shop</span>}
             {page.community && <span className="chip otop">Community enterprise</span>}
@@ -207,7 +231,7 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
       <div className="place-actions">
         {page.detour && <button type="button" className="btn gold small" onClick={() => onCheckin(page)}><Camera size={15} aria-hidden /> Check in</button>}
         <button type="button" className={`btn small${page.detour ? " soft" : ""}`} onClick={() => onDirections(page)}><Navigation size={15} aria-hidden /> Directions</button>
-        {tier && <button type="button" className="btn gold small" onClick={() => setMenu(menu === "book" ? null : "book")}><CalendarCheck size={15} aria-hidden /> Book</button>}
+        {tier && !tier.example && <button type="button" className="btn gold small" onClick={() => setMenu(menu === "book" ? null : "book")}><CalendarCheck size={15} aria-hidden /> Book</button>}
         <button type="button" className="btn soft small" onClick={() => setMenu(menu === "save" ? null : "save")}>
           {page.saved_in.length ? <BookmarkCheck size={15} aria-hidden /> : <Bookmark size={15} aria-hidden />} {page.saved_in.length ? "Saved" : "Save"}</button>
         <button type="button" className="btn soft small" onClick={share}><Share2 size={15} aria-hidden /> Share</button>
@@ -221,9 +245,17 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
       {menu === "save" && <SaveMenu page={page} onClose={() => setMenu(null)} onChange={load} />}
       {menu === "book" && <BookingSheet place={page.id} name={page.name} onClose={() => setMenu(null)} onDone={(m) => { setMenu(null); setMsg(m); }} />}
       {msg && <p className="fine" role="status">{msg}</p>}
+      {tier && perk && <div className={`perk-card${member ? " on" : ""}`}>
+        <Ticket size={20} aria-hidden />
+        <span><b>{member ? "Member perk" : "Members get"}</b> <span translate="no">{perk}</span>
+          {member ? <span className="fine">Show this screen at the counter.</span>
+            : <button type="button" className="link" onClick={() => setJoin(true)}>See membership</button>}</span>
+      </div>}
+      {join && <Suspense fallback={null}><Upgrade gate="perk" onClose={() => setJoin(false)} /></Suspense>}
 
       {extras?.description ? <p className="place-about">{extras.description}</p>
-        : <p className="place-about fine">{page.tier === 3 ? "A landmark: one of the best-known places around here."
+        : <p className="place-about fine">{page.tier === 4 ? "An icon: one of the best-known places in Thailand."
+          : page.tier === 3 ? "A landmark: one of the best-known places around here."
           : page.tier === 2 ? "Worth a stop on the way." : "An everyday place, handy on the way."}</p>}
       {(page.otop || page.community) && <p className="local-note">{page.community
         ? "A community enterprise: your visit supports local makers directly."
@@ -237,10 +269,6 @@ export default function PlaceSheet({ id, onClose, onDirections, onCheckin, onCoi
         </section>
       )}
       <ul className="place-info">
-        {page.opening_hours ? <li><Clock size={16} aria-hidden />
-          <span>{open === true ? <b className="open">Open now</b> : open === false ? <b className="closed">Closed now</b> : null} <span className="fine">{readableHours(page.opening_hours)}</span></span></li>
-          : usual && <li><Clock size={16} aria-hidden /><span><span className="fine">Usually {hhmm(usual[0])}–{hhmm(usual[1])}, the typical hours for this kind of place
-            (its own aren't listed; the planner uses these)</span></span></li>}
         {page.phone && <li><Phone size={16} aria-hidden /><a href={`tel:${page.phone.split(";")[0].replace(/\s/g, "")}`}>{page.phone.split(";")[0]}</a></li>}
         {page.website && <li><Globe size={16} aria-hidden /><a href={page.website.startsWith("http") ? page.website : `https://${page.website}`} target="_blank" rel="noopener noreferrer">{page.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}</a></li>}
         {page.address && <li><MapPin size={16} aria-hidden /><span>{page.address}</span></li>}

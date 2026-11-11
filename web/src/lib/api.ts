@@ -25,6 +25,12 @@ export interface NearbyPartner {
 // v5: a verified shop paying monthly. Members' plans put these first; "choice" ones also make the Partner picks plan.
 export type PartnerTier = "partner" | "choice";
 export const TIER_NAME: Record<PartnerTier, string> = { partner: "Partner", choice: "Giggles Choice" };
+// demo mode's pretend tiers sit on real places that haven't signed up: always labelled as examples, never as paying
+export const EXAMPLE_TIER_NAME: Record<PartnerTier, string> = { partner: "Example partner", choice: "Example Giggles Choice" };
+/** The label a paid stop must carry, or null. */
+export const partnerLabel = (s: { partner_tier?: PartnerTier | null; partner_demo?: boolean; is_partner?: boolean; is_demo?: boolean }): string | null =>
+  s.partner_tier ? (s.partner_demo ? EXAMPLE_TIER_NAME : TIER_NAME)[s.partner_tier] : s.is_partner ? (s.is_demo ? "Example partner" : "Partner") : null;
+export const EXAMPLE_TIER_TIP = "Pretend, for the demo only: this place hasn't signed up and doesn't pay Giggles Maps.";
 
 export interface RouteStop {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
@@ -35,23 +41,22 @@ export interface RouteStop {
   price_level?: number | null; // 0 free, 1-3 = ฿-฿฿฿, null = not listed
   nearby_partner: NearbyPartner | null;
   partner_tier?: PartnerTier | null;
+  partner_demo?: boolean;   // partner_tier is demo mode's pretend one (an example, not a paying shop)
   meal?: Meal | null; // engine v2: this stop covers a meal
   meal_late?: boolean; // the restaurant for that meal, outside the usual meal hours (the route couldn't reach them)
   picked?: boolean;   // the user asked for this place (must_include)
-  closed?: boolean;   // picked, but closed when the trip gets there (it stays in the plan)
   local?: boolean; otop?: boolean; community?: boolean;   // local first: independent / OTOP / community enterprise
-  tier?: 1 | 2 | 3;   // 3 = landmark (must-go), 2 = worth a visit, 1 = everyday
+  tier?: 1 | 2 | 3 | 4;   // 4 = icon (major landmark), 3 = landmark (must-go), 2 = worth a visit, 1 = everyday
   extra_min?: number | null;   // about how many minutes this stop adds (road detour + time there); null if unknown
   photo?: string | null;  // a photo of the place, when we have one
 }
 
 // a place the plan left out that you can add ("along your route"); extra_min is an estimate
 export interface AlongPlace {
-  id: number; name: string; name_th: string | null; category: string; lat: number; lng: number; tier: 1 | 2 | 3;
+  id: number; name: string; name_th: string | null; category: string; lat: number; lng: number; tier: 1 | 2 | 3 | 4;
   rating: number | null; local: boolean; otop: boolean; community: boolean; photo: string | null; extra_min: number;
   partner_tier?: PartnerTier | null;
-  closed?: boolean;   // closed when you'd pass it (about)
-  opens_min?: number | null;   // its opening time (minutes after midnight), usual hours when none are listed
+  partner_demo?: boolean;
 }
 
 export type Meal = "breakfast" | "lunch" | "dinner";
@@ -62,13 +67,15 @@ export interface ThemedPlan {
   extra_min: number; total_min: number; meals: Meal[]; missed_meals: Meal[];
   unfit_required?: number[];   // picked places that didn't fit this plan
   road_extra_min?: number; stop_min?: number; wait_min?: number;   // where extra_min goes
+  extra_km?: number;   // how much further than the direct road the plan drives (older servers: absent)
   along?: AlongPlace[];
 }
 
 export interface RoutePlan {
   route_id: string; routing: "valhalla" | "estimate"; mode: string; plus: boolean; member: boolean; level: number;
   base_min: number; total_min: number; extra_min: number; budget_min: number; max_budget_min: number;
-  max_stops?: number;   // the most stops this account's plans hold (10, members 15)
+  max_stops?: number;   // the most stops this account's plans hold (free 3; members, Plus and demo 15)
+  free_cap?: boolean;   // the free 3-stop cap applies: "Members can add more stops"
   start_min?: number;   // when this plan leaves (minutes after midnight): the stops' times count from it
   candidates_considered: number;
   stops: RouteStop[]; geometry: [number, number][];
@@ -77,7 +84,7 @@ export interface RoutePlan {
   meals?: Meal[]; missed_meals?: Meal[];
   unfit_required?: number[];   // picked places that didn't fit (Top picks)
   plans?: ThemedPlan[]; // top-level fields = Top picks
-  road_extra_min?: number; stop_min?: number; wait_min?: number;
+  road_extra_min?: number; stop_min?: number; wait_min?: number; extra_km?: number;
   budget_auto?: boolean;   // budget_min was picked by the server ("auto")
 }
 
@@ -85,11 +92,11 @@ export interface RoutePlan {
 export function choosePlan(plan: RoutePlan, id: string | null): RoutePlan {
   const p = plan.plans?.find((x) => x.id === id) ?? plan.plans?.[0];
   return p ? { ...plan, stops: p.stops, geometry: p.geometry, extra_min: p.extra_min, total_min: p.total_min,
-               road_extra_min: p.road_extra_min, stop_min: p.stop_min, wait_min: p.wait_min } : plan;
+               road_extra_min: p.road_extra_min, stop_min: p.stop_min, wait_min: p.wait_min, extra_km: p.extra_km } : plan;
 }
 
 export type Billing = "charged" | "no_qr" | "not_shown_on_route" | "repeat_visit_30d"
-  | "wallet_empty" | "not_rewarded" | "not_partner";
+  | "wallet_empty" | "not_rewarded" | "not_partner" | "demo";
 
 export interface Spin { won: boolean; odds: number; title?: string; place?: string; code?: string }
 
@@ -100,7 +107,7 @@ export interface CheckinResult {
   spin: Spin | null;
   xp_gained?: number; xp?: number; level?: number; level_up?: boolean; member?: boolean;
   required_level?: number; // with reason "level_locked"
-  stamp?: { tier: 1 | 2 | 3; new_province: boolean; province: string | null; event: string | null } | null;   // first visit
+  stamp?: { tier: 1 | 2 | 3 | 4; new_province: boolean; province: string | null; event: string | null } | null;   // first visit
   challenges?: { slug: string; title: string; title_th: string; xp: number; coins: number }[];                 // completed now
   coins?: number;   // members' coin balance
   group_bonus?: boolean;   // ride along: a trip-mate checked in here within the hour, +50%
@@ -147,7 +154,6 @@ export interface PlanRequest {
   exclude?: number[];           // stops the user removed or swapped out
   theme?: string;               // this plan comes first
   meals?: Meal[];               // meals to stop for; omitted = no food stop forced
-  open_only?: boolean;          // only places whose opening hours are known
   no_chains?: boolean;          // independent shops, cafés and restaurants only
 }
 
@@ -194,7 +200,7 @@ export async function uploadSelfie(blob: Blob): Promise<string> {
 export const setPhoto = (checkinId: string, hidden: boolean, caption?: string) =>
   rpc<void>("set_photo", { p_checkin: checkinId, p_hidden: hidden, p_caption: caption ?? null });
 
-export interface PassportStamp { place_id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3;
+export interface PassportStamp { place_id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3 | 4;
   province_id: number | null; event: string | null; earned_at: string; photo: string | null }
 export interface PassportPhoto { checkin_id: string; path: string; caption: string | null; place: string; province_id: number | null; place_id?: number; at: string }
 export interface Challenge { slug: string; kind: "daily" | "weekly" | "province" | "collection" | "friend"; title_en: string; title_th: string;
@@ -215,7 +221,7 @@ export async function photoUrls(paths: string[]): Promise<Record<string, string>
   return Object.fromEntries((data ?? []).filter((d) => d.signedUrl).map((d) => [d.path!, d.signedUrl]));
 }
 
-export interface Stop { id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3;
+export interface Stop { id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3 | 4;
   lat: number; lng: number; zone_m: number; distance_m: number; stamped: boolean }
 /** Places around you, landmarks first, with their check-in zone and whether you have the stamp. */
 export const stopsNear = async (p: LatLng, radiusM = 1500) =>
@@ -227,12 +233,15 @@ export const verifyCheckin = (p: {
 }) => callFn<CheckinResult>("verify-checkin", p);
 
 // Stripe Checkout (web only). Returns the hosted payment page URL.
-export const startCheckout = (p: { kind: "plus" } | { kind: "membership" } | { kind: "credit"; shop_id: string; pack: number }
+export const startCheckout = (p: { kind: "plus" | "plus_year" } | { kind: "membership" } | { kind: "credit"; shop_id: string; pack: number }
   | { kind: "partner" | "choice"; shop_id: string }) =>
   callFn<{ url: string }>("stripe-checkout", p);
 
 // v5 prices (THB); the server has the same numbers
-export const PRICES = { membership: 349, plus: 59, partner: 299, choice: 799, booking: 20 } as const;
+// ponytail: plus / plusYear are defaults awaiting the owner's decision (= PLUS_THB in stripe-checkout)
+export const PRICES = { membership: 349, plus: 59, plusYear: 590, partner: 299, choice: 799, booking: 20 } as const;
+/** What yearly Plus saves against 12 months (17% at ฿590 vs ฿59). */
+export const PLUS_YEAR_SAVE = Math.round(100 * (1 - PRICES.plusYear / (12 * PRICES.plus)));
 // v5: who sees ads (everyone but members and Plus)
 export const adFree = (p: Profile | null) => !!p && (p.member || !!p.plusUntil);
 
@@ -247,14 +256,24 @@ export const claimAdReward = (id: number) => rpc<void>("claim_ad_reward", { p_id
 // Plus: +20 coins the first time you open the app each day (0 when already collected or no Plus)
 export const plusDaily = () => rpc<number>("plus_daily");
 
-// paid tier of these places, when they have one (Partner / Giggles Choice)
-export async function placesTiers(ids: number[]): Promise<Map<number, PartnerTier>> {
+// paid tier of these places, when they have one (Partner / Giggles Choice); example = demo mode's pretend tier
+export async function placesTiers(ids: number[]): Promise<Map<number, { tier: PartnerTier; example: boolean }>> {
   if (!ids.length) return new Map();
   const { data, error } = await supabase.rpc("places_tiers", { p_ids: ids.slice(0, 300) });   // no session needed: public
   if (error) throw new ApiError(error.message);
-  const real = new Map((data as { id: number; tier: PartnerTier }[]).map((t) => [t.id, t.tier])), d = demo();
+  const real = new Map((data as { id: number; tier: PartnerTier }[]).map((t) => [t.id, { tier: t.tier, example: false }])), d = demo();
   return d ? (await d).demoTiersFor(ids, real) : real;
 }
+
+// a paying partner's member perk ("10% off for members"), for those of these places that have one; demo partners have none
+export async function placesPerks(ids: number[]): Promise<Map<number, string>> {
+  if (!ids.length) return new Map();
+  const { data, error } = await supabase.rpc("places_perks", { p_ids: ids.slice(0, 300) });   // no session needed: public
+  if (error) throw new ApiError(error.message);
+  return new Map((data as { id: number; perk_text: string }[]).map((p) => [p.id, p.perk_text]));
+}
+export const PERK_MAX = 80;
+export const setMyPerk = (place: number, text: string) => rpc<void>("set_my_perk", { p_place: place, p_text: text });
 
 // bookings through Giggles Maps (partner places only); the shop pays a flat fee once you check in
 export type BookingStatus = "requested" | "accepted" | "declined" | "completed" | "cancelled";
@@ -402,7 +421,7 @@ export const buySet = (id: string) => rpc<number>("buy_set", { p_id: id });
 export const setAvatar = (look: AvatarLook) => rpc<AvatarLook>("set_avatar", { p: look });
 
 export interface Badge { slug: string; name_en: string; name_th: string; icon: string; value: number; tier: number; goals: number[]; next: number }
-export type Pin = ({ type: "badge" } & Badge) | { type: "stamp"; id: number; name: string; name_th: string | null; tier: 1 | 2 | 3;
+export type Pin = ({ type: "badge" } & Badge) | { type: "stamp"; id: number; name: string; name_th: string | null; tier: 1 | 2 | 3 | 4;
   earned_at: string; province: string | null };
 export interface ProfilePage extends Omit<Card, "rank"> { friend_code: string | null; photos: number; friends: number; rank: number | null; badges: Badge[];
   showcase: Pin[]; crowns: { id: number; name_en: string; name_th: string; visits: number }[] }
@@ -417,7 +436,7 @@ export type Reaction = "heart" | "fire" | "clap" | "wow";
 export interface FeedItem {
   id: number; kind: "stamp" | "province" | "level" | "challenge" | "badge" | "nudge" | "fortune" | "comment" | "award"; at: string; mine: boolean;
   data: Record<string, unknown>; who: Who; to: Who | null;
-  place: { id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3 } | null;
+  place: { id: number; name: string; name_th: string | null; category: string; tier: 1 | 2 | 3 | 4 } | null;
   province: { id: number; iso: string; name_en: string; name_th: string } | null;
   photo: string | null; caption: string | null; reactions: Partial<Record<Reaction, number>>; my_reaction: Reaction | null; comments: number;
 }
@@ -484,10 +503,11 @@ export interface PlacePage {
   photos: PlacePhoto[]; busy: number[] | null; saved_in: string[];
   regular: { who: Who; visits: number; friend: boolean; mine: boolean } | null;   // most visit-days here in 60 days (2+)
 }
-export async function getPlacePage(id: number): Promise<PlacePage | null> {
-  const real = await rpc<PlacePage | null>("place_page", { p_id: id }), d = demo();
-  return d && real ? (await d).demoPlacePage(real) : real;
-}
+export const getPlacePage = (id: number) => rpc<PlacePage | null>("place_page", { p_id: id });
+/** A freely licensed Wikimedia Commons photo of a landmark; author, licence and page_url must be shown with it (CC BY / BY-SA). */
+export interface CommonsPhoto { url: string; small_url: string; author: string; licence: string; licence_url: string | null;
+  page_url: string; width: number; height: number }
+export const getCommonsPhotos = (id: number) => rpc<CommonsPhoto[]>("place_commons_photos", { p_place: id });
 /** A written review (60+ characters) of a place earns one bonus Siam Si shake there, once. */
 export const REVIEW_SHAKE_CHARS = 60;
 export const writeReview = (place: number, rating: number, body: string) =>
@@ -533,6 +553,7 @@ export interface OwnedPlace {
   id: number; name: string; kind: string | null; shop_id: string; opening_hours: string | null; phone: string | null;
   website: string | null; description: string | null; otop: boolean; otop_stars: number | null; community: boolean;
   verified: boolean; qr_code: string | null;
+  perk_text?: string | null; paid?: boolean;   // the member perk; paid = the shop has a live Partner / Choice tier (can set one)
   products: { id: number; name: string; price: number | null; photo: string | null }[]; photos: { id: number; url: string }[];
 }
 export const getMyPlaces = () => rpc<OwnedPlace[]>("my_places");
@@ -587,12 +608,36 @@ export const stopEta = () => rpc<void>("stop_eta");
 export interface EtaView { who: Who; dest: { lat: number; lng: number; name: string | null }; eta_at: string | null; at: { lat: number; lng: number; seen_at: string } | null }
 export const viewEta = (token: string) => rpc<EtaView | null>("view_eta", { p_token: token });
 
-export const SITE = "https://giggles-maps.pages.dev";
+export const SITE = "https://gigglesmap.xyz";
 // "?friend=CODE" (friend QR) and "?trip=CODE" (ride-along QR)
 export const readCodeParam = (name: "friend" | "trip") => {
   const m = /^[A-Za-z0-9]{6,10}$/.exec(new URLSearchParams(location.search).get(name) ?? "");
+  if (name === "trip" && m?.[0].length === 8) return null;   // 8 characters: a shared trip page (readSharedTripParam); ride codes are 10
   return m ? m[0].toUpperCase() : null;
 };
+
+// ---------- shared trip pages: /app/?trip=<8 base62 characters> ----------
+/** A stop on a shared trip; minutes count from when the trip leaves. */
+export interface SharedStop { id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
+  arrive_min: number; leave_min: number; dwell_min: number;
+  partner_tier?: PartnerTier | null; partner_demo?: boolean; is_partner?: boolean; is_demo?: boolean }
+export interface SharedTrip {
+  id: string; created_at: string; title: string; mode: TravelMode;
+  origin: { name: string; lat: number | null; lng: number | null };   // no point when it started at the sharer's location
+  dest: { name: string; lat: number; lng: number };
+  stops: SharedStop[]; extra_min: number; total_min: number; geometry: [number, number][]; note: string | null; demo: boolean;
+  who: Omit<Who, "id"> | null;
+}
+/** What the app sends: the server looks up each stop's name, kind and position itself and builds the title. */
+export interface TripSnapshot {
+  mode: TravelMode; origin_name: string; origin_lat: number | null; origin_lng: number | null;
+  dest_name: string; dest_lat: number; dest_lng: number; stops: { id: number; arrive_min: number; dwell_min: number }[];
+  extra_min: number; total_min: number; geometry: [number, number][]; note: string | null; demo: boolean;
+}
+/** Saves the trip as a public page and returns its id. Errors: share_limit (30 a day), bad_trip. */
+export const shareTrip = (t: TripSnapshot) => rpc<string>("share_trip", { p_trip: t });
+export const viewSharedTrip = (id: string) => rpc<SharedTrip | null>("view_shared_trip", { p_id: id });
+export const readSharedTripParam = () => /^[A-Za-z0-9]{8}$/.exec(new URLSearchParams(location.search).get("trip") ?? "")?.[0] ?? null;
 
 // Collects this month's Plus stamp (no-op without Plus), then lists them: "2026-10-01", newest first
 export async function getMonthlyStamps(): Promise<string[]> {

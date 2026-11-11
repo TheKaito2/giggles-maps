@@ -2,11 +2,10 @@
 // on (dynamic import), so real users never get it. Nothing is written to the database: reactions, comments and nudges on
 // pretend people stay on this device.
 import { type Board, type BoardMetric, type BoardPeriod, type BoardRow, type BoardScope, type Card, type Champion, type Comment,
-  type FeedItem, type FriendPassport, type FriendQuest, mapPlaces, type PartnerTier, type PlacePage, type ProfilePage, type Social } from "../lib/api";
+  type FeedItem, type FriendPassport, type FriendQuest, mapPlaces, type PartnerTier, type ProfilePage, type Social } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { demoAt } from "../lib/demoGps";
 import { DEMO_INCOMING, DEMO_PEOPLE, demoChampions } from "./people";
-import { demoReviews } from "./reviews";
 import { demoComments, demoFeed, type DemoPlace } from "./feed";
 import { type DemoPerson, who } from "./types";
 
@@ -50,7 +49,7 @@ async function nearbyPlaces(): Promise<DemoPlace[]> {
   const d = 0.12;
   const list = await mapPlaces(at.lng - d, at.lat - d, at.lng + d, at.lat + d, 13, null).catch(() => []);
   places = list.filter((p) => p.tier >= 2 || p.local || p.otop).slice(0, 40)
-    .map((p) => ({ id: p.id, name: p.name, name_th: p.name_th, category: p.category, tier: (p.tier >= 1 && p.tier <= 3 ? p.tier : 2) as 1 | 2 | 3, province: null }));
+    .map((p) => ({ id: p.id, name: p.name, name_th: p.name_th, category: p.category, tier: (p.tier >= 1 && p.tier <= 4 ? p.tier : 2) as 1 | 2 | 3 | 4, province: null }));
   placesFor = key;
   return places;
 }
@@ -60,23 +59,15 @@ export async function demoFeedMerged(real: FeedItem[], scope: "all" | "friends" 
 }
 export const demoCommentsFor = (activity: number): Comment[] => demoComments(activity, DEMO_PEOPLE);
 
-/** A place page with a few pretend reviews when it has hardly any real ones. */
-export function demoPlacePage(page: PlacePage): PlacePage {
-  if (page.reviews.length >= 3) return page;
-  const d = demoReviews(page.id, page.category, DEMO_PEOPLE);
-  const reviews = [...page.reviews, ...d.reviews];
-  return { ...page, reviews, review_count: page.review_count + d.count, rating: page.rating ?? d.rating };
-}
-
 // pretend partners: the demo_partners table (readable by anyone, used only here and by plan-route's demo requests)
 let demoTiers: Map<number, PartnerTier> | null = null;
-export async function demoTiersFor(ids: number[], real: Map<number, PartnerTier>): Promise<Map<number, PartnerTier>> {
+export async function demoTiersFor(ids: number[], real: Map<number, { tier: PartnerTier; example: boolean }>): Promise<Map<number, { tier: PartnerTier; example: boolean }>> {
   if (!demoTiers) {
     const { data } = await supabase.from("demo_partners").select("place_id, tier");
     demoTiers = new Map(((data ?? []) as { place_id: number; tier: PartnerTier }[]).map((d) => [d.place_id, d.tier]));
   }
   const out = new Map(real);
-  for (const id of ids) if (!out.has(id) && demoTiers.has(id)) out.set(id, demoTiers.get(id)!);
+  for (const id of ids) if (!out.has(id) && demoTiers.has(id)) out.set(id, { tier: demoTiers.get(id)!, example: true });   // labelled "Example …"
   return out;
 }
 

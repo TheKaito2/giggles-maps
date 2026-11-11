@@ -1,16 +1,21 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ChevronDown, Flag, GripVertical, MoreHorizontal, Plus, Search, Trash2, Camera, X } from "lucide-react";
+import { BedDouble, ChevronDown, ExternalLink, Flag, GripVertical, MoreHorizontal, Plus, Search, Share2, Ticket, Trash2, Camera, X } from "lucide-react";
 import Modal from "../Modal";
-import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, type RouteStop, routePlaces, searchPlaces, TIER_NAME } from "../../lib/api";
+import { type AlongPlace, type CheckinTarget, type FoundPlace, type Meal, placesPerks, type RouteStop, routePlaces, searchPlaces, shareTrip, SITE, TIER_NAME, EXAMPLE_TIER_NAME, EXAMPLE_TIER_TIP } from "../../lib/api";
+import { errCode } from "../../lib/supabase";
+import { shareOrCopy } from "../../lib/native";
+import { demoOn } from "../../lib/demoGps";
+import { snapshot } from "./shareTrip";
 import { CHIPS } from "../ExploreChips";
 import { SkelRows } from "../Skeleton";
 import { GROUPS, kindOf } from "../kinds";
-import { budgetLabel, hhmm, MEALS, startMin } from "../prefs";
+import { budgetLabel, fuelLine, hhmm, MEALS, startMin } from "../prefs";
 import { type Detour, PRESETS } from "./useDetour";
 import PlanProgress from "./PlanProgress";
 import Info from "../Info";
 import { metres } from "../nav/progress";
 import { nameOf } from "../../lib/i18n";
+import { AFFILIATE_IDS, bookingLinks } from "../../lib/affiliate";
 
 const MEAL_NAME: Record<Meal, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
 const PARTNER_TIP = "This shop pays Giggles Maps when you visit.";
@@ -30,12 +35,13 @@ export function Thumb({ s, size = 48 }: { s: { name: string; category: string; p
 // at most two badges per stop, the most telling first
 function badges(s: RouteStop): { text: string; cls: string; title?: string }[] {
   const all = [
-    s.closed && { text: "Closed then", cls: "closed", title: "You added it, but it's closed when you get there" },
-    s.partner_tier && { text: TIER_NAME[s.partner_tier], cls: `tier-${s.partner_tier}`, title: TIER_TIP[s.partner_tier] },
+    s.partner_tier && (s.partner_demo
+      ? { text: EXAMPLE_TIER_NAME[s.partner_tier], cls: `tier-${s.partner_tier}`, title: EXAMPLE_TIER_TIP }
+      : { text: TIER_NAME[s.partner_tier], cls: `tier-${s.partner_tier}`, title: TIER_TIP[s.partner_tier] }),
     s.picked && { text: "You picked", cls: "picked" },
     s.pit_stop && { text: "Pit stop", cls: "pit", title: "A quick stop for snacks, a drink or the toilet" },
     s.meal && { text: s.meal_late ? `Late ${MEAL_NAME[s.meal].toLowerCase()}` : MEAL_NAME[s.meal], cls: "meal" },
-    s.tier === 3 && { text: "Landmark", cls: "landmark" },
+    (s.tier ?? 0) >= 3 && { text: s.tier === 4 ? "Icon" : "Landmark", cls: "landmark" },
     (s.otop || s.community) && { text: s.otop ? "OTOP" : "Community", cls: "otop" },
     !s.otop && !s.community && s.local && { text: "Local", cls: "" },
     !s.partner_tier && s.is_partner && { text: s.is_demo ? "Example partner" : "Partner", cls: "partner", title: PARTNER_TIP },
@@ -58,7 +64,8 @@ const legLine = (gap: number, mode: keyof typeof MOVE, travel?: number, dwell?: 
     .filter(Boolean).join(" · ");
 };
 
-function StopRow({ s, i, d, sel, dragging, travel, roadMin, onDrag, onStep, onOpen, onCheckin }: { s: RouteStop; i: number; d: Detour; sel: boolean; dragging: boolean; travel: number | null; roadMin?: number;
+function StopRow({ s, i, d, sel, dragging, travel, roadMin, perk, onDrag, onStep, onOpen, onCheckin }: { s: RouteStop; i: number; d: Detour; sel: boolean; dragging: boolean; travel: number | null; roadMin?: number;
+  perk?: string;   // this partner's member perk
   onDrag: (e: React.PointerEvent) => void; onStep: (by: number) => void; onOpen: (s: RouteStop) => void; onCheckin: (t: CheckinTarget) => void }) {
   const [menu, setMenu] = useState(false);
   const more = useRef<HTMLDivElement>(null);
@@ -87,6 +94,7 @@ function StopRow({ s, i, d, sel, dragging, travel, roadMin, onDrag, onStep, onOp
           {/* mid-drag the numbers are stale: hidden, but keeping their space so rows don't jump under your finger */}
           <span className={`fine num stop-leg${travel == null ? " stale" : ""}`}>{legLine(travel ?? 0, d.prefs.mode, roadMin, s.dwell_min, s.eta_min + s.dwell_min)}</span>
           {tags.length > 0 && <span className="row tight">{tags.map((b) => <span key={b.text} className={`chip ${b.cls}`} title={b.title}>{b.text}</span>)}</span>}
+          {perk && <span className="chip perk" title={`Member perk: ${perk}`}>Member perk</span>}
         </span>
       </button>
       <div className="stop-more" ref={more}>
@@ -155,18 +163,12 @@ function AlongList({ places, d, full, limit, at, leg, onAdded }: { places: Along
     return () => { live = false; clearTimeout(t); };
   }, [needle, kind, byKind]); // eslint-disable-line react-hooks/exhaustive-deps
   const add = (id: number) => { d.addStop(id, at); onAdded?.(); };
-  // closed when you'd pass it: say when it opens (usual hours when none are listed)
-  const closedNote = (p: object) => {
-    const { closed, opens_min: opens } = p as { closed?: boolean; opens_min?: number | null };
-    return closed && <span className="chip closed" title="Probably closed when you pass it">{opens != null ? <><span className="opens-word">Opens </span>{hhmm(opens)}</> : "Closed then"}</span>;
-  };
   const row = (p: Row | FoundPlace, extra: string, off = false) => (
     <li key={`${off ? "e" : ""}${p.id}`}>
       <Thumb s={{ name: p.name, category: p.category ?? "", photo: "photo" in p ? p.photo ?? null : null }} size={40} />
       <span className="stop-text"><b>{nameOf(p)}</b>
         <span className="stop-meta"><b className={`num extra${off ? " off" : ""}`}>{extra}</b>
-          {/* closed then: when it opens takes the kind's place, so the row stays one line and "+NN min" stays visible */}
-          {closedNote(p) || <span className="fine">{kindOf(p.kind ?? null, p.category ?? "").en}{p.rating != null && ` · ★ ${p.rating.toFixed(1)}`}</span>}</span></span>
+          <span className="fine">{kindOf(p.kind ?? null, p.category ?? "").en}{p.rating != null && ` · ★ ${p.rating.toFixed(1)}`}</span></span></span>
       <button type="button" className="btn soft small add-btn" disabled={full || d.editing} onClick={() => add(p.id!)}
         aria-label={`Add ${p.name}`}><Plus size={15} aria-hidden /> Add</button>
     </li>
@@ -190,7 +192,9 @@ function AlongList({ places, d, full, limit, at, leg, onAdded }: { places: Along
           {elsewhere.map((p) => row(p, "off route", true))}
         </>}
       </ul>
-      {full && <p className="fine">That's {d.cap} stops, the most a plan holds.{d.response?.member ? "" : " Members can have 15."} Remove one to add another.</p>}
+      {full && (d.response?.free_cap
+        ? <p className="fine">That's {d.cap} stops, the most a free plan holds. <button type="button" className="link" onClick={() => d.setGate("stop_limit_free")}>Members can add more stops</button></p>
+        : <p className="fine">That's {d.cap} stops, the most a plan holds. Remove one to add another.</p>)}
     </>
   );
 }
@@ -221,6 +225,22 @@ function AddStopSheet({ places, d, full, at, onClose }: { places: AlongPlace[]; 
   );
 }
 
+/** "Stay or do more near <destination>": Agoda hotels and Klook activities, affiliate links (hidden without both ids).
+ *  A plain new-tab link: the iOS app's web view sends target="_blank" links to the system browser, as PlaceSheet's do. */
+function StayNear({ place }: { place: string }) {
+  const links = bookingLinks(place, AFFILIATE_IDS);
+  if (!links) return null;
+  return (
+    <section className="stay-near" aria-labelledby="stay-near-title">
+      <p className="row between"><b id="stay-near-title">Stay or do more near <span translate="no">{place}</span></b><span className="fine">Partner links</span></p>
+      <div className="row tight">
+        <a className="btn soft small" href={links.hotels} target="_blank" rel="noopener noreferrer sponsored"><BedDouble size={15} aria-hidden /> Hotels · Agoda <ExternalLink size={13} aria-hidden /></a>
+        <a className="btn soft small" href={links.activities} target="_blank" rel="noopener noreferrer sponsored"><Ticket size={15} aria-hidden /> Things to do · Klook <ExternalLink size={13} aria-hidden /></a>
+      </div>
+    </section>
+  );
+}
+
 /** The small + between stops: shows when you hover the stop next to it (always, faintly, on touch screens). */
 const AddGap = ({ onAdd, hidden }: { onAdd: () => void; hidden: boolean }) =>
   <li className="add-gap" hidden={hidden}><button type="button" className="add-here" onClick={onAdd} aria-label="Add a stop here"><Plus size={14} aria-hidden /></button></li>;
@@ -229,6 +249,9 @@ const AddGap = ({ onAdd, hidden }: { onAdd: () => void; hidden: boolean }) =>
 export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour; selected: number | null; onOpen: (s: RouteStop) => void; onCheckin: (t: CheckinTarget) => void }) {
   const [details, setDetails] = useState(false);
   const [adding, setAdding] = useState<number | null>(null);   // the "Add a stop" sheet: the gap its + sits in (0 = before the first stop)
+  const [sharing, setSharing] = useState(false);
+  const [shareMsg, setShareMsg] = useState("");
+  const shared = useRef<{ line: [number, number][]; id: string } | null>(null);
   const { response, plan } = d;
   // hold a stop's handle and drag it: the list reorders as you move, and letting go reroutes in that order
   const [order, setOrder] = useState<number[] | null>(null);   // stop ids while dragging, then until the new route arrives
@@ -236,6 +259,13 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
   const rows = useRef<HTMLOListElement>(null);
   useEffect(() => { if (!d.editing && dragId == null) setOrder(null); }, [plan, d.editing]); // eslint-disable-line react-hooks/exhaustive-deps
   const visible = plan?.stops.filter((s) => !d.hidden.includes(s.id)) ?? [];
+  // partner stops' member perks (the place sheet shows the text)
+  const [perks, setPerks] = useState<Map<number, string>>(new Map());
+  const partnerIds = visible.filter((s) => s.partner_tier).map((s) => s.id).join();
+  useEffect(() => {
+    if (!partnerIds) { setPerks(new Map()); return; }
+    placesPerks(partnerIds.split(",").map(Number)).then(setPerks).catch(() => undefined);
+  }, [partnerIds]);
   // when the trip leaves: the first leg's travel time and the arrival below count from it ("now" was fixed when it was planned)
   const start = response?.start_min ?? startMin(d.prefs);
   const shown = order ? order.map((id) => visible.find((s) => s.id === id)).filter((s): s is RouteStop => !!s) : visible;
@@ -290,6 +320,24 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
   }
   const plans = response.plans ?? [];
   const current = plans.find((p) => p.id === d.choice) ?? plans[0];
+  // demo mode's Partner picks, made only of pretend Choice tiers, isn't a plan of paid partners
+  const examplePicks = (p: (typeof plans)[number]) => p.id === "giggles" && p.stops.every((s) => s.partner_tier !== "choice" || s.partner_demo);
+  const demoPicks = plans.some(examplePicks);
+  // a public page of this trip (/app/?trip=ID); tapping again for the same route shares the same page
+  const shareThis = async () => {
+    if (sharing || !d.origin || !d.dest) return;
+    setSharing(true); setShareMsg("");
+    try {
+      if (shared.current?.line !== plan.geometry) {
+        shared.current = { line: plan.geometry, id: await shareTrip(snapshot(plan, d.origin, d.dest, d.prefs.mode, start, demoOn())) };
+      }
+      const title = `${d.origin.name === "Your location" ? "Start" : d.origin.name.split(", ")[0]} → ${d.dest.name.split(", ")[0]}`;
+      if (await shareOrCopy(title, `${SITE}/app/?trip=${shared.current.id}`) === "copied") setShareMsg("Link copied.");
+    } catch (e) {
+      setShareMsg(errCode(e) === "share_limit" ? "That's 30 shared trips today. Share again tomorrow." : "Couldn't share this trip. Try again in a moment.");
+    } finally { setSharing(false); }
+  };
+  const fuel = fuelLine(plan.mode, plan.extra_km);
   return (
     <div className={`stack results${d.editing ? " updating" : ""}`} aria-busy={d.editing}>
       {d.editing && <PlanProgress editing />}
@@ -301,7 +349,7 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
             <button key={p.id} type="button" role="radio" aria-checked={p.id === current?.id} className={`plan-card${p.id === current?.id ? " on" : ""}`}
               onClick={() => d.setChoice(p.id)}>
               <span className="thumbs" aria-hidden>{p.stops.slice(0, 4).map((s) => <Thumb key={s.id} s={s} size={30} />)}</span>
-              <b>{p.name}</b>
+              <b>{examplePicks(p) ? "Example partner picks" : p.name}</b>
               <span className="preset-stats"><span><b className="num">{p.stops.length}</b> <small>{p.stops.length === 1 ? "stop" : "stops"}</small></span>
                 <span><b className="num">+{p.extra_min}</b> <small>min</small></span></span>
             </button>
@@ -316,6 +364,10 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
           <span><b className="num">+{plan.extra_min}</b> <small>min vs straight</small></span>
           {plan.road_extra_min != null && plan.stops.length > 0 && <button type="button" className="link small-link" aria-expanded={details} onClick={() => setDetails(!details)}>
             Details <ChevronDown size={14} aria-hidden /></button>}</p>
+        {fuel && <p className="fine num">{fuel}</p>}
+        {plan.stops.length > 0 && <p className="row tight share-trip">
+          <button type="button" className="btn soft small" disabled={sharing || d.editing} onClick={shareThis}><Share2 size={15} aria-hidden /> Share trip</button>
+          {shareMsg && <span className="fine" role="status">{shareMsg}</span>}</p>}
         {details && plan.road_extra_min != null && (
           <p className="fine num">+{plan.road_extra_min} min on the road · {plan.stop_min} min at stops{plan.wait_min ? ` · ${plan.wait_min} min waiting for a meal time` : ""} · straight there {plan.base_min} min</p>
         )}
@@ -327,13 +379,11 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
       {plan.stops.length === 0
         ? <p className="fine">{plan.warnings?.some((w) => w === "places_unavailable" || w === "some_detours_unavailable")
             ? "Couldn't check road times right now. Try again in a moment."
-            : start % 1440 >= 21 * 60 || start % 1440 < 6 * 60   // at night it's closing hours, not too little time
-              ? <>Most places are closed at this hour. <button type="button" className="link" onClick={() => d.set({ depart: "custom", time: "08:00" })}>Leave at 08:00 instead</button></>
-              : "No stops fit this much time. Try a longer option or fewer filters."}</p>
+            : "No stops fit this much time. Try a longer option or fewer filters."}</p>
         : <ol className="stop-rows" ref={rows}>
             {shown.map((s, i) => <Fragment key={s.id}>
               {i === 0 && <AddGap hidden={!!order} onAdd={() => setAdding(0)} />}
-              <StopRow s={s} i={i} d={d} sel={selected === s.id} dragging={dragId === s.id} onDrag={(e) => drag(s.id, e)} onStep={(by) => step(s.id, by)}
+              <StopRow s={s} i={i} d={d} sel={selected === s.id} perk={perks.get(s.id)} dragging={dragId === s.id} onDrag={(e) => drag(s.id, e)} onStep={(by) => step(s.id, by)}
                 travel={order ? null : s.eta_min - (i ? shown[i - 1].eta_min + shown[i - 1].dwell_min : start)}
                 // the road minutes only hold for the leg the plan made: with the stop before this one just removed (re-planning),
                 // the gap spans two legs, so it's all shown as travel rather than a bogus wait
@@ -348,12 +398,15 @@ export default function Results({ d, selected, onOpen, onCheckin }: { d: Detour;
                 <span className="fine num stop-leg">{legLine(start + plan.total_min - (shown.at(-1)!.eta_min + shown.at(-1)!.dwell_min), d.prefs.mode)}</span></span>
             </li>}
           </ol>}
+      {response.free_cap && plan.stops.length >= d.cap &&
+        <p className="fine">Free plans hold {d.cap} stops. <button type="button" className="link" onClick={() => d.setGate("stop_limit_free")}>Members can add more stops</button></p>}
+      <StayNear place={d.dest?.name.split(", ")[0] ?? ""} />
       {adding != null && <AddStopSheet places={current?.along ?? []} d={d} full={plan.stops.length >= d.cap} at={adding} onClose={() => setAdding(null)} />}
 
       <Along places={current?.along ?? []} d={d} full={plan.stops.length >= d.cap} />
-      <p className="fine">How stops are picked <Info label="How stops are picked">Stops are picked on quality, opening hours and how little time they
-        add. Paid Partner and Giggles Choice places are always labelled; free plans rank them like everyone else, and
-        members' plans give them a boost. "Partner picks" is a plan of paid partners only.</Info></p>
+      <p className="fine">How stops are picked <Info label="How stops are picked">Stops are picked on quality and how little time they
+        add, with a small nudge for places other travellers really checked in at. Paid Partner and Giggles Choice places
+        are always labelled; free plans rank them like everyone else, and members' plans give them a boost.{!demoPicks && ' "Partner picks" is a plan of paid partners only.'}</Info></p>
     </div>
   );
 }

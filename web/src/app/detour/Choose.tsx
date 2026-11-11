@@ -4,7 +4,7 @@ import { ArrowUpDown, Bike, Car, Footprints, LocateFixed, SlidersHorizontal, X }
 import type { RoutePlan, TravelMode } from "../../lib/api";
 import PlaceSearch from "../PlaceSearch";
 import Filters, { filterCount, KIND_ICON } from "../Customize";
-import { BUDGETS, budgetLabel, DEPARTS, filterSummary, hhmm, INTERESTS, MODES, type Prefs, startMin } from "../prefs";
+import { BUDGETS, budgetLabel, DEPARTS, filterSummary, fuelLine, hhmm, INTERESTS, MODES, type Prefs, startMin } from "../prefs";
 import { type Detour, PRESETS, type PresetId } from "./useDetour";
 import { Thumb } from "./Results";
 import PlanProgress from "./PlanProgress";
@@ -48,6 +48,7 @@ export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => voi
     const r = d.results[id];
     const ready = r && typeof r === "object" && "route_id" in r ? r : null;
     const stops = ready ? (ready.plans?.[0]?.stops ?? ready.stops) : null;
+    const fuel = ready && fuelLine(ready.mode, ready.plans?.[0]?.extra_km ?? ready.extra_km);
     return (
       <button key={id} type="button" className={`preset${d.preset === id ? " on" : ""}`} aria-pressed={d.preset === id}
         onClick={() => { d.setPreset(id); onPicked(); }}>
@@ -61,6 +62,7 @@ export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => voi
                   <span><b className="num">{stops.length}</b> <small>{stops.length === 1 ? "stop" : "stops"}</small></span>
                   <span><b className="num">{arrive(d.prefs, ready!)}</b> <small>arrive</small></span>
                 </span> : <span className="fine">No stops fit</span>}
+              {fuel && <span className="fine num">{fuel}</span>}
             </>}
         <span className="fine blurb">{blurb}</span>
       </button>
@@ -84,11 +86,6 @@ export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => voi
           {d.prefs.depart === "custom" && <input type="time" aria-label="Departure time" value={d.prefs.time} onChange={(e) => d.set({ time: e.target.value })} />}
         </span>
       </div>
-      {/* temples, markets and viewpoints keep day hours: a plan made at night has little or nothing open */}
-      {(startMin(d.prefs) >= 21 * 60 || startMin(d.prefs) < 6 * 60) && (
-        <p className="fine night-hint">Most places are closed at this hour.{" "}
-          <button type="button" className="link" onClick={() => d.set({ depart: "custom", time: "08:00" })}>Leave at 08:00 instead</button></p>
-      )}
       {Object.values(d.results).some((r) => r === "loading") && <PlanProgress />}
       <div className="presets">
         {PRESETS.map((p) => card(p.id, p.label, p.min, p.blurb))}
@@ -115,7 +112,8 @@ export default function Choose({ d, onPicked }: { d: Detour; onPicked: () => voi
         <button type="button" className="btn soft small" onClick={() => setFilters(true)}>
           <SlidersHorizontal size={15} aria-hidden /> More filters{n ? ` · ${n}` : ""}</button>
       </div>
-      {filters && <Filters prefs={d.prefs} apply={(p) => d.set(p)} near={d.origin?.point ?? null} onClose={() => setFilters(false)} />}
+      {filters && <Filters prefs={d.prefs} apply={(p) => d.set(p)} near={d.origin?.point ?? null} onClose={() => setFilters(false)}
+        onMore={d.unlimited ? undefined : () => { setFilters(false); d.setGate("stop_limit_free"); }} />}
     </div>
   );
 }

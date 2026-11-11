@@ -172,7 +172,6 @@ body { background: var(--paper); overflow: hidden; }
 .tag.picked { display: inline-flex; align-items: center; gap: 6px; background: var(--brand-soft); color: var(--brand); border-color: transparent; font-weight: 700; }
 .tag.picked button { border: 0; background: none; color: inherit; padding: 0; display: grid; }
 .chip.picked { background: var(--good); color: var(--card); }
-.chip.closed { background: var(--bad); color: var(--card); }
 
 /* landmarks (tier 3): the must-go places detours are built around */
 .chip.landmark { background: var(--marigold); color: #241a00; margin-left: 6px; vertical-align: middle; }
@@ -180,15 +179,15 @@ body { background: var(--paper); overflow: hidden; }
 /* PokéStop-style stops: gold landmark, silver worth a visit, bronze everyday; glow when you're in the zone */
 .stop-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgb(0 0 0 / .35); background: #b8743c; }
 .stop-dot.tier-2 { background: #9aa3b5; }
-.stop-dot.tier-3 { background: var(--marigold); width: 18px; height: 18px; }
+.stop-dot.tier-3, .stop-dot.tier-4 { background: var(--marigold); width: 18px; height: 18px; }
 .stop-dot.stamped { opacity: .55; }
 .stop-dot.stamped::after { content: "✓"; display: grid; place-items: center; height: 100%; font: 700 var(--fs-micro)/var(--lh-micro) var(--font-body); color: #fff; }
 .stop-dot.in-zone { animation: glow 1.4s ease-in-out infinite; }
 @keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 rgb(233 164 0 / .7); } 50% { box-shadow: 0 0 0 10px rgb(233 164 0 / 0); } }
 .me-dot { width: 16px; height: 16px; border-radius: 50%; background: #2f7bf5; border: 3px solid #fff; box-shadow: 0 0 0 6px rgb(47 123 245 / .2); }
 .checkin-cta { box-shadow: var(--shadow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.checkin-cta.tier-3 { background: var(--marigold); color: #241a00; }
-.stamp.tier-3 { color: var(--gold-ink); border-color: var(--marigold); }
+.checkin-cta.tier-3, .checkin-cta.tier-4 { background: var(--marigold); color: #241a00; }
+.stamp.tier-3, .stamp.tier-4 { color: var(--gold-ink); border-color: var(--marigold); }
 .stamp.tier-2 { color: var(--tier2-ink); border-color: #9aa3b5; }
 .stamp.tier-1 { color: var(--tier1-ink); border-color: #b8743c; }
 .challenge-done { font-weight: 700; color: var(--good); }
@@ -402,7 +401,7 @@ body { background: var(--paper); overflow: hidden; }
 .entry.big b { font-size: var(--fs-headline); }
 .entry span { font-size: var(--fs-micro); }
 .entry-tier { font-size: var(--fs-micro); letter-spacing: .12em; font-weight: 700; }
-.entry.tier-3 { color: var(--gold-ink); border-color: var(--marigold); }
+.entry.tier-3, .entry.tier-4 { color: var(--gold-ink); border-color: var(--marigold); }
 .entry.tier-2 { color: var(--tier2-ink); border-color: #9aa3b5; }
 .entry.tier-1 { color: var(--tier1-ink); border-color: #b8743c; }
 
@@ -503,6 +502,12 @@ body { background: var(--paper); overflow: hidden; }
 .photo-strip img, .photo-strip .ph { width: 100%; height: 210px; object-fit: cover; display: block; background: var(--brand-soft); }
 .photo-credit { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); font-size: var(--fs-micro); color: #fff; background: rgb(0 0 0 / .62); padding: 1px 6px; border-radius: 6px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+a.photo-credit { text-decoration: none; }
+.photo-open { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.photo-view { place-items: center; padding: 16px; }
+.photo-view figure { position: relative; margin: 0; max-width: min(1280px, 100%); outline: none; }
+.photo-view img { display: block; max-width: 100%; max-height: calc(100dvh - 32px); width: auto; height: auto; border-radius: 12px; }
+.photo-view .icon-btn { position: absolute; top: 8px; right: 8px; background: var(--card); box-shadow: var(--shadow); border-radius: 50%; }
 .place-head { display: flex; gap: 12px; align-items: flex-start; padding-top: 14px; }
 .place-head h2 { margin: 0; font: 800 var(--fs-title)/var(--lh-title) var(--font-display); }
 .place-card-icon.big { width: 44px; height: 44px; }
@@ -516,8 +521,6 @@ body { background: var(--paper); overflow: hidden; }
 .place-info { list-style: none; padding: 12px 0 0; display: grid; gap: 10px; border-top: 2px solid var(--paper); }
 .place-info li { display: flex; gap: 12px; align-items: flex-start; overflow-wrap: anywhere; }
 .place-info svg { flex: none; color: var(--ink-2); margin-top: 2px; }
-.open { color: var(--good); }
-.closed { color: var(--bad); }
 .busy-bars { display: flex; align-items: flex-end; gap: 3px; height: 66px; }
 .busy-bars span { flex: 1; background: color-mix(in srgb, var(--brand) 35%, var(--card)); border-radius: 4px 4px 0 0; }
 .busy-bars span.now { background: var(--brand); }
@@ -540,6 +543,13 @@ body { background: var(--paper); overflow: hidden; }
 .place-head .person-main > * { white-space: normal; overflow: visible; }
 .place-about { margin: 0; white-space: pre-line; }
 .local-note { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--grape-soft); color: var(--grape-ink); font-weight: 700; font-size: var(--fs-label); }
+/* a partner's member perk (PlaceSheet): gold while yours, a soft invite otherwise */
+.perk-card { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 14px; background: var(--brand-soft); color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line); font-size: var(--fs-label); }
+.perk-card > span { display: grid; gap: 2px; justify-items: start; }
+.perk-card.on { background: var(--marigold-soft); box-shadow: inset 0 0 0 1.5px var(--marigold); }
+.perk-card > svg { flex: none; color: var(--gold-ink); margin-top: 2px; }
+.chip.perk { background: var(--marigold-soft); color: var(--gold-ink); max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .product-strip { list-style: none; margin: 0; padding: 0; display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
 .product-strip li { flex: 0 0 120px; display: grid; gap: 2px; }
 .product-strip img, .product-strip .ph { width: 120px; height: 120px; object-fit: cover; border-radius: 12px; background: var(--brand-soft); }
@@ -708,6 +718,8 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .meal-pill { display: grid; justify-items: start; gap: 0; padding: 8px 12px; }
 .filter-q input[type="range"] { width: 100%; accent-color: var(--brand); }
 .range-ticks { display: flex; justify-content: space-between; padding: 0 2px; }
+.plus-term { margin: 4px 0 8px; flex-wrap: wrap; }
+.locked-more { margin-top: 8px; border-style: dashed; color: var(--ink-2); }
 .filter-q .pref-row > span { display: grid; gap: 2px; }
 .elsewhere { display: grid; gap: 4px; }
 .elsewhere .btn { gap: 6px; text-decoration: none; }
@@ -806,7 +818,7 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .strip-cell .more { position: absolute; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / .5); color: #fff; font: 800 var(--fs-display)/var(--lh-display) var(--font-body); }
 .place-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .place-chips li { font: 700 var(--fs-caption)/var(--lh-caption) var(--font-body); padding: 4px 10px; border-radius: 999px; border: 1.5px dashed currentColor; color: var(--tier1-ink); }
-.place-chips li.tier-3 { color: var(--gold-ink); border-style: solid; background: var(--marigold-soft); }
+.place-chips li.tier-3, .place-chips li.tier-4 { color: var(--gold-ink); border-style: solid; background: var(--marigold-soft); }
 .place-chips li.tier-2 { color: var(--tier2-ink); }
 .comments { display: grid; gap: 8px; padding: 0 16px 14px; }
 .comment { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: start; }
@@ -942,7 +954,7 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 .log-dot { display: block; }
 .log-main { display: grid; min-width: 0; } .log-main b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .log-tier { font: 700 var(--fs-micro)/var(--lh-micro) var(--font-data); text-transform: uppercase; letter-spacing: .06em; padding: 3px 7px; border-radius: 6px; color: var(--tier1-ink); background: color-mix(in srgb, #b8743c 18%, var(--card)); }
-.log-tier.tier-3 { color: var(--gold-ink); background: var(--marigold-soft); } .log-tier.tier-2 { color: var(--tier2-ink); background: color-mix(in srgb, #9aa3b5 22%, var(--card)); }
+.log-tier.tier-3, .log-tier.tier-4 { color: var(--gold-ink); background: var(--marigold-soft); } .log-tier.tier-2 { color: var(--tier2-ink); background: color-mix(in srgb, #9aa3b5 22%, var(--card)); }
 @media (max-width: 420px) { .profile-hero { grid-template-columns: 1fr; justify-items: start; } }
 
 /* passport: landmark stamps (everyday places live in the Logbook) */
@@ -967,11 +979,11 @@ img.thumb, span.thumb { flex: none; border-radius: 10px; object-fit: cover; disp
 /* arrival: the check-in card on the map and in turn-by-turn */
 .arrive-card { display: grid; justify-items: center; text-align: center; gap: 4px; width: min(360px, calc(100vw - 32px)); padding: 16px 18px 18px;
   border-radius: 22px; background: var(--card); border: 3px solid var(--brand); box-shadow: 0 10px 30px rgb(10 12 30 / .3); animation: arrive-in .35s ease-out; }
-.arrive-card.tier-3 { border-color: var(--marigold); }
+.arrive-card.tier-3, .arrive-card.tier-4 { border-color: var(--marigold); }
 .arrive-card > b { font: 800 var(--fs-headline)/var(--lh-headline) var(--font-display); line-height: 1.2; }
 .arrive-card .fine { margin: 0 0 6px; }
 .checkin-go { width: 100%; justify-content: center; position: relative; }
-.arrive-card.tier-3 .checkin-go { background: var(--marigold); color: #241a00; }
+.arrive-card.tier-3 .checkin-go, .arrive-card.tier-4 .checkin-go { background: var(--marigold); color: #241a00; }
 .checkin-go::after { content: ""; position: absolute; inset: -4px; border-radius: inherit; border: 3px solid currentColor; opacity: 0; animation: go-ring 1.8s ease-out infinite; pointer-events: none; }
 @keyframes go-ring { 0% { opacity: .55; transform: scale(.96); } 100% { opacity: 0; transform: scale(1.08); } }
 @keyframes arrive-in { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -1129,6 +1141,8 @@ p.chase { margin: 0; }
 .stop-meta > b.extra { color: var(--brand); }
 .stop-leg { color: var(--ink-2); }
 .dest-row { padding: 6px 0 6px 28px; }
+.stay-near { display: grid; gap: 6px; padding: 8px 0; border-top: 2px solid var(--paper); }
+.stay-near p { margin: 0; gap: 8px; }
 .stop-num.dest { background: var(--ink); }
 
 /* + between stops (detour Results): appears next to the stop you hover; faint but there on touch screens */
@@ -1447,4 +1461,9 @@ html.native .toast { top: calc(64px + env(safe-area-inset-top, 0px)); }
 .along-list .stop-meta .chip { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* phone on its side: the sheet is full height, so it covers the map's Layers button (it sat on "Swap") */
 @media (max-width: 959px) and (max-height: 500px) { .sheet.snap-half { z-index: 7; } }
-@media (max-width: 360px) { .along-list .opens-word { display: none; } }   /* "05:00" alone fits a 320 px row */
+
+/* ---------- shared trip page (/app/?trip=ID) ---------- */
+.trip-page .nav-bottom { max-height: 55vh; overflow-y: auto; }
+.trip-page .nav-bottom .row { gap: 8px; }
+.trip-page .nav-bottom .btn.big { flex: 1; width: auto; }
+.share-trip { align-items: center; }

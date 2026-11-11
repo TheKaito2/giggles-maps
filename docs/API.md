@@ -40,27 +40,25 @@ Request
   "must_include": [37420]
 }
 ```
-- `start_min`: minutes after local midnight (0–1439). Used for opening hours.
+- `start_min`: minutes after local midnight (0–1439). Used for meal windows and ETAs (opening hours are not used yet).
 - `budget_min`: extra minutes the user accepts (0–240), or `"auto"`: half the direct trip time, rounded to 15 min, between 45 min and 3 h (the response's `budget_min` is the chosen value and `budget_auto: true`). Never exceeded.
 - `mode`: `"pedestrian"` (default), `"bicycle"` or `"auto"`; anything else is 400 `bad_mode`.
 - Planner preferences (all optional; omitted = the defaults below):
   - `interests`: up to 6 of `food`, `cafes`, `culture`, `nature`, `shopping`, `landmarks`. **Only those kinds**: every plan uses just places the picks cover (`landmarks` = tier 3 of any kind), plus a restaurant when a meal is asked for and any `must_include` place. A **Your mix** plan (`id: "mix"`) comes first. Empty or omitted = any kind. 400 `bad_interests`.
-  - `open_only: true`: only places whose opening hours are known (the planner then checks you arrive while they're open; it does that for every place with known hours anyway). About 1 in 5 places lists hours, fewer in small towns.
+  - `open_only`: ignored (opening hours are not used yet; old clients may still send it).
   - `no_chains: true`: shops, cafés, restaurants and markets must be independent (`local`, OTOP or community); temples, parks and other sights are unaffected.
   - `min_rating`, `include_unrated`, `max_price`: still accepted, but the web app no longer sends them: OpenStreetMap has no ratings or prices, so they filter nothing useful until reviews and prices exist.
   - `min_rating`: `0`, `3.5`, `4` (default) or `4.5`. 400 `bad_min_rating`.
   - `include_unrated`: default **true**: unrated places (`rating: null`, most of the OpenStreetMap import) join routes, scored below rated ones (as 3.5/5). `false` = rated places only.
-  - `must_include`: up to 6 place ids the user picked or added (from `search_places` or a plan's `along`). They go into every plan when they fit the budget, opening hours and `max_stops`, even below the rating floor; the rest are listed in each plan's `unfit_required`. Stops have `picked: true`. 400 `bad_must_include`.
+  - `must_include`: up to 6 place ids the user picked or added (from `search_places` or a plan's `along`). They go into every plan, even below the rating floor and even when that takes the plan past `budget_min` or past the request's `max_stops`: user picks always go in (more picks than the account's stop cap is refused instead, see below) (the response's `extra_min` can then be more than `budget_min`; clients should warn when it is). Only picks the planner can't reach by road are left out and listed in each plan's `unfit_required`. Stops have `picked: true`. 400 `bad_must_include`.
   - `exclude`: up to 30 place ids never to use (stops the user removed or swapped out). 400 `bad_exclude`.
   - `keep_order` (optional): `true` = `must_include` is the route order, exactly; a list of stop ids = those stops keep that
     order and the rest of `must_include` is inserted where it fits best (400 `bad_keep_order` if it isn't a list of ids).
     The web app sends `true` after a drag or a + between two stops, and the current order as a list for "add along your
     route" once you've set the order yourself.
-  - Places with no listed opening hours are planned inside the usual hours for their kind (temples 06:00–18:00, parks
-    05:00–20:00, night and walking-street markets 17:00–23:00, …; `_shared/usual-hours.ts`).
   - Editing a plan, the way the web app does it: remove = `must_include` the other current stops + `exclude` the removed one; swap = the same (the planner picks the best replacement); add = `must_include` the current stops + the new place, with more `budget_min` when it doesn't fit. Send `theme` to keep the plan you were on first.
   - Each stop has `extra_min` (about how many minutes it adds: road detour + time there; null if unknown) and `photo` (a URL or null). Each plan has `along`: up to 30 shortlist places it left out, cheapest first, `{ id, name, name_th, category, lat, lng, tier, rating, local, otop, community, photo, extra_min }` (an estimate: "about +X min").
-  - `max_stops`: 1–6 stops per plan; omitted = no cap. Meal stops count. 400 `bad_max_stops`.
+  - `max_stops`: 1–6 stops per plan; omitted = up to the account's cap. Meal stops count. 400 `bad_max_stops`.
   - `max_price`: 0 (free) to 3 (฿฿฿). Drops places whose **known** price is higher; places with no listed price stay. 400 `bad_max_price`.
 - `theme` (optional): `top_picks` (Landmarks), `nature` or `scenic` (Scenic), `culture` (Culture & heritage), `local` (Local gems), `food` or `shopping`. Only reorders `plans` so that one comes first; anything else is 400 `bad_theme`.
 - Coordinates must be inside Thailand (lat 5–21, lng 97–106).
@@ -94,8 +92,16 @@ Response
   second destination or 403 `sign_in_edits` for a 4th edit (migrations 073, 080; show the sign-in sheet, not a retry). Free accounts: 3 detours (destinations) and 10 edits a Bangkok
   day (429 `detour_limit` / `edit_limit`); a request with `must_include` or `exclude` is an edit. Everyone: 20 plans a minute,
   members 300 and free accounts 100 a day (429 `slow_down`). An edit of a destination not planned today counts as a detour. `my_plan_usage()` reports today's counts.
+- **Stop cap by tier** (`_shared/tiers.ts`): guests and free accounts get at most **3 stops** a plan; members and Plus 15.
+  Demo mode (`demo: true`) doesn't change the cap. The planner fills up to the cap (a larger `max_stops` is trimmed to it; a Quick plan already at 3
+  stops gets no pit stop). More `must_include` places than the cap: 403 `stop_limit_free` for a free plan (show the
+  membership sheet), 400 `stop_limit` past 15. The response has `max_stops` (the cap) and `free_cap: true` when the free
+  cap applies: show "Members can add more stops" when a plan has `max_stops` stops. Shared trips ("Plan this trip") load the
+  first 3 stops for free users.
 - Stops are chosen by quality (rating, variety, fit inside the budget). For members, paid tiers score higher: Giggles Choice ×2,
   Partner ×1.5. Every stop and `along` place has `partner_tier: "partner" | "choice" | null`; show its badge whenever set.
+  `partner_demo: true` means the tier is demo mode's pretend one (`demo_partners`, real places that haven't signed up): label it
+  **Example partner** / **Example Giggles Choice** and say it's pretend for the demo, never that the place pays.
 - `plans` can include `{id: "giggles", name: "Partner picks"}`: Giggles Choice places only (plus picks), for everyone, when a
   Choice place fits.
 - `is_partner: true` means the place is a signed-up shop that pays per verified visit. It can appear any number of times, only on merit. Show a **Partner** label (`Example partner` when `is_demo`) so users know the shop pays.
@@ -109,7 +115,7 @@ Response
 - Each stop has `tier`: 3 = landmark (must-go: Wikipedia/Wikidata-linked, national parks, heritage, waterfalls, named peaks), 2 = worth a visit, 1 = everyday (cafes, food, crafts). Shown as a Landmark chip for tier 3.
 - Each stop has `rating` (number, or `null` = unrated) and `price_level` (0 free, 1–3 = ฿–฿฿฿, `null` = not listed).
 
-Errors: `not_signed_in` 401, `routing_unavailable` 503, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_mode` / `bad_theme` / `bad_interests` / `bad_min_rating` / `bad_max_stops` / `bad_max_price` / `bad_must_include` / `bad_exclude` / `bad_meals` / `bad_json` 400.
+Errors: `not_signed_in` 401, `routing_unavailable` 503, `bad_origin` / `bad_dest` / `bad_start_min` / `bad_budget_min` / `bad_mode` / `bad_theme` / `bad_interests` / `bad_min_rating` / `bad_max_stops` / `bad_max_price` / `bad_must_include` / `bad_exclude` / `bad_meals` / `bad_json` / `stop_limit` 400, `stop_limit_free` 403 (plus the quota codes above).
 
 Quick detours (budget under 30 min, no meal asked for): each stop counts as 10 minutes, every kind of place qualifies, and
 after the sight the cheapest convenience store on the way (`route_pit_stops`, 5 minutes there) is added when it fits.
@@ -140,24 +146,25 @@ Response
 
 | Rule | Result | Reason code |
 |---|---|---|
-| More than 60 m from the place | rejected | `too_far` |
-| `face_count < 1` | rejected | `no_face` |
+| Outside the place's zone: 150 m for landmarks and parks (tier ≥ 3 or category `park`), 50 m elsewhere | rejected | `too_far` |
 | Selfie missing from the user's folder | rejected | `no_selfie` |
 | `client.is_mock` | rejected | `mock_location` |
-| Faster than 150 km/h since last check-in (24 h) | rejected | `speed_jump` |
-| GPS accuracy over 50 m | review | `low_accuracy` |
-| Already rewarded here today (Bangkok time) | approved, no stamp | `already_rewarded_today` |
+| Faster than 150 km/h since the last non-rejected, non-demo check-in (24 h); not checked for demo check-ins | rejected | `speed_jump` |
+| GPS accuracy over 75 m | review: no reward, nobody reviews it; tell the user GPS was too imprecise and to try again with better signal (the photo is deleted after 30 days) | `low_accuracy` |
+| Already has this place's stamp (rewards only on the first visit ever) | approved, no stamp; photo added to the passport | `already_stamped` |
 | Exclusive place above the user's unlock level (or event outside its window) | rejected, nothing recorded; response has `required_level` | `level_locked` |
+
+Any photo counts: there is no face check (`face_count` is optional and ignored).
 
 `qr_code` is the code under the counter QR sticker (also arrives via the sticker link `/app/?scan=<place_id>-<code>`). Example shops use `DEMO`.
 
-`billing` (what happened on the shop side): `charged` · `no_qr` · `not_shown_on_route` (not shown to this user in the last 3 h) · `repeat_visit_30d` · `wallet_empty` · `not_rewarded` · `not_partner`. A shop is charged only when the check-in is rewarded, the QR matches, the stop/card was shown to this user within 3 h, and it's the user's first billed visit there in 30 days.
+`billing` (what happened on the shop side): `charged` · `no_qr` · `not_shown_on_route` (not shown to this user in the last 3 h) · `repeat_visit_30d` · `wallet_empty` · `not_rewarded` · `not_partner` · `demo` (a demo check-in: never charged). A shop is charged only when the check-in is rewarded, the QR matches, the stop/card was shown to this user within 3 h, and it's the user's first billed visit there in 30 days.
 
-`spin`: free coupon spin after every rewarded check-in (never sold). 50% overall win chance among active coupons from signed-up shops with credit within 3 km; `odds` is this prize's chance. `null` when no coupons are available.
+`spin`: free coupon spin after every rewarded non-demo check-in (never sold). 50% overall win chance among active coupons from signed-up shops with credit within 3 km (never the example shops, `is_demo`); `odds` is this prize's chance. `null` when no coupons are available.
 
 All of it runs in one DB transaction (`public.record_checkin`).
 
-Errors: `place_not_found` 404, `demo_only_at_example_places` 403, `bad_*` 400.
+Errors: `place_not_found` 404, `bad_*` 400.
 
 ## `delete-account`
 
@@ -169,6 +176,7 @@ Body `{}`. Deletes the user's selfies, then the auth user (cascades check-ins, b
 |---|---|
 | `{ "kind": "credit", "shop_id": "uuid", "pack": 500 \| 1000 \| 3000 }` | Prepaid visit credit for a shop |
 | `{ "kind": "plus" }` | Giggles Plus for the signed-in user, ฿59 / 30 days (403 `sign_in_required` for guests) |
+| `{ "kind": "plus_year" }` | Giggles Plus for a year, ฿590 / 365 days (same rules as `plus`; web only, the iOS app sells monthly Plus) |
 | `{ "kind": "membership" }` | Lifetime membership, ฿349, with 90 days of Plus (403 `sign_in_required` for guests, 409 `already_member`) |
 | `{ "kind": "partner", "shop_id": "uuid" }` | Partner tier for 30 days, ฿299 (403 `not_your_shop`, 409 `not_verified`) |
 | `{ "kind": "choice", "shop_id": "uuid" }` | Giggles Choice for 30 days, ฿799 (also 409 `choice_not_approved`) |
@@ -187,7 +195,7 @@ Errors: `sign_in_required` 403 (guests), `invalid_transaction` 400, `bought_by_a
 
 ## `stripe-webhook`
 
-Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`, then applies the payment once per Checkout session (`apply_payment`: credit → wallet, plus → `profiles.plus_until` +30 days, membership → `profiles.member_since`) on `checkout.session.completed` (paid) or `checkout.session.async_payment_succeeded` (PromptPay).
+Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`, then applies the payment once per Checkout session (`apply_payment`: credit → wallet, plus → `profiles.plus_until` +30 days, plus_year → +365 days (migration 089), membership → `profiles.member_since`) on `checkout.session.completed` (paid) or `checkout.session.async_payment_succeeded` (PromptPay).
 
 ## Passport (RPCs, signed-in user)
 
@@ -215,10 +223,12 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
   still `approved` (photo kept) but `rewarded: false` with reason `slow_down`; the place can be stamped on a later visit.
 - Demo mode (migration 052, anyone, Profile → Demo mode): the app fakes its location (tap the map, fast-forward to the next
   stop) and sends `client.demo: true`. Demo check-ins work at any place, skip the speed check, and are rewarded like real
-  ones; they stay marked `client.demo = true` in `checkins`, and the pace limit still applies.
+  ones (stamp, XP, coins, badges, Siam Si); they stay marked `client.demo = true` in `checkins`, and the pace limit still
+  applies. They never move money (migration 090): no shop billing (`billing: "demo"`), no booking completion or fee, no coupon
+  spin. A demo check-in's new province gives no bonus shake, and its shake never wins an XP boost (coins instead; migration 092). A demo check-in is also never the speed check's "last location", so it can't reject a later real one.
 - The all-time leaderboard (migration 053) ranks by XP minus what demo check-ins earned (their stamps and Siam Si shakes),
-  and its cards count only non-demo stamps and provinces. Your own profile still shows everything. Quests a demo
-  check-in completes still count (a small leak, accepted).
+  and its cards count only non-demo stamps and provinces. Your own profile still shows everything. A demo check-in never
+  progresses quests or challenges: its stamp isn't counted and it doesn't do the daily check-in (migration 093).
 
 ## Profile, feed, quests (migration 024)
 - `me()` also returns `avatar`, `joined`, `coins`, `provinces`.
@@ -282,6 +292,9 @@ Stripe only. Verifies the `Stripe-Signature` header with `STRIPE_WEBHOOK_SECRET`
   `delete_place_photo(p_id)` (yours; then delete the file), `report_place_photo(p_id)` (3 reports hide it). In `place_page.photos`
   they have `source: "traveller"`, `id`, `url: "place-photos/<path>"` and `mine`; `place_page.photo_reward` = your first photo here still pays.
   `place_photos` holds Wikimedia Commons photos (`supabase/tools/wikimedia_photos.py`, free licences only).
+- More Commons photos (migration 088): `place_commons_photos(p_place)` (anon or signed in) returns up to 8
+  `{url (1280 px), small_url (500 px), author, licence, licence_url, page_url, width, height}` for a Landmark/Icon, `[]` otherwise.
+  Show them after the place's own photos, each with "Photo: <author> · <licence> · Wikimedia Commons" linking to `page_url`.
 - Lists: `my_lists()` (makes "Want to go" + "Favourites" on first call), `save_place(p_list, p_place, p_saved)`,
   `create_list(p_name)`, `update_list(p_list, p_name, p_shared, p_delete)`, `friend_lists(p_friend)` (shared ones, friends only).
 - Edits: `suggest_edit(p_place | null, p_payload, p_here_lat, p_here_lng)`: payload keys name, name_th, kind,

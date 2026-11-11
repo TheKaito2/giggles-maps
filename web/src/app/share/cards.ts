@@ -78,7 +78,7 @@ function speckle(g: CanvasRenderingContext2D, x: number, y: number, w: number, h
 }
 
 /** A round rubber stamp for a place: double ring, words around the edge, the tier in the middle and a date band. */
-function placeStamp(g: CanvasRenderingContext2D, cx: number, cy: number, r: number, ink: string, tier: 1 | 2 | 3, at: Date, seed: number, paper?: string) {
+function placeStamp(g: CanvasRenderingContext2D, cx: number, cy: number, r: number, ink: string, tier: 1 | 2 | 3 | 4, at: Date, seed: number, paper?: string) {
   const c = document.createElement("canvas");
   c.width = c.height = Math.ceil(r * 2 + 40);
   const s = c.getContext("2d")!, o = c.width / 2;
@@ -123,7 +123,7 @@ function header(g: CanvasRenderingContext2D, colour: string, right: string) {
 }
 function footer(g: CanvasRenderingContext2D, colour: string) {
   g.fillStyle = colour; g.globalAlpha = 0.7; g.textAlign = "center"; g.font = `600 32px ${MONO}`;
-  g.fillText("giggles-maps.pages.dev", W / 2, 1850); g.globalAlpha = 1;
+  g.fillText("gigglesmap.xyz", W / 2, 1850); g.globalAlpha = 1;
 }
 /** Thailand, visited provinces filled, fitted into a box of height h. Returns its width. */
 function thailand(g: CanvasRenderingContext2D, features: ProvinceFeature[], visited: (f: ProvinceFeature) => string | null, x: number, y: number, h: number,

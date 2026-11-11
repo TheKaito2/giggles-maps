@@ -1,7 +1,7 @@
 import { admin, json, serve } from "../_shared/http.ts";
 
 // Stripe calls this; no user JWT (verify_jwt = false). Trust comes from the signature.
-// metadata.kind = credit (shop wallet) | plus | membership (user) | partner | choice (shop tier); see stripe-checkout.
+// metadata.kind = credit (shop wallet) | plus | plus_year | membership (user) | partner | choice (shop tier); see stripe-checkout.
 async function verify(payload: string, header: string, secret: string): Promise<boolean> {
   // "t=...,v1=...,v1=...": during a secret rotation Stripe signs with each secret, so any v1 may match
   const parts = header.split(",").map((p) => p.split("=", 2));

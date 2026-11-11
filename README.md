@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://giggles-maps.pages.dev"><img alt="Live" src="https://img.shields.io/badge/live-giggles--maps.pages.dev-0a72d6?style=flat-square" /></a>
+  <a href="https://gigglesmap.xyz"><img alt="Live" src="https://img.shields.io/badge/live-gigglesmap.xyz-0a72d6?style=flat-square" /></a>
   <img alt="React 18" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square&logo=typescript&logoColor=white" />
   <img alt="Supabase" src="https://img.shields.io/badge/Supabase-Postgres%20%2B%20PostGIS-3ecf8e?style=flat-square&logo=supabase&logoColor=white" />
@@ -40,7 +40,7 @@ stamps, XP, coins and Siam Si fortune sticks. Shops pay only for visits that rea
 | ✍️ **Give back, get rewarded** | A written review of a place you visited earns a Siam Si shake; your first photo of a stop on its page earns coins. |
 | 🏆 **Play with friends** | Weekly and all-time leaderboards, province champions, quests and chests, a friends feed, ride-along trips with live positions and a shared album. |
 | 🌙 **Dark mode** | Light, Dark, or Auto (follows your phone). The map goes dark with it. |
-| 🏪 **For shops** | Claim your listing free, add products and photos, see how many trips pass your door. Partners (฿299/month) show first on members' routes, always labelled, and take bookings. |
+| 🏪 **For shops** | Claim your listing free, add products and photos, see how many trips pass your door. Partners (฿299/month) get a boost on members' routes, always labelled, and take bookings. |
 
 ## How it works
 
@@ -57,7 +57,7 @@ flowchart LR
 ```
 
 - **Planner.** `plan-route` shortlists places along the road corridor in PostGIS, gets real road times from Valhalla,
-  then picks and orders stops to fill your budget (insertion + 2-opt). Opening hours and meal windows are respected; a place with no listed hours gets the usual hours for its kind.
+  then picks and orders stops to fill your budget (insertion + 2-opt). Meal windows are respected; opening hours are not used yet (we have no trustworthy hours data).
   [Algorithm notes](docs/ARCHITECTURE.md) · [Thailand routing](docs/THAILAND-ROUTING.md)
 - **Trust.** Clients never write XP, coins, stamps or money. Every reward is a server function behind row-level security,
   check-ins are GPS-zoned and speed-checked, and payments arrive only through signed webhooks.
@@ -115,7 +115,8 @@ cd web && npm run build && npx wrangler pages deploy dist --project-name giggles
 ```
 
 Edge Function secrets (`supabase secrets set`): `CRON_SECRET`, `SITE_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
-`VALHALLA_URL`.
+`VALHALLA_URL` (our routing server), `VALHALLA_TOKEN` (the `X-Route-Token` its Cloudflare rule checks), `VALHALLA_API_KEY`
+(a Stadia Maps key, the backup when our server is down).
 
 Offline province maps are Protomaps packs in the R2 bucket `giggles-maps-offline`; rebuild with
 `python3 supabase/tools/offline_packs.py --build <YYYYMMDD> --upload` (needs the `pmtiles` CLI).

@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /app/?
 
-Sitemap: https://giggles-maps.pages.dev/sitemap.xml
+Sitemap: https://gigglesmap.xyz/sitemap.xml

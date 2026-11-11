@@ -1,13 +1,11 @@
-import { type Plan, type Stop, visitIsOpen } from "./planner.ts";
-export { visitIsOpen };
+import type { Plan, Stop } from "./planner.ts";
 import { inMealWindow, type Meal, MEAL_WINDOWS } from "./meals.ts";
 import type { LatLng, Mode, RoadRoute } from "./valhalla.ts";
 
 export const allowsEstimateFallback = (mode: Mode, distanceM: number) => mode === "pedestrian" && distanceM <= 10000;
 
 
-/** picks: stops the user chose (opening hours don't fail them) */
-export function scheduleStops(order: Stop[], legs: number[], startMin: number, mealOf: Map<number, Meal>, picks: number[] = []) {
+export function scheduleStops(order: Stop[], legs: number[], startMin: number, mealOf: Map<number, Meal>) {
   let time = startMin;
   const etaMin: number[] = [];
   let failed = -1;
@@ -21,7 +19,6 @@ export function scheduleStops(order: Stop[], legs: number[], startMin: number, m
       time = Math.max(time, MEAL_WINDOWS[meal][0]);
       if (!inMealWindow(meal, time)) failed = i;
     }
-    if (!picks.includes(s.id) && !visitIsOpen(time, s.dwellMin, s.openMin, s.closeMin)) failed = i;
     etaMin.push(Math.round(time)); time += s.dwellMin;
   });
   return { totalMin: time + legs[order.length] - startMin, etaMin, failed };
@@ -67,8 +64,7 @@ export async function verifyRoadPlan(input: {
       // rather than throwing the whole plan away (that left long trips with no stops at all)
       catch { routeErrors++; adjusted = true; order.splice(dropIndex(), 1); continue; }
     }
-    // opening hours never drop the user's picks; the ones closed on arrival are flagged below
-    const clock = scheduleStops(order, road.legMin, input.startMin, input.plan.mealOf, input.plan.requiredIds);
+    const clock = scheduleStops(order, road.legMin, input.startMin, input.plan.mealOf);
     // over the budget is fine once only the user's picks are left: those go in whatever the time
     if (clock.failed < 0 && (clock.totalMin - input.baseline.travelMin <= input.budgetMin + 1e-7 || order.every(picked))) {
       const mealOf = new Map([...input.plan.mealOf].filter(([id]) => order.some((s) => s.id === id)));
@@ -78,8 +74,7 @@ export async function verifyRoadPlan(input: {
         baseMin: input.baseline.travelMin, totalMin: clock.totalMin,
         extraMin: Math.max(0, clock.totalMin - input.baseline.travelMin),
         missedMeals: [...new Set([...input.plan.missedMeals, ...lostMeals])],
-        unfitRequired: input.plan.requiredIds.filter((id) => !order.some((s) => s.id === id)),
-        closedPicks: order.filter((s, i) => picked(s) && !visitIsOpen(clock.etaMin[i], s.dwellMin, s.openMin, s.closeMin)).map((s) => s.id) },
+        unfitRequired: input.plan.requiredIds.filter((id) => !order.some((s) => s.id === id)) },
         geometry: road.geometry, etaMin: clock.etaMin, travelMin: road.legMin.reduce((a, b) => a + b, 0), legs: road.legMin, adjusted,
         failed: routeErrors > 0 && !order.length && input.plan.order.length > 0 };
     }

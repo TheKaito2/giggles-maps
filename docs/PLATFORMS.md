@@ -31,12 +31,12 @@ Rule for both apps: **never depend on on-device AI.** Treat it as an optional sp
 
 ## 2. Camera and selfie check
 
-Presence only: we count faces to prove a person is at the shop. **No face recognition, no face embeddings, no matching against other photos** (Thailand PDPA). The server only receives the face count and the selfie file.
+Any photo counts (you, the view, the food): the server doesn't check for a face and ignores `face_count`. **No face recognition, no face embeddings, no matching against other photos** (Thailand PDPA).
 
 | Feature | iOS API | Android API | How Giggles Maps uses it | Parity |
 |---|---|---|---|---|
 | Camera capture | AVFoundation (`AVCaptureSession`, `AVCapturePhotoOutput`), front camera. | CameraX (`Preview`, `ImageCapture`, `ImageAnalysis`), front lens. | Selfie screen at check-in. | same |
-| Face detection | Vision: `DetectFaceRectanglesRequest` (Swift API, iOS 18+) or `VNDetectFaceRectanglesRequest` (older API). | ML Kit Face Detection (`FaceDetection.getClient`), on device. | Count faces in the selfie, send `face_count`. Server rejects `face_count < 1`. | same |
+| Face detection | Vision: `DetectFaceRectanglesRequest` (Swift API, iOS 18+) or `VNDetectFaceRectanglesRequest` (older API). | ML Kit Face Detection (`FaceDetection.getClient`), on device. | Optional: the server ignores `face_count` (any photo counts). | same |
 | Face capture quality | `DetectFaceCaptureQualityRequest` (iOS 18+) or `VNDetectFaceCaptureQualityRequest` (iOS 13+): 0 to 1, higher = sharper, better lit, more centred. | none as one call; approximate with ML Kit face bounding-box size, head angles (`headEulerAngleY/Z`) and eye-open probability. | Ask for a retake if the face is blurry or tiny. Client-side only. | different |
 | Hand pose (liveness gesture, optional) | `DetectHumanHandPoseRequest` (iOS 18+) / `VNDetectHumanHandPoseRequest`. | MediaPipe Hand Landmarker (21 landmarks per hand). | Optional "show a peace sign" prompt to make a printed photo harder to use. | same |
 | Upload | Supabase Storage, bucket `selfies`, path `<user_id>/<file>`. | Same. | Bucket is private, max 3 MB, `image/jpeg`, `image/webp` or `image/png`. | same |
@@ -46,7 +46,7 @@ Presence only: we count faces to prove a person is at the shop. **No face recogn
 | Feature | iOS API | Android API | How Giggles Maps uses it | Parity |
 |---|---|---|---|---|
 | Current position | Core Location: `CLLocationManager` / `CLLocationUpdate.liveUpdates()`. | Fused Location Provider (`FusedLocationProviderClient`, `getCurrentLocation`, `requestLocationUpdates`). | Start point of the route; position at check-in. | same |
-| Accuracy | `CLLocation.horizontalAccuracy` (metres). | `Location.getAccuracy()` (metres). | Sent as `accuracy`. Server sends check-ins with accuracy > 50 m to manual review. | same |
+| Accuracy | `CLLocation.horizontalAccuracy` (metres). | `Location.getAccuracy()` (metres). | Sent as `accuracy`. Over 75 m the server returns `review` (no reward, nobody reviews it): ask the user to try again with better GPS. | same |
 | Geofences | `CLMonitor` (iOS 17+) with `CLMonitor.CircularGeographicCondition`. Max **20 conditions** per app at once (same 20 limit as the older `CLCircularRegion` monitoring). | Geofencing API (`GeofencingClient`, `Geofence.Builder`, `GeofencingRequest`). Max **100 geofences** per app per device user. | "You're near a stop" nudge for the stops on the current route. iOS must rotate: monitor only the next stops on the route. | different |
 | Mock / fake GPS flag | `CLLocation.sourceInformation` → `CLLocationSourceInformation.isSimulatedBySoftware` (iOS 15+). | `Location.isMock()` (API 31+; on older devices use `isFromMockProvider()`, deprecated in API 31). | Sent as `is_mock`. Server rejects the check-in with reason `mock_location`. | same |
 
@@ -126,14 +126,14 @@ Consumers use the app for free. Shops buy prepaid credit packs on the **web dash
 | Field | Type | Android source | What the server does with it |
 |---|---|---|---|
 | `place_id` | int | Stop the user tapped (from `plan-route`). | 404 `place_not_found` if it doesn't exist. |
-| `lat`, `lng` | float | `Location.getLatitude()` / `getLongitude()` | More than 60 m from the place → `rejected`, reason `too_far`. Faster than 150 km/h since the user's last check-in in 24 h → `speed_jump`. |
-| `accuracy_m` | float, metres | `Location.getAccuracy()` | Over 50 m → status `review`, reason `low_accuracy`. |
+| `lat`, `lng` | float | `Location.getLatitude()` / `getLongitude()` | Outside the place's zone (150 m for landmarks and parks, 50 m elsewhere) → `rejected`, reason `too_far`. Faster than 150 km/h since the user's last non-demo check-in in 24 h → `speed_jump` (not checked for demo check-ins). |
+| `accuracy_m` | float, metres | `Location.getAccuracy()` | Over 75 m → status `review`, reason `low_accuracy` (no reward; ask for a retry with better signal). |
 | `selfie_path` | string | Path from step 1. | Server confirms the file exists in that user's folder, else `no_selfie`. |
-| `face_count` | int | Faces ML Kit found in the selfie. | Below 1 → `no_face`. |
+| `face_count` | int | Faces ML Kit found in the selfie. | Optional, ignored (no face check). |
 | `client.platform` | `"android"` | constant | Stored for debugging. |
 | `client.is_mock` | bool | `Location.isMock()` (API 31+) or `isFromMockProvider()`. | `true` → `mock_location`. |
 | `client.attest` | string | Play Integrity standard-request token, `requestHash` = SHA-256 of the other fields. | Stored only; verification gets switched on server-side later, so send it now. |
-| `client.demo` | bool | Only for demo builds. | Simulated location; only accepted at example places (403 `demo_only_at_example_places` otherwise). |
+| `client.demo` | bool | Only for demo builds. | Simulated location, accepted at any place: rewarded, no speed check, never bills a shop or spins coupons (`billing: "demo"`). |
 
 Response: `{ status, reasons[], rewarded, billed_thb, distance_m, new_badges[] }`. The user ID comes from the JWT, never the body. A shop is billed only when the check-in is `approved`, it is the user's first rewarded visit to that place that Bangkok day, and the shop's wallet covers its bid.
 

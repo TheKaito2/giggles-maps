@@ -1,44 +1,35 @@
 // Giggles Maps detour planner. Stops are chosen on quality (rating x variety x trip theme) per added minute,
 // times an optional per-place boost (monetization v5: members' plans put paying partners first).
 // Constraints: total extra time <= budget (stops the user picked go in regardless: the budget shapes what the planner
-// adds, never refuses what the user chose), every stop open on arrival, rating >= floor (unrated only if allowed),
-// meal stops arrive inside their meal window, and at most maxStops stops.
+// adds, never refuses what the user chose), rating >= floor (unrated only if allowed), meal stops arrive inside their
+// meal window, and at most maxStops stops. Opening hours aren't used yet: we have no trustworthy hours data.
 // Phase 0 places the stops the user picked (must_include), then meal stops; phase 1 fills the rest;
 // greedy insertion + 2-opt, fine for ~25 candidates.
 
 import { inMealWindow, type Meal, MEAL_PLACES, MEAL_WINDOWS } from "./meals.ts";
 import { type Theme, type Tier, themeWeight } from "./themes.ts";
 
-/** Open for the whole visit, by the clock: past midnight counts (an all-night place, or a trip that runs past 00:00: the
- *  plain minute compare dropped a 24/7 shop for a visit at 23:58), and so do hours that close after midnight. */
-export function visitIsOpen(arrival: number, dwell: number, open: number | null | undefined, close: number | null | undefined) {
-  if (open == null || close == null || open === close || close - open >= 1440) return true;   // 24/7 is stored as 0–1440
-  const day = Math.floor(arrival / 1440);
-  return [day - 1, day].some((d) => {
-    const from = d * 1440 + open, to = d * 1440 + close + (close < open ? 1440 : 0);
-    return arrival >= from && arrival + dwell <= to;
-  });
-}
-
 export interface Stop {
   idx: number;          // row/column in the travel matrix
   id: number;
   category: string;
   rating: number | null;   // null = unrated
-  tier?: Tier;             // 3 landmark, 2 worth a visit, 1 everyday (default 2)
+  tier?: Tier;             // 4 icon, 3 landmark, 2 worth a visit, 1 everyday (default 2)
   dwellMin: number;
-  openMin?: number | null;   // minutes after midnight
-  closeMin?: number | null;
   frac?: number;            // where along the direct route it sits: 0 start, 1 destination
   local?: boolean;          // independent food/café/craft/market place (not a chain)
   otop?: boolean;           // OTOP shop (One Tambon One Product)
   community?: boolean;      // community enterprise
+  visitors?: number;        // different real travellers who checked in here lately (0 = unknown or none)
 }
 
 // Local first (docs/LOCAL-FIRST.md): a free, published boost for independent and community businesses. Paying
 // partners never change ranking; this does, for everyone equally.
 const localBoost = (s: Stop) => s.otop || s.community ? 1.6 : s.local ? 1.3 : 1;
 const isLocal = (s: Stop) => !!(s.otop || s.community || s.local);
+// Popularity from real trips: a gentle boost for places travellers actually stop at, capped (15+ visitors = x1.4)
+// so quality and minutes still decide.
+export const popularity = (visitors = 0) => Math.min(1.4, 1 + 0.1 * Math.log2(1 + visitors));
 
 export interface PlanInput {
   originIdx: number;
@@ -69,13 +60,13 @@ export interface Plan {
   missedMeals: Meal[];
   requiredIds: number[];
   unfitRequired: number[];     // picked places that can't go in (no road to them)
-  closedPicks: number[];       // picked places that are closed when the route gets there: in the plan anyway, flagged
 }
 
 const UNRATED = 3.5;   // unrated places score like a middling rating, below the 4.0 default floor
 const quality = (s: Stop) => (s.rating ?? UNRATED) / 5;
 // Landmarks are what a detour is for: they outweigh a nearby cafe even when they add more minutes.
-const TIER_VALUE: Record<Tier, number> = { 3: 3, 2: 1.2, 1: 0.5 };
+// Icons (the country's major landmarks) a notch above.
+const TIER_VALUE: Record<Tier, number> = { 4: 4.5, 3: 3, 2: 1.2, 1: 0.5 };
 
 export function planDetour(input: PlanInput): Plan {
   const { originIdx, destIdx, startMin, budgetMin, travelMin, minRating = 4.0, allowUnrated = false,
@@ -84,11 +75,8 @@ export function planDetour(input: PlanInput): Plan {
   // Local gems: independent and community places only
   const eligible = input.stops.filter((s) => (s.rating == null ? allowUnrated : s.rating >= minRating) && (theme !== "local" || isLocal(s)));
   const mealOf = new Map<number, Meal>();
-  // the user's picks: opening hours never keep them out (one closed on arrival is flagged in closedPicks)
-  const picks = new Set(input.requiredIds ?? []);
-
   // Walk the order on the clock. Arriving early for a meal means waiting until the window opens
-  // (the wait counts against the budget); arriving late for a meal, or outside opening hours, fails.
+  // (the wait counts against the budget); arriving late for a meal fails.
   const walk = (order: Stop[], meals = mealOf): { minutes: number; ok: boolean } => {
     let t = startMin, at = originIdx, ok = true;
     for (const s of order) {
@@ -99,7 +87,6 @@ export function planDetour(input: PlanInput): Plan {
         if (t < from) t = from;
         if (!inMealWindow(meal, t) || t > to) ok = false;
       }
-      if (!picks.has(s.id) && !visitIsOpen(t, s.dwellMin, s.openMin, s.closeMin)) ok = false;
       t += s.dwellMin;
       at = s.idx;
     }
@@ -113,7 +100,7 @@ export function planDetour(input: PlanInput): Plan {
     return w.ok && w.minutes - baseMin <= budget + 1e-9;
   };
 
-  // reverse any segment that shortens the trip while staying open on arrival (shorter never breaks the budget, and picked
+  // reverse any segment that shortens the trip while staying feasible (shorter never breaks the budget, and picked
   // stops may already have taken the trip past it)
   const twoOpt = (o: Stop[]): Stop[] => {
     if (input.fixedIds) return o;   // the user's order stands
@@ -159,11 +146,12 @@ export function planDetour(input: PlanInput): Plan {
   const score = (s: Stop, order: Stop[], added: number) => {
     const variety = order.some((o) => o.category === s.category) ? 0.5 : 1;
     // value per minute, but sqrt(minutes): a landmark 40 min away should beat a cafe 5 min away
-    return (TIER_VALUE[s.tier ?? 2] * quality(s) * weight(s.category, s.tier) * variety * spread(s, order) * localBoost(s) * (input.boost?.(s.id) ?? 1))
+    return (TIER_VALUE[s.tier ?? 2] * quality(s) * weight(s.category, s.tier) * variety * spread(s, order) * localBoost(s) * popularity(s.visitors)
+      * (input.boost?.(s.id) ?? 1))
       / Math.sqrt(Math.max(added, 1));
   };
 
-  // phase 0a: the places the user picked, each at its cheapest position; no budget, stop cap or opening hours
+  // phase 0a: the places the user picked, each at its cheapest position; no budget or stop cap
   let order: Stop[] = [];
   const requiredIds = input.requiredIds ?? [];
   const unfitRequired: number[] = [];
@@ -233,18 +221,7 @@ export function planDetour(input: PlanInput): Plan {
   }
 
   const totalMin = duration(order);
-  // picks that are closed when the plan gets there
-  const closedPicks: number[] = [];
-  let t = startMin, at = originIdx;
-  for (const s of order) {
-    t += travelMin(at, s.idx);
-    const meal = mealOf.get(s.id);
-    if (meal) t = Math.max(t, MEAL_WINDOWS[meal][0]);
-    if (picks.has(s.id) && !visitIsOpen(t, s.dwellMin, s.openMin, s.closeMin)) closedPicks.push(s.id);
-    t += s.dwellMin; at = s.idx;
-  }
-  return { order, baseMin, totalMin, extraMin: totalMin - baseMin, mealOf, lateMeals, missedMeals, requiredIds, unfitRequired,
-    closedPicks };
+  return { order, baseMin, totalMin, extraMin: totalMin - baseMin, mealOf, lateMeals, missedMeals, requiredIds, unfitRequired };
 }
 
 /**

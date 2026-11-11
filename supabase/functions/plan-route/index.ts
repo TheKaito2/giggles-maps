@@ -1,20 +1,21 @@
-import { usualHours } from "../_shared/usual-hours.ts";
 import { admin, HttpError, json, num, readJson, requireUser, serve, thaiPoint } from "../_shared/http.ts";
 import { type Meal, MEAL_WINDOWS } from "../_shared/meals.ts";
-import { insertBest, insertionCost, type Plan, planDetour, type Stop, visitIsOpen } from "../_shared/planner.ts";
+import { insertBest, insertionCost, type Plan, planDetour, type Stop } from "../_shared/planner.ts";
 import { fitsInterests, independent, INTERESTS, isInterest, mixWeight, type Tier, THEMES, toTheme } from "../_shared/themes.ts";
 import { allowsEstimateFallback, boundedRouter, scheduleStops, verifyRoadPlan } from "../_shared/road-detour.ts";
 import { corridorMatrix } from "../_shared/corridor.ts";
+import { plannedStops, STOP_CAP, stopCap as capFor, stopLimitCode } from "../_shared/tiers.ts";
 import { createRouter, estimateMinutes, RoutingError, haversineM, type LatLng, matrixMinutes, METERS_PER_MIN, type Mode, type RoadRoute } from "../_shared/valhalla.ts";
 
 interface Candidate {
   id: number; name: string; name_th: string | null; category: string; lat: number; lng: number;
-  open_min: number | null; close_min: number | null; dwell_min: number; rating: number | null;
+  dwell_min: number; rating: number | null;
   is_partner: boolean; is_demo: boolean;
   price_level: number | null;
-  tier: Tier;   // 3 landmark, 2 worth a visit, 1 everyday
+  tier: Tier;   // 4 icon, 3 landmark, 2 worth a visit, 1 everyday
   frac?: number;   // 0 start .. 1 destination along the direct route (route shortlist only)
   local?: boolean; otop?: boolean; community?: boolean;   // local-first flags (route shortlist only)
+  visitors?: number;   // real travellers who checked in here in the last 180 days (shortlist RPCs only)
 }
 interface NearPlace {
   id: number; name: string; category: string; lat: number; lng: number; rating: number;
@@ -22,7 +23,6 @@ interface NearPlace {
 }
 
 const MAX_BUDGET = 240; // 4-hour detours for everyone (Plus is cosmetic only)
-const STOP_CAP = { free: 10, member: 15 };   // the most stops a plan holds, generated or added by hand
 const CARD_CATEGORIES = new Set(["park", "viewpoint", "temple"]); // "Near this spot" cards sit under these
 const MAX_CARDS = 2;
 const QUICK_DWELL_MIN = 10; // time counted at each stop on a short (Quick) detour
@@ -62,9 +62,9 @@ serve(async (req) => {
   const meals: Meal[] = body.meals ?? [];
   if (!Array.isArray(meals) || meals.length > 3 || !meals.every((m) => Object.hasOwn(MEAL_WINDOWS, m))) throw new HttpError(400, "bad_meals");
   const filters = { p_min_rating: minRating, p_unrated: includeUnrated, p_max_price: maxPrice };
-  // stricter filters (all optional): only places whose opening hours we know (the planner then checks you arrive
-  // while they're open), and no chain shops, cafés or restaurants
-  const openOnly = body.open_only === true, noChains = body.no_chains === true;
+  // stricter filter (optional): no chain shops, cafés or restaurants. Opening hours aren't used yet (no trustworthy data):
+  // an old client's open_only is ignored
+  const noChains = body.no_chains === true;
   // places the user picked or added from "along your route" (up to 6); they go into every plan when they fit
   const ids = (v: unknown, max: number, code: string): number[] => {
     if (v == null) return [];
@@ -87,8 +87,12 @@ serve(async (req) => {
   const { data: profile } = await db.from("profiles").select("plus_until, member_since").eq("id", user.id).maybeSingle();
   const plus = !!profile?.plus_until && new Date(profile.plus_until) > new Date();
   const member = !!profile?.member_since;
-  const stopCap = member ? STOP_CAP.member : STOP_CAP.free;
-  if (mustInclude.length > stopCap) throw new HttpError(400, "stop_limit");
+  // stops a plan holds (tiers.ts): free plans 3, members and Plus 15. Demo mode doesn't change it: demo is the client's own
+  // flag (body.demo), so it can't unlock anything that's paid for.
+  const unlimited = member || plus;
+  const stopCap = capFor(unlimited);
+  const stopRefusal = stopLimitCode(mustInclude.length, unlimited);
+  if (stopRefusal) throw new HttpError(stopRefusal === "stop_limit_free" ? 403 : 400, stopRefusal);
   // quotas: free accounts plan 3 destinations and make 10 edits a day; members are unlimited, everyone is rate-limited.
   // A detour is keyed by its destination (~100 m), so the 3 preset plans and preference changes count once; an edit by what it
   // keeps and removes, so the planner's own retries of one edit count once.
@@ -133,7 +137,7 @@ serve(async (req) => {
   // place's usual visit time. Otherwise a 20-minute temple could never fit in 15 minutes and Quick came back empty.
   const quickStops = budgetMin < 30 && !meals.length;
   const dwellOf = (m: number) => quickStops ? Math.min(m, QUICK_DWELL_MIN) : m;
-  const narrowed = interests.length > 0 || openOnly || noChains;   // the filters below drop places: fetch more first
+  const narrowed = interests.length > 0 || noChains;   // the filters below drop places: fetch more first
   // spread stops along the way: 5 stretches on long drives, 3 on short ones, none inside a city block
   const segments = directM < 3000 ? 0 : directM < 30000 ? 3 : 5;
   const { data: cands, error } = baseline
@@ -150,18 +154,17 @@ serve(async (req) => {
       p_segments: segments,
       // filter the corridor itself, so a narrow filter still gets a full shortlist (keep() below re-checks)
       p_kinds: interests.length ? interests.flatMap((i) => INTERESTS[i]) : null, p_landmarks: interests.includes("landmarks"),
-      p_open_only: openOnly, p_no_chains: noChains,
+      p_no_chains: noChains,
     })
     : await db.rpc("detour_candidates", {
       o_lat: origin.lat, o_lng: origin.lng, d_lat: dest.lat, d_lng: dest.lng,
       extra_m: budgetMin * 80, max_n: 16 + exclude.size, p_level: level, p_per_group: 4 + Math.min(exclude.size, 3), ...filters, p_meal_slots: meals.length ? 4 : 0,
     });
   if (error) { console.error("candidate lookup failed", error); warnings.push("places_unavailable"); }
-  // "only these kinds" (a meal asked for still allows restaurants), confirmed opening hours, no chains;
+  // "only these kinds" (a meal asked for still allows restaurants), no chains;
   // places the user named as must-visit always stay in
   const keep = (c: Candidate) => mustInclude.includes(c.id) || (
     (fitsInterests(interests, c.category, c.tier) || (meals.length > 0 && c.category === "food"))
-    && (!openOnly || (c.open_min != null && c.close_min != null))
     && (!noChains || independent(c)));
   const candidates = ((cands ?? []) as Candidate[]).filter((c) => !exclude.has(c.id) && keep(c) && haversineM(c, origin) > END_CLEARANCE_M && haversineM(c, dest) > END_CLEARANCE_M)
     .slice(0, maxCandidates);   // over-fetched for the filters: the road-time matrix stays its usual size
@@ -190,6 +193,7 @@ serve(async (req) => {
   }
   // paid tiers: Partner and Giggles Choice. Members' plans put them first; the Partner picks plan uses Choice stops only.
   const tierOf = new Map<number, "partner" | "choice">();
+  const pretend = new Set<number>();   // tiers from demo_partners: real places that haven't signed up, labelled as examples
   if (candidates.length) {
     const { data: tiers, error: tErr } = await db.rpc("places_tiers", { p_ids: candidates.map((c) => c.id) });
     if (tErr) console.error("partner tiers failed", tErr);
@@ -198,7 +202,7 @@ serve(async (req) => {
     if (body.demo === true) {
       const { data: demo, error: dErr } = await db.from("demo_partners").select("place_id, tier").in("place_id", candidates.map((c) => c.id));
       if (dErr) console.error("demo partners failed", dErr);
-      for (const d of (demo ?? []) as { place_id: number; tier: "partner" | "choice" }[]) if (!tierOf.has(d.place_id)) tierOf.set(d.place_id, d.tier);
+      for (const d of (demo ?? []) as { place_id: number; tier: "partner" | "choice" }[]) if (!tierOf.has(d.place_id)) { tierOf.set(d.place_id, d.tier); pretend.add(d.place_id); }
     }
   }
   const boost = member ? (id: number) => tierOf.get(id) === "choice" ? 2 : tierOf.get(id) === "partner" ? 1.5 : 1 : undefined;
@@ -235,15 +239,9 @@ serve(async (req) => {
     }
   }
 
-  // places without known hours get their kind's usual hours (a night plan used to visit temples at 04:00). Not the ones
-  // the user picked: those go in whatever the hours, and a guess must not mark them "closed when you get there".
-  const hoursOf = (c: { id: number; category: string; name: string; open_min: number | null; close_min: number | null }) => {
-    const [openMin, closeMin] = mustInclude.includes(c.id) ? [c.open_min, c.close_min] : usualHours(c.category, c.name, c.open_min, c.close_min);
-    return { openMin, closeMin };
-  };
   const allStops: Stop[] = candidates.map((c, i) => ({
     idx: i + 2, id: c.id, category: c.category, rating: c.rating == null ? null : Number(c.rating), tier: c.tier ?? 2, dwellMin: dwellOf(c.dwell_min),
-    ...hoursOf(c), frac: c.frac, local: c.local, otop: c.otop, community: c.community,
+    frac: c.frac, local: c.local, otop: c.otop, community: c.community, visitors: c.visitors,
   }));
   const stops = allStops.filter((st) => !pitIds.has(st.id)), pitStops = allStops.filter((st) => pitIds.has(st.id));
   const travelMin = (a: number, b: number) => matrix[a][b];
@@ -260,7 +258,7 @@ serve(async (req) => {
     // Partner picks: only places we hand-picked (Giggles Choice), for everyone, when any are along the way
     ...(choiceStops.some((st) => tierOf.get(st.id) === "choice") ? [{ id: "giggles", name: "Partner picks", only: choiceStops }] : []),
   ];
-  const prefs = { minRating, allowUnrated: includeUnrated, maxStops: maxStops ?? stopCap, requiredIds: mustInclude };
+  const prefs = { minRating, allowUnrated: includeUnrated, maxStops: plannedStops(maxStops, unlimited), requiredIds: mustInclude };
   for (const t of variants) {
     const pool = ("only" in t && t.only) || stops;
     const sightsWithin = (budget: number, keep?: number[], drop?: Set<number>) => planDetour({ originIdx: 0, destIdx: 1, startMin, budgetMin: budget,
@@ -270,7 +268,8 @@ serve(async (req) => {
       segments, theme: "theme" in t ? t.theme : undefined, weight: "weight" in t ? t.weight : undefined });
     // Quick: plan the sight leaving room for a pit stop, then add the cheapest store that fits; no store fits, the sight gets it all
     const sights = pitStops.length ? sightsWithin(budgetMin - PIT_RESERVE_MIN) : null;
-    const plan = (sights && pitStops.map((pit) => insertBest(sights, pit, travelMin, budgetMin)).filter((x): x is Plan => !!x)
+    // a free plan already at its 3 stops gets no pit stop on top
+    const plan = (sights && sights.order.length < stopCap && pitStops.map((pit) => insertBest(sights, pit, travelMin, budgetMin)).filter((x): x is Plan => !!x)
       .sort((a, b) => a.extraMin - b.extraMin)[0]) || sightsWithin(budgetMin);
     const stopsKey = plan.order.map((s) => s.id).join(",");
     if (t.id === "giggles" && !plan.order.some((st) => tierOf.get(st.id) === "choice")) continue;   // no Choice place fits the time
@@ -315,7 +314,7 @@ serve(async (req) => {
       const legs = []; let at = 0;
       for (const s of t.plan.order) { legs.push(matrix[at][s.idx]); at = s.idx; }
       legs.push(matrix[at][1]);
-      t.etaMin = scheduleStops(t.plan.order, legs, startMin, t.plan.mealOf, t.plan.requiredIds).etaMin;
+      t.etaMin = scheduleStops(t.plan.order, legs, startMin, t.plan.mealOf).etaMin;
       t.travelMin = legs.reduce((a, b) => a + b, 0);
       t.geometry = [origin, ...t.plan.order.map((s) => candidates[s.idx - 2]), dest].map((p) => [p.lng, p.lat]);
     }
@@ -374,12 +373,11 @@ serve(async (req) => {
         is_partner: c.is_partner && (!c.is_demo || body.demo === true), is_demo: c.is_demo && body.demo === true,
         rating: c.rating == null ? null : Number(c.rating), price_level: c.price_level, tier: c.tier ?? 2,
         dwell_min: s.dwellMin, eta_min: eta, travel_min: Math.round(leg), pit_stop: pitIds.has(c.id), meal, meal_late: !!late, picked: mustInclude.includes(c.id),
-        closed: plan.closedPicks.includes(c.id),   // you added it, but it's closed when you get there
         // about how many minutes this stop adds (road detour + time there): what removing it would save
         extra_min: ((x) => Number.isFinite(x) ? Math.round(x) : null)(insertionCost(plan.order.map((o) => o.idx), s.idx, travelMin, s.dwellMin)),
         photo: photoOf.get(c.id) ?? null,
         local: !!c.local, otop: !!c.otop, community: !!c.community,
-        partner_tier: tierOf.get(c.id) ?? null,
+        partner_tier: tierOf.get(c.id) ?? null, partner_demo: pretend.has(c.id),
         // field name kept for existing clients; the card is any nearby place, picked by quality
         nearby_partner: card
           ? { id: card.id, name: card.name, category: card.category, lat: card.lat, lng: card.lng,
@@ -394,23 +392,23 @@ serve(async (req) => {
       const c = byId.get(st.id)!;
       return { id: c.id, name: c.name, name_th: c.name_th, category: c.category, lat: c.lat, lng: c.lng, tier: c.tier ?? 2,
         rating: c.rating == null ? null : Number(c.rating), local: !!c.local, otop: !!c.otop, community: !!c.community,
-        photo: photoOf.get(c.id) ?? null, partner_tier: tierOf.get(c.id) ?? null,
-        extra_min: Math.round(insertionCost(plan.order.map((x) => x.idx), st.idx, travelMin, st.dwellMin)),
-        // closed when you'd pass it (about: straight from the start), so "add along your route" doesn't offer a night
-        // market at 10:00 as if it were open; open ones come first
-        closed: !visitIsOpen(startMin + travelMin(0, st.idx), st.dwellMin, st.openMin, st.closeMin),
-        opens_min: st.openMin ?? null };   // so a closed one can say when it opens
-    }).filter((a) => Number.isFinite(a.extra_min)).sort((a, b) => Number(a.closed) - Number(b.closed) || a.extra_min - b.extra_min).slice(0, 30);
+        photo: photoOf.get(c.id) ?? null, partner_tier: tierOf.get(c.id) ?? null, partner_demo: pretend.has(c.id),
+        extra_min: Math.round(insertionCost(plan.order.map((x) => x.idx), st.idx, travelMin, st.dwellMin)) };
+    }).filter((a) => Number.isFinite(a.extra_min)).sort((a, b) => a.extra_min - b.extra_min).slice(0, 30);
 
     return { ordered, cards, geometry, along };
   };
 
   const built = await Promise.all(themed.map(build));
+  // the length of a [lng, lat] line in km: the extra distance is the plan's road line minus the direct one
+  const lineKm = (g: [number, number][]) => g.slice(1).reduce((a, p, i) => a + haversineM({ lat: g[i][1], lng: g[i][0] }, { lat: p[1], lng: p[0] }), 0) / 1000;
+  const baseKm = lineKm(baseline?.geometry ?? [[origin.lng, origin.lat], [dest.lng, dest.lat]]);
   // where the extra time goes: more time on the road, time at the stops, and waiting for a meal window to open
   const split = (t: typeof themed[number]) => {
     const travel = t.travelMin ?? t.plan.totalMin, stopMin = t.plan.order.reduce((a, s) => a + s.dwellMin, 0);
     return { road_extra_min: Math.max(0, Math.round(travel - t.plan.baseMin)), stop_min: stopMin,
-             wait_min: Math.max(0, Math.round(t.plan.totalMin - travel - stopMin)) };
+             wait_min: Math.max(0, Math.round(t.plan.totalMin - travel - stopMin)),
+             extra_km: Math.max(0, Math.round((lineKm(t.geometry ?? []) - baseKm) * 10) / 10) };
   };
   const topIdx = themed.findIndex((t) => t.id === "top_picks");
   const plan = themed[topIdx].plan;
@@ -438,7 +436,7 @@ serve(async (req) => {
     route_id: route.id, routing, mode, plus, member, level,
     base_min: Math.round(plan.baseMin), total_min: Math.round(plan.totalMin),
     extra_min: Math.round(plan.extraMin), budget_min: budgetMin, budget_auto: autoBudget, quick_stops: quickStops, ...split(themed[topIdx]),
-    max_budget_min: MAX_BUDGET, max_stops: stopCap, start_min: startMin,
+    max_budget_min: MAX_BUDGET, max_stops: stopCap, free_cap: !unlimited, start_min: startMin,
     candidates_considered: candidates.length,
     stops: ordered, geometry, base_geometry: baseline?.geometry ?? [],
     warnings: [...new Set(warnings)],

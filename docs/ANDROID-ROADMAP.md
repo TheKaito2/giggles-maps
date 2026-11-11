@@ -20,7 +20,7 @@ Status key: ✅ backend ready · 🟡 backend partly ready · 🔴 backend not b
 | 6 | **PDPA consent screen** | Shown before the first selfie, stored locally (DataStore). Text: one selfie + location; face presence only, no recognition; selfie private, auto-deleted after 30 days; delete account any time. | ✅ |
 | 7 | **Passport tab** | 4 collections with dot progress (distinct rewarded places in the collection vs `required_count`), "Earned" stamp when badge exists, last 8 check-ins with status chip. | ✅ table reads (RLS) |
 | 8 | **Delete account** | Button in Passport with an in-app confirm step → `delete-account` → sign out → fresh anonymous session next time. | ✅ `delete-account` |
-| 9 | **Demo mode toggle** | Debug/demo builds only: "I'm not in Sakon Nakhon: simulate being here". Sends the stop's own lat/lng, accuracy 5, `client.demo = true`. Server only allows it at example places. | ✅ |
+| 9 | **Demo mode toggle** | Debug/demo builds only: "I'm not in Sakon Nakhon: simulate being here". Sends the stop's own lat/lng, accuracy 5, `client.demo = true`. The server accepts it at any place and rewards it, but never bills a shop or spins coupons for it. | ✅ |
 
 **P0 exit check:** on a physical phone, plan a +45 min walking route from Phu Phan Museum (17.17313, 104.14488) to Wat Phra That Choeng Chum (17.16445, 104.15345) at 10:00, check in at stop 1 in demo mode with a real selfie, see the stamp, see it in Passport, then delete the account.
 

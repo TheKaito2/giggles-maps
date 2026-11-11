@@ -2,16 +2,16 @@ import { useSyncExternalStore } from "react";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { isNative } from "./native";
 
-// Appearance (Settings > Appearance): Light, Dark, or Auto, which follows the phone. Saved on this device. The resolved theme
+// Appearance (Settings > Appearance): Light (the default), Dark, or Auto, which follows the phone. Saved on this device. The resolved theme
 // lives on <html data-theme>, which tokens.css reads; the inline script in app/index.html sets it before the first paint
-// (same key, same rule), so a dark phone never flashes a light app.
+// (same key, same rule), so a dark choice never flashes a light app.
 export type Appearance = "auto" | "light" | "dark";
 const KEY = "gm-appearance";
 const media = matchMedia("(prefers-color-scheme: dark)");
 const listeners = new Set<() => void>();
 
 export function appearance(): Appearance {
-  try { const v = localStorage.getItem(KEY); return v === "light" || v === "dark" ? v : "auto"; } catch { return "auto"; }
+  try { const v = localStorage.getItem(KEY); return v === "auto" || v === "dark" ? v : "light"; } catch { return "light"; }
 }
 const resolved = (): "light" | "dark" => {
   const a = appearance();
@@ -28,7 +28,7 @@ function apply() {
 }
 
 export function setAppearance(a: Appearance) {
-  try { if (a === "auto") localStorage.removeItem(KEY); else localStorage.setItem(KEY, a); } catch { /* this visit only */ }
+  try { if (a === "light") localStorage.removeItem(KEY); else localStorage.setItem(KEY, a); } catch { /* this visit only */ }
   apply();
 }
 

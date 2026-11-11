@@ -10,7 +10,6 @@ export interface Prefs {
   maxStops: number | null;       // null = Auto
   picks: Pick[];                  // must-visit places, sent as must_include
   meals: Meal[];                  // a food stop arriving inside each meal's window
-  openOnly: boolean;              // only places whose opening hours we know (and that are open when you arrive)
   noChains: boolean;              // independent shops, cafés and restaurants only
 }
 // ponytail: rating and price filters are gone until real data exists (OpenStreetMap has neither; 0 reviews so far)
@@ -23,10 +22,12 @@ export const hhmm = (m: number) => { const r = Math.round(m); return `${String(M
 
 export const DEFAULT_PREFS: Prefs = {
   mode: "auto", depart: "now", time: hhmm(Math.max(nowMin(), 9 * 60)), budget: "auto",
-  interests: [], maxStops: null, picks: [], meals: [], openOnly: false, noChains: false,
+  interests: [], maxStops: null, picks: [], meals: [], noChains: false,
 };
 
 export const MAX_BUDGET = 240;
+// stops a free plan holds (= STOP_CAP.free in supabase/functions/_shared/tiers.ts); members, Plus and demo mode: 15
+export const FREE_STOPS = 3;
 export const MEALS: { id: Meal; label: string; window: string }[] = [
   { id: "breakfast", label: "Breakfast", window: "07:00–09:30" },
   { id: "lunch", label: "Lunch", window: "11:30–13:30" },
@@ -34,6 +35,14 @@ export const MEALS: { id: Meal; label: string; window: string }[] = [
 ];
 export const BUDGETS: (number | "auto")[] = ["auto", 15, 30, 45, 60, 90, 120, 180, 240];
 export const budgetLabel = (m: number | "auto") => m === "auto" ? "Auto" : m < 60 ? `${m} min` : m % 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m / 60} h`;
+
+// ponytail: typical 2026 Thai figures (pump price of 95 petrol / gasohol, an average car). Change them here.
+const FUEL_THB_PER_L = 35;
+const CAR_KM_PER_L = 14;
+/** "+12 km · ≈ ฿30 fuel" for the extra distance a driving plan adds; null when not driving or under 1 km. */
+export const fuelLine = (mode: string, extraKm?: number) =>
+  mode !== "auto" || extraKm == null || extraKm < 1 ? null
+    : `+${Math.round(extraKm)} km · ≈ ฿${Math.round(extraKm / CAR_KM_PER_L * FUEL_THB_PER_L / 5) * 5} fuel`;
 
 export const MODES: { id: TravelMode; label: string }[] = [
   { id: "pedestrian", label: "Walking" }, { id: "auto", label: "Driving" }, { id: "bicycle", label: "Cycling" },
@@ -57,7 +66,6 @@ export function toRequest(p: Prefs, origin: LatLng, dest: LatLng): PlanRequest {
   return {
     origin, dest, start_min: startMin(p), budget_min: p.budget === "auto" ? "auto" : Math.min(p.budget, MAX_BUDGET), mode: p.mode,
     ...(p.interests.length ? { interests: p.interests } : {}),
-    ...(p.openOnly ? { open_only: true } : {}),
     ...(p.noChains ? { no_chains: true } : {}),
     ...(p.picks.length ? { must_include: p.picks.map((x) => x.id) } : {}),
     ...(p.meals.length ? { meals: p.meals } : {}),
@@ -75,6 +83,5 @@ export function filterSummary(p: Prefs): string {
   if (p.picks.length) parts.push(`${p.picks.length} must-visit`);
   if (p.maxStops) parts.push(`up to ${p.maxStops} stop${p.maxStops === 1 ? "" : "s"}`);
   if (p.noChains) parts.push("no chains");
-  if (p.openOnly) parts.push("known hours only");
   return parts.join(" · ");
 }

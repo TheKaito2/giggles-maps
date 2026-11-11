@@ -156,7 +156,7 @@ export default function Shop() {
           <article className={tierLive ? "" : "here"}><span className="eyebrow">Listing</span><b className="num">Free</b>
             <span className="fine">On the map and in routes.</span>{!tierLive && <span className="chip">You're here</span>}</article>
           <article className={tierLive === "partner" ? "here hot" : "hot"}><span className="eyebrow">Partner</span><b className="num">฿{PRICES.partner}<small>/month</small></b>
-            <span className="fine">First on members' routes, a Partner badge, bookings.</span>
+            <span className="fine">Boosted on members' routes, a Partner badge, bookings.</span>
             {tierLive === "partner" && <span className="chip">Until {day(shop!.tier_until!)}</span>}
             {tierLive === "choice" ? <span className="chip">Included in Giggles Choice</span> : <>
               <button className="btn gold" disabled={!shopId || !verified} onClick={() => pay({ kind: "partner", shop_id: shopId })}>

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { insertBest, planDetour, type Stop, insertionCost } from "./planner.ts";
-import { fitsInterests, independent, mixWeight } from "./themes.ts";
+import { insertBest, planDetour, popularity, type Stop, insertionCost } from "./planner.ts";
+import { fitsInterests, independent, mixWeight, themeWeight } from "./themes.ts";
 
 // grid world: travel minutes = manhattan distance between points
 const pts = [
@@ -11,7 +11,6 @@ const pts = [
   { x: 3, y: 1 },  // 4 café on the route
   { x: 9, y: 9 },  // 5 café far off the route
   { x: 6, y: 0 },  // 6 low-rated stop
-  { x: 7, y: 0 },  // 7 closed stop
 ];
 const travelMin = (a: number, b: number) => Math.abs(pts[a].x - pts[b].x) + Math.abs(pts[a].y - pts[b].y);
 const stops: Stop[] = [
@@ -20,7 +19,6 @@ const stops: Stop[] = [
   { idx: 4, id: 4, category: "cafe", rating: 4.3, dwellMin: 10 },
   { idx: 5, id: 5, category: "cafe", rating: 4.5, dwellMin: 10 },
   { idx: 6, id: 6, category: "food", rating: 3.2, dwellMin: 5 },
-  { idx: 7, id: 7, category: "art", rating: 4.9, dwellMin: 5, openMin: 900, closeMin: 1000 },
 ];
 const plan = (budgetMin: number) =>
   planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin, stops, travelMin });
@@ -36,9 +34,8 @@ test("quality per added minute: the on-route café beats the far one", () => {
   expect(p).not.toContain(5);
 });
 
-test("low-rated and closed stops are skipped; tiny budget adds nothing", () => {
+test("low-rated stops are skipped; tiny budget adds nothing", () => {
   expect(ids(plan(120))).not.toContain(6);
-  expect(ids(plan(120))).not.toContain(7);
   expect(plan(3).order).toHaveLength(0);
 });
 
@@ -139,18 +136,13 @@ test("a picked place goes in even below the rating floor, inside the budget", ()
   expect(p.extraMin).toBeLessThanOrEqual(30);
 });
 
-test("a picked place goes in past the budget, the stop cap and its opening hours (flagged closed)", () => {
+test("a picked place goes in past the budget and the stop cap", () => {
   const far = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 10, stops, travelMin, requiredIds: [5] });
   expect(far.order.map((s) => s.id)).toContain(5);
   expect(far.unfitRequired).toEqual([]);
   expect(far.extraMin).toBeGreaterThan(10);
   const capped = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 120, stops, travelMin, requiredIds: [2, 3], maxStops: 1 });
   expect(capped.order.map((s) => s.id).sort()).toEqual([2, 3]);
-  const closed = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 120, travelMin, requiredIds: [5],
-    stops: stops.map((s) => s.id === 5 ? { ...s, openMin: 0, closeMin: 60 } : s) });
-  expect(closed.order.map((s) => s.id)).toContain(5);
-  expect(closed.closedPicks).toEqual([5]);
-  expect(closed.unfitRequired).toEqual([]);
 });
 
 // landmark world: a cafe right on the route vs a landmark temple well off it
@@ -213,6 +205,24 @@ test("an OTOP shop beats an equally good, equally close café", () => {
   expect(lPlan(19, 1, lStops.slice(0, 2)).order.map((s) => s.id)).toEqual([3]);
 });
 
+// popularity from real trips: a gentle, capped boost
+test("a more-visited place beats an otherwise identical one, and the boost is capped", () => {
+  const twin = (visitors: number[]) => lPlan(19, 1, [
+    { idx: 2, id: 2, category: "cafe", rating: 4.5, dwellMin: 15, visitors: visitors[0] },
+    { idx: 3, id: 3, category: "cafe", rating: 4.5, dwellMin: 15, visitors: visitors[1] },
+  ]).order.map((s) => s.id);
+  expect(twin([0, 3])).toEqual([3]);
+  expect(twin([3, 0])).toEqual([2]);
+  expect(popularity(0)).toBe(1);
+  expect(popularity(15)).toBeCloseTo(1.4);
+  expect(popularity(1_000_000)).toBe(1.4);
+  // capped: a crowd can't lift an unrated place (3.5) past a 5-star one, 5 / 3.5 > 1.4
+  const crowd = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 19, travelMin: lMin, maxStops: 1, allowUnrated: true,
+    stops: [{ idx: 2, id: 2, category: "cafe", rating: null, dwellMin: 15, visitors: 1_000_000 },
+            { idx: 3, id: 3, category: "cafe", rating: 5, dwellMin: 15 }] });
+  expect(crowd.order.map((s) => s.id)).toEqual([3]);
+});
+
 test("a plan makes room for one local stop when it fits, and never breaks the budget for it", () => {
   const roomy = lPlan(60);
   expect(roomy.order.some((s) => s.otop || s.community || s.local)).toBe(true);
@@ -236,6 +246,7 @@ test("fitsInterests: only the picked kinds, landmarks by tier; independent: chai
   expect(fitsInterests(["cafes"], "temple")).toBe(false);
   expect(fitsInterests(["landmarks"], "park", 3)).toBe(true);
   expect(fitsInterests(["landmarks"], "park", 2)).toBe(false);
+  expect(fitsInterests(["landmarks"], "temple", 4)).toBe(true);   // an icon is a landmark too
   expect(independent({ category: "cafe", local: false })).toBe(false);
   expect(independent({ category: "cafe", local: true })).toBe(true);
   expect(independent({ category: "temple" })).toBe(true);
@@ -274,4 +285,15 @@ test("two places 0 minutes apart are planned as one stop", () => {
   const tm = (a: number, b: number) => (a === 8 ? travelMin(2, b) : b === 8 ? travelMin(a, 2) : travelMin(a, b));   // 8 sits on 2
   const p = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 120, stops: twin, travelMin: tm }).order.map((s) => s.id);
   expect(p.includes(2) && p.includes(8)).toBe(false);
+});
+
+test("an icon (tier 4) beats an equally good landmark (tier 3) at the same spot; Local gems skips both", () => {
+  const twins: Stop[] = [
+    { idx: 2, id: 30, category: "temple", rating: 4.6, dwellMin: 15, tier: 3 },
+    { idx: 2, id: 40, category: "temple", rating: 4.6, dwellMin: 15, tier: 4 },
+  ];
+  const p = planDetour({ originIdx: 0, destIdx: 1, startMin: 540, budgetMin: 60, stops: twins, travelMin, maxStops: 1 });
+  expect(p.order.map((s) => s.id)).toEqual([40]);
+  expect(themeWeight("local", "temple", 4)).toBe(0);
+  expect(themeWeight("top_picks", "temple", 4)).toBe(2);
 });

@@ -100,7 +100,7 @@ export default function PlaceSearch({ label, value, pin, near, onPick, actions, 
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(p)}>
           {recentRow ? <span className="result-icon address"><Clock size={15} aria-hidden /></span> : <ResultIcon p={p} />}
           <span className="result-text">
-            <b>{nameOf(p)}{p.tier === 3 && <span className="chip landmark">Landmark</span>}</b>
+            <b>{nameOf(p)}{(p.tier ?? 0) >= 3 && <span className="chip landmark">{p.tier === 4 ? "Icon" : "Landmark"}</span>}</b>
             <span className="fine">{k ? k.en : "Address"}{p.distance_m != null && ` · ${formatDistance(p.distance_m)}`}</span>
           </span>
         </button>
