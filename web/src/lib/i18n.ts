@@ -10,10 +10,10 @@
 export type Lang = "en" | "th";
 const KEY = "gm-lang";
 
-/** The chosen language, else the phone's: Thai phones get Thai. */
+/** The chosen language, else the phone's: Thai phones get Thai. The shop pages (/shop) default to Thai: shop owners here read Thai. */
 export function lang(): Lang {
   try { const v = localStorage.getItem(KEY); if (v === "en" || v === "th") return v; } catch { /* not kept */ }
-  return navigator.language?.toLowerCase().startsWith("th") ? "th" : "en";
+  return navigator.language?.toLowerCase().startsWith("th") || location.pathname.startsWith("/shop") ? "th" : "en";
 }
 /** Switching reloads the app (trips and directions are kept across reloads). */
 export function setLang(l: Lang) {

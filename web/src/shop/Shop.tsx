@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { errCode, supabase } from "../lib/supabase";
-import { answerBooking, PRICES, requestChoice, type ShopBooking, shopBookings, SITE, startCheckout } from "../lib/api";
+import { PRICES, requestChoice, type ShopBooking, shopBookings, SITE, startCheckout } from "../lib/api";
 import { isGuest, resumeSignIn, useUser } from "../lib/auth";
+import { bookingChime } from "../lib/sfx";
+import { lang, setLang } from "../lib/i18n";
 import SignIn from "../app/SignIn";
+import Funnel, { type Week } from "./Funnel";
 import MyListing from "./MyListing";
 import Pitch from "./Pitch";
+import ShopBookings from "./ShopBookings";
 
 interface ShopRow { id: string; name: string; is_demo: boolean; owner_id: string | null; tier: "partner" | "choice" | null; tier_until: string | null;
   choice_approved: boolean; choice_requested_at: string | null }
@@ -13,7 +17,8 @@ interface PlaceStat {
   id: number; name: string; bid_thb: number; qr_code: string | null; last_qr_scan_at: string | null;
   impressions_30d: number; card_impressions_30d: number; visits_30d: number;
 }
-interface Overview { wallet_thb: number; places: PlaceStat[] }
+interface Overview { wallet_thb: number; places: PlaceStat[]; weeks?: Week[] }
+const LOW_CREDIT = 200;   // below this, warn: visits and bookings stop being paid for, and bookings can't be accepted
 interface Visit { id: number; amount_thb: number; created_at: string; status: "charged" | "disputed"; places: { name: string } | null }
 
 const PACKS = [500, 1000, 3000];
@@ -85,6 +90,23 @@ export default function Shop() {
   }, [shopId]);
   useEffect(() => { load().catch(() => setMsg("Couldn't load this shop.")); }, [load]);
 
+  // live: a new booking (or a guest cancelling) rings and reloads, so the owner doesn't have to refresh. It listens to
+  // booking_events (booking id and status only, no guest identity: PDPA), which row-level security limits to the owner.
+  const ownsShop = !!user && !isGuest(user) && shops.some((s) => s.id === shopId && s.owner_id === user.id && !s.is_demo);
+  useEffect(() => {
+    if (!ownsShop) return;
+    const ch = supabase.channel(`shop-bookings-${shopId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "booking_events", filter: `shop_id=eq.${shopId}` }, (e) => {
+        if ((e.new as { status?: string }).status === "requested") { bookingChime(); setMsg("New booking! Accept or decline it in Bookings."); }
+        load().catch(() => undefined);
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(ch); };
+  }, [ownsShop, shopId, load]);
+  // the waiting count in the tab title, so a shop with the dashboard in a background tab sees it
+  const waiting = bookings.filter((b) => b.status === "requested").length;
+  useEffect(() => { document.title = waiting ? `(${waiting}) Giggles Maps for shops` : "Giggles Maps for shops"; }, [waiting]);
+
   const shop = shops.find((s) => s.id === shopId);
   const totals = (overview?.places ?? []).reduce((t, p) => ({
     shown: t.shown + p.impressions_30d, cards: t.cards + p.card_impressions_30d, visits: t.visits + p.visits_30d,
@@ -105,8 +127,8 @@ export default function Shop() {
   };
   const tierLive = shop?.tier && shop.tier_until && new Date(shop.tier_until) > new Date() ? shop.tier : null;
   const verified = (overview?.places ?? []).some((p) => p.qr_code && p.last_qr_scan_at);
-  const answer = (id: number, ok: boolean) => answerBooking(id, ok).then(load).catch((e) => setMsg(errCode(e) === "top_up_first"
-    ? `Add credit first: each booking costs ฿${PRICES.booking} once the guest checks in.` : "Couldn't answer that booking."));
+  const wallet = Number(overview?.wallet_thb ?? 0);
+  const lowCredit = ownsShop && wallet < LOW_CREDIT && (!!tierLive || waiting > 0);
   const apply = () => requestChoice(shopId).then(() => { setMsg("Thanks! We'll review your shop for Giggles Choice."); setShops((xs) =>
     xs.map((x) => x.id === shopId ? { ...x, choice_requested_at: new Date().toISOString() } : x)); })
     .catch((e) => setMsg(errCode(e) === "partners_only" ? "Only partners can apply for Giggles Choice." : "Couldn't send that. Try again."));
@@ -134,6 +156,8 @@ export default function Shop() {
         </label>}
       </div>
       {shop?.is_demo && <p className="fine notice">Example shop for the demo. This business hasn't signed up; numbers come from test check-ins.</p>}
+      {lowCredit && <p className="notice low-credit" role="alert">Credit is low (฿{wallet.toLocaleString()}). Below ฿{PRICES.booking} a visit isn't
+        paid for and you can't accept bookings. <button className="link" onClick={() => setTab("partner")}>Add credit</button></p>}
       <div className="seg dash-tabs" role="tablist" aria-label="Dashboard">
         {TABS.map(([id, label]) => <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? "on" : ""}
           onClick={() => setTab(id)}>{label}{id === "bookings" && bookings.some((b) => b.status === "requested") && <span className="dot-new" aria-label="new" />}</button>)}
@@ -147,8 +171,9 @@ export default function Shop() {
           <div className="tile"><span className="fine">Credit left</span><b className="num">฿{Number(overview?.wallet_thb ?? 0).toLocaleString()}</b><span className="fine num">฿{spent.toLocaleString()} spent</span></div>
         </section>
         <p className="next-step">{!verified ? <>Next: print your <button className="link" onClick={() => setTab("sticker")}>counter sticker</button>. The first visitor scan verifies your shop.</>
-          : !tierLive ? <>Next: <button className="link" onClick={() => setTab("partner")}>become a Partner</button> to come first on members' routes and take bookings.</>
+          : !tierLive ? <>Next: <button className="link" onClick={() => setTab("partner")}>become a Partner</button> to come first on Plus routes and take bookings.</>
           : <>You're a {tierLive === "choice" ? "Giggles Choice" : "Partner"} until {day(shop!.tier_until!)}.</>}</p>
+        {overview?.weeks && <Funnel weeks={overview.weeks} />}
       </>}
 
       {tab === "partner" && <>
@@ -156,14 +181,14 @@ export default function Shop() {
           <article className={tierLive ? "" : "here"}><span className="eyebrow">Listing</span><b className="num">Free</b>
             <span className="fine">On the map and in routes.</span>{!tierLive && <span className="chip">You're here</span>}</article>
           <article className={tierLive === "partner" ? "here hot" : "hot"}><span className="eyebrow">Partner</span><b className="num">฿{PRICES.partner}<small>/month</small></b>
-            <span className="fine">Boosted on members' routes, a Partner badge, bookings.</span>
+            <span className="fine">Boosted on Plus routes, a Partner badge, bookings.</span>
             {tierLive === "partner" && <span className="chip">Until {day(shop!.tier_until!)}</span>}
             {tierLive === "choice" ? <span className="chip">Included in Giggles Choice</span> : <>
               <button className="btn gold" disabled={!shopId || !verified} onClick={() => pay({ kind: "partner", shop_id: shopId })}>
                 {tierLive === "partner" ? "Add 30 days" : "Become a partner"}</button>
               {!verified && <span className="fine">Get your sticker scanned once first.</span>}</>}</article>
           <article className={tierLive === "choice" ? "here" : ""}><span className="eyebrow">Giggles Choice</span><b>By invitation</b>
-            <span className="fine">Hand-picked partners. A Choice badge, ×2 on members' routes and the Partner picks plan.</span>
+            <span className="fine">Hand-picked partners. A Choice badge, ×2 on Plus routes and the Partner picks plan.</span>
             {tierLive === "choice" ? <>
                 <span className="chip">Until {day(shop!.tier_until!)}</span>
                 <button className="btn gold" onClick={() => pay({ kind: "choice", shop_id: shopId })}>Add 30 days · ฿{PRICES.choice}</button></>
@@ -182,17 +207,7 @@ export default function Shop() {
         </div>
       </>}
 
-      {tab === "bookings" && (bookings.length === 0 ? <p className="fine">{tierLive ? "No bookings yet." : "Partners take bookings through Giggles Maps."}</p>
-        : <ul className="bookings">{bookings.map((b) => (
-            <li key={b.id}>
-              <span className="person-main"><b>{b.guest} · {b.party} {b.party === 1 ? "person" : "people"}</b>
-                <span className="fine num">{new Date(`${b.day}T00:00:00+07:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · {b.place}{b.note ? ` · "${b.note}"` : ""}</span></span>
-              {b.status === "requested" ? <span className="row tight">
-                  <button className="btn small" onClick={() => answer(b.id, true)}>Accept</button>
-                  <button className="btn ghost small" onClick={() => answer(b.id, false)}>Decline</button></span>
-                : <span className={`chip booking-${b.status}`}>{b.status === "completed" ? `Done · ฿${b.charged ?? 0}`
-                  : b.status === "expired" ? "Not answered in time" : b.status === "no_show" ? "No-show · free" : b.status}</span>}
-            </li>))}</ul>)}
+      {tab === "bookings" && <ShopBookings bookings={bookings} live={!!tierLive} onChange={() => { setMsg(""); load().catch(() => undefined); }} onError={setMsg} />}
 
       {tab === "visits" && <>
         {visits.length === 0
@@ -238,6 +253,9 @@ export default function Shop() {
       <header className="topbar">
         <a className="brand" href="/"><img className="brand-mark" src="/logo.svg" alt="" width={36} height={36} /><span className="brand-word">giggles <span>maps</span></span></a>
         <span className="chip">For shops</span>
+        {/* each language named in itself, never translated */}
+        <button type="button" className="btn ghost small lang-toggle" translate="no" onClick={() => setLang(lang() === "th" ? "en" : "th")}>
+          {lang() === "th" ? "English" : "ไทย"}</button>
       </header>
       <main className="shop-main">
         {msg && <p className="notice" role="status">{msg}</p>}

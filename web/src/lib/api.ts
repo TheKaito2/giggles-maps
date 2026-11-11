@@ -288,18 +288,39 @@ export const setMyPerk = (place: number, text: string) => rpc<void>("set_my_perk
 // bookings through Giggles Maps (partner places only); the shop pays a flat fee once you check in
 // expired: the shop never answered before the day; no_show: accepted but nobody checked in (free for the shop)
 export type BookingStatus = "requested" | "accepted" | "declined" | "completed" | "cancelled" | "expired" | "no_show";
-export interface Booking { id: number; place_id: number; place: string; day: string; party: number; note: string | null; status: BookingStatus }
-export interface ShopBooking { id: number; place: string; guest: string; day: string; party: number; note: string | null; status: BookingStatus;
+// table (food, café, bar): a time; stay: check-out and rooms, priced by the shop on accept (10% fee); visit: a time
+export type BookingKind = "table" | "stay" | "visit";
+export const bookingKind = (category: string): BookingKind =>
+  category === "stay" ? "stay" : ["food", "cafe", "bar"].includes(category) ? "table" : "visit";   // = booking_kind() in SQL
+interface BookingDetail { kind: BookingKind; time: string | null; check_out: string | null; rooms: number | null; price: number | null;
+  cancel_reason: string | null; cancelled_by: "guest" | "shop" | null }
+export interface Booking extends BookingDetail { id: number; place_id: number; place: string; day: string; party: number; note: string | null; status: BookingStatus }
+export interface ShopBooking extends BookingDetail { id: number; place: string; guest: string; day: string; party: number; note: string | null; status: BookingStatus;
   fee: number; charged: number | null }
-export const requestBooking = (place: number, day: string, party: number, note: string) =>
-  rpc<number>("request_booking", { p_place: place, p_day: day, p_party: party, p_note: note || null });
+export const requestBooking = (place: number, day: string, party: number, note: string,
+  extra: { time?: string; check_out?: string; rooms?: number } = {}) =>
+  rpc<number>("request_booking", { p_place: place, p_day: day, p_party: party, p_note: note || null,
+    p_time: extra.time || null, p_check_out: extra.check_out || null, p_rooms: extra.rooms ?? null });
 export const myBookings = () => rpc<Booking[]>("my_bookings");
 export const cancelBooking = (id: number) => rpc<void>("cancel_booking", { p_id: id });
 export const shopBookings = (shop: string) => rpc<ShopBooking[]>("shop_bookings", { p_shop: shop });
-export const answerBooking = (id: number, accept: boolean) => rpc<void>("answer_booking", { p_id: id, p_accept: accept });
+/** Accept or decline; a stay is accepted with its price (the shop pays 10% of it once the guest checks in). */
+export const answerBooking = (id: number, accept: boolean, price?: number) =>
+  rpc<void>("answer_booking", { p_id: id, p_accept: accept, p_price: price ?? null });
+const shortDay = (iso: string) => new Date(`${iso}T00:00:00+07:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+/** "Sat 15 Nov · 12:30 · 4 people", or for a stay "Sat 15 Nov – Mon 17 Nov · 1 room · 2 guests". */
+export const bookingWhen = (b: Pick<Booking, "day" | "kind" | "time" | "check_out" | "rooms" | "party">) =>
+  b.kind === "stay" && b.check_out
+    ? `${shortDay(b.day)} – ${shortDay(b.check_out)} · ${b.rooms ?? 1} ${b.rooms === 1 ? "room" : "rooms"} · ${b.party} ${b.party === 1 ? "guest" : "guests"}`
+    : `${shortDay(b.day)}${b.time ? ` · ${b.time.slice(0, 5)}` : ""} · ${b.party} ${b.party === 1 ? "person" : "people"}`;
+export const shopCancelBooking =(id: number, reason: string) => rpc<void>("shop_cancel_booking", { p_id: id, p_reason: reason });
 export const requestChoice = (shop: string) => rpc<void>("request_choice", { p_shop: shop });
 // the shop pitch's real number: trips planned near a place and times it was on a route (30 days)
-export interface ShopReach { name: string; shown_30d: number; trips_near_30d: number }
+export interface ShopReach { name: string; shown_30d: number; trips_near_30d: number;
+  visit_rate?: number | null }   // shown stops visited, all shops, 30 days (null: nothing shown yet)
+/** The "for provinces and brands" form: a sponsored-quest enquiry (read by the team only). */
+export const sendSponsorLead = (org: string, contact: string, message: string) =>
+  rpc<void>("send_sponsor_lead", { p_org: org, p_contact: contact, p_message: message || null });
 export const shopReach = (place: number) => rpc<ShopReach>("shop_reach", { p_place: place });
 export const approveChoice = (shop: string, ok: boolean) => rpc<void>("approve_choice", { p_shop: shop, p_ok: ok });
 export const choiceRequests = () => rpc<{ shop: string; name: string; tier: PartnerTier | null; at: string }[]>("choice_requests");

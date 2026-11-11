@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { CalendarCheck, ChevronLeft, ChevronRight, Crown, Languages, LogIn, LogOut, RotateCcw, ShieldCheck, Sparkles, SunMoon, Trash2, Volume2, Wand2, X } from "lucide-react";
 import { callFn, ensureSession, supabase } from "../lib/supabase";
-import { type Booking, cancelBooking, forever, getMonthlyStamps, myBookings, type PlusKind, PRICES, type Profile } from "../lib/api";
+import { type Booking, bookingWhen, cancelBooking, forever, getMonthlyStamps, myBookings, type PlusKind, PRICES, type Profile } from "../lib/api";
 import { isNative, purchase, purchaseErrorText, restorePurchases } from "../lib/native";
 import { isGuest, useUser } from "../lib/auth";
 import { demoOn, setDemo, startDemo } from "../lib/demoGps";
@@ -212,7 +212,8 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
         <ul className="bookings">{bookings.map((b) => (
           <li key={b.id}>
             <span className="person-main"><b>{b.place}</b>
-              <span className="fine num">{new Date(`${b.day}T00:00:00+07:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · {b.party} {b.party === 1 ? "person" : "people"}</span></span>
+              <span className="fine num">{bookingWhen(b)}{b.price ? ` · ฿${b.price.toLocaleString()}` : ""}</span>
+              {b.cancelled_by === "shop" && b.cancel_reason && <span className="fine">The shop cancelled: "{b.cancel_reason}"</span>}</span>
             <span className={`chip booking-${b.status}`}>{BOOKING_STATUS[b.status]}</span>
             {(b.status === "requested" || b.status === "accepted") && <button type="button" className="link"
               onClick={() => cancelBooking(b.id).then(myBookings).then(setBookings).catch(() => setMsg("Couldn't cancel. Try again."))}>Cancel</button>}
