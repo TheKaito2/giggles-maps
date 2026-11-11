@@ -80,7 +80,7 @@ export default function RewardedAd({ kind, onDone, onClose }: { kind: AdReward; 
           <div className="rewarded-card">
             <span className="ad-icon big"><Ban size={32} aria-hidden /></span>
             <b>Plan without limits</b>
-            <span className="fine">Membership: unlimited detours and no ads, forever. ฿{PRICES.membership} once, with 3 months of Plus.</span>
+            <span className="fine">Giggles Plus: unlimited detours and no ads. A Trip Pass is ฿{PRICES.tripPass} for 7 days.</span>
           </div>
           <div className="rewarded-bar" aria-hidden><span style={{ width: `${100 * (AD_SECONDS - left) / AD_SECONDS}%` }} /></div>
           <button type="button" className="btn gold" disabled={left > 0 || id == null} onClick={() => id != null && claim(id)}>

@@ -140,7 +140,7 @@ export default function App() {
   const plan = d.stage === "results" ? d.plan : null;
   const mapPlan = d.stage === "browse" ? null : d.plan;   // while choosing, the highlighted option's route previews
   // the other plan cards' routes, faint on the map behind the one you picked
-  const alternates = useMemo(() => d.stage === "results" && plan ? (d.response?.plans ?? []).filter((p) => p.geometry !== plan.geometry).map((p) => p.geometry) : NONE,
+  const alternates = useMemo(() => d.stage === "results" && plan ? (d.response?.plans ?? []).filter((p) => p.geometry !== plan.geometry && p.verified !== false).map((p) => p.geometry) : NONE,
     [d.stage, d.response, plan?.geometry]); // eslint-disable-line react-hooks/exhaustive-deps
   const [focus, setFocus] = useState<LatLng | null>(null);
   // the sheet rises as you go: peek while browsing, half while choosing and on results (drag for more)
@@ -287,7 +287,7 @@ export default function App() {
             )}
             <Boundary><Suspense fallback={null}><MapView origin={d.stage === "browse" ? null : d.origin?.point ?? null} dest={d.dest?.point ?? null}
               stops={mapPlan?.stops ?? NONE} geometry={mapPlan?.geometry ?? NONE}
-              alternates={alternates} focus={focus} estimated={plan?.routing === "estimate"} picking={picking} onPick={onPick} onSelectStop={onSelectStop}
+              alternates={alternates} focus={focus} estimated={plan?.routing === "estimate" || plan?.verified === false} picking={picking} onPick={onPick} onSelectStop={onSelectStop}
               nearby={nearby.stops} here={nearby.here} inZone={nearby.inZoneIds}
               members={trip.trip?.members ?? NONE} skin={profile?.look.map ?? "liberty"} look={look}
               kinds={d.stage === "browse" ? CHIPS.find((c) => c.id === chip)?.kinds ?? null : null} onPlace={(p) => setPlace(p.id)} /></Suspense></Boundary>

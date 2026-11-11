@@ -1,17 +1,18 @@
 import { admin, HttpError, json, readJson, requireUser, serve } from "../_shared/http.ts";
 
 // What can be bought on the web (Stripe). iOS/Android sell Plus through StoreKit / Play Billing instead.
-//   credit     : prepaid visit credit for a shop (each verified visit deducts the shop's bid)
-//   plus       : Giggles Plus for a user, 30 days (no ads, daily coins, Plus shelf and title, themes and flair)
-//   plus_year  : Giggles Plus for a user, 365 days (web only; the iOS app sells monthly Plus through StoreKit)
-//   membership : one-time lifetime membership (no ads, unlimited detours, partners first, 3 months of Plus), never renews
+//   credit     : prepaid credit for a shop (verified visits and bookings are paid from it)
+//   trip_pass  : Giggles Plus for a user, 7 days (no ads, unlimited detours and stops, daily coins, themes and flair)
+//   plus_year  : Giggles Plus for a user, 365 days, the main plan
+//   lifetime   : Plus forever, one payment, never renews
 //   partner    : a shop's Partner tier, 30 days (members' routes put it first; guests can book it)
 //   choice     : Giggles Choice, 30 days: a Partner we hand-picked (needs our approval first), also in the Partner picks plan
+// Prices v6 (= PRICES in web/src/lib/api.ts and the App Store products). Monthly Plus and the ฿349 membership are no longer sold.
 const CREDIT_PACKS = [500, 1000, 3000];
-// ponytail: prices are defaults awaiting the owner's decision (= PRICES.plus / plusYear in web/src/lib/api.ts)
-const PLUS_THB = { plus: 59, plus_year: 590 } as const;
-const MEMBERSHIP_THB = 349;
-const TIER_THB = { partner: 299, choice: 799 } as const;
+const PLUS_THB = { trip_pass: 79, plus_year: 890 } as const;
+const LIFETIME_THB = 2990;
+const TIER_THB = { partner: 990, choice: 2490 } as const;
+const KINDS = ["credit", "trip_pass", "plus_year", "lifetime", "partner", "choice"];
 
 serve(async (req) => {
   const user = await requireUser(req);
@@ -20,19 +21,20 @@ serve(async (req) => {
   if (!/^(sk|rk)_test_/.test(key) && Deno.env.get("STRIPE_LIVE") !== "1") throw new HttpError(503, "live_payments_disabled");
 
   const body = await readJson(req);
-  const kind = ["credit", "plus", "plus_year", "membership", "partner", "choice"].includes(body.kind) ? body.kind : "credit";
+  // an app older than v6 asking for monthly Plus or the membership: no longer sold
+  if (body.kind === "plus" || body.kind === "membership") throw new HttpError(410, "no_longer_sold");
+  const kind = KINDS.includes(body.kind) ? body.kind : "credit";
   const site = Deno.env.get("SITE_URL") ?? "https://gigglesmap.xyz";
 
   let amount: number, name: string, back: string;
   const meta: Record<string, string> = { kind };
-  if (kind === "plus" || kind === "plus_year" || kind === "membership") {
+  if (kind === "trip_pass" || kind === "plus_year" || kind === "lifetime") {
     if (user.is_anonymous) throw new HttpError(403, "sign_in_required"); // must survive a reinstall
-    if (kind === "membership") {
-      const { data: p } = await admin().from("profiles").select("member_since").eq("id", user.id).maybeSingle();
-      if (p?.member_since) throw new HttpError(409, "already_member");
-    }
-    amount = kind === "membership" ? MEMBERSHIP_THB : PLUS_THB[kind as keyof typeof PLUS_THB];
-    name = kind === "plus" ? "Giggles Plus, 30 days" : kind === "plus_year" ? "Giggles Plus, 1 year" : "Giggles Maps membership (one-time)";
+    // Lifetime already: nothing more to buy
+    const { data: p } = await admin().from("profiles").select("plus_until").eq("id", user.id).maybeSingle();
+    if (p?.plus_until && new Date(p.plus_until).getUTCFullYear() >= 2099) throw new HttpError(409, "already_lifetime");
+    amount = kind === "lifetime" ? LIFETIME_THB : PLUS_THB[kind as keyof typeof PLUS_THB];
+    name = kind === "trip_pass" ? "Giggles Trip Pass, 7 days" : kind === "plus_year" ? "Giggles Plus, 1 year" : "Giggles Plus Lifetime (one-time)";
     back = `${site}/app/`;
     meta.user_id = user.id;
   } else if (kind === "partner" || kind === "choice") {

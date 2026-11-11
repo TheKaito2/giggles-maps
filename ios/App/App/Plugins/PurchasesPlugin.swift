@@ -15,7 +15,10 @@ public class PurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "pending", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "restore", returnType: CAPPluginReturnPromise),
     ]
-    static let ids = ["membership": "com.kristpaul.gigglesmaps.membership", "plus": "com.kristpaul.gigglesmaps.plus.monthly"]
+    // prices v6: the three sold now, plus the two no longer sold (still delivered on restore and renewal)
+    static let ids = ["trip_pass": "com.kristpaul.gigglesmaps.trippass.week", "plus_year": "com.kristpaul.gigglesmaps.plus.yearly",
+                      "lifetime": "com.kristpaul.gigglesmaps.lifetime",
+                      "membership": "com.kristpaul.gigglesmaps.membership", "plus": "com.kristpaul.gigglesmaps.plus.monthly"]
     private var updates: Task<Void, Never>?
 
     override public func load() {

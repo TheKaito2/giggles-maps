@@ -176,7 +176,7 @@ export default function Shop() {
           </article>
         </div>
         <h3>Credit</h3>
-        <p className="fine">Pays for bookings (฿{PRICES.booking} each, once the guest checks in){overview?.places[0]?.bid_thb ? ` and verified visits (฿${overview.places[0].bid_thb} each)` : ""}. Card or PromptPay.</p>
+        <p className="fine">Pays for verified visits and bookings (฿{PRICES.booking} each, once the guest checks in at your counter). Card or PromptPay.</p>
         <div className="row">
           {PACKS.map((p) => <button key={p} className="btn soft" onClick={() => pay({ kind: "credit", shop_id: shopId, pack: p })} disabled={!shopId}>Add <span className="num">฿{p.toLocaleString()}</span></button>)}
         </div>
@@ -190,7 +190,8 @@ export default function Shop() {
               {b.status === "requested" ? <span className="row tight">
                   <button className="btn small" onClick={() => answer(b.id, true)}>Accept</button>
                   <button className="btn ghost small" onClick={() => answer(b.id, false)}>Decline</button></span>
-                : <span className={`chip booking-${b.status}`}>{b.status === "completed" ? `Done · ฿${b.charged ?? 0}` : b.status}</span>}
+                : <span className={`chip booking-${b.status}`}>{b.status === "completed" ? `Done · ฿${b.charged ?? 0}`
+                  : b.status === "expired" ? "Not answered in time" : b.status === "no_show" ? "No-show · free" : b.status}</span>}
             </li>))}</ul>)}
 
       {tab === "visits" && <>

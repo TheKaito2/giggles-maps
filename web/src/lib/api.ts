@@ -69,6 +69,7 @@ export interface ThemedPlan {
   road_extra_min?: number; stop_min?: number; wait_min?: number;   // where extra_min goes
   extra_km?: number;   // how much further than the direct road the plan drives (older servers: absent)
   along?: AlongPlace[];
+  verified?: boolean;   // false: times are estimates until the plan is opened (the app asks the server to road-check it)
 }
 
 export interface RoutePlan {
@@ -86,13 +87,16 @@ export interface RoutePlan {
   plans?: ThemedPlan[]; // top-level fields = Top picks
   road_extra_min?: number; stop_min?: number; wait_min?: number; extra_km?: number;
   budget_auto?: boolean;   // budget_min was picked by the server ("auto")
+  verified?: boolean;      // the chosen plan was road-checked (choosePlan copies it from the plan)
+  routing_calls?: { route: number; matrix: number; cached_baseline: boolean; ms?: Record<string, number> };
 }
 
 /** The trip with the picked themed plan swapped in (first plan when none is picked). */
 export function choosePlan(plan: RoutePlan, id: string | null): RoutePlan {
   const p = plan.plans?.find((x) => x.id === id) ?? plan.plans?.[0];
   return p ? { ...plan, stops: p.stops, geometry: p.geometry, extra_min: p.extra_min, total_min: p.total_min,
-               road_extra_min: p.road_extra_min, stop_min: p.stop_min, wait_min: p.wait_min, extra_km: p.extra_km } : plan;
+               road_extra_min: p.road_extra_min, stop_min: p.stop_min, wait_min: p.wait_min, extra_km: p.extra_km,
+               verified: p.verified !== false } : plan;
 }
 
 export type Billing = "charged" | "no_qr" | "not_shown_on_route" | "repeat_visit_30d"
@@ -187,6 +191,9 @@ export async function searchAddresses(query: string, near?: LatLng | null, signa
 }
 
 export const planRoute = (p: PlanRequest) => callFn<RoutePlan>("plan-route", demoOn() ? { ...p, demo: true } : p);   // demo: pretend partners too
+/** Several time options in one request: they share one direct route and one road-time matrix. Answers in the order asked. */
+export const planRoutes = async (p: PlanRequest, budgets: (number | "auto")[]) =>
+  (await callFn<{ results: RoutePlan[] }>("plan-route", { ...p, budget_min: undefined, budgets_min: budgets, ...(demoOn() && { demo: true }) })).results;
 
 export async function uploadSelfie(blob: Blob): Promise<string> {
   const session = await ensureSession();
@@ -233,15 +240,18 @@ export const verifyCheckin = (p: {
 }) => callFn<CheckinResult>("verify-checkin", p);
 
 // Stripe Checkout (web only). Returns the hosted payment page URL.
-export const startCheckout = (p: { kind: "plus" | "plus_year" } | { kind: "membership" } | { kind: "credit"; shop_id: string; pack: number }
+export type PlusKind = "trip_pass" | "plus_year" | "lifetime";
+export const startCheckout = (p: { kind: PlusKind } | { kind: "credit"; shop_id: string; pack: number }
   | { kind: "partner" | "choice"; shop_id: string }) =>
   callFn<{ url: string }>("stripe-checkout", p);
 
-// v5 prices (THB); the server has the same numbers
-// ponytail: plus / plusYear are defaults awaiting the owner's decision (= PLUS_THB in stripe-checkout)
-export const PRICES = { membership: 349, plus: 59, plusYear: 590, partner: 299, choice: 799, booking: 20 } as const;
-/** What yearly Plus saves against 12 months (17% at ฿590 vs ฿59). */
-export const PLUS_YEAR_SAVE = Math.round(100 * (1 - PRICES.plusYear / (12 * PRICES.plus)));
+// v6 prices (THB); stripe-checkout and the App Store products have the same numbers. Monthly Plus and the ฿349
+// membership are no longer sold (members who bought it keep it).
+export const PRICES = { tripPass: 79, plusYear: 890, lifetime: 2990, partner: 990, choice: 2490, booking: 25, stayPct: 10 } as const;
+/** Lifetime costs this many years of yearly Plus (3.4). */
+export const LIFETIME_YEARS = Math.round((10 * PRICES.lifetime) / PRICES.plusYear) / 10;
+/** Lifetime Plus is stored as Plus until 2100: any date from 2099 on reads as "forever". */
+export const forever = (until: string | Date | null | undefined) => !!until && new Date(until).getUTCFullYear() >= 2099;
 // v5: who sees ads (everyone but members and Plus)
 export const adFree = (p: Profile | null) => !!p && (p.member || !!p.plusUntil);
 
@@ -276,7 +286,8 @@ export const PERK_MAX = 80;
 export const setMyPerk = (place: number, text: string) => rpc<void>("set_my_perk", { p_place: place, p_text: text });
 
 // bookings through Giggles Maps (partner places only); the shop pays a flat fee once you check in
-export type BookingStatus = "requested" | "accepted" | "declined" | "completed" | "cancelled";
+// expired: the shop never answered before the day; no_show: accepted but nobody checked in (free for the shop)
+export type BookingStatus = "requested" | "accepted" | "declined" | "completed" | "cancelled" | "expired" | "no_show";
 export interface Booking { id: number; place_id: number; place: string; day: string; party: number; note: string | null; status: BookingStatus }
 export interface ShopBooking { id: number; place: string; guest: string; day: string; party: number; note: string | null; status: BookingStatus;
   fee: number; charged: number | null }

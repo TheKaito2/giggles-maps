@@ -48,18 +48,32 @@ export async function pairsMinutes(sources: LatLng[], targets: LatLng[], mode: M
   return d.sources_to_targets.map((row: { time: number | null }[]) => row.map((c) => (c.time == null ? Infinity : c.time / 60)));
 }
 
-export async function matrixMinutes(points: LatLng[], mode: Mode): Promise<number[][]> {
-  const locs = points.map((p) => ({ lat: p.lat, lon: p.lng }));
-  const rowsPerCall = Math.max(1, Math.floor(MAX_PAIRS / locs.length));
-  const chunks: { lat: number; lon: number }[][] = [];
-  for (let i = 0; i < locs.length; i += rowsPerCall) chunks.push(locs.slice(i, i + rowsPerCall));
-  const parts = [];
-  for (let i = 0; i < chunks.length; i += 2) {
-    parts.push(...await Promise.all(chunks.slice(i, i + 2).map((sources) =>
-      post("sources_to_targets", { sources, targets: locs, costing: mode }))));
-  }
-  return parts.flatMap((d) => d.sources_to_targets.map((row: { time: number | null }[]) =>
-    row.map((c) => (c.time == null ? Infinity : c.time / 60))));
+/** Cache key for the road minutes from one point to another (~1 m precision). */
+export const pairKey = (a: LatLng, b: LatLng) => `${a.lat.toFixed(5)},${a.lng.toFixed(5)}>${b.lat.toFixed(5)},${b.lng.toFixed(5)}`;
+
+/** Road minutes between every pair of points. `cache` (by pairKey) is read first and filled with what's fetched, so an
+ *  edit that adds one place fetches its row and column, not the whole matrix again. Throws when a call fails. */
+export async function matrixMinutes(points: LatLng[], mode: Mode, fetchPairs = pairsMinutes,
+  cache: Map<string, number> = new Map()): Promise<number[][]> {
+  const n = points.length, all = points.map((_, i) => i);
+  const unknown = (i: number) => all.filter((j) => j !== i && !cache.has(pairKey(points[i], points[j])));
+  const fetchRows = async (sources: number[], targets: number[]) => {
+    const rowsPerCall = Math.max(1, Math.floor(MAX_PAIRS / targets.length));
+    const chunks: number[][] = [];
+    for (let i = 0; i < sources.length; i += rowsPerCall) chunks.push(sources.slice(i, i + rowsPerCall));
+    for (let c = 0; c < chunks.length; c += 2) {   // two at a time
+      await Promise.all(chunks.slice(c, c + 2).map(async (rows) => {
+        const got = await fetchPairs(rows.map((i) => points[i]), targets.map((j) => points[j]), mode);
+        rows.forEach((i, r) => targets.forEach((j, t) => cache.set(pairKey(points[i], points[j]), got[r]?.[t] ?? Infinity)));
+      }));
+    }
+  };
+  // points with nothing known yet: their whole row; then the gaps left (known points to the new ones)
+  const fresh = all.filter((i) => unknown(i).length === n - 1 && n > 1);
+  if (fresh.length) await fetchRows(fresh, all);
+  const gaps = all.filter((i) => unknown(i).length);
+  if (gaps.length) await fetchRows(gaps, [...new Set(gaps.flatMap(unknown))]);
+  return points.map((a, i) => points.map((b, j) => (i === j ? 0 : cache.get(pairKey(a, b)) ?? Infinity)));
 }
 
 // straight-line fallback when routing is down: haversine * 1.3 detour factor

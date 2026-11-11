@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { CalendarCheck, ChevronLeft, ChevronRight, Crown, Languages, LogIn, LogOut, RotateCcw, ShieldCheck, Sparkles, SunMoon, Trash2, Volume2, Wand2, X } from "lucide-react";
 import { callFn, ensureSession, supabase } from "../lib/supabase";
-import { type Booking, cancelBooking, getMonthlyStamps, myBookings, PRICES, type Profile } from "../lib/api";
+import { type Booking, cancelBooking, forever, getMonthlyStamps, myBookings, type PlusKind, PRICES, type Profile } from "../lib/api";
 import { isNative, purchase, purchaseErrorText, restorePurchases } from "../lib/native";
 import { isGuest, useUser } from "../lib/auth";
 import { demoOn, setDemo, startDemo } from "../lib/demoGps";
@@ -14,13 +14,13 @@ import AdminEdits from "./AdminEdits";
 import Info from "./Info";
 import { useBack } from "../lib/useDialog";
 import { forgetTrip } from "./detour/useDetour";
-import { PlusTerm } from "./Upgrade";
+import { PLUS_PERKS, PlusPlans } from "./Upgrade";
 
 // Settings, iOS / Android style: an account card, then short titled groups of rows. Switches act at once; anything bigger
 // opens its own page inside the sheet (‹ back). Destructive actions sit last and ask first.
 type Page = "home" | "appearance" | "membership" | "plus" | "bookings" | "signin" | "admin" | "delete";
 const BOOKING_STATUS: Record<Booking["status"], string> = { requested: "Waiting for the shop", accepted: "Confirmed", declined: "Declined",
-  completed: "Done", cancelled: "Cancelled" };
+  completed: "Done", cancelled: "Cancelled", expired: "No answer in time", no_show: "Missed" };
 const monthName = (m: string) => new Date(`${m}T00:00:00+07:00`).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
 const LOOKS: { id: Appearance; label: string }[] = [{ id: "light", label: "Light" }, { id: "dark", label: "Dark" }, { id: "auto", label: "Auto" }];
 const shortDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -59,7 +59,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
   const [msg, setMsg] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [stamps, setStamps] = useState<string[]>([]);
-  const [plusYear, setPlusYear] = useState(false);   // yearly Plus picked (web only)
+  const lifetime = forever(plusUntil);   // Lifetime Plus (stored as Plus until 2100)
   const [sound, setSoundState] = useState(soundOn);
   const look = useAppearance();
 
@@ -81,7 +81,7 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
   }, [refreshKey, user?.id, !!plusUntil]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const go = (p: Page) => { setMsg(""); setPage(p); };
-  const buy = async (kind: "plus" | "plus_year" | "membership") => {
+  const buy = async (kind: PlusKind) => {
     setMsg("");
     try { if (await purchase(kind, user?.id)) { setMsg("Thanks! It switches on in a moment."); setTimeout(onChange, 1500); } }
     catch (e) { setMsg(purchaseErrorText(e)); }
@@ -128,8 +128,10 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
         </Group>}
 
         <Group title="Your plan">
-          <Row icon={<Crown size={17} />} tone="marigold" label="Membership" value={member ? "Lifetime" : `฿${PRICES.membership} once`} onClick={() => go("membership")} />
-          <Row icon={<Sparkles size={17} />} tone="grape" label="Giggles Plus" value={plusUntil ? `Until ${shortDate(plusUntil)}` : `฿${PRICES.plus}/month`} onClick={() => go("plus")} />
+          {/* membership is no longer sold: only members who bought it see their page */}
+          {member && !lifetime && <Row icon={<Crown size={17} />} tone="marigold" label="Membership" value="Yours for good" onClick={() => go("membership")} />}
+          <Row icon={<Sparkles size={17} />} tone="grape" label="Giggles Plus"
+            value={lifetime ? "Lifetime" : plusUntil ? `Until ${shortDate(plusUntil)}` : `From ฿${PRICES.tripPass}`} onClick={() => go("plus")} />
           {isNative && !guest && <Row icon={<RotateCcw size={17} />} tone="slate" label="Restore purchases" onClick={() => restorePurchases()
             .then((n) => { setMsg(n ? "Purchases restored." : "Nothing to restore on this Apple ID."); onChange(); })
             .catch(() => setMsg("Couldn't restore. Try again."))} />}
@@ -180,41 +182,30 @@ export default function Settings({ refreshKey, profile, onChange, onClose }: {
       </div>}
 
       {page === "membership" && <div className="set-page" key="membership">
-        <div className="set-hero t-marigold"><Crown size={28} aria-hidden /><b>{member ? "You're a member" : `฿${PRICES.membership}, once`}</b>
-          <span className="fine">{member ? "Thanks for backing Giggles Maps." : "Yours for good. No subscription."}</span></div>
+        <div className="set-hero t-marigold"><Crown size={28} aria-hidden /><b>{member ? "You're a member" : "Membership"}</b>
+          <span className="fine">{member ? "Thanks for backing Giggles Maps. Yours for good." : "No longer sold: Plus Lifetime includes all of it."}</span></div>
         <ul className="perks">
           <li>No ads, forever</li>
           <li>Unlimited detours and added stops</li>
           <li>Up to 15 stops a plan (free plans hold 3)</li>
           <li>Partner and Giggles Choice stops first</li>
           <li>Member perks at partner shops</li>
-          <li>3 months of Plus free</li>
         </ul>
-        {!member && (guest
-          ? <button type="button" className="btn" onClick={() => go("signin")}><LogIn size={16} aria-hidden /> Sign in first</button>
-          : <button type="button" className="btn gold" onClick={() => buy("membership")}>Become a member · ฿{PRICES.membership}</button>)}
-        {!isNative && <p className="fine">Card or PromptPay.</p>}
+        {!member && <button type="button" className="btn gold" onClick={() => go("plus")}>See Giggles Plus</button>}
       </div>}
 
       {page === "plus" && <div className="set-page" key="plus">
-        <div className="set-hero t-grape"><Sparkles size={28} aria-hidden /><b>{plusUntil ? `Plus until ${shortDate(plusUntil)}` : isNative ? `฿${PRICES.plus} a month` : `฿${PRICES.plus} a month or ฿${PRICES.plusYear} a year`}</b>
-          <span className="fine">{plusUntil ? "Every Plus perk is on." : isNative ? "Renews monthly. Cancel any time in your Apple ID settings." : "No auto-renew: it simply runs out."}</span></div>
+        <div className="set-hero t-grape"><Sparkles size={28} aria-hidden /><b>{lifetime ? "Plus, for life" : plusUntil ? `Plus until ${shortDate(plusUntil)}` : `From ฿${PRICES.tripPass}`}</b>
+          <span className="fine">{plusUntil ? "Every Plus perk is on." : isNative ? "Yearly renews; cancel any time in your Apple ID settings. Trip Pass and Lifetime never renew."
+            : "Trip Pass, a year or for life. No auto-renew on the web: it simply runs out."}</span></div>
         <ul className="perks">
-          <li>No ads</li>
-          <li>Up to 15 stops a plan (free plans hold 3)</li>
-          <li>+20 coins every day you open the app</li>
-          <li>The Plus shelf: covers, frames, flair and the Plus explorer title</li>
+          {PLUS_PERKS.map((p) => <li key={p}>{p}</li>)}
           <li>25% more coins from quests, a stamp every month</li>
         </ul>
         {plusUntil && stamps.length > 0 && <div className="field"><span>Monthly stamps</span>
           <div className="month-stamps">{stamps.map((m) => <span key={m} className="month-stamp">{monthName(m)}</span>)}</div></div>}
         {guest ? <button type="button" className="btn" onClick={() => go("signin")}><LogIn size={16} aria-hidden /> Sign in first</button>
-          : <>
-            <PlusTerm year={plusYear} setYear={setPlusYear} />
-            <button type="button" className="btn gold" onClick={() => buy(plusYear ? "plus_year" : "plus")} disabled={isNative && !!plusUntil}>
-              {plusUntil ? isNative ? "You have Plus" : plusYear ? "Add a year" : "Add 30 days" : "Get Plus"} · ฿{plusYear ? PRICES.plusYear : PRICES.plus}</button>
-          </>}
-        {!isNative && <p className="fine">Card or PromptPay.</p>}
+          : !lifetime && <PlusPlans buy={buy} />}
       </div>}
 
       {page === "bookings" && <div className="set-page" key="bookings">

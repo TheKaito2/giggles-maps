@@ -4,6 +4,7 @@ import { App as CapApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { Share } from "@capacitor/share";
+import type { PlusKind } from "./api";   // type only: erased at build, so api's Vite env isn't pulled in
 
 // The iOS app is this same web app inside a Capacitor shell. These wrappers pick the native way on the phone and keep the
 // web way everywhere else, so screens call one function and never check the platform themselves.
@@ -106,7 +107,7 @@ interface AttestPlugin {
   assert(o: { keyId: string; data: string }): Promise<{ assertion: string }>;
 }
 interface PurchasesPlugin {
-  buy(o: { product: "membership" | "plus"; account?: string }): Promise<Tx | { cancelled: true } | { pending: true }>;
+  buy(o: { product: PlusKind; account?: string }): Promise<Tx | { cancelled: true } | { pending: true }>;
   finish(o: { id: string }): Promise<void>;
   pending(): Promise<{ transactions: Tx[] }>;
   restore(): Promise<{ transactions: Tx[] }>;
@@ -131,7 +132,7 @@ async function deliver(tx: Tx) {
   await Purchases.finish({ id: tx.id });
 }
 /** Buy in the iOS app. Returns false if the buyer cancelled; true once the server has it (or Ask to Buy is waiting). */
-async function buyInApp(product: "membership" | "plus", account: string): Promise<boolean> {
+async function buyInApp(product: PlusKind, account: string): Promise<boolean> {
   const r = await Purchases.buy({ product, account });
   if ("cancelled" in r) return false;
   if ("pending" in r) return true;
@@ -151,13 +152,12 @@ export function deliverPurchases(onDone: () => void) {
   void Purchases.addListener("transaction", run);
 }
 
-/** Membership or Plus: the App Store in the iOS app (guideline 3.1.1), Stripe on the web (leaves the page).
+/** Trip Pass, yearly Plus or Lifetime: the App Store in the iOS app (guideline 3.1.1), Stripe on the web (leaves the page).
  *  Resolves true when the iOS purchase is done, false if cancelled; on the web it doesn't come back. */
-export async function purchase(kind: "membership" | "plus" | "plus_year", account: string | undefined): Promise<boolean> {
+export async function purchase(kind: PlusKind, account: string | undefined): Promise<boolean> {
   if (isNative) {
     if (!account) throw new (await import("./supabase")).ApiError("sign_in_required");
-    // ponytail: StoreKit sells monthly Plus only; the app hides yearly, so a stray one buys monthly
-    return buyInApp(kind === "plus_year" ? "plus" : kind, account);
+    return buyInApp(kind, account);   // PurchasesPlugin.swift maps each kind to its App Store product
   }
   const { startCheckout } = await import("./api");
   location.href = (await startCheckout({ kind })).url;
