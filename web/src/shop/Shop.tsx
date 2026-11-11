@@ -57,7 +57,15 @@ export default function Shop() {
   const [bookings, setBookings] = useState<ShopBooking[]>([]);
   const [disputing, setDisputing] = useState<number | null>(null);
   const [reason, setReason] = useState("");
-  const [tab, setTab] = useState<Tab>("overview");
+  // each tab has a link (/shop/#partner, #bookings…): opening one goes straight to it, and switching tabs updates it
+  const hashTab = () => TABS.find(([id]) => `#${id}` === location.hash)?.[0];
+  const [tab, setTabState] = useState<Tab>(() => hashTab() ?? "overview");
+  const setTab = (t: Tab) => { setTabState(t); history.replaceState(null, "", `#${t}`); };
+  useEffect(() => {
+    const onHash = () => { const t = hashTab(); if (t) { setTabState(t); document.getElementById("dashboard")?.scrollIntoView(); } };
+    addEventListener("hashchange", onHash);
+    return () => removeEventListener("hashchange", onHash);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [peek, setPeek] = useState(false);   // a visitor looking at the example dashboard
   const [msg, setMsg] = useState(() => {
     const q = new URLSearchParams(location.search).get("paid");
@@ -160,6 +168,8 @@ export default function Shop() {
   const mine = shops.filter((s) => !s.is_demo && s.owner_id === user?.id && !isGuest(user));
   const owner = mine.length > 0;
   const picker = owner ? mine : shops.filter((s) => s.is_demo);
+  // opened with a tab link (/shop/#partner): once the owner's dashboard is on the page, bring it into view
+  useEffect(() => { if (owner && hashTab()) document.getElementById("dashboard")?.scrollIntoView(); }, [owner]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dispute = async (id: number) => {
     const { data, error } = await supabase.rpc("dispute_visit", { p_visit: id, p_reason: reason });
@@ -170,7 +180,7 @@ export default function Shop() {
   };
 
   const dashboard = (
-    <section className="dash stack" aria-label="Your shop">
+    <section className="dash stack" aria-label="Your shop" id="dashboard">
       <div className="shop-head">
         <h1>{owner ? "Your shop" : "Example dashboard"}</h1>
         {picker.length > 1 && <label className="field shop-pick">
@@ -278,6 +288,9 @@ export default function Shop() {
         {/* each language named in itself, never translated */}
         <button type="button" className="btn ghost small lang-toggle" translate="no" onClick={() => setLang(lang() === "th" ? "en" : "th")}>
           {lang() === "th" ? "English" : "ไทย"}</button>
+        {/* sign-in sits at the bottom of a long page: a way there from the top, or straight to the dashboard once signed in */}
+        {isGuest(user) ? <a className="btn small" href="#account">Sign in</a>
+          : owner ? <a className="btn small" href="#overview">Dashboard</a> : null}
       </header>
       <main className="shop-main">
         {msg && <p className="notice" role="status">{msg}</p>}
